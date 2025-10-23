@@ -8,11 +8,23 @@ class Accounts extends Table {
 
 @TableIndex(
   name: 'index_bookings_date_sending_amount_exclude_standing',
-  columns: {#date, #sendingAccountId, #amount, #excludeFromAverage, #createdByStandingOrder},
+  columns: {
+    #date,
+    #sendingAccountId,
+    #amount,
+    #excludeFromAverage,
+    #createdByStandingOrder,
+  },
 )
 @TableIndex(
   name: 'index_bookings_date_receiving_amount_exclude_standing',
-  columns: {#date, #receivingAccountId, #amount, #excludeFromAverage, #createdByStandingOrder},
+  columns: {
+    #date,
+    #receivingAccountId,
+    #amount,
+    #excludeFromAverage,
+    #createdByStandingOrder,
+  },
 )
 @TableIndex(
   name: 'index_bookings_reason_date_amount',
@@ -34,8 +46,10 @@ class Bookings extends Table {
   IntColumn get sendingAccountId => integer()();
   IntColumn get receivingAccountId => integer()();
   TextColumn get notes => text().nullable()();
-  BoolColumn get excludeFromAverage => boolean().withDefault(const Constant(false))();
-  BoolColumn get createdByStandingOrder => boolean().withDefault(const Constant(false))();
+  BoolColumn get excludeFromAverage =>
+      boolean().withDefault(const Constant(false))();
+  BoolColumn get createdByStandingOrder =>
+      boolean().withDefault(const Constant(false))();
 }
 
 class StandingOrders extends Table {
@@ -49,10 +63,7 @@ class StandingOrders extends Table {
   TextColumn get notes => text().nullable()();
 }
 
-@TableIndex(
-  name: 'index_goals_targetDate',
-  columns: { #targetDate },
-)
+@TableIndex(name: 'index_goals_targetDate', columns: {#targetDate})
 class Goals extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get createdOn => integer()();
