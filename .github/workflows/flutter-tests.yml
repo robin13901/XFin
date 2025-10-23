@@ -1,0 +1,45 @@
+name: Flutter CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ Check out the code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2️⃣ Install Flutter
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'stable'
+
+      # 3️⃣ Install dependencies
+      - name: Install dependencies
+        run: flutter pub get
+
+      # 4️⃣ Check code formatting
+      - name: Verify formatting
+        run: flutter format --set-exit-if-changed .
+
+      # 5️⃣ Run static analysis
+      - name: Analyze project source
+        run: flutter analyze
+
+      # 6️⃣ Run all tests (unit + widget + integration)
+      - name: Run tests
+        run: flutter test --coverage
+
+      # 7️⃣ (Optional) Upload coverage report as artifact
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/lcov.info
