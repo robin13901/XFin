@@ -27,7 +27,8 @@ jobs:
 
       # 4️⃣ Check code formatting
       - name: Verify formatting
-        run: flutter format --set-exit-if-changed .
+        run: dart format --output=none --set-exit-if-changed .
+
 
       # 5️⃣ Run static analysis
       - name: Analyze project source
