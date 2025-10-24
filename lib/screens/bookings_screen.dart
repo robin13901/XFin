@@ -71,7 +71,7 @@ class BookingsScreen extends StatelessWidget {
               final dateText = dateFormat.format(DateTime.fromMillisecondsSinceEpoch(booking.date));
 
               return ListTile(
-                title: Text(booking.reason),
+                title: Text(booking.reason ?? 'Überweisung'),
                 subtitle: Text(accountFlowText),
                 trailing: Column(
                   mainAxisAlignment: MainAxisAlignment.center,

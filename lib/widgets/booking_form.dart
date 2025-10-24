@@ -25,6 +25,8 @@ class _BookingFormState extends State<BookingForm> {
   late int? _receivingAccountId;
   late bool _excludeFromAverage;
 
+  final _disallowedReasons = ['überweisung'];
+
   @override
   void initState() {
     super.initState();
@@ -36,19 +38,16 @@ class _BookingFormState extends State<BookingForm> {
       _notesController = TextEditingController(text: booking.notes ?? '');
       _excludeFromAverage = booking.excludeFromAverage;
       
-      // A booking is a transfer if and only if the sendingAccountId is not null.
       _isTransfer = booking.sendingAccountId != null;
 
       if (_isTransfer) {
         _sendingAccountId = booking.sendingAccountId;
         _receivingAccountId = booking.receivingAccountId;
       } else {
-        // For entries (income/expense), only receiving account is relevant.
         _receivingAccountId = booking.receivingAccountId;
         _sendingAccountId = null;
       }
     } else {
-      // Defaults for a new booking
       _date = DateTime.now();
       _amountController = TextEditingController();
       _reasonController = TextEditingController();
@@ -74,11 +73,10 @@ class _BookingFormState extends State<BookingForm> {
 
       final companion = BookingsCompanion(
         date: drift.Value(_date.millisecondsSinceEpoch),
-        reason: drift.Value(_reasonController.text),
+        reason: drift.Value(_isTransfer ? null : _reasonController.text),
         notes: drift.Value(_notesController.text),
         excludeFromAverage: drift.Value(_excludeFromAverage),
         
-        // Correct logic: sendingAccountId is ONLY for transfers.
         amount: drift.Value(_isTransfer ? amount.abs() : amount),
         sendingAccountId: drift.Value(_isTransfer ? _sendingAccountId : null),
         receivingAccountId: drift.Value(_receivingAccountId),
@@ -102,7 +100,6 @@ class _BookingFormState extends State<BookingForm> {
   @override
   Widget build(BuildContext context) {
     final db = Provider.of<AppDatabase>(context, listen: false);
-
     return Padding(
       padding: MediaQuery.of(context).viewInsets,
       child: SingleChildScrollView(
@@ -175,13 +172,23 @@ class _BookingFormState extends State<BookingForm> {
                           border: OutlineInputBorder(),
                           suffixText: '€',
                         ),
-                        keyboardType: const TextInputType.numberWithOptions(signed: true, decimal: true),
+                        keyboardType: _isTransfer
+                            ? const TextInputType.numberWithOptions(decimal: true)
+                            : const TextInputType.numberWithOptions(signed: true, decimal: true),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Bitte Betrag eingeben';
+                            return 'Bitte gib einen Betrag an!';
                           }
-                          if (double.tryParse(value.replaceAll(',', '.')) == null) {
-                            return 'Ungültiger Betrag';
+                          final cleanValue = value.replaceAll(',', '.');
+                          final amount = double.tryParse(cleanValue);
+                          if (amount == null) {
+                            return 'Ungültige Eingabe!';
+                          }
+                          if (_isTransfer && amount < 0) {
+                            return 'Überweisungen müssen positiv sein!';
+                          }
+                          if (RegExp(r'^-?\d+(\.\d{3,})$').hasMatch(cleanValue)) {
+                            return 'Zu viele Nachkommastellen!';
                           }
                           return null;
                         },
@@ -189,20 +196,27 @@ class _BookingFormState extends State<BookingForm> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _reasonController,
-                  decoration: const InputDecoration(
-                    labelText: 'Grund',
-                    border: OutlineInputBorder(),
+                if (!_isTransfer)
+                  const SizedBox(height: 16),
+                if (!_isTransfer)
+                  TextFormField(
+                    controller: _reasonController,
+                    decoration: const InputDecoration(
+                      labelText: 'Grund',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (value) {
+                      if (!_isTransfer) {
+                        if (value == null || value.isEmpty) {
+                          return 'Bitte gib einen Grund an!';
+                        }
+                        if (_disallowedReasons.contains(value.trim().toLowerCase())) {
+                          return 'Dieser Grund ist für Überweisungen reserviert.';
+                        }
+                      }
+                      return null;
+                    },
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Bitte Grund eingeben';
-                    }
-                    return null;
-                  },
-                ),
                 const SizedBox(height: 16),
                 StreamBuilder<List<Account>>(
                   stream: db.accountsDao.watchAllAccounts(),
@@ -210,7 +224,7 @@ class _BookingFormState extends State<BookingForm> {
                     final accounts = snapshot.data ?? [];
                     if (!_isTransfer) { // Entry Form
                       return DropdownButtonFormField<int>(
-                        initialValue: _receivingAccountId,
+                        value: _receivingAccountId,
                         decoration: const InputDecoration(
                           labelText: 'Konto',
                           border: OutlineInputBorder(),
@@ -219,35 +233,35 @@ class _BookingFormState extends State<BookingForm> {
                           return DropdownMenuItem(value: account.id, child: Text(account.name));
                         }).toList(),
                         onChanged: (value) => setState(() => _receivingAccountId = value),
-                        validator: (value) => value == null ? 'Bitte Konto wählen' : null,
+                        validator: (value) => value == null ? 'Bitte wähle ein Konto!' : null,
                       );
                     } else { // Transfer Form
                       return Column(
                         children: [
                           DropdownButtonFormField<int>(
-                            initialValue: _sendingAccountId,
+                            value: _sendingAccountId,
                             decoration: const InputDecoration(labelText: 'Von Konto', border: OutlineInputBorder()),
                             items: accounts.map((account) {
                               return DropdownMenuItem(value: account.id, child: Text(account.name));
                             }).toList(),
                             onChanged: (value) => setState(() => _sendingAccountId = value),
                             validator: (value) {
-                              if (value == null) return 'Bitte Konto wählen';
-                              if (value == _receivingAccountId) return 'Konten müssen verschieden sein';
+                              if (value == null) return 'Bitte wähle ein Senderkonto';
+                              if (value == _receivingAccountId) return 'Konten müssen verschieden sein!';
                               return null;
                             },
                           ),
                           const SizedBox(height: 16),
                           DropdownButtonFormField<int>(
-                            initialValue: _receivingAccountId,
+                            value: _receivingAccountId,
                             decoration: const InputDecoration(labelText: 'Auf Konto', border: OutlineInputBorder()),
                             items: accounts.map((account) {
                               return DropdownMenuItem(value: account.id, child: Text(account.name));
                             }).toList(),
                             onChanged: (value) => setState(() => _receivingAccountId = value),
                             validator: (value) {
-                              if (value == null) return 'Bitte Konto wählen';
-                              if (value == _sendingAccountId) return 'Konten müssen verschieden sein';
+                              if (value == null) return 'Bitte wähle ein Empfängerkonto!';
+                              if (value == _sendingAccountId) return 'Konten müssen verschieden sein!';
                               return null;
                             },
                           ),

@@ -15,6 +15,8 @@ QueryExecutor openConnection() {
       if (result.missingFeatures.isNotEmpty) {
         // You can add more robust error handling here if you want.
         // For now, we'll just log a warning.
+        // ignore: avoid_print
+        print('Warning: Some features are not supported by your browser.');
       }
 
       return result.resolvedExecutor;

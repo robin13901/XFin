@@ -287,9 +287,9 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
   late final GeneratedColumn<String> reason = GeneratedColumn<String>(
     'reason',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _sendingAccountIdMeta = const VerificationMeta(
     'sendingAccountId',
@@ -398,8 +398,6 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
         _reasonMeta,
         reason.isAcceptableOrUnknown(data['reason']!, _reasonMeta),
       );
-    } else if (isInserting) {
-      context.missing(_reasonMeta);
     }
     if (data.containsKey('sending_account_id')) {
       context.handle(
@@ -467,7 +465,7 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
       reason: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}reason'],
-      )!,
+      ),
       sendingAccountId: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}sending_account_id'],
@@ -501,7 +499,7 @@ class Booking extends DataClass implements Insertable<Booking> {
   final int id;
   final int date;
   final double amount;
-  final String reason;
+  final String? reason;
   final int? sendingAccountId;
   final int? receivingAccountId;
   final String? notes;
@@ -511,7 +509,7 @@ class Booking extends DataClass implements Insertable<Booking> {
     required this.id,
     required this.date,
     required this.amount,
-    required this.reason,
+    this.reason,
     this.sendingAccountId,
     this.receivingAccountId,
     this.notes,
@@ -524,7 +522,9 @@ class Booking extends DataClass implements Insertable<Booking> {
     map['id'] = Variable<int>(id);
     map['date'] = Variable<int>(date);
     map['amount'] = Variable<double>(amount);
-    map['reason'] = Variable<String>(reason);
+    if (!nullToAbsent || reason != null) {
+      map['reason'] = Variable<String>(reason);
+    }
     if (!nullToAbsent || sendingAccountId != null) {
       map['sending_account_id'] = Variable<int>(sendingAccountId);
     }
@@ -544,7 +544,9 @@ class Booking extends DataClass implements Insertable<Booking> {
       id: Value(id),
       date: Value(date),
       amount: Value(amount),
-      reason: Value(reason),
+      reason: reason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reason),
       sendingAccountId: sendingAccountId == null && nullToAbsent
           ? const Value.absent()
           : Value(sendingAccountId),
@@ -568,7 +570,7 @@ class Booking extends DataClass implements Insertable<Booking> {
       id: serializer.fromJson<int>(json['id']),
       date: serializer.fromJson<int>(json['date']),
       amount: serializer.fromJson<double>(json['amount']),
-      reason: serializer.fromJson<String>(json['reason']),
+      reason: serializer.fromJson<String?>(json['reason']),
       sendingAccountId: serializer.fromJson<int?>(json['sendingAccountId']),
       receivingAccountId: serializer.fromJson<int?>(json['receivingAccountId']),
       notes: serializer.fromJson<String?>(json['notes']),
@@ -585,7 +587,7 @@ class Booking extends DataClass implements Insertable<Booking> {
       'id': serializer.toJson<int>(id),
       'date': serializer.toJson<int>(date),
       'amount': serializer.toJson<double>(amount),
-      'reason': serializer.toJson<String>(reason),
+      'reason': serializer.toJson<String?>(reason),
       'sendingAccountId': serializer.toJson<int?>(sendingAccountId),
       'receivingAccountId': serializer.toJson<int?>(receivingAccountId),
       'notes': serializer.toJson<String?>(notes),
@@ -598,7 +600,7 @@ class Booking extends DataClass implements Insertable<Booking> {
     int? id,
     int? date,
     double? amount,
-    String? reason,
+    Value<String?> reason = const Value.absent(),
     Value<int?> sendingAccountId = const Value.absent(),
     Value<int?> receivingAccountId = const Value.absent(),
     Value<String?> notes = const Value.absent(),
@@ -608,7 +610,7 @@ class Booking extends DataClass implements Insertable<Booking> {
     id: id ?? this.id,
     date: date ?? this.date,
     amount: amount ?? this.amount,
-    reason: reason ?? this.reason,
+    reason: reason.present ? reason.value : this.reason,
     sendingAccountId: sendingAccountId.present
         ? sendingAccountId.value
         : this.sendingAccountId,
@@ -689,7 +691,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
   final Value<int> id;
   final Value<int> date;
   final Value<double> amount;
-  final Value<String> reason;
+  final Value<String?> reason;
   final Value<int?> sendingAccountId;
   final Value<int?> receivingAccountId;
   final Value<String?> notes;
@@ -710,15 +712,14 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
     this.id = const Value.absent(),
     required int date,
     required double amount,
-    required String reason,
+    this.reason = const Value.absent(),
     this.sendingAccountId = const Value.absent(),
     this.receivingAccountId = const Value.absent(),
     this.notes = const Value.absent(),
     this.excludeFromAverage = const Value.absent(),
     this.createdByStandingOrder = const Value.absent(),
   }) : date = Value(date),
-       amount = Value(amount),
-       reason = Value(reason);
+       amount = Value(amount);
   static Insertable<Booking> custom({
     Expression<int>? id,
     Expression<int>? date,
@@ -750,7 +751,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
     Value<int>? id,
     Value<int>? date,
     Value<double>? amount,
-    Value<String>? reason,
+    Value<String?>? reason,
     Value<int?>? sendingAccountId,
     Value<int?>? receivingAccountId,
     Value<String?>? notes,
@@ -1853,7 +1854,7 @@ typedef $$BookingsTableCreateCompanionBuilder =
       Value<int> id,
       required int date,
       required double amount,
-      required String reason,
+      Value<String?> reason,
       Value<int?> sendingAccountId,
       Value<int?> receivingAccountId,
       Value<String?> notes,
@@ -1865,7 +1866,7 @@ typedef $$BookingsTableUpdateCompanionBuilder =
       Value<int> id,
       Value<int> date,
       Value<double> amount,
-      Value<String> reason,
+      Value<String?> reason,
       Value<int?> sendingAccountId,
       Value<int?> receivingAccountId,
       Value<String?> notes,
@@ -2059,7 +2060,7 @@ class $$BookingsTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<int> date = const Value.absent(),
                 Value<double> amount = const Value.absent(),
-                Value<String> reason = const Value.absent(),
+                Value<String?> reason = const Value.absent(),
                 Value<int?> sendingAccountId = const Value.absent(),
                 Value<int?> receivingAccountId = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
@@ -2081,7 +2082,7 @@ class $$BookingsTableTableManager
                 Value<int> id = const Value.absent(),
                 required int date,
                 required double amount,
-                required String reason,
+                Value<String?> reason = const Value.absent(),
                 Value<int?> sendingAccountId = const Value.absent(),
                 Value<int?> receivingAccountId = const Value.absent(),
                 Value<String?> notes = const Value.absent(),

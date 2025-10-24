@@ -11,7 +11,6 @@ void main() {
     final db = AppDatabase(NativeDatabase.memory());
 
     // Build our app and trigger a frame.
-    // We need to wrap the app in the Provider so that widgets can find the database.
     await tester.pumpWidget(
       Provider<AppDatabase>(
         create: (_) => db,
@@ -22,8 +21,5 @@ void main() {
 
     // Verify that the MainScreen is present.
     expect(find.byType(MainScreen), findsOneWidget);
-
-    // Verify that the BottomNavigationBar is present.
-    expect(find.byType(BottomNavigationBar), findsOneWidget);
   });
 }

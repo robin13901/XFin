@@ -7,16 +7,13 @@ void main() {
   late AppDatabase database;
 
   setUp(() {
-    // Create an in-memory database for each test
     database = AppDatabase(NativeDatabase.memory());
   });
 
   tearDown(() async {
-    // Close the database after each test
     await database.close();
   });
 
-  // Helper function to get a single account by id
   Future<Account> getAccount(int id) {
     return (database.select(database.accounts)..where((a) => a.id.equals(id))).getSingle();
   }
@@ -30,10 +27,10 @@ void main() {
       ));
 
       // ACT
-      final booking = BookingsCompanion.insert(
-        reason: 'Paycheck',
-        amount: 50.0,
-        date: DateTime.now().millisecondsSinceEpoch,
+      final booking = BookingsCompanion(
+        reason: const Value('Paycheck'),
+        amount: const Value(50.0),
+        date: Value(DateTime.now().millisecondsSinceEpoch),
         receivingAccountId: Value(accountId),
       );
       await database.bookingsDao.createBooking(booking);
@@ -51,10 +48,10 @@ void main() {
       ));
 
       // ACT
-      final booking = BookingsCompanion.insert(
-        reason: 'Groceries',
-        amount: -50.0,
-        date: DateTime.now().millisecondsSinceEpoch,
+      final booking = BookingsCompanion(
+        reason: const Value('Groceries'),
+        amount: const Value(-50.0),
+        date: Value(DateTime.now().millisecondsSinceEpoch),
         receivingAccountId: Value(accountId),
       );
       await database.bookingsDao.createBooking(booking);
@@ -76,10 +73,10 @@ void main() {
       ));
 
       // ACT
-      final booking = BookingsCompanion.insert(
-        reason: 'Move money',
-        amount: 25.0,
-        date: DateTime.now().millisecondsSinceEpoch,
+      final booking = BookingsCompanion(
+        reason: const Value(null), // Transfers have null reason
+        amount: const Value(25.0),
+        date: Value(DateTime.now().millisecondsSinceEpoch),
         sendingAccountId: Value(sendingId),
         receivingAccountId: Value(receivingId),
       );
@@ -96,11 +93,13 @@ void main() {
       // ARRANGE
       final accountId = await database.accountsDao.addAccount(const AccountsCompanion(
         name: Value('Test Account'),
-        balance: Value(100.0),
+        balance: Value(150.0), // Balance after income
       ));
-      final bookingId = await database.into(database.bookings).insert(BookingsCompanion.insert(
-            reason: 'Initial', amount: 50.0, date: 0, receivingAccountId: Value(accountId)));
-      await database.accountsDao.updateBalance(accountId, 50.0); // Manually set balance for test consistency
+      final bookingId = await database.into(database.bookings).insert(BookingsCompanion(
+          reason: const Value('Initial'),
+          amount: const Value(50.0),
+          date: const Value(0),
+          receivingAccountId: Value(accountId)));
 
       // ACT
       await database.bookingsDao.deleteBookingWithBalance(bookingId);
@@ -120,13 +119,12 @@ void main() {
         name: Value('Receiving'),
         balance: Value(75.0), // State after transfer
       ));
-      final bookingId = await database.into(database.bookings).insert(BookingsCompanion.insert(
-          reason: 'Transfer',
-          amount: 25.0,
-          date: 0,
+      final bookingId = await database.into(database.bookings).insert(BookingsCompanion(
+          amount: const Value(25.0),
+          date: const Value(0),
           sendingAccountId: Value(sendingId),
           receivingAccountId: Value(receivingId)));
-      
+
       // ACT
       await database.bookingsDao.deleteBookingWithBalance(bookingId);
 
@@ -143,9 +141,13 @@ void main() {
         name: Value('Test Account'),
         balance: Value(150.0), // Balance after initial booking
       ));
-      final bookingToUpdate = await database.bookingsDao.getBooking(await database.into(database.bookings).insert(BookingsCompanion.insert(
-          reason: 'Old', amount: 50.0, date: 0, receivingAccountId: Value(accountId))));
-      
+      final bookingToUpdate = await database.bookingsDao.getBooking(
+          await database.into(database.bookings).insert(BookingsCompanion(
+              reason: const Value('Old'),
+              amount: const Value(50.0),
+              date: const Value(0),
+              receivingAccountId: Value(accountId))));
+
       // ACT
       final updatedCompanion = BookingsCompanion(
           id: Value(bookingToUpdate.id),

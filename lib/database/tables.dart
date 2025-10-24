@@ -42,7 +42,7 @@ class Bookings extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get date => integer()();
   RealColumn get amount => real()();
-  TextColumn get reason => text()();
+  TextColumn get reason => text().nullable()();
   IntColumn get sendingAccountId => integer().nullable()();
   IntColumn get receivingAccountId => integer().nullable()();
   TextColumn get notes => text().nullable()();

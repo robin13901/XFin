@@ -50,7 +50,7 @@ class DeleteBookingDialog extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(booking.reason, style: Theme.of(context).textTheme.titleMedium),
+                    Text(booking.reason ?? 'Überweisung', style: Theme.of(context).textTheme.titleMedium),
                     Text(accountFlowText, style: Theme.of(context).textTheme.bodySmall),
                   ],
                 ),
