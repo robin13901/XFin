@@ -210,7 +210,7 @@ class _BookingFormState extends State<BookingForm> {
                     final accounts = snapshot.data ?? [];
                     if (!_isTransfer) { // Entry Form
                       return DropdownButtonFormField<int>(
-                        value: _receivingAccountId,
+                        initialValue: _receivingAccountId,
                         decoration: const InputDecoration(
                           labelText: 'Konto',
                           border: OutlineInputBorder(),
@@ -225,7 +225,7 @@ class _BookingFormState extends State<BookingForm> {
                       return Column(
                         children: [
                           DropdownButtonFormField<int>(
-                            value: _sendingAccountId,
+                            initialValue: _sendingAccountId,
                             decoration: const InputDecoration(labelText: 'Von Konto', border: OutlineInputBorder()),
                             items: accounts.map((account) {
                               return DropdownMenuItem(value: account.id, child: Text(account.name));
@@ -239,7 +239,7 @@ class _BookingFormState extends State<BookingForm> {
                           ),
                           const SizedBox(height: 16),
                           DropdownButtonFormField<int>(
-                            value: _receivingAccountId,
+                            initialValue: _receivingAccountId,
                             decoration: const InputDecoration(labelText: 'Auf Konto', border: OutlineInputBorder()),
                             items: accounts.map((account) {
                               return DropdownMenuItem(value: account.id, child: Text(account.name));

@@ -13,9 +13,9 @@ QueryExecutor openConnection() {
       );
 
       if (result.missingFeatures.isNotEmpty) {
-        print('Using ${result.chosenImplementation}...');
-        print('Oh no! Some features are not supported by your browser.');
-        print(result.missingFeatures);
+        // You can add more robust error handling here if you want.
+        // For now, we'll just log a warning.
+        print('Warning: Some features are not supported by your browser.');
       }
 
       return result.resolvedExecutor;
