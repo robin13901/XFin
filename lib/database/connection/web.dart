@@ -1,0 +1,24 @@
+import 'package:drift/drift.dart';
+import 'package:drift/wasm.dart';
+
+// This file is built for the web. It provides the web-specific database implementation.
+
+QueryExecutor openConnection() {
+  return DatabaseConnection.delayed(
+    Future(() async {
+      final result = await WasmDatabase.open(
+        databaseName: 'xfin-db', // Your database name
+        sqlite3Uri: Uri.parse('sqlite3.wasm'),
+        driftWorkerUri: Uri.parse('drift_worker.js'),
+      );
+
+      if (result.missingFeatures.isNotEmpty) {
+        print('Using ${result.chosenImplementation}...');
+        print('Oh no! Some features are not supported by your browser.');
+        print(result.missingFeatures);
+      }
+
+      return result.resolvedExecutor;
+    }),
+  );
+}

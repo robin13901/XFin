@@ -1,30 +1,29 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
+import 'package:provider/provider.dart';
+import 'package:xfin/database/app_database.dart';
 import 'package:xfin/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
+  testWidgets('App starts and displays the main screen', (WidgetTester tester) async {
+    // Create an in-memory database for testing.
+    final db = AppDatabase(NativeDatabase.memory());
+
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+    // We need to wrap the app in the Provider so that widgets can find the database.
+    await tester.pumpWidget(
+      Provider<AppDatabase>(
+        create: (_) => db,
+        dispose: (_, db) => db.close(),
+        child: const MyApp(),
+      ),
+    );
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // Verify that the MainScreen is present.
+    expect(find.byType(MainScreen), findsOneWidget);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Verify that the BottomNavigationBar is present.
+    expect(find.byType(BottomNavigationBar), findsOneWidget);
   });
 }

@@ -298,9 +298,9 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
   late final GeneratedColumn<int> sendingAccountId = GeneratedColumn<int>(
     'sending_account_id',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.int,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _receivingAccountIdMeta =
       const VerificationMeta('receivingAccountId');
@@ -308,9 +308,9 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
   late final GeneratedColumn<int> receivingAccountId = GeneratedColumn<int>(
     'receiving_account_id',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.int,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _notesMeta = const VerificationMeta('notes');
   @override
@@ -409,8 +409,6 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
           _sendingAccountIdMeta,
         ),
       );
-    } else if (isInserting) {
-      context.missing(_sendingAccountIdMeta);
     }
     if (data.containsKey('receiving_account_id')) {
       context.handle(
@@ -420,8 +418,6 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
           _receivingAccountIdMeta,
         ),
       );
-    } else if (isInserting) {
-      context.missing(_receivingAccountIdMeta);
     }
     if (data.containsKey('notes')) {
       context.handle(
@@ -475,11 +471,11 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
       sendingAccountId: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}sending_account_id'],
-      )!,
+      ),
       receivingAccountId: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}receiving_account_id'],
-      )!,
+      ),
       notes: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}notes'],
@@ -506,8 +502,8 @@ class Booking extends DataClass implements Insertable<Booking> {
   final int date;
   final double amount;
   final String reason;
-  final int sendingAccountId;
-  final int receivingAccountId;
+  final int? sendingAccountId;
+  final int? receivingAccountId;
   final String? notes;
   final bool excludeFromAverage;
   final bool createdByStandingOrder;
@@ -516,8 +512,8 @@ class Booking extends DataClass implements Insertable<Booking> {
     required this.date,
     required this.amount,
     required this.reason,
-    required this.sendingAccountId,
-    required this.receivingAccountId,
+    this.sendingAccountId,
+    this.receivingAccountId,
     this.notes,
     required this.excludeFromAverage,
     required this.createdByStandingOrder,
@@ -529,8 +525,12 @@ class Booking extends DataClass implements Insertable<Booking> {
     map['date'] = Variable<int>(date);
     map['amount'] = Variable<double>(amount);
     map['reason'] = Variable<String>(reason);
-    map['sending_account_id'] = Variable<int>(sendingAccountId);
-    map['receiving_account_id'] = Variable<int>(receivingAccountId);
+    if (!nullToAbsent || sendingAccountId != null) {
+      map['sending_account_id'] = Variable<int>(sendingAccountId);
+    }
+    if (!nullToAbsent || receivingAccountId != null) {
+      map['receiving_account_id'] = Variable<int>(receivingAccountId);
+    }
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
     }
@@ -545,8 +545,12 @@ class Booking extends DataClass implements Insertable<Booking> {
       date: Value(date),
       amount: Value(amount),
       reason: Value(reason),
-      sendingAccountId: Value(sendingAccountId),
-      receivingAccountId: Value(receivingAccountId),
+      sendingAccountId: sendingAccountId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sendingAccountId),
+      receivingAccountId: receivingAccountId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(receivingAccountId),
       notes: notes == null && nullToAbsent
           ? const Value.absent()
           : Value(notes),
@@ -565,8 +569,8 @@ class Booking extends DataClass implements Insertable<Booking> {
       date: serializer.fromJson<int>(json['date']),
       amount: serializer.fromJson<double>(json['amount']),
       reason: serializer.fromJson<String>(json['reason']),
-      sendingAccountId: serializer.fromJson<int>(json['sendingAccountId']),
-      receivingAccountId: serializer.fromJson<int>(json['receivingAccountId']),
+      sendingAccountId: serializer.fromJson<int?>(json['sendingAccountId']),
+      receivingAccountId: serializer.fromJson<int?>(json['receivingAccountId']),
       notes: serializer.fromJson<String?>(json['notes']),
       excludeFromAverage: serializer.fromJson<bool>(json['excludeFromAverage']),
       createdByStandingOrder: serializer.fromJson<bool>(
@@ -582,8 +586,8 @@ class Booking extends DataClass implements Insertable<Booking> {
       'date': serializer.toJson<int>(date),
       'amount': serializer.toJson<double>(amount),
       'reason': serializer.toJson<String>(reason),
-      'sendingAccountId': serializer.toJson<int>(sendingAccountId),
-      'receivingAccountId': serializer.toJson<int>(receivingAccountId),
+      'sendingAccountId': serializer.toJson<int?>(sendingAccountId),
+      'receivingAccountId': serializer.toJson<int?>(receivingAccountId),
       'notes': serializer.toJson<String?>(notes),
       'excludeFromAverage': serializer.toJson<bool>(excludeFromAverage),
       'createdByStandingOrder': serializer.toJson<bool>(createdByStandingOrder),
@@ -595,8 +599,8 @@ class Booking extends DataClass implements Insertable<Booking> {
     int? date,
     double? amount,
     String? reason,
-    int? sendingAccountId,
-    int? receivingAccountId,
+    Value<int?> sendingAccountId = const Value.absent(),
+    Value<int?> receivingAccountId = const Value.absent(),
     Value<String?> notes = const Value.absent(),
     bool? excludeFromAverage,
     bool? createdByStandingOrder,
@@ -605,8 +609,12 @@ class Booking extends DataClass implements Insertable<Booking> {
     date: date ?? this.date,
     amount: amount ?? this.amount,
     reason: reason ?? this.reason,
-    sendingAccountId: sendingAccountId ?? this.sendingAccountId,
-    receivingAccountId: receivingAccountId ?? this.receivingAccountId,
+    sendingAccountId: sendingAccountId.present
+        ? sendingAccountId.value
+        : this.sendingAccountId,
+    receivingAccountId: receivingAccountId.present
+        ? receivingAccountId.value
+        : this.receivingAccountId,
     notes: notes.present ? notes.value : this.notes,
     excludeFromAverage: excludeFromAverage ?? this.excludeFromAverage,
     createdByStandingOrder:
@@ -682,8 +690,8 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
   final Value<int> date;
   final Value<double> amount;
   final Value<String> reason;
-  final Value<int> sendingAccountId;
-  final Value<int> receivingAccountId;
+  final Value<int?> sendingAccountId;
+  final Value<int?> receivingAccountId;
   final Value<String?> notes;
   final Value<bool> excludeFromAverage;
   final Value<bool> createdByStandingOrder;
@@ -703,16 +711,14 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
     required int date,
     required double amount,
     required String reason,
-    required int sendingAccountId,
-    required int receivingAccountId,
+    this.sendingAccountId = const Value.absent(),
+    this.receivingAccountId = const Value.absent(),
     this.notes = const Value.absent(),
     this.excludeFromAverage = const Value.absent(),
     this.createdByStandingOrder = const Value.absent(),
   }) : date = Value(date),
        amount = Value(amount),
-       reason = Value(reason),
-       sendingAccountId = Value(sendingAccountId),
-       receivingAccountId = Value(receivingAccountId);
+       reason = Value(reason);
   static Insertable<Booking> custom({
     Expression<int>? id,
     Expression<int>? date,
@@ -745,8 +751,8 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
     Value<int>? date,
     Value<double>? amount,
     Value<String>? reason,
-    Value<int>? sendingAccountId,
-    Value<int>? receivingAccountId,
+    Value<int?>? sendingAccountId,
+    Value<int?>? receivingAccountId,
     Value<String?>? notes,
     Value<bool>? excludeFromAverage,
     Value<bool>? createdByStandingOrder,
@@ -1676,6 +1682,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'index_goals_targetDate',
     'CREATE INDEX index_goals_targetDate ON goals (target_date)',
   );
+  late final BookingsDao bookingsDao = BookingsDao(this as AppDatabase);
+  late final AccountsDao accountsDao = AccountsDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1846,8 +1854,8 @@ typedef $$BookingsTableCreateCompanionBuilder =
       required int date,
       required double amount,
       required String reason,
-      required int sendingAccountId,
-      required int receivingAccountId,
+      Value<int?> sendingAccountId,
+      Value<int?> receivingAccountId,
       Value<String?> notes,
       Value<bool> excludeFromAverage,
       Value<bool> createdByStandingOrder,
@@ -1858,8 +1866,8 @@ typedef $$BookingsTableUpdateCompanionBuilder =
       Value<int> date,
       Value<double> amount,
       Value<String> reason,
-      Value<int> sendingAccountId,
-      Value<int> receivingAccountId,
+      Value<int?> sendingAccountId,
+      Value<int?> receivingAccountId,
       Value<String?> notes,
       Value<bool> excludeFromAverage,
       Value<bool> createdByStandingOrder,
@@ -2052,8 +2060,8 @@ class $$BookingsTableTableManager
                 Value<int> date = const Value.absent(),
                 Value<double> amount = const Value.absent(),
                 Value<String> reason = const Value.absent(),
-                Value<int> sendingAccountId = const Value.absent(),
-                Value<int> receivingAccountId = const Value.absent(),
+                Value<int?> sendingAccountId = const Value.absent(),
+                Value<int?> receivingAccountId = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 Value<bool> excludeFromAverage = const Value.absent(),
                 Value<bool> createdByStandingOrder = const Value.absent(),
@@ -2074,8 +2082,8 @@ class $$BookingsTableTableManager
                 required int date,
                 required double amount,
                 required String reason,
-                required int sendingAccountId,
-                required int receivingAccountId,
+                Value<int?> sendingAccountId = const Value.absent(),
+                Value<int?> receivingAccountId = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 Value<bool> excludeFromAverage = const Value.absent(),
                 Value<bool> createdByStandingOrder = const Value.absent(),

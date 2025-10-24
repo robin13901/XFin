@@ -43,8 +43,8 @@ class Bookings extends Table {
   IntColumn get date => integer()();
   RealColumn get amount => real()();
   TextColumn get reason => text()();
-  IntColumn get sendingAccountId => integer()();
-  IntColumn get receivingAccountId => integer()();
+  IntColumn get sendingAccountId => integer().nullable()();
+  IntColumn get receivingAccountId => integer().nullable()();
   TextColumn get notes => text().nullable()();
   BoolColumn get excludeFromAverage =>
       boolean().withDefault(const Constant(false))();
