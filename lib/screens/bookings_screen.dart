@@ -68,7 +68,10 @@ class BookingsScreen extends StatelessWidget {
                 amountColor = booking.amount < 0 ? Colors.red : Colors.green;
               }
 
-              final dateText = dateFormat.format(DateTime.fromMillisecondsSinceEpoch(booking.date));
+              final dateString = booking.date.toString();
+              final date = DateTime.parse(
+                  '${dateString.substring(0, 4)}-${dateString.substring(4, 6)}-${dateString.substring(6, 8)}');
+              final dateText = dateFormat.format(date);
 
               return ListTile(
                 title: Text(booking.reason ?? 'Überweisung'),

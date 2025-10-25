@@ -32,7 +32,9 @@ class _BookingFormState extends State<BookingForm> {
     super.initState();
     final booking = widget.booking;
     if (booking != null) {
-      _date = DateTime.fromMillisecondsSinceEpoch(booking.date);
+      final dateString = booking.date.toString();
+      _date = DateTime.parse(
+          '${dateString.substring(0, 4)}-${dateString.substring(4, 6)}-${dateString.substring(6, 8)}');
       _amountController = TextEditingController(text: booking.amount.toString());
       _reasonController = TextEditingController(text: booking.reason);
       _notesController = TextEditingController(text: booking.notes ?? '');
@@ -71,8 +73,9 @@ class _BookingFormState extends State<BookingForm> {
       final db = Provider.of<AppDatabase>(context, listen: false);
       final amount = double.parse(_amountController.text.replaceAll(',', '.'));
 
+      final dateAsInt = int.parse(DateFormat('yyyyMMdd').format(_date));
       final companion = BookingsCompanion(
-        date: drift.Value(_date.millisecondsSinceEpoch),
+        date: drift.Value(dateAsInt),
         reason: drift.Value(_isTransfer ? null : _reasonController.text),
         notes: drift.Value(_notesController.text),
         excludeFromAverage: drift.Value(_excludeFromAverage),

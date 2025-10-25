@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/widgets/booking_form.dart';
@@ -27,6 +28,33 @@ void main() {
       ),
     );
   }
+
+  testWidgets('form submits with correct data', (tester) => tester.runAsync(() async {
+    await database.accountsDao.addAccount(const AccountsCompanion(name: Value('Test'), balance: Value(100)));
+    await pumpWidget(tester);
+
+    // Change date to something other than today
+    await tester.tap(find.byIcon(Icons.calendar_today));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextFormField).at(1), '10');
+    await tester.enterText(find.byType(TextFormField).at(2), 'Test Reason');
+    await tester.tap(find.byType(DropdownButtonFormField<int>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Test').last);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Speichern'));
+    await tester.pumpAndSettle();
+
+    final booking = await database.bookingsDao.getBooking(1);
+    final expectedDate = int.parse(DateFormat('yyyyMMdd').format(DateTime.now()));
+
+    expect(booking.date, expectedDate);
+    await tester.pumpWidget(const SizedBox.shrink());
+  }));
 
   group('BookingForm validation', () {
     testWidgets('shows error when amount is empty', (tester) => tester.runAsync(() async {
