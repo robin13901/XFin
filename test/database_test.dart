@@ -19,7 +19,7 @@ void main() {
     return (database.select(database.accounts)..where((a) => a.id.equals(id))).getSingle();
   }
 
-  int _getTodayAsInt() {
+  int getTodayAsInt() {
     return int.parse(DateFormat('yyyyMMdd').format(DateTime.now()));
   }
 
@@ -35,7 +35,7 @@ void main() {
       final booking = BookingsCompanion(
         reason: const Value('Paycheck'),
         amount: const Value(50.0),
-        date: Value(_getTodayAsInt()),
+        date: Value(getTodayAsInt()),
         receivingAccountId: Value(accountId),
       );
       await database.bookingsDao.createBooking(booking);
@@ -56,7 +56,7 @@ void main() {
       final booking = BookingsCompanion(
         reason: const Value('Groceries'),
         amount: const Value(-50.0),
-        date: Value(_getTodayAsInt()),
+        date: Value(getTodayAsInt()),
         receivingAccountId: Value(accountId),
       );
       await database.bookingsDao.createBooking(booking);
@@ -81,7 +81,7 @@ void main() {
       final booking = BookingsCompanion(
         reason: const Value(null), // Transfers have null reason
         amount: const Value(25.0),
-        date: Value(_getTodayAsInt()),
+        date: Value(getTodayAsInt()),
         sendingAccountId: Value(sendingId),
         receivingAccountId: Value(receivingId),
       );
@@ -103,7 +103,7 @@ void main() {
       final bookingId = await database.into(database.bookings).insert(BookingsCompanion(
           reason: const Value('Initial'),
           amount: const Value(50.0),
-          date: Value(_getTodayAsInt()),
+          date: Value(getTodayAsInt()),
           receivingAccountId: Value(accountId)));
 
       // ACT
@@ -126,7 +126,7 @@ void main() {
       ));
       final bookingId = await database.into(database.bookings).insert(BookingsCompanion(
           amount: const Value(25.0),
-          date: Value(_getTodayAsInt()),
+          date: Value(getTodayAsInt()),
           sendingAccountId: Value(sendingId),
           receivingAccountId: Value(receivingId)));
 
@@ -150,7 +150,7 @@ void main() {
           await database.into(database.bookings).insert(BookingsCompanion(
               reason: const Value('Old'),
               amount: const Value(50.0),
-              date: Value(_getTodayAsInt()),
+              date: Value(getTodayAsInt()),
               receivingAccountId: Value(accountId))));
 
       // ACT
@@ -181,7 +181,7 @@ void main() {
       // Create the initial transfer booking, which also updates balances.
       await database.bookingsDao.createBooking(BookingsCompanion(
         amount: const Value(25.0),
-        date: Value(_getTodayAsInt()),
+        date: Value(getTodayAsInt()),
         sendingAccountId: Value(sendingId),
         receivingAccountId: Value(receivingId),
       ));
