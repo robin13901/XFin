@@ -15,7 +15,9 @@ class DeleteBookingDialog extends StatelessWidget {
     final booking = bookingWithAccounts.booking;
     final currencyFormat = NumberFormat.currency(locale: 'de_DE', symbol: '€');
 
-    final date = DateTime.fromMillisecondsSinceEpoch(booking.date);
+    final dateString = booking.date.toString();
+    final date = DateTime.parse(
+        '${dateString.substring(0, 4)}-${dateString.substring(4, 6)}-${dateString.substring(6, 8)}');
     final day = DateFormat('dd').format(date);
     final month = DateFormat('MMM', 'de_DE').format(date);
     final year = DateFormat('yyyy').format(date);
@@ -33,16 +35,33 @@ class DeleteBookingDialog extends StatelessWidget {
     }
 
     return AlertDialog(
-      title: const Text('Willst du diesen Eintrag wirklich löschen?'),
+      title: const Text(
+          'Willst du diesen Eintrag wirklich löschen?',
+        textScaler: TextScaler.linear(0.8),
+      ),
+      contentPadding: EdgeInsets.all(2),
       content: Card(
-        margin: EdgeInsets.zero,
+        margin: EdgeInsets.all(16.0),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(8.0),
           child: Row(
             children: [
               Column(
                 mainAxisSize: MainAxisSize.min,
-                children: [Text(day), Text(month), Text(year)],
+                children: [
+                  Text(
+                    day,
+                    textScaler: TextScaler.linear(0.8)
+                  ),
+                  Text(
+                      month,
+                      textScaler: TextScaler.linear(0.8)
+                  ),
+                  Text(
+                      year,
+                      textScaler: TextScaler.linear(0.8)
+                  )
+                ],
               ),
               const SizedBox(width: 16),
               Expanded(

@@ -37,18 +37,13 @@ class _BookingFormState extends State<BookingForm> {
           '${dateString.substring(0, 4)}-${dateString.substring(4, 6)}-${dateString.substring(6, 8)}');
       _amountController = TextEditingController(text: booking.amount.toString());
       _reasonController = TextEditingController(text: booking.reason);
-      _notesController = TextEditingController(text: booking.notes ?? '');
+      _notesController = TextEditingController(text: booking.notes);
       _excludeFromAverage = booking.excludeFromAverage;
       
       _isTransfer = booking.sendingAccountId != null;
 
-      if (_isTransfer) {
-        _sendingAccountId = booking.sendingAccountId;
-        _receivingAccountId = booking.receivingAccountId;
-      } else {
-        _receivingAccountId = booking.receivingAccountId;
-        _sendingAccountId = null;
-      }
+      _receivingAccountId = booking.receivingAccountId;
+      _sendingAccountId = _isTransfer ? null : booking.sendingAccountId;
     } else {
       _date = DateTime.now();
       _amountController = TextEditingController();
@@ -68,6 +63,47 @@ class _BookingFormState extends State<BookingForm> {
     super.dispose();
   }
 
+  Future<void> _performMerge(AppDatabase db, Booking existing, BookingsCompanion newBooking) async {
+    final isTransfer = newBooking.sendingAccountId.present && newBooking.sendingAccountId.value != null;
+
+    if (isTransfer) {
+      final newAmount = newBooking.amount.value;
+      final sameAccounts = existing.sendingAccountId == newBooking.sendingAccountId.value;
+
+      if (sameAccounts) {
+        // Simple merge: A->B (existing) + A->B (new)
+        final mergedAmount = existing.amount + newAmount;
+        final updatedCompanion = existing.toCompanion(false).copyWith(amount: drift.Value(mergedAmount));
+        await db.bookingsDao.updateBookingWithBalance(existing, updatedCompanion);
+      } else {
+        // Swapped accounts: A->B (existing) vs B->A (new)
+        final effectiveAmount = existing.amount - newAmount;
+
+        if (effectiveAmount == 0) {
+          // Transfers cancel each other out, delete the old one
+          await db.bookingsDao.deleteBookingWithBalance(existing.id);
+        } else if (effectiveAmount > 0) {
+          // Net transfer is still A->B
+          final updatedCompanion = existing.toCompanion(false).copyWith(amount: drift.Value(effectiveAmount));
+          await db.bookingsDao.updateBookingWithBalance(existing, updatedCompanion);
+        } else { // effectiveAmount < 0
+          // Net transfer is B->A, so we update the existing booking to reflect the new direction and amount.
+          final updatedCompanion = existing.toCompanion(false).copyWith(
+            amount: drift.Value(effectiveAmount.abs()),
+            sendingAccountId: drift.Value(existing.receivingAccountId),
+            receivingAccountId: drift.Value(existing.sendingAccountId),
+          );
+          await db.bookingsDao.updateBookingWithBalance(existing, updatedCompanion);
+        }
+      }
+    } else {
+      // Non-transfer merge
+      final mergedAmount = existing.amount + newBooking.amount.value;
+      final updatedCompanion = existing.toCompanion(false).copyWith(amount: drift.Value(mergedAmount));
+      await db.bookingsDao.updateBookingWithBalance(existing, updatedCompanion);
+    }
+  }
+
   Future<void> _saveForm() async {
     if (_formKey.currentState!.validate()) {
       final db = Provider.of<AppDatabase>(context, listen: false);
@@ -76,8 +112,8 @@ class _BookingFormState extends State<BookingForm> {
       final dateAsInt = int.parse(DateFormat('yyyyMMdd').format(_date));
       final companion = BookingsCompanion(
         date: drift.Value(dateAsInt),
-        reason: drift.Value(_isTransfer ? null : _reasonController.text),
-        notes: drift.Value(_notesController.text),
+        reason: drift.Value(_isTransfer ? null : _reasonController.text.trim()),
+        notes: drift.Value(_notesController.text.isEmpty ? null : _notesController.text),
         excludeFromAverage: drift.Value(_excludeFromAverage),
         
         amount: drift.Value(_isTransfer ? amount.abs() : amount),
@@ -85,7 +121,37 @@ class _BookingFormState extends State<BookingForm> {
         receivingAccountId: drift.Value(_receivingAccountId),
       );
 
-      if (widget.booking == null) {
+      if (widget.booking == null && _notesController.text.isEmpty) {
+        final mergeable = await db.bookingsDao.findMergeableBooking(companion);
+
+        if (mergeable != null && mounted) {
+          final confirmed = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Buchungen zusammenführen?'),
+              content: const Text('Eine ähnliche Buchung existiert bereits. Möchten Sie diese zusammenführen?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('Neu erstellen'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('Zusammenführen'),
+                ),
+              ],
+            ),
+          );
+
+          if (confirmed == true) {
+            await _performMerge(db, mergeable, companion);
+          } else {
+            await db.bookingsDao.createBooking(companion);
+          }
+        } else {
+          await db.bookingsDao.createBooking(companion);
+        }
+      } else if (widget.booking == null) {
         await db.bookingsDao.createBooking(companion);
       } else {
         await db.bookingsDao.updateBookingWithBalance(

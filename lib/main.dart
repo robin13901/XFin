@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
-import 'package:xfin/database/connection/connection.dart';
+import 'package:xfin/database/connection/connection.dart' as connection;
 import 'package:xfin/screens/accounts_screen.dart';
 import 'package:xfin/screens/analysis_screen.dart';
 import 'package:xfin/screens/bookings_screen.dart';
@@ -13,7 +13,7 @@ void main() {
   initializeDateFormatting('de_DE', null).then((_) {
     runApp(
       Provider<AppDatabase>(
-        create: (_) => AppDatabase(openConnection()),
+        create: (_) => AppDatabase(connection.connect()),
         dispose: (_, db) => db.close(),
         child: const MyApp(),
       ),

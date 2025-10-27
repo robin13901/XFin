@@ -46,6 +46,60 @@ class BookingsDao extends DatabaseAccessor<AppDatabase> with _$BookingsDaoMixin 
     });
   }
 
+  Future<Booking?> findMergeableBooking(BookingsCompanion newBooking) async {
+    final isTransfer = newBooking.sendingAccountId.present &&
+        newBooking.sendingAccountId.value != null &&
+        newBooking.receivingAccountId.present &&
+        newBooking.receivingAccountId.value != null;
+
+    if (isTransfer) {
+      final query = select(bookings)
+        ..where((tbl) =>
+            tbl.date.equals(newBooking.date.value) &
+            tbl.excludeFromAverage.equals(newBooking.excludeFromAverage.value) &
+            tbl.notes.isNull() &
+            tbl.sendingAccountId.isNotNull() &
+            tbl.receivingAccountId.isNotNull());
+
+      final potentialMatches = await query.get();
+
+      for (final match in potentialMatches) {
+        final sameAccounts = match.sendingAccountId == newBooking.sendingAccountId.value &&
+            match.receivingAccountId == newBooking.receivingAccountId.value;
+        final swappedAccounts = match.sendingAccountId == newBooking.receivingAccountId.value &&
+            match.receivingAccountId == newBooking.sendingAccountId.value;
+
+        if (sameAccounts || swappedAccounts) {
+          return match;
+        }
+      }
+    } else {
+      final newAmount = newBooking.amount.value;
+      final query = select(bookings)
+        ..where((tbl) =>
+            tbl.sendingAccountId.isNull() &
+            tbl.date.equals(newBooking.date.value) &
+            (newBooking.reason.value == null
+                ? tbl.reason.isNull()
+                : tbl.reason.equals(newBooking.reason.value!)) &
+            (newBooking.receivingAccountId.value == null
+                ? tbl.receivingAccountId.isNull()
+                : tbl.receivingAccountId.equals(newBooking.receivingAccountId.value!)) &
+            tbl.excludeFromAverage.equals(newBooking.excludeFromAverage.value) &
+            tbl.notes.isNull() &
+            ((tbl.amount.isBiggerThanValue(0) & Constant(newAmount > 0)) |
+                (tbl.amount.isSmallerThanValue(0) & Constant(newAmount < 0))));
+
+      try {
+        return await query.getSingle();
+      } catch (e) {
+        return null;
+      }
+    }
+
+    return null;
+  }
+
   // Methods that are not transactional
   Future<int> _addBooking(BookingsCompanion entry) => into(bookings).insert(entry);
   Future<bool> _updateBooking(BookingsCompanion entry) => update(bookings).replace(entry);

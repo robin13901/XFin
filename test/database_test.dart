@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
@@ -212,6 +212,176 @@ void main() {
       // The receiving account started at 50, went to 75 after the transfer,
       // and should be back to 50 after the update (reverting -25).
       expect(receivingAccount.balance, 50.0);
+    });
+  });
+
+  group('findMergeableBooking', () {
+    test('should find a mergeable booking for a non-transfer', () async {
+      // ARRANGE
+      final accountId = await database.accountsDao.addAccount(const AccountsCompanion(
+        name: Value('Test Account'),
+        balance: Value(100.0),
+      ));
+      final existingBooking = BookingsCompanion(
+        date: Value(getTodayAsInt()),
+        reason: const Value('Drinks'),
+        amount: const Value(-8.0),
+        receivingAccountId: Value(accountId),
+        excludeFromAverage: const Value(false),
+      );
+      await database.bookingsDao.createBooking(existingBooking);
+
+      // ACT
+      final newBooking = BookingsCompanion(
+        date: Value(getTodayAsInt()),
+        reason: const Value('Drinks'),
+        amount: const Value(-7.0),
+        receivingAccountId: Value(accountId),
+        excludeFromAverage: const Value(false),
+      );
+      final mergeable = await database.bookingsDao.findMergeableBooking(newBooking);
+
+      // ASSERT
+      expect(mergeable, isNotNull);
+      expect(mergeable!.amount, -8.0);
+    });
+
+    test('should not find a mergeable booking if notes are not empty', () async {
+      // ARRANGE
+      final accountId = await database.accountsDao.addAccount(const AccountsCompanion(
+        name: Value('Test Account'),
+        balance: Value(100.0),
+      ));
+      final existingBooking = BookingsCompanion(
+        date: Value(getTodayAsInt()),
+        reason: const Value('Drinks'),
+        amount: const Value(-8.0),
+        receivingAccountId: Value(accountId),
+        notes: const Value('some notes'),
+        excludeFromAverage: const Value(false),
+      );
+      await database.bookingsDao.createBooking(existingBooking);
+
+      // ACT
+      final newBooking = BookingsCompanion(
+        date: Value(getTodayAsInt()),
+        reason: const Value('Drinks'),
+        amount: const Value(-7.0),
+        receivingAccountId: Value(accountId),
+        excludeFromAverage: const Value(false),
+      );
+      final mergeable = await database.bookingsDao.findMergeableBooking(newBooking);
+
+      // ASSERT
+      expect(mergeable, isNull);
+    });
+
+    test('should find a mergeable booking for a transfer with same accounts', () async {
+      // ARRANGE
+      final sendingId = await database.accountsDao.addAccount(const AccountsCompanion(name: Value('A'), balance: Value(100)));
+      final receivingId = await database.accountsDao.addAccount(const AccountsCompanion(name: Value('B'), balance: Value(100)));
+      await database.bookingsDao.createBooking(BookingsCompanion(
+        date: Value(getTodayAsInt()),
+        amount: const Value(10.0),
+        sendingAccountId: Value(sendingId),
+        receivingAccountId: Value(receivingId),
+        excludeFromAverage: const Value(false),
+      ));
+
+      // ACT
+      final newBooking = BookingsCompanion(
+        date: Value(getTodayAsInt()),
+        amount: const Value(5.0),
+        sendingAccountId: Value(sendingId),
+        receivingAccountId: Value(receivingId),
+        excludeFromAverage: const Value(false),
+      );
+      final mergeable = await database.bookingsDao.findMergeableBooking(newBooking);
+
+      // ASSERT
+      expect(mergeable, isNotNull);
+    });
+
+    test('should find a mergeable booking for a transfer with swapped accounts', () async {
+      // ARRANGE
+      final sendingId = await database.accountsDao.addAccount(const AccountsCompanion(name: Value('A'), balance: Value(100)));
+      final receivingId = await database.accountsDao.addAccount(const AccountsCompanion(name: Value('B'), balance: Value(100)));
+      await database.bookingsDao.createBooking(BookingsCompanion(
+        date: Value(getTodayAsInt()),
+        amount: const Value(10.0),
+        sendingAccountId: Value(sendingId),
+        receivingAccountId: Value(receivingId),
+        excludeFromAverage: const Value(false),
+      ));
+
+      // ACT
+      final newBooking = BookingsCompanion(
+        date: Value(getTodayAsInt()),
+        amount: const Value(5.0),
+        sendingAccountId: Value(receivingId), // Swapped
+        receivingAccountId: Value(sendingId), // Swapped
+        excludeFromAverage: const Value(false),
+      );
+      final mergeable = await database.bookingsDao.findMergeableBooking(newBooking);
+
+      // ASSERT
+      expect(mergeable, isNotNull);
+    });
+
+    test('should not find a mergeable booking if excludeFromAverage is different', () async {
+      // ARRANGE
+      final accountId = await database.accountsDao.addAccount(const AccountsCompanion(
+        name: Value('Test Account'),
+        balance: Value(100.0),
+      ));
+      await database.bookingsDao.createBooking(BookingsCompanion(
+        date: Value(getTodayAsInt()),
+        reason: const Value('Drinks'),
+        amount: const Value(-8.0),
+        receivingAccountId: Value(accountId),
+        excludeFromAverage: const Value(false),
+      ));
+
+      // ACT
+      final newBooking = BookingsCompanion(
+        date: Value(getTodayAsInt()),
+        reason: const Value('Drinks'),
+        amount: const Value(-7.0),
+        receivingAccountId: Value(accountId),
+        excludeFromAverage: const Value(true), // Different flag
+      );
+      final mergeable = await database.bookingsDao.findMergeableBooking(newBooking);
+
+      // ASSERT
+      expect(mergeable, isNull);
+    });
+
+    test('should not find a mergeable booking if amount signs are different', () async {
+      // ARRANGE
+      final accountId = await database.accountsDao.addAccount(const AccountsCompanion(
+        name: Value('Test Account'),
+        balance: Value(100.0),
+      ));
+      await database.bookingsDao.createBooking(BookingsCompanion(
+        date: Value(getTodayAsInt()),
+        reason: const Value('Drinks'),
+        amount: const Value(-8.0), // Expense
+        receivingAccountId: Value(accountId),
+        excludeFromAverage: const Value(false),
+      ));
+
+      // ACT
+      final newBooking = BookingsCompanion(
+        date: Value(getTodayAsInt()),
+        reason: const Value('Drinks'),
+        amount: const Value(7.0), // Income
+        receivingAccountId: Value(accountId),
+        excludeFromAverage: const Value(false),
+      );
+      final mergeable = await database.bookingsDao.findMergeableBooking(newBooking);
+
+      // ASSERT
+      expect(mergeable, isNull);
     });
   });
 }
