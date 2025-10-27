@@ -4,6 +4,9 @@ class Accounts extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text()();
   RealColumn get balance => real()();
+  RealColumn get initialBalance => real()();
+  TextColumn get type => text()();
+  IntColumn get creationDate => integer()();
 }
 
 @TableIndex(

@@ -26,9 +26,12 @@ void main() {
   group('Booking transactions', () {
     test('creating an income booking updates account balance', () async {
       // ARRANGE
-      final accountId = await database.accountsDao.addAccount(const AccountsCompanion(
-        name: Value('Test Account'),
-        balance: Value(100.0),
+      final accountId = await database.accountsDao.addAccount(AccountsCompanion(
+        name: const Value('Test Account'),
+        balance: const Value(100.0),
+        initialBalance: const Value(100.0),
+        type: const Value('Cash'),
+        creationDate: Value(getTodayAsInt()),
       ));
 
       // ACT
@@ -47,9 +50,12 @@ void main() {
 
     test('creating an expense booking updates account balance', () async {
       // ARRANGE
-      final accountId = await database.accountsDao.addAccount(const AccountsCompanion(
-        name: Value('Test Account'),
-        balance: Value(100.0),
+      final accountId = await database.accountsDao.addAccount(AccountsCompanion(
+        name: const Value('Test Account'),
+        balance: const Value(100.0),
+        initialBalance: const Value(100.0),
+        type: const Value('Cash'),
+        creationDate: Value(getTodayAsInt()),
       ));
 
       // ACT
@@ -68,18 +74,24 @@ void main() {
 
     test('creating a transfer updates both account balances', () async {
       // ARRANGE
-      final sendingId = await database.accountsDao.addAccount(const AccountsCompanion(
-        name: Value('Sending'),
-        balance: Value(100.0),
+      final sendingId = await database.accountsDao.addAccount(AccountsCompanion(
+        name: const Value('Sending'),
+        balance: const Value(100.0),
+        initialBalance: const Value(100.0),
+        type: const Value('Cash'),
+        creationDate: Value(getTodayAsInt()),
       ));
-      final receivingId = await database.accountsDao.addAccount(const AccountsCompanion(
-        name: Value('Receiving'),
-        balance: Value(50.0),
+      final receivingId = await database.accountsDao.addAccount(AccountsCompanion(
+        name: const Value('Receiving'),
+        balance: const Value(50.0),
+        initialBalance: const Value(50.0),
+        type: const Value('Cash'),
+        creationDate: Value(getTodayAsInt()),
       ));
 
       // ACT
       final booking = BookingsCompanion(
-        reason: const Value(null), // Transfers have null reason
+        reason: const Value.absent(), // Transfers have null reason
         amount: const Value(25.0),
         date: Value(getTodayAsInt()),
         sendingAccountId: Value(sendingId),
@@ -96,9 +108,12 @@ void main() {
 
     test('deleting an income booking reverts account balance', () async {
       // ARRANGE
-      final accountId = await database.accountsDao.addAccount(const AccountsCompanion(
-        name: Value('Test Account'),
-        balance: Value(150.0), // Balance after income
+      final accountId = await database.accountsDao.addAccount(AccountsCompanion(
+        name: const Value('Test Account'),
+        balance: const Value(150.0), // Balance after income
+        initialBalance: const Value(100.0),
+        type: const Value('Cash'),
+        creationDate: Value(getTodayAsInt()),
       ));
       final bookingId = await database.into(database.bookings).insert(BookingsCompanion(
           reason: const Value('Initial'),
@@ -116,13 +131,19 @@ void main() {
 
     test('deleting a transfer reverts both account balances', () async {
       // ARRANGE
-      final sendingId = await database.accountsDao.addAccount(const AccountsCompanion(
-        name: Value('Sending'),
-        balance: Value(75.0), // State after transfer
+      final sendingId = await database.accountsDao.addAccount(AccountsCompanion(
+        name: const Value('Sending'),
+        balance: const Value(75.0), // State after transfer
+        initialBalance: const Value(100.0),
+        type: const Value('Cash'),
+        creationDate: Value(getTodayAsInt()),
       ));
-      final receivingId = await database.accountsDao.addAccount(const AccountsCompanion(
-        name: Value('Receiving'),
-        balance: Value(75.0), // State after transfer
+      final receivingId = await database.accountsDao.addAccount(AccountsCompanion(
+        name: const Value('Receiving'),
+        balance: const Value(75.0), // State after transfer
+        initialBalance: const Value(50.0),
+        type: const Value('Cash'),
+        creationDate: Value(getTodayAsInt()),
       ));
       final bookingId = await database.into(database.bookings).insert(BookingsCompanion(
           amount: const Value(25.0),
@@ -142,9 +163,12 @@ void main() {
 
     test('updating a booking correctly adjusts balances', () async {
       // ARRANGE
-      final accountId = await database.accountsDao.addAccount(const AccountsCompanion(
-        name: Value('Test Account'),
-        balance: Value(150.0), // Balance after initial booking
+      final accountId = await database.accountsDao.addAccount(AccountsCompanion(
+        name: const Value('Test Account'),
+        balance: const Value(150.0), // Balance after initial booking
+        initialBalance: const Value(100.0),
+        type: const Value('Cash'),
+        creationDate: Value(getTodayAsInt()),
       ));
       final bookingToUpdate = await database.bookingsDao.getBooking(
           await database.into(database.bookings).insert(BookingsCompanion(
@@ -169,13 +193,19 @@ void main() {
 
     test('updating a transfer to an expense correctly adjusts balances', () async {
       // ARRANGE
-      final sendingId = await database.accountsDao.addAccount(const AccountsCompanion(
-        name: Value('Sending'),
-        balance: Value(100.0),
+      final sendingId = await database.accountsDao.addAccount(AccountsCompanion(
+        name: const Value('Sending'),
+        balance: const Value(100.0),
+        initialBalance: const Value(100.0),
+        type: const Value('Cash'),
+        creationDate: Value(getTodayAsInt()),
       ));
-      final receivingId = await database.accountsDao.addAccount(const AccountsCompanion(
-        name: Value('Receiving'),
-        balance: Value(50.0),
+      final receivingId = await database.accountsDao.addAccount(AccountsCompanion(
+        name: const Value('Receiving'),
+        balance: const Value(50.0),
+        initialBalance: const Value(50.0),
+        type: const Value('Cash'),
+        creationDate: Value(getTodayAsInt()),
       ));
 
       // Create the initial transfer booking, which also updates balances.
@@ -196,7 +226,7 @@ void main() {
         date: Value(bookingToUpdate.date),
         reason: const Value('New Expense'),
         receivingAccountId: Value(sendingId), // The expense is on the 'sending' account.
-        sendingAccountId: const Value(null), // It's no longer a transfer.
+        sendingAccountId: const Value.absent(), // It's no longer a transfer.
       );
 
       await database.bookingsDao.updateBookingWithBalance(bookingToUpdate, updatedCompanion);
@@ -205,12 +235,11 @@ void main() {
       final sendingAccount = await getAccount(sendingId);
       final receivingAccount = await getAccount(receivingId);
 
-      // The sending account started at 100, went to 75 after the transfer,
-      // and should now be 70 after the update (reverting +25, applying -30).
+      // The sending account started at 100, went to 75 after the transfer, then a revert and an update are applied.
+      // Revert: 75 + 25 = 100. Apply: 100 - 30 = 70.
       expect(sendingAccount.balance, 70.0);
 
-      // The receiving account started at 50, went to 75 after the transfer,
-      // and should be back to 50 after the update (reverting -25).
+      // The receiving account started at 50, went to 75 after the transfer, and should be back to 50 after the revert.
       expect(receivingAccount.balance, 50.0);
     });
   });
@@ -218,9 +247,12 @@ void main() {
   group('findMergeableBooking', () {
     test('should find a mergeable booking for a non-transfer', () async {
       // ARRANGE
-      final accountId = await database.accountsDao.addAccount(const AccountsCompanion(
-        name: Value('Test Account'),
-        balance: Value(100.0),
+      final accountId = await database.accountsDao.addAccount(AccountsCompanion(
+        name: const Value('Test Account'),
+        balance: const Value(100.0),
+        initialBalance: const Value(100.0),
+        type: const Value('Cash'),
+        creationDate: Value(getTodayAsInt()),
       ));
       final existingBooking = BookingsCompanion(
         date: Value(getTodayAsInt()),
@@ -248,9 +280,12 @@ void main() {
 
     test('should not find a mergeable booking if notes are not empty', () async {
       // ARRANGE
-      final accountId = await database.accountsDao.addAccount(const AccountsCompanion(
-        name: Value('Test Account'),
-        balance: Value(100.0),
+      final accountId = await database.accountsDao.addAccount(AccountsCompanion(
+        name: const Value('Test Account'),
+        balance: const Value(100.0),
+        initialBalance: const Value(100.0),
+        type: const Value('Cash'),
+        creationDate: Value(getTodayAsInt()),
       ));
       final existingBooking = BookingsCompanion(
         date: Value(getTodayAsInt()),
@@ -278,8 +313,8 @@ void main() {
 
     test('should find a mergeable booking for a transfer with same accounts', () async {
       // ARRANGE
-      final sendingId = await database.accountsDao.addAccount(const AccountsCompanion(name: Value('A'), balance: Value(100)));
-      final receivingId = await database.accountsDao.addAccount(const AccountsCompanion(name: Value('B'), balance: Value(100)));
+      final sendingId = await database.accountsDao.addAccount(AccountsCompanion(name: const Value('A'), balance: const Value(100), initialBalance: const Value(100), type: const Value('Cash'), creationDate: Value(getTodayAsInt())));
+      final receivingId = await database.accountsDao.addAccount(AccountsCompanion(name: const Value('B'), balance: const Value(100), initialBalance: const Value(100), type: const Value('Cash'), creationDate: Value(getTodayAsInt())));
       await database.bookingsDao.createBooking(BookingsCompanion(
         date: Value(getTodayAsInt()),
         amount: const Value(10.0),
@@ -304,8 +339,8 @@ void main() {
 
     test('should find a mergeable booking for a transfer with swapped accounts', () async {
       // ARRANGE
-      final sendingId = await database.accountsDao.addAccount(const AccountsCompanion(name: Value('A'), balance: Value(100)));
-      final receivingId = await database.accountsDao.addAccount(const AccountsCompanion(name: Value('B'), balance: Value(100)));
+      final sendingId = await database.accountsDao.addAccount(AccountsCompanion(name: const Value('A'), balance: const Value(100), initialBalance: const Value(100), type: const Value('Cash'), creationDate: Value(getTodayAsInt())));
+      final receivingId = await database.accountsDao.addAccount(AccountsCompanion(name: const Value('B'), balance: const Value(100), initialBalance: const Value(100), type: const Value('Cash'), creationDate: Value(getTodayAsInt())));
       await database.bookingsDao.createBooking(BookingsCompanion(
         date: Value(getTodayAsInt()),
         amount: const Value(10.0),
@@ -330,9 +365,12 @@ void main() {
 
     test('should not find a mergeable booking if excludeFromAverage is different', () async {
       // ARRANGE
-      final accountId = await database.accountsDao.addAccount(const AccountsCompanion(
-        name: Value('Test Account'),
-        balance: Value(100.0),
+      final accountId = await database.accountsDao.addAccount(AccountsCompanion(
+        name: const Value('Test Account'),
+        balance: const Value(100.0),
+        initialBalance: const Value(100.0),
+        type: const Value('Cash'),
+        creationDate: Value(getTodayAsInt()),
       ));
       await database.bookingsDao.createBooking(BookingsCompanion(
         date: Value(getTodayAsInt()),
@@ -358,9 +396,12 @@ void main() {
 
     test('should not find a mergeable booking if amount signs are different', () async {
       // ARRANGE
-      final accountId = await database.accountsDao.addAccount(const AccountsCompanion(
-        name: Value('Test Account'),
-        balance: Value(100.0),
+      final accountId = await database.accountsDao.addAccount(AccountsCompanion(
+        name: const Value('Test Account'),
+        balance: const Value(100.0),
+        initialBalance: const Value(100.0),
+        type: const Value('Cash'),
+        creationDate: Value(getTodayAsInt()),
       ));
       await database.bookingsDao.createBooking(BookingsCompanion(
         date: Value(getTodayAsInt()),

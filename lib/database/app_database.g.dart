@@ -41,8 +41,46 @@ class $AccountsTable extends Accounts with TableInfo<$AccountsTable, Account> {
     type: DriftSqlType.double,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _initialBalanceMeta = const VerificationMeta(
+    'initialBalance',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, name, balance];
+  late final GeneratedColumn<double> initialBalance = GeneratedColumn<double>(
+    'initial_balance',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+    'type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _creationDateMeta = const VerificationMeta(
+    'creationDate',
+  );
+  @override
+  late final GeneratedColumn<int> creationDate = GeneratedColumn<int>(
+    'creation_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    balance,
+    initialBalance,
+    type,
+    creationDate,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -74,6 +112,36 @@ class $AccountsTable extends Accounts with TableInfo<$AccountsTable, Account> {
     } else if (isInserting) {
       context.missing(_balanceMeta);
     }
+    if (data.containsKey('initial_balance')) {
+      context.handle(
+        _initialBalanceMeta,
+        initialBalance.isAcceptableOrUnknown(
+          data['initial_balance']!,
+          _initialBalanceMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_initialBalanceMeta);
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+        _typeMeta,
+        type.isAcceptableOrUnknown(data['type']!, _typeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('creation_date')) {
+      context.handle(
+        _creationDateMeta,
+        creationDate.isAcceptableOrUnknown(
+          data['creation_date']!,
+          _creationDateMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_creationDateMeta);
+    }
     return context;
   }
 
@@ -95,6 +163,18 @@ class $AccountsTable extends Accounts with TableInfo<$AccountsTable, Account> {
         DriftSqlType.double,
         data['${effectivePrefix}balance'],
       )!,
+      initialBalance: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}initial_balance'],
+      )!,
+      type: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}type'],
+      )!,
+      creationDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}creation_date'],
+      )!,
     );
   }
 
@@ -108,13 +188,26 @@ class Account extends DataClass implements Insertable<Account> {
   final int id;
   final String name;
   final double balance;
-  const Account({required this.id, required this.name, required this.balance});
+  final double initialBalance;
+  final String type;
+  final int creationDate;
+  const Account({
+    required this.id,
+    required this.name,
+    required this.balance,
+    required this.initialBalance,
+    required this.type,
+    required this.creationDate,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['name'] = Variable<String>(name);
     map['balance'] = Variable<double>(balance);
+    map['initial_balance'] = Variable<double>(initialBalance);
+    map['type'] = Variable<String>(type);
+    map['creation_date'] = Variable<int>(creationDate);
     return map;
   }
 
@@ -123,6 +216,9 @@ class Account extends DataClass implements Insertable<Account> {
       id: Value(id),
       name: Value(name),
       balance: Value(balance),
+      initialBalance: Value(initialBalance),
+      type: Value(type),
+      creationDate: Value(creationDate),
     );
   }
 
@@ -135,6 +231,9 @@ class Account extends DataClass implements Insertable<Account> {
       id: serializer.fromJson<int>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       balance: serializer.fromJson<double>(json['balance']),
+      initialBalance: serializer.fromJson<double>(json['initialBalance']),
+      type: serializer.fromJson<String>(json['type']),
+      creationDate: serializer.fromJson<int>(json['creationDate']),
     );
   }
   @override
@@ -144,19 +243,39 @@ class Account extends DataClass implements Insertable<Account> {
       'id': serializer.toJson<int>(id),
       'name': serializer.toJson<String>(name),
       'balance': serializer.toJson<double>(balance),
+      'initialBalance': serializer.toJson<double>(initialBalance),
+      'type': serializer.toJson<String>(type),
+      'creationDate': serializer.toJson<int>(creationDate),
     };
   }
 
-  Account copyWith({int? id, String? name, double? balance}) => Account(
+  Account copyWith({
+    int? id,
+    String? name,
+    double? balance,
+    double? initialBalance,
+    String? type,
+    int? creationDate,
+  }) => Account(
     id: id ?? this.id,
     name: name ?? this.name,
     balance: balance ?? this.balance,
+    initialBalance: initialBalance ?? this.initialBalance,
+    type: type ?? this.type,
+    creationDate: creationDate ?? this.creationDate,
   );
   Account copyWithCompanion(AccountsCompanion data) {
     return Account(
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
       balance: data.balance.present ? data.balance.value : this.balance,
+      initialBalance: data.initialBalance.present
+          ? data.initialBalance.value
+          : this.initialBalance,
+      type: data.type.present ? data.type.value : this.type,
+      creationDate: data.creationDate.present
+          ? data.creationDate.value
+          : this.creationDate,
     );
   }
 
@@ -165,46 +284,71 @@ class Account extends DataClass implements Insertable<Account> {
     return (StringBuffer('Account(')
           ..write('id: $id, ')
           ..write('name: $name, ')
-          ..write('balance: $balance')
+          ..write('balance: $balance, ')
+          ..write('initialBalance: $initialBalance, ')
+          ..write('type: $type, ')
+          ..write('creationDate: $creationDate')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, balance);
+  int get hashCode =>
+      Object.hash(id, name, balance, initialBalance, type, creationDate);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Account &&
           other.id == this.id &&
           other.name == this.name &&
-          other.balance == this.balance);
+          other.balance == this.balance &&
+          other.initialBalance == this.initialBalance &&
+          other.type == this.type &&
+          other.creationDate == this.creationDate);
 }
 
 class AccountsCompanion extends UpdateCompanion<Account> {
   final Value<int> id;
   final Value<String> name;
   final Value<double> balance;
+  final Value<double> initialBalance;
+  final Value<String> type;
+  final Value<int> creationDate;
   const AccountsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.balance = const Value.absent(),
+    this.initialBalance = const Value.absent(),
+    this.type = const Value.absent(),
+    this.creationDate = const Value.absent(),
   });
   AccountsCompanion.insert({
     this.id = const Value.absent(),
     required String name,
     required double balance,
+    required double initialBalance,
+    required String type,
+    required int creationDate,
   }) : name = Value(name),
-       balance = Value(balance);
+       balance = Value(balance),
+       initialBalance = Value(initialBalance),
+       type = Value(type),
+       creationDate = Value(creationDate);
   static Insertable<Account> custom({
     Expression<int>? id,
     Expression<String>? name,
     Expression<double>? balance,
+    Expression<double>? initialBalance,
+    Expression<String>? type,
+    Expression<int>? creationDate,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (balance != null) 'balance': balance,
+      if (initialBalance != null) 'initial_balance': initialBalance,
+      if (type != null) 'type': type,
+      if (creationDate != null) 'creation_date': creationDate,
     });
   }
 
@@ -212,11 +356,17 @@ class AccountsCompanion extends UpdateCompanion<Account> {
     Value<int>? id,
     Value<String>? name,
     Value<double>? balance,
+    Value<double>? initialBalance,
+    Value<String>? type,
+    Value<int>? creationDate,
   }) {
     return AccountsCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
       balance: balance ?? this.balance,
+      initialBalance: initialBalance ?? this.initialBalance,
+      type: type ?? this.type,
+      creationDate: creationDate ?? this.creationDate,
     );
   }
 
@@ -232,6 +382,15 @@ class AccountsCompanion extends UpdateCompanion<Account> {
     if (balance.present) {
       map['balance'] = Variable<double>(balance.value);
     }
+    if (initialBalance.present) {
+      map['initial_balance'] = Variable<double>(initialBalance.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (creationDate.present) {
+      map['creation_date'] = Variable<int>(creationDate.value);
+    }
     return map;
   }
 
@@ -240,7 +399,10 @@ class AccountsCompanion extends UpdateCompanion<Account> {
     return (StringBuffer('AccountsCompanion(')
           ..write('id: $id, ')
           ..write('name: $name, ')
-          ..write('balance: $balance')
+          ..write('balance: $balance, ')
+          ..write('initialBalance: $initialBalance, ')
+          ..write('type: $type, ')
+          ..write('creationDate: $creationDate')
           ..write(')'))
         .toString();
   }
@@ -1708,12 +1870,18 @@ typedef $$AccountsTableCreateCompanionBuilder =
       Value<int> id,
       required String name,
       required double balance,
+      required double initialBalance,
+      required String type,
+      required int creationDate,
     });
 typedef $$AccountsTableUpdateCompanionBuilder =
     AccountsCompanion Function({
       Value<int> id,
       Value<String> name,
       Value<double> balance,
+      Value<double> initialBalance,
+      Value<String> type,
+      Value<int> creationDate,
     });
 
 class $$AccountsTableFilterComposer
@@ -1737,6 +1905,21 @@ class $$AccountsTableFilterComposer
 
   ColumnFilters<double> get balance => $composableBuilder(
     column: $table.balance,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get initialBalance => $composableBuilder(
+    column: $table.initialBalance,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get creationDate => $composableBuilder(
+    column: $table.creationDate,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -1764,6 +1947,21 @@ class $$AccountsTableOrderingComposer
     column: $table.balance,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<double> get initialBalance => $composableBuilder(
+    column: $table.initialBalance,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get creationDate => $composableBuilder(
+    column: $table.creationDate,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AccountsTableAnnotationComposer
@@ -1783,6 +1981,19 @@ class $$AccountsTableAnnotationComposer
 
   GeneratedColumn<double> get balance =>
       $composableBuilder(column: $table.balance, builder: (column) => column);
+
+  GeneratedColumn<double> get initialBalance => $composableBuilder(
+    column: $table.initialBalance,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<int> get creationDate => $composableBuilder(
+    column: $table.creationDate,
+    builder: (column) => column,
+  );
 }
 
 class $$AccountsTableTableManager
@@ -1816,16 +2027,32 @@ class $$AccountsTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<double> balance = const Value.absent(),
-              }) => AccountsCompanion(id: id, name: name, balance: balance),
+                Value<double> initialBalance = const Value.absent(),
+                Value<String> type = const Value.absent(),
+                Value<int> creationDate = const Value.absent(),
+              }) => AccountsCompanion(
+                id: id,
+                name: name,
+                balance: balance,
+                initialBalance: initialBalance,
+                type: type,
+                creationDate: creationDate,
+              ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
                 required String name,
                 required double balance,
+                required double initialBalance,
+                required String type,
+                required int creationDate,
               }) => AccountsCompanion.insert(
                 id: id,
                 name: name,
                 balance: balance,
+                initialBalance: initialBalance,
+                type: type,
+                creationDate: creationDate,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
