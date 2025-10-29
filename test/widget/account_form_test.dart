@@ -36,6 +36,13 @@ void main() {
     );
   }
 
+  // Helper to find a dropdown by its label
+  Finder findDropdownFieldByLabel(String label) {
+    return find.byWidgetPredicate(
+      (widget) => widget is DropdownButtonFormField<String> && widget.decoration?.labelText == label,
+    );
+  }
+
   testWidgets('New account form submits with correct data', (tester) => tester.runAsync(() async {
     await pumpWidget(tester);
     await tester.pumpAndSettle(); // Wait for async operations in initState
@@ -122,6 +129,46 @@ void main() {
       await tester.pump();
 
       expect(find.text('Initial balance cannot be negative.'), findsOneWidget);
+    }));
+
+    testWidgets('dropdown selection updates account type', (tester) => tester.runAsync(() async {
+      await pumpWidget(tester);
+      await tester.pumpAndSettle();
+
+      // Tap on the dropdown to open it
+      await tester.tap(findDropdownFieldByLabel('Type'));
+      await tester.pumpAndSettle();
+
+      // Tap on 'Bank' to select it
+      await tester.tap(find.text('Bank').last); // Use .last if multiple 'Bank' texts exist
+      await tester.pumpAndSettle();
+
+      // Enter data for other fields
+      await tester.enterText(findTextFieldByLabel('Account Name'), 'Bank Account');
+      await tester.enterText(findTextFieldByLabel('Initial Balance'), '200.00');
+
+      // Save the form
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      // Verify the data was saved correctly with the updated type
+      final account = await (database.select(database.accounts)..where((a) => a.name.equals('Bank Account'))).getSingle();
+      expect(account.type, 'Bank');
+    }));
+
+    testWidgets('cancel button pops the form', (tester) => tester.runAsync(() async {
+      await pumpWidget(tester);
+      await tester.pumpAndSettle();
+
+      // Verify the form is present
+      expect(find.byType(AccountForm), findsOneWidget);
+
+      // Tap the cancel button
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      // Verify the form is no longer present
+      expect(find.byType(AccountForm), findsNothing);
     }));
   });
 }
