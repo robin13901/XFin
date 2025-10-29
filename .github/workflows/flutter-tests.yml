@@ -28,9 +28,7 @@ jobs:
       - name: Run tests and generate reports
         # Use shell: bash to ensure the pipe command works correctly in a single process
         shell: bash
-        run: |
-          # The entire command must be on a single logical line, joined by '&&'.
-          flutter test --machine --coverage | dart run test_reporter:test_reporter > test-results.xml && \
+        run: flutter test --machine --coverage | dart run test_reporter:test_reporter > test-results.xml && \
           remove_from_coverage -f coverage/lcov.info -r '\.g\.dart$'
 
       - name: Upload coverage and test reports to Codecov
