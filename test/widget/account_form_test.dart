@@ -39,7 +39,7 @@ void main() {
   // Helper to find a dropdown by its label
   Finder findDropdownFieldByLabel(String label) {
     return find.byWidgetPredicate(
-      (widget) => widget is DropdownButtonFormField<String> && widget.decoration?.labelText == label,
+      (widget) => widget is DropdownButtonFormField<String> && widget.decoration.labelText == label,
     );
   }
 
