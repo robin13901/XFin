@@ -9,7 +9,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -27,8 +26,11 @@ jobs:
         run: flutter analyze
 
       - name: Run tests and generate reports
+        # Use shell: bash to ensure the pipe command works correctly in a single process
+        shell: bash
         run: |
-          flutter test --machine --coverage | dart run test_reporter:test_reporter > test-results.xml
+          # The entire command must be on a single logical line, joined by '&&'.
+          flutter test --machine --coverage | dart run test_reporter:test_reporter > test-results.xml && \
           remove_from_coverage -f coverage/lcov.info -r '\.g\.dart$'
 
       - name: Upload coverage and test reports to Codecov
