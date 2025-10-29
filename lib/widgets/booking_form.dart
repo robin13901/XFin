@@ -43,7 +43,7 @@ class _BookingFormState extends State<BookingForm> {
       _isTransfer = booking.sendingAccountId != null;
 
       _receivingAccountId = booking.receivingAccountId;
-      _sendingAccountId = _isTransfer ? null : booking.sendingAccountId;
+      _sendingAccountId = _isTransfer ? booking.sendingAccountId : null;
     } else {
       _date = DateTime.now();
       _amountController = TextEditingController();
@@ -108,6 +108,35 @@ class _BookingFormState extends State<BookingForm> {
     if (_formKey.currentState!.validate()) {
       final db = Provider.of<AppDatabase>(context, listen: false);
       final amount = double.parse(_amountController.text.replaceAll(',', '.'));
+
+      if (widget.booking == null) {
+        // Only for new bookings
+        if (_isTransfer) {
+          if (_sendingAccountId != null) {
+            final sendingAccount = await db.accountsDao.getAccount(_sendingAccountId!);
+            if (sendingAccount.balance - amount.abs() < 0) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Senderkonto hat nicht genügend Guthaben.')),
+                );
+              }
+              return;
+            }
+          }
+        } else {
+          if (_receivingAccountId != null && amount < 0) {
+            final receivingAccount = await db.accountsDao.getAccount(_receivingAccountId!);
+            if (receivingAccount.balance + amount < 0) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Konto hat nicht genügend Guthaben für diese Abbuchung.')),
+                );
+              }
+              return;
+            }
+          }
+        }
+      }
 
       final dateAsInt = int.parse(DateFormat('yyyyMMdd').format(_date));
       final companion = BookingsCompanion(

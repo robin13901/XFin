@@ -24,6 +24,27 @@ void main() {
     return int.parse(DateFormat('yyyyMMdd').format(DateTime.now()));
   }
 
+  group('AccountsDao', () {
+    test('getAccount retrieves a single account by id', () async {
+      // ARRANGE
+      final accountId = await database.accountsDao.addAccount(AccountsCompanion(
+        name: const Value('Test Account'),
+        balance: const Value(100.0),
+        initialBalance: const Value(100.0),
+        type: const Value('Cash'),
+        creationDate: Value(getTodayAsInt()),
+      ));
+
+      // ACT
+      final account = await database.accountsDao.getAccount(accountId);
+
+      // ASSERT
+      expect(account.id, accountId);
+      expect(account.name, 'Test Account');
+      expect(account.balance, 100.0);
+    });
+  });
+
   group('Booking transactions', () {
     test('creating an income booking updates account balance', () async {
       // ARRANGE

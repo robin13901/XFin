@@ -232,6 +232,57 @@ void main() {
       expect(find.text('Konten müssen verschieden sein!'), findsNWidgets(2));
       await tester.pumpWidget(const SizedBox.shrink());
     }));
+
+    testWidgets('shows snackbar when deduction leads to negative balance', (tester) => tester.runAsync(() async {
+      await database.accountsDao.addAccount(const AccountsCompanion(name: Value('Test'), balance: Value(50), initialBalance: Value(50), type: Value('Cash'), creationDate: Value(20230101)));
+      await pumpWidget(tester);
+      
+      await tester.enterText(find.byType(TextFormField).at(1), '-60');
+      await tester.enterText(find.byType(TextFormField).at(2), 'Too much');
+      await tester.tap(find.byType(DropdownButtonFormField<int>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Test').last);
+      await tester.pumpAndSettle();
+      
+      await tester.tap(find.text('Speichern'));
+      await tester.pumpAndSettle();
+      
+      expect(find.text('Konto hat nicht genügend Guthaben für diese Abbuchung.'), findsOneWidget);
+      
+      final bookings = await database.select(database.bookings).get();
+      expect(bookings.isEmpty, isTrue);
+      await tester.pumpWidget(const SizedBox.shrink());
+    }));
+
+    testWidgets('shows snackbar when transfer leads to negative balance', (tester) => tester.runAsync(() async {
+      await database.accountsDao.addAccount(const AccountsCompanion(name: Value('From'), balance: Value(50), initialBalance: Value(50), type: Value('Cash'), creationDate: Value(20230101)));
+      await database.accountsDao.addAccount(const AccountsCompanion(name: Value('To'), balance: Value(100), initialBalance: Value(100), type: Value('Cash'), creationDate: Value(20230101)));
+      await pumpWidget(tester);
+      
+      await tester.tap(find.text('Überweisung'));
+      await tester.pumpAndSettle();
+      
+      await tester.enterText(find.byType(TextFormField).at(1), '60');
+      
+      await tester.tap(find.byType(DropdownButtonFormField<int>).first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('From').last);
+      await tester.pumpAndSettle();
+      
+      await tester.tap(find.byType(DropdownButtonFormField<int>).last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('To').last);
+      await tester.pumpAndSettle();
+      
+      await tester.tap(find.text('Speichern'));
+      await tester.pumpAndSettle();
+      
+      expect(find.text('Senderkonto hat nicht genügend Guthaben.'), findsOneWidget);
+
+      final bookings = await database.select(database.bookings).get();
+      expect(bookings.isEmpty, isTrue);
+      await tester.pumpWidget(const SizedBox.shrink());
+    }));
   });
 
   group('Booking merge functionality', () {
