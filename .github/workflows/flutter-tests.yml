@@ -28,10 +28,13 @@ jobs:
       - name: Analyze project source
         run: flutter analyze
 
-      - name: Run tests and clean coverage report
+      - name: Generate and clean coverage report
         run: |
-          dart run test_reporter:test_reporter "flutter test --machine --coverage" > test-results.xml
+          flutter test --coverage
           dart run remove_from_coverage:remove_from_coverage -f coverage/lcov.info -r '\.g\.dart$'
+
+      - name: Generate test analytics report
+        run: dart run test_reporter:test_reporter "flutter test --machine" > test-results.xml
 
       - name: Upload coverage and test reports to Codecov
         uses: codecov/codecov-action@v4
