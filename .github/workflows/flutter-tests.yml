@@ -28,8 +28,7 @@ jobs:
       - name: Run tests and generate initial reports
         # This step runs the tests and generates both coverage/lcov.info
         # and the test-results.xml file for Codecov Test Analytics.
-        shell: bash
-        run: flutter test --machine --coverage | dart run test_reporter:test_reporter > test-results.xml
+        run: dart run test_reporter:test_reporter "flutter test --machine --coverage" > test-results.xml
 
       - name: Clean coverage report
         run: remove_from_coverage -f coverage/lcov.info -r '\.g\.dart$'
