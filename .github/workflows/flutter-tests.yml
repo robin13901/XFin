@@ -34,7 +34,9 @@ jobs:
           dart run remove_from_coverage:remove_from_coverage -f coverage/lcov.info -r '\.g\.dart$'
 
       - name: Generate test analytics report
-        run: dart run test_reporter:test_reporter "flutter test --machine" > test-results.xml
+        run: |
+          flutter test --machine > tests.output
+          dart run test_reporter:test_reporter -i tests.output -o test-results.xml
 
       - name: Upload coverage and test reports to Codecov
         uses: codecov/codecov-action@v4
