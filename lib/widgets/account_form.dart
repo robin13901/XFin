@@ -5,9 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 
 class AccountForm extends StatefulWidget {
-  final Account? account;
-
-  const AccountForm({super.key, this.account});
+  const AccountForm({super.key});
 
   @override
   State<AccountForm> createState() => _AccountFormState();
@@ -23,20 +21,16 @@ class _AccountFormState extends State<AccountForm> {
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.account?.name);
-    _initialBalanceController =
-        TextEditingController(text: widget.account?.balance.toString() ?? '0.0');
-    _type = widget.account?.type ?? 'Cash';
+    _nameController = TextEditingController();
+    _initialBalanceController = TextEditingController(text: '0.0');
+    _type = 'Cash';
     _existingAccountNames = [];
 
     final db = Provider.of<AppDatabase>(context, listen: false);
     db.accountsDao.watchAllAccounts().first.then((accounts) {
       if (mounted) {
         setState(() {
-          _existingAccountNames = accounts
-              .map((a) => a.name)
-              .where((name) => name != widget.account?.name)
-              .toList();
+          _existingAccountNames = accounts.map((a) => a.name).toList();
         });
       }
     });
@@ -57,25 +51,16 @@ class _AccountFormState extends State<AccountForm> {
       final initialBalance =
           double.parse(_initialBalanceController.text.replaceAll(',', '.'));
 
-      if (widget.account == null) {
-        final creationDate =
-            int.parse(DateFormat('yyyyMMdd').format(DateTime.now()));
-        final companion = AccountsCompanion(
-          name: drift.Value(name),
-          balance: drift.Value(initialBalance),
-          initialBalance: drift.Value(initialBalance),
-          type: drift.Value(_type),
-          creationDate: drift.Value(creationDate),
-        );
-        await db.accountsDao.addAccount(companion);
-      } else {
-        final companion = AccountsCompanion(
-          name: drift.Value(name),
-          type: drift.Value(_type),
-        );
-        await db.accountsDao.updateAccount(
-            companion.copyWith(id: drift.Value(widget.account!.id)));
-      }
+      final creationDate =
+          int.parse(DateFormat('yyyyMMdd').format(DateTime.now()));
+      final companion = AccountsCompanion(
+        name: drift.Value(name),
+        balance: drift.Value(initialBalance),
+        initialBalance: drift.Value(initialBalance),
+        type: drift.Value(_type),
+        creationDate: drift.Value(creationDate),
+      );
+      await db.accountsDao.addAccount(companion);
 
       if (mounted) {
         Navigator.of(context).pop();
@@ -115,14 +100,10 @@ class _AccountFormState extends State<AccountForm> {
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _initialBalanceController,
-                  readOnly: widget.account != null,
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     labelText: 'Initial Balance',
-                    border: const OutlineInputBorder(),
+                    border: OutlineInputBorder(),
                     suffixText: '€',
-                    fillColor:
-                        widget.account != null ? Colors.grey[200] : null,
-                    filled: widget.account != null,
                   ),
                   keyboardType: const TextInputType.numberWithOptions(
                       signed: true, decimal: true),
@@ -150,6 +131,7 @@ class _AccountFormState extends State<AccountForm> {
                   ),
                   items: const [
                     DropdownMenuItem(value: 'Cash', child: Text('Cash')),
+                    DropdownMenuItem(value: 'Bank', child: Text('Bank')),
                   ],
                   onChanged: (value) {
                     if (value != null) {

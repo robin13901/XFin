@@ -3,6 +3,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
 import 'package:xfin/database/app_database.dart';
+import 'package:xfin/database/bookings_dao.dart';
 
 void main() {
   late AppDatabase database;
@@ -423,6 +424,44 @@ void main() {
 
       // ASSERT
       expect(mergeable, isNull);
+    });
+  });
+
+  group('watchBookingsWithAccounts', () {
+    test('should return a stream of bookings with their accounts', () async {
+      // ARRANGE
+      final sendingId = await database.accountsDao.addAccount(AccountsCompanion(
+        name: const Value('Sending Account'),
+        balance: const Value(100.0),
+        initialBalance: const Value(100.0),
+        type: const Value('Cash'),
+        creationDate: Value(getTodayAsInt()),
+      ));
+      final receivingId = await database.accountsDao.addAccount(AccountsCompanion(
+        name: const Value('Receiving Account'),
+        balance: const Value(0.0),
+        initialBalance: const Value(0.0),
+        type: const Value('Cash'),
+        creationDate: Value(getTodayAsInt()),
+      ));
+      final bookingId = await database.into(database.bookings).insert(BookingsCompanion(
+        amount: const Value(50.0),
+        date: Value(getTodayAsInt()),
+        sendingAccountId: Value(sendingId),
+        receivingAccountId: Value(receivingId),
+      ));
+
+      // ACT
+      final stream = database.bookingsDao.watchBookingsWithAccounts();
+
+      // ASSERT
+      expect(stream, emits(
+        isA<List<BookingWithAccounts>>()
+            .having((list) => list.length, 'length', 1)
+            .having((list) => list.first.booking.id, 'booking id', bookingId)
+            .having((list) => list.first.sendingAccount!.id, 'sending account id', sendingId)
+            .having((list) => list.first.receivingAccount!.id, 'receiving account id', receivingId),
+      ));
     });
   });
 }

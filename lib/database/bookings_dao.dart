@@ -79,12 +79,8 @@ class BookingsDao extends DatabaseAccessor<AppDatabase> with _$BookingsDaoMixin 
         ..where((tbl) =>
             tbl.sendingAccountId.isNull() &
             tbl.date.equals(newBooking.date.value) &
-            (newBooking.reason.value == null
-                ? tbl.reason.isNull()
-                : tbl.reason.equals(newBooking.reason.value!)) &
-            (newBooking.receivingAccountId.value == null
-                ? tbl.receivingAccountId.isNull()
-                : tbl.receivingAccountId.equals(newBooking.receivingAccountId.value!)) &
+            tbl.reason.equals(newBooking.reason.value!) &
+            tbl.receivingAccountId.equals(newBooking.receivingAccountId.value!) &
             tbl.excludeFromAverage.equals(newBooking.excludeFromAverage.value) &
             tbl.notes.isNull() &
             ((tbl.amount.isBiggerThanValue(0) & Constant(newAmount > 0)) |

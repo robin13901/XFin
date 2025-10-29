@@ -10,7 +10,6 @@ class AccountsDao extends DatabaseAccessor<AppDatabase> with _$AccountsDaoMixin 
 
   Stream<List<Account>> watchAllAccounts() => select(accounts).watch();
   Future<int> addAccount(AccountsCompanion entry) => into(accounts).insert(entry);
-  Future<bool> updateAccount(AccountsCompanion entry) => update(accounts).replace(entry);
 
   /// Atomically updates the balance of an account by a given delta.
   Future<void> updateBalance(int accountId, double delta) {

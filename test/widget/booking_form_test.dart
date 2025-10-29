@@ -60,6 +60,42 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   }));
 
+  testWidgets('form correctly initializes for editing and updates booking', (tester) => tester.runAsync(() async {
+    // ARRANGE
+    final accountId = await database.accountsDao.addAccount(const AccountsCompanion(name: Value('Test'), balance: Value(100), initialBalance: Value(100), type: Value('Cash'), creationDate: Value(20230101)));
+    final date = int.parse(DateFormat('yyyyMMdd').format(DateTime.now()));
+    final bookingId = await database.into(database.bookings).insert(BookingsCompanion(
+        date: Value(date),
+        reason: const Value('Initial Reason'),
+        amount: const Value(50.0),
+        receivingAccountId: Value(accountId),
+        excludeFromAverage: const Value(false)
+    ));
+    final initialBooking = await database.bookingsDao.getBooking(bookingId);
+
+    // ACT
+    await pumpWidget(tester, booking: initialBooking);
+
+    // ASSERT form is pre-filled
+    expect(find.text('50.0'), findsOneWidget);
+    expect(find.text('Initial Reason'), findsOneWidget);
+
+    // ACT Update values
+    await tester.enterText(find.byType(TextFormField).at(1), '-25.0');
+    await tester.enterText(find.byType(TextFormField).at(2), 'Updated Reason');
+    await tester.tap(find.byType(CheckboxListTile));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Speichern'));
+    await tester.pumpAndSettle();
+
+    // ASSERT booking is updated
+    final updatedBooking = await database.bookingsDao.getBooking(bookingId);
+    expect(updatedBooking.amount, -25.0);
+    expect(updatedBooking.reason, 'Updated Reason');
+    expect(updatedBooking.excludeFromAverage, isTrue);
+    await tester.pumpWidget(const SizedBox.shrink());
+  }));
+
   group('BookingForm validation', () {
     testWidgets('shows error when amount is empty', (tester) => tester.runAsync(() async {
       await pumpWidget(tester);
@@ -271,6 +307,53 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     }));
 
+    testWidgets('merges same-account transfer correctly', (tester) => tester.runAsync(() async {
+      // ARRANGE
+      final fromId = await database.accountsDao.addAccount(const AccountsCompanion(name: Value('From'), balance: Value(100), initialBalance: Value(100), type: Value('Cash'), creationDate: Value(20230101)));
+      final toId = await database.accountsDao.addAccount(const AccountsCompanion(name: Value('To'), balance: Value(100), initialBalance: Value(100), type: Value('Cash'), creationDate: Value(20230101)));
+      final dateAsInt = int.parse(DateFormat('yyyyMMdd').format(DateTime.now()));
+      // From -> To: 10
+      await database.bookingsDao.createBooking(BookingsCompanion(
+        date: Value(dateAsInt),
+        amount: const Value(10.0),
+        sendingAccountId: Value(fromId),
+        receivingAccountId: Value(toId),
+      ));
+      await pumpWidget(tester);
+
+      // ACT
+      // Create new transfer From -> To: 5
+      await tester.tap(find.text('Überweisung'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextFormField).at(1), '5');
+      // 'Von Konto'
+      await tester.tap(find.byType(DropdownButtonFormField<int>).first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('From').last);
+      await tester.pumpAndSettle();
+      // 'Auf Konto'
+      await tester.tap(find.byType(DropdownButtonFormField<int>).last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('To').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Speichern'));
+      await tester.pumpAndSettle();
+
+      // Confirm merge
+      expect(find.text('Buchungen zusammenführen?'), findsOneWidget);
+      await tester.tap(find.text('Zusammenführen'));
+      await tester.pumpAndSettle();
+
+      // ASSERT
+      final bookings = await database.select(database.bookings).get();
+      expect(bookings.length, 1);
+      final booking = bookings.first;
+      expect(booking.amount, 15.0); // 10 + 5
+      expect(booking.sendingAccountId, fromId);
+      expect(booking.receivingAccountId, toId);
+      await tester.pumpWidget(const SizedBox.shrink());
+    }));
+
     testWidgets('merges swapped-account transfer correctly', (tester) => tester.runAsync(() async {
       // ARRANGE
       final fromId = await database.accountsDao.addAccount(const AccountsCompanion(name: Value('From'), balance: Value(100), initialBalance: Value(100), type: Value('Cash'), creationDate: Value(20230101)));
@@ -315,6 +398,53 @@ void main() {
       expect(booking.amount, 7.0); // 10 - 3
       expect(booking.sendingAccountId, fromId);
       expect(booking.receivingAccountId, toId);
+      await tester.pumpWidget(const SizedBox.shrink());
+    }));
+
+    testWidgets('merges and reverses swapped-account transfer', (tester) => tester.runAsync(() async {
+      // ARRANGE
+      final fromId = await database.accountsDao.addAccount(const AccountsCompanion(name: Value('From'), balance: Value(100), initialBalance: Value(100), type: Value('Cash'), creationDate: Value(20230101)));
+      final toId = await database.accountsDao.addAccount(const AccountsCompanion(name: Value('To'), balance: Value(100), initialBalance: Value(100), type: Value('Cash'), creationDate: Value(20230101)));
+      final dateAsInt = int.parse(DateFormat('yyyyMMdd').format(DateTime.now()));
+      // From -> To: 10
+      await database.bookingsDao.createBooking(BookingsCompanion(
+        date: Value(dateAsInt),
+        amount: const Value(10.0),
+        sendingAccountId: Value(fromId),
+        receivingAccountId: Value(toId),
+      ));
+      await pumpWidget(tester);
+
+      // ACT
+      // Create new transfer To -> From: 15
+      await tester.tap(find.text('Überweisung'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextFormField).at(1), '15');
+      // 'Von Konto'
+      await tester.tap(find.byType(DropdownButtonFormField<int>).first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('To').last);
+      await tester.pumpAndSettle();
+      // 'Auf Konto'
+      await tester.tap(find.byType(DropdownButtonFormField<int>).last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('From').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Speichern'));
+      await tester.pumpAndSettle();
+
+      // Confirm merge
+      expect(find.text('Buchungen zusammenführen?'), findsOneWidget);
+      await tester.tap(find.text('Zusammenführen'));
+      await tester.pumpAndSettle();
+
+      // ASSERT
+      final bookings = await database.select(database.bookings).get();
+      expect(bookings.length, 1);
+      final booking = bookings.first;
+      expect(booking.amount, 5.0); // 15 - 10
+      expect(booking.sendingAccountId, toId); // Reversed
+      expect(booking.receivingAccountId, fromId); // Reversed
       await tester.pumpWidget(const SizedBox.shrink());
     }));
 
