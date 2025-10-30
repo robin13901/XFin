@@ -4,22 +4,33 @@ import 'package:oktoast/oktoast.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/connection/connection.dart' as connection;
+import 'package:xfin/providers/theme_provider.dart';
 import 'package:xfin/screens/accounts_screen.dart';
 import 'package:xfin/screens/analysis_screen.dart';
 import 'package:xfin/screens/bookings_screen.dart';
 import 'package:xfin/screens/more_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
   // Initialize date formatting for the German locale.
-  initializeDateFormatting('de_DE', null).then((_) {
-    runApp(
-      Provider<AppDatabase>(
-        create: (_) => AppDatabase(connection.connect()),
-        dispose: (_, db) => db.close(),
-        child: const MyApp(),
-      ),
-    );
-  });
+  await initializeDateFormatting('de_DE', null);
+
+  final themeProvider = ThemeProvider();
+  await themeProvider.loadTheme();
+
+  runApp(
+    MultiProvider(
+      providers: [
+        Provider<AppDatabase>(
+          create: (_) => AppDatabase(connection.connect()),
+          dispose: (_, db) => db.close(),
+        ),
+        ChangeNotifierProvider.value(value: themeProvider),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -27,14 +38,23 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'XFin',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
-        useMaterial3: true,
-      ),
-      home: const MainScreen(),
-      builder: (context, child) => OKToast(child: child!),
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return MaterialApp(
+          title: 'XFin',
+          theme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(seedColor: Colors.green, brightness: Brightness.light),
+            useMaterial3: true,
+          ),
+          darkTheme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(seedColor: Colors.green, brightness: Brightness.dark),
+            useMaterial3: true,
+          ),
+          themeMode: themeProvider.themeMode,
+          home: const MainScreen(),
+          builder: (context, child) => OKToast(child: child!),
+        );
+      },
     );
   }
 }
