@@ -3,6 +3,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
+import 'package:oktoast/oktoast.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/widgets/booking_form.dart';
@@ -24,10 +25,12 @@ void main() {
 
   Future<void> pumpWidget(WidgetTester tester, {Booking? booking}) async {
     await tester.pumpWidget(
-      MaterialApp(
-        home: Provider<AppDatabase>(
-          create: (_) => database,
-          child: Scaffold(body: BookingForm(booking: booking)),
+      OKToast(
+        child: MaterialApp(
+          home: Provider<AppDatabase>(
+            create: (_) => database,
+            child: Scaffold(body: BookingForm(booking: booking)),
+          ),
         ),
       ),
     );
@@ -233,7 +236,7 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     }));
 
-    testWidgets('shows snackbar when deduction leads to negative balance', (tester) => tester.runAsync(() async {
+    testWidgets('shows toast when deduction leads to negative balance', (tester) => tester.runAsync(() async {
       await database.accountsDao.addAccount(const AccountsCompanion(name: Value('Test'), balance: Value(50), initialBalance: Value(50), type: Value('Cash'), creationDate: Value(20230101)));
       await pumpWidget(tester);
       
@@ -245,16 +248,18 @@ void main() {
       await tester.pumpAndSettle();
       
       await tester.tap(find.text('Speichern'));
-      await tester.pumpAndSettle();
+      await tester.pump(); // Pump once to show the toast
       
       expect(find.text('Konto hat nicht genügend Guthaben für diese Abbuchung.'), findsOneWidget);
       
       final bookings = await database.select(database.bookings).get();
       expect(bookings.isEmpty, isTrue);
+      
+      await tester.pumpAndSettle(); // Dismiss the toast
       await tester.pumpWidget(const SizedBox.shrink());
     }));
 
-    testWidgets('shows snackbar when transfer leads to negative balance', (tester) => tester.runAsync(() async {
+    testWidgets('shows toast when transfer leads to negative balance', (tester) => tester.runAsync(() async {
       await database.accountsDao.addAccount(const AccountsCompanion(name: Value('From'), balance: Value(50), initialBalance: Value(50), type: Value('Cash'), creationDate: Value(20230101)));
       await database.accountsDao.addAccount(const AccountsCompanion(name: Value('To'), balance: Value(100), initialBalance: Value(100), type: Value('Cash'), creationDate: Value(20230101)));
       await pumpWidget(tester);
@@ -275,12 +280,14 @@ void main() {
       await tester.pumpAndSettle();
       
       await tester.tap(find.text('Speichern'));
-      await tester.pumpAndSettle();
+      await tester.pump(); // Pump once to show the toast
       
       expect(find.text('Senderkonto hat nicht genügend Guthaben.'), findsOneWidget);
 
       final bookings = await database.select(database.bookings).get();
       expect(bookings.isEmpty, isTrue);
+      
+      await tester.pumpAndSettle(); // Dismiss the toast
       await tester.pumpWidget(const SizedBox.shrink());
     }));
   });

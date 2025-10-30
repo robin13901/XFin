@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:oktoast/oktoast.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 
@@ -115,11 +116,7 @@ class _BookingFormState extends State<BookingForm> {
           if (_sendingAccountId != null) {
             final sendingAccount = await db.accountsDao.getAccount(_sendingAccountId!);
             if (sendingAccount.balance - amount.abs() < 0) {
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Senderkonto hat nicht genügend Guthaben.')),
-                );
-              }
+              showToast('Senderkonto hat nicht genügend Guthaben.');
               return;
             }
           }
@@ -127,11 +124,7 @@ class _BookingFormState extends State<BookingForm> {
           if (_receivingAccountId != null && amount < 0) {
             final receivingAccount = await db.accountsDao.getAccount(_receivingAccountId!);
             if (receivingAccount.balance + amount < 0) {
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Konto hat nicht genügend Guthaben für diese Abbuchung.')),
-                );
-              }
+              showToast('Konto hat nicht genügend Guthaben für diese Abbuchung.');
               return;
             }
           }
