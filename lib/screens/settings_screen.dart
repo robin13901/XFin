@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:xfin/providers/language_provider.dart';
 import 'package:xfin/providers/theme_provider.dart';
+import 'package:xfin/l10n/app_localizations.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -8,15 +10,17 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final languageProvider = Provider.of<LanguageProvider>(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Einstellungen'),
+        title: Text(l10n.settings),
       ),
       body: ListView(
         children: [
           ListTile(
-            title: const Text('Theme'),
+            title: Text(l10n.theme),
             trailing: DropdownButton<ThemeMode>(
               value: themeProvider.themeMode,
               onChanged: (ThemeMode? newValue) {
@@ -24,18 +28,39 @@ class SettingsScreen extends StatelessWidget {
                   themeProvider.setThemeMode(newValue);
                 }
               },
-              items: const [
+              items: [
                 DropdownMenuItem(
                   value: ThemeMode.system,
-                  child: Text('System'),
+                  child: Text(l10n.system),
                 ),
                 DropdownMenuItem(
                   value: ThemeMode.light,
-                  child: Text('Light'),
+                  child: Text(l10n.light),
                 ),
                 DropdownMenuItem(
                   value: ThemeMode.dark,
-                  child: Text('Dark'),
+                  child: Text(l10n.dark),
+                ),
+              ],
+            ),
+          ),
+          ListTile(
+            title: Text(l10n.language),
+            trailing: DropdownButton<Locale>(
+              value: languageProvider.appLocale,
+              onChanged: (Locale? newValue) {
+                if (newValue != null) {
+                  languageProvider.setLocale(newValue);
+                }
+              },
+              items: [
+                DropdownMenuItem(
+                  value: const Locale('en'),
+                  child: Text(l10n.english),
+                ),
+                DropdownMenuItem(
+                  value: const Locale('de'),
+                  child: Text(l10n.german),
                 ),
               ],
             ),

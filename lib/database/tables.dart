@@ -1,74 +1,180 @@
 import 'package:drift/drift.dart';
 
-class Accounts extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  TextColumn get name => text()();
-  RealColumn get balance => real()();
-  RealColumn get initialBalance => real()();
-  TextColumn get type => text()();
-  IntColumn get creationDate => integer()();
+// Enums
+enum AssetTypes { stock, crypto, currency, commodity }
+enum AccountTypes { cash, portfolio }
+enum TradeTypes { buy, sell }
+enum Cycles { daily, weekly, monthly, quarterly, yearly }
+
+// Type Converters
+class AssetTypesConverter extends TypeConverter<AssetTypes, String> {
+  const AssetTypesConverter();
+  @override
+  AssetTypes fromSql(String fromDb) {
+    return AssetTypes.values.byName(fromDb);
+  }
+  @override
+  String toSql(AssetTypes value) {
+    return value.name;
+  }
 }
 
+class AccountTypesConverter extends TypeConverter<AccountTypes, String> {
+  const AccountTypesConverter();
+  @override
+  AccountTypes fromSql(String fromDb) {
+    return AccountTypes.values.byName(fromDb);
+  }
+  @override
+  String toSql(AccountTypes value) {
+    return value.name;
+  }
+}
+
+class TradeTypesConverter extends TypeConverter<TradeTypes, String> {
+  const TradeTypesConverter();
+  @override
+  TradeTypes fromSql(String fromDb) {
+    return TradeTypes.values.byName(fromDb);
+  }
+  @override
+  String toSql(TradeTypes value) {
+    return value.name;
+  }
+}
+
+class CyclesConverter extends TypeConverter<Cycles, String> {
+  const CyclesConverter();
+  @override
+  Cycles fromSql(String fromDb) {
+    return Cycles.values.byName(fromDb);
+  }
+  @override
+  String toSql(Cycles value) {
+    return value.name;
+  }
+}
+
+// Tables
+
+@DataClassName('Account')
+class Accounts extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text().unique()();
+  RealColumn get balance => real()();
+  RealColumn get initialBalance => real()();
+  TextColumn get type => text().map(const AccountTypesConverter())();
+  BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
+}
+
+@DataClassName('Asset')
+class Assets extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text().unique()();
+  TextColumn get type => text().map(const AssetTypesConverter())();
+  TextColumn get tickerSymbol => text().unique()();
+}
+
+@TableIndex(name: 'bookings_account_id_date', columns: {#accountId, #date})
+@TableIndex(name: 'bookings_reason_date_amount', columns: {#reason, #date, #amount})
 @TableIndex(
-  name: 'index_bookings_date_sending_amount_exclude_standing',
-  columns: {
-    #date,
-    #sendingAccountId,
-    #amount,
-    #excludeFromAverage,
-    #createdByStandingOrder,
-  },
+  name: 'bookings_complex_query',
+  columns: {#date, #accountId, #amount, #excludeFromAverage, #isGenerated},
 )
-@TableIndex(
-  name: 'index_bookings_date_receiving_amount_exclude_standing',
-  columns: {
-    #date,
-    #receivingAccountId,
-    #amount,
-    #excludeFromAverage,
-    #createdByStandingOrder,
-  },
-)
-@TableIndex(
-  name: 'index_bookings_reason_date_amount',
-  columns: {#reason, #date, #amount},
-)
-@TableIndex(
-  name: 'index_bookings_date_sending',
-  columns: {#date, #sendingAccountId},
-)
-@TableIndex(
-  name: 'index_bookings_date_receiving',
-  columns: {#date, #receivingAccountId},
-)
+@DataClassName('Booking')
 class Bookings extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get date => integer()();
   RealColumn get amount => real()();
-  TextColumn get reason => text().nullable()();
-  IntColumn get sendingAccountId => integer().nullable()();
-  IntColumn get receivingAccountId => integer().nullable()();
-  TextColumn get notes => text().nullable()();
-  BoolColumn get excludeFromAverage =>
-      boolean().withDefault(const Constant(false))();
-  BoolColumn get createdByStandingOrder =>
-      boolean().withDefault(const Constant(false))();
-}
-
-class StandingOrders extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  RealColumn get amount => real()();
   TextColumn get reason => text()();
-  IntColumn get sendingAccountId => integer()();
-  IntColumn get receivingAccountId => integer()();
-  IntColumn get nextExecutionDate => integer()();
-  RealColumn get cycleFactor => real()();
+  IntColumn get accountId => integer().references(Accounts, #id)();
   TextColumn get notes => text().nullable()();
+  BoolColumn get excludeFromAverage => boolean().withDefault(const Constant(false))();
+  BoolColumn get isGenerated => boolean()();
 }
 
-@TableIndex(name: 'index_goals_targetDate', columns: {#targetDate})
+@TableIndex(name: 'transfers_sending_account_id_date', columns: {#sendingAccountId, #date})
+@TableIndex(name: 'transfers_receiving_account_id_date', columns: {#receivingAccountId, #date})
+@TableIndex(
+  name: 'transfers_complex_query',
+  columns: {#date, #receivingAccountId, #amount, #isGenerated},
+)
+@DataClassName('Transfer')
+class Transfers extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get date => integer()();
+  RealColumn get amount => real()();
+  IntColumn get sendingAccountId => integer().references(Accounts, #id)();
+  IntColumn get receivingAccountId => integer().references(Accounts, #id)();
+  TextColumn get notes => text().nullable()();
+  BoolColumn get isGenerated => boolean()();
+}
+
+@TableIndex(name: 'trades_asset_id_date', columns: {#assetId, #date})
+@TableIndex(name: 'trades_clearing_account_id_date', columns: {#clearingAccountId, #date})
+@TableIndex(name: 'trades_portfolio_account_id_date', columns: {#portfolioAccountId, #date})
+@DataClassName('Trade')
+class Trades extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get date => integer()();
+  IntColumn get assetId => integer().references(Assets, #id)();
+  TextColumn get type => text().map(const TradeTypesConverter())();
+  RealColumn get movedValue => real()();
+  RealColumn get shares => real()();
+  RealColumn get pricePerShare => real()();
+  RealColumn get profitAndLoss => real()();
+  RealColumn get tradingFee => real()();
+  IntColumn get clearingAccountId => integer().references(Accounts, #id)();
+  IntColumn get portfolioAccountId => integer().references(Accounts, #id)();
+}
+
+@TableIndex(name: 'periodic_bookings_account_id', columns: {#accountId})
+@TableIndex(name: 'periodic_bookings_next_execution_date', columns: {#nextExecutionDate})
+@DataClassName('PeriodicBooking')
+class PeriodicBookings extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get nextExecutionDate => integer()();
+  RealColumn get amount => real()();
+  IntColumn get accountId => integer().references(Accounts, #id)();
+  TextColumn get reason => text()();
+  TextColumn get notes => text().nullable()();
+  TextColumn get cycle => text().map(const CyclesConverter())();
+}
+
+@TableIndex(name: 'periodic_transfers_sending_account_id', columns: {#sendingAccountId})
+@TableIndex(name: 'periodic_transfers_receiving_account_id', columns: {#receivingAccountId})
+@TableIndex(name: 'periodic_transfers_next_execution_date', columns: {#nextExecutionDate})
+@DataClassName('PeriodicTransfer')
+class PeriodicTransfers extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get nextExecutionDate => integer()();
+  RealColumn get amount => real()();
+  IntColumn get sendingAccountId => integer().references(Accounts, #id)();
+  IntColumn get receivingAccountId => integer().references(Accounts, #id)();
+  TextColumn get notes => text().nullable()();
+  TextColumn get cycle => text().map(const CyclesConverter())();
+}
+
+@DataClassName('AssetOnAccount')
+class AssetsOnAccounts extends Table {
+  IntColumn get accountId => integer().references(Accounts, #id)();
+  IntColumn get assetId => integer().references(Assets, #id)();
+  RealColumn get value => real()();
+  RealColumn get sharesOwned => real()();
+  RealColumn get netBuyIn => real()();
+  RealColumn get brokerBuyIn => real()();
+  RealColumn get buyFeeTotal => real()();
+
+  @override
+  Set<Column> get primaryKey => {accountId, assetId};
+}
+
+@TableIndex(name: 'goals_account_id', columns: {#accountId})
+@TableIndex(name: 'goals_target_date', columns: {#targetDate})
+@DataClassName('Goal')
 class Goals extends Table {
   IntColumn get id => integer().autoIncrement()();
+  IntColumn get accountId => integer().nullable().references(Accounts, #id)();
   IntColumn get createdOn => integer()();
   IntColumn get targetDate => integer()();
   RealColumn get targetAmount => real()();

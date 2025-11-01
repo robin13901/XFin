@@ -1,8 +1,9 @@
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
+import 'package:xfin/database/tables.dart';
+import 'package:xfin/l10n/app_localizations.dart';
 
 class AccountForm extends StatefulWidget {
   const AccountForm({super.key});
@@ -15,15 +16,15 @@ class _AccountFormState extends State<AccountForm> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _initialBalanceController;
-  late String _type;
+  late AccountTypes _type;
   late List<String> _existingAccountNames;
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController();
-    _initialBalanceController = TextEditingController(text: '0.0');
-    _type = 'Cash';
+    _initialBalanceController = TextEditingController();
+    _type = AccountTypes.cash;
     _existingAccountNames = [];
 
     final db = Provider.of<AppDatabase>(context, listen: false);
@@ -48,17 +49,15 @@ class _AccountFormState extends State<AccountForm> {
       final db = Provider.of<AppDatabase>(context, listen: false);
 
       final name = _nameController.text.trim();
-      final initialBalance =
-          double.parse(_initialBalanceController.text.replaceAll(',', '.'));
+      final initialBalance = _type == AccountTypes.portfolio
+          ? 0.0
+          : double.parse(_initialBalanceController.text.replaceAll(',', '.'));
 
-      final creationDate =
-          int.parse(DateFormat('yyyyMMdd').format(DateTime.now()));
       final companion = AccountsCompanion(
         name: drift.Value(name),
         balance: drift.Value(initialBalance),
         initialBalance: drift.Value(initialBalance),
         type: drift.Value(_type),
-        creationDate: drift.Value(creationDate),
       );
       await db.accountsDao.addAccount(companion);
 
@@ -68,8 +67,49 @@ class _AccountFormState extends State<AccountForm> {
     }
   }
 
+  String? _validateName(String? value) {
+    final l10n = AppLocalizations.of(context)!;
+    if (value == null || value.isEmpty) {
+      return l10n.pleaseEnterAName;
+    }
+    if (_existingAccountNames.contains(value.trim())) {
+      return l10n.accountAlreadyExists;
+    }
+    return null;
+  }
+
+  String? _validateInitialBalance(String? value) {
+    final l10n = AppLocalizations.of(context)!;
+    if (value == null || value.isEmpty) {
+      return l10n.pleaseEnterABalance;
+    }
+    final sanitizedValue = value.replaceAll(',', '.');
+    final balance = double.tryParse(sanitizedValue);
+    if (balance == null) {
+      return l10n.invalidNumber;
+    }
+    if (balance < 0) {
+      return l10n.initialBalanceCannotBeNegative;
+    }
+    if (sanitizedValue.contains('.') &&
+        sanitizedValue.split('.').last.length > 2) {
+      return l10n.amountTooManyDecimalPlaces;
+    }
+    return null;
+  }
+
+  String _getAccountTypeName(AppLocalizations l10n, AccountTypes type) {
+    switch (type) {
+      case AccountTypes.cash:
+        return l10n.cash;
+      case AccountTypes.portfolio:
+        return l10n.portfolio;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: MediaQuery.of(context).viewInsets,
       child: SingleChildScrollView(
@@ -83,56 +123,25 @@ class _AccountFormState extends State<AccountForm> {
               children: [
                 TextFormField(
                   controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Account Name',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n.accountName,
+                    border: const OutlineInputBorder(),
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter a name';
-                    }
-                    if (_existingAccountNames.contains(value.trim())) {
-                      return 'An account with this name already exists.';
-                    }
-                    return null;
-                  },
+                  validator: _validateName,
                 ),
                 const SizedBox(height: 16),
-                TextFormField(
-                  controller: _initialBalanceController,
-                  decoration: const InputDecoration(
-                    labelText: 'Initial Balance',
-                    border: OutlineInputBorder(),
-                    suffixText: '€',
-                  ),
-                  keyboardType: const TextInputType.numberWithOptions(
-                      signed: true, decimal: true),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter a balance';
-                    }
-                    final balance =
-                        double.tryParse(value.replaceAll(',', '.'));
-                    if (balance == null) {
-                      return 'Invalid number';
-                    }
-                    if (balance < 0) {
-                      return 'Initial balance cannot be negative.';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
+                DropdownButtonFormField<AccountTypes>(
                   initialValue: _type,
-                  decoration: const InputDecoration(
-                    labelText: 'Type',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n.type,
+                    border: const OutlineInputBorder(),
                   ),
-                  items: const [
-                    DropdownMenuItem(value: 'Cash', child: Text('Cash')),
-                    DropdownMenuItem(value: 'Bank', child: Text('Bank')),
-                  ],
+                  items: AccountTypes.values.map((type) {
+                    return DropdownMenuItem(
+                      value: type,
+                      child: Text(_getAccountTypeName(l10n, type)),
+                    );
+                  }).toList(),
                   onChanged: (value) {
                     if (value != null) {
                       setState(() {
@@ -141,18 +150,32 @@ class _AccountFormState extends State<AccountForm> {
                     }
                   },
                 ),
+                if (_type == AccountTypes.cash) ...[
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _initialBalanceController,
+                    decoration: InputDecoration(
+                      labelText: l10n.initialBalance,
+                      border: const OutlineInputBorder(),
+                      suffixText: '€',
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(
+                        signed: true, decimal: true),
+                    validator: _validateInitialBalance,
+                  ),
+                ],
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Cancel'),
+                      child: Text(l10n.cancel),
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton(
                       onPressed: _saveForm,
-                      child: const Text('Save'),
+                      child: Text(l10n.save),
                     ),
                   ],
                 ),

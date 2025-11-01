@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
-import 'package:xfin/database/bookings_dao.dart';
+import 'package:xfin/database/daos/bookings_dao.dart';
 
 class DeleteBookingDialog extends StatelessWidget {
-  final BookingWithAccounts bookingWithAccounts;
+  final BookingWithAccount bookingWithAccounts;
 
   const DeleteBookingDialog({super.key, required this.bookingWithAccounts});
 
@@ -22,26 +22,17 @@ class DeleteBookingDialog extends StatelessWidget {
     final month = DateFormat('MMM', 'de_DE').format(date);
     final year = DateFormat('yyyy').format(date);
 
-    String accountFlowText;
-    Color amountColor;
-
-    final isTransfer = booking.sendingAccountId != null;
-    if (isTransfer) {
-      accountFlowText = '${bookingWithAccounts.sendingAccount!.name} → ${bookingWithAccounts.receivingAccount!.name}';
-      amountColor = Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black;
-    } else {
-      accountFlowText = bookingWithAccounts.receivingAccount?.name ?? 'Unknown Account';
-      amountColor = booking.amount < 0 ? Colors.red : Colors.green;
-    }
+    String accountName = bookingWithAccounts.account?.name ?? 'Unknown Account';
+    Color amountColor = booking.amount < 0 ? Colors.red : Colors.green;
 
     return AlertDialog(
       title: const Text(
           'Willst du diesen Eintrag wirklich löschen?',
         textScaler: TextScaler.linear(0.8),
       ),
-      contentPadding: EdgeInsets.all(2),
+      contentPadding: const EdgeInsets.all(2),
       content: Card(
-        margin: EdgeInsets.all(16.0),
+        margin: const EdgeInsets.all(16.0),
         child: Padding(
           padding: const EdgeInsets.all(8.0),
           child: Row(
@@ -51,15 +42,15 @@ class DeleteBookingDialog extends StatelessWidget {
                 children: [
                   Text(
                     day,
-                    textScaler: TextScaler.linear(0.8)
+                    textScaler: const TextScaler.linear(0.8)
                   ),
                   Text(
                       month,
-                      textScaler: TextScaler.linear(0.8)
+                      textScaler: const TextScaler.linear(0.8)
                   ),
                   Text(
                       year,
-                      textScaler: TextScaler.linear(0.8)
+                      textScaler: const TextScaler.linear(0.8)
                   )
                 ],
               ),
@@ -69,8 +60,8 @@ class DeleteBookingDialog extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(booking.reason ?? 'Überweisung', style: Theme.of(context).textTheme.titleMedium),
-                    Text(accountFlowText, style: Theme.of(context).textTheme.bodySmall),
+                    Text(booking.reason, style: Theme.of(context).textTheme.titleMedium),
+                    Text(accountName, style: Theme.of(context).textTheme.bodySmall),
                   ],
                 ),
               ),
@@ -90,7 +81,7 @@ class DeleteBookingDialog extends StatelessWidget {
         ),
         FilledButton.tonal(
           onPressed: () async {
-            await db.bookingsDao.deleteBookingWithBalance(booking.id);
+            await db.bookingsDao.deleteBookingAndUpdateAccount(booking.id);
             if (context.mounted) {
               Navigator.of(context).pop(); // Close the dialog
             }

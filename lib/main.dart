@@ -4,11 +4,14 @@ import 'package:oktoast/oktoast.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/connection/connection.dart' as connection;
+import 'package:xfin/providers/language_provider.dart';
 import 'package:xfin/providers/theme_provider.dart';
 import 'package:xfin/screens/accounts_screen.dart';
 import 'package:xfin/screens/analysis_screen.dart';
 import 'package:xfin/screens/bookings_screen.dart';
 import 'package:xfin/screens/more_screen.dart';
+import 'package:xfin/l10n/app_localizations.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,6 +22,9 @@ void main() async {
   final themeProvider = ThemeProvider();
   await themeProvider.loadTheme();
 
+  final languageProvider = LanguageProvider();
+  await languageProvider.loadLocale();
+
   runApp(
     MultiProvider(
       providers: [
@@ -27,6 +33,7 @@ void main() async {
           dispose: (_, db) => db.close(),
         ),
         ChangeNotifierProvider.value(value: themeProvider),
+        ChangeNotifierProvider.value(value: languageProvider),
       ],
       child: const MyApp(),
     ),
@@ -38,8 +45,8 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<ThemeProvider>(
-      builder: (context, themeProvider, child) {
+    return Consumer2<ThemeProvider, LanguageProvider>(
+      builder: (context, themeProvider, languageProvider, child) {
         return MaterialApp(
           title: 'XFin',
           theme: ThemeData(
@@ -51,6 +58,17 @@ class MyApp extends StatelessWidget {
             useMaterial3: true,
           ),
           themeMode: themeProvider.themeMode,
+          locale: languageProvider.appLocale,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: const [
+            Locale('en', ''), // English, no country code
+            Locale('de', ''), // German, no country code
+          ],
           home: const MainScreen(),
           builder: (context, child) => OKToast(child: child!),
         );
@@ -84,27 +102,28 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       body: Center(
         child: _widgetOptions.elementAt(_selectedIndex),
       ),
       bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
+        items: <BottomNavigationBarItem>[
           BottomNavigationBarItem(
-            icon: Icon(Icons.analytics),
-            label: 'Analysis',
+            icon: const Icon(Icons.analytics),
+            label: l10n.analysis,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.account_balance_wallet),
-            label: 'Accounts',
+            icon: const Icon(Icons.account_balance_wallet),
+            label: l10n.accounts,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.book),
-            label: 'Bookings',
+            icon: const Icon(Icons.book),
+            label: l10n.bookings,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.more_horiz),
-            label: 'More',
+            icon: const Icon(Icons.more_horiz),
+            label: l10n.more,
           ),
         ],
         currentIndex: _selectedIndex,

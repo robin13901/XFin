@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/screens/settings_screen.dart';
 
 class MoreScreen extends StatelessWidget {
@@ -6,9 +7,10 @@ class MoreScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mehr'),
+        title: Text(l10n.more),
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -32,12 +34,12 @@ class MoreScreen extends StatelessWidget {
                               MaterialPageRoute(builder: (context) => const SettingsScreen()),
                             );
                           },
-                          child: const Column(
+                          child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.settings, size: 32),
-                              SizedBox(height: 8),
-                              Text('Einstellungen'),
+                              const Icon(Icons.settings, size: 32),
+                              const SizedBox(height: 8),
+                              Text(l10n.settings),
                             ],
                           ),
                         ),

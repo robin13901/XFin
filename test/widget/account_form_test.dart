@@ -1,17 +1,22 @@
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
+import 'package:xfin/database/tables.dart';
+import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/widgets/account_form.dart';
 
 void main() {
   late AppDatabase database;
+  late AppLocalizations l10n;
 
-  setUp(() {
+  setUp(() async {
     database = AppDatabase(NativeDatabase.memory());
+    const locale = Locale('en');
+    l10n = await AppLocalizations.delegate.load(locale);
   });
 
   tearDown(() async {
@@ -21,154 +26,200 @@ void main() {
   Future<void> pumpWidget(WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Provider<AppDatabase>(
           create: (_) => database,
-          child: const Scaffold(body: AccountForm()),
+          child: Builder(builder: (context) {
+            return Scaffold(
+              body: Center(
+                child: ElevatedButton(
+                  child: const Text('Show Form'),
+                  onPressed: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      builder: (_) => Provider<AppDatabase>.value(
+                        value: database,
+                        child: const AccountForm(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            );
+          }),
         ),
       ),
     );
+
+    await tester.tap(find.text('Show Form'));
+    await tester.pumpAndSettle();
   }
 
-  // Helper to find a text field by its label
   Finder findTextFieldByLabel(String label) {
     return find.byWidgetPredicate(
       (widget) => widget is TextField && widget.decoration?.labelText == label,
     );
   }
 
-  // Helper to find a dropdown by its label
-  Finder findDropdownFieldByLabel(String label) {
-    return find.byWidgetPredicate(
-      (widget) => widget is DropdownButtonFormField<String> && widget.decoration.labelText == label,
-    );
-  }
+  group('AccountForm', () {
+    testWidgets('Submitting a cash account saves correct data',
+        (tester) => tester.runAsync(() async {
+              await pumpWidget(tester);
 
-  testWidgets('New account form submits with correct data', (tester) => tester.runAsync(() async {
-    await pumpWidget(tester);
-    await tester.pumpAndSettle(); // Wait for async operations in initState
+              await tester.enterText(
+                  findTextFieldByLabel(l10n.accountName), 'Cash Account');
+              await tester.enterText(
+                  findTextFieldByLabel(l10n.initialBalance), '150.50');
+              await tester.tap(find.text(l10n.save));
+              await tester.pumpAndSettle();
 
-    // Enter data into the form
-    await tester.enterText(findTextFieldByLabel('Account Name'), 'Test Account');
-    await tester.enterText(findTextFieldByLabel('Initial Balance'), '150.50');
+              final account = await (database.select(database.accounts)
+                    ..where((a) => a.name.equals('Cash Account')))
+                  .getSingle();
+              expect(account.balance, 150.50);
+              expect(account.initialBalance, 150.50);
+              expect(account.type, AccountTypes.cash);
+            }));
 
-    // Save the form
-    await tester.tap(find.text('Save'));
-    await tester.pumpAndSettle();
+    testWidgets('Submitting a portfolio account saves correct data',
+        (tester) => tester.runAsync(() async {
+              await pumpWidget(tester);
 
-    // Verify the data was saved correctly
-    final account = await (database.select(database.accounts)..where((a) => a.id.equals(1))).getSingle();
-    expect(account.name, 'Test Account');
-    expect(account.balance, 150.50);
-    expect(account.initialBalance, 150.50);
-    expect(account.type, 'Cash');
-    final expectedDate = int.parse(DateFormat('yyyyMMdd').format(DateTime.now()));
-    expect(account.creationDate, expectedDate);
-  }));
+              await tester.enterText(findTextFieldByLabel(l10n.accountName),
+                  'Portfolio Account');
+              await tester.tap(find.byType(DropdownButtonFormField<AccountTypes>));
+              await tester.pumpAndSettle();
+              await tester.tap(find.text(l10n.portfolio).last);
+              await tester.pumpAndSettle();
 
-  group('AccountForm validation', () {
-    testWidgets('shows error when name is empty', (tester) => tester.runAsync(() async {
-      await pumpWidget(tester);
-      await tester.pumpAndSettle();
+              await tester.tap(find.text(l10n.save));
+              await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Save'));
-      await tester.pump(); // a single frame for validation message
+              final account = await (database.select(database.accounts)
+                    ..where((a) => a.name.equals('Portfolio Account')))
+                  .getSingle();
+              expect(account.balance, 0.0);
+              expect(account.initialBalance, 0.0);
+              expect(account.type, AccountTypes.portfolio);
+            }));
 
-      expect(find.text('Please enter a name'), findsOneWidget);
-    }));
+    testWidgets('Balance field is hidden for portfolio accounts',
+        (tester) => tester.runAsync(() async {
+              await pumpWidget(tester);
 
-    testWidgets('shows error when name is not unique', (tester) => tester.runAsync(() async {
-      await database.accountsDao.addAccount(const AccountsCompanion(
-        name: Value('Existing Account'),
-        balance: Value(100),
-        initialBalance: Value(100),
-        type: Value('Cash'),
-        creationDate: Value(20230101)
-      ));
+              await tester.enterText(
+                  findTextFieldByLabel(l10n.accountName), 'Portfolio Account');
+              await tester.tap(find.byType(DropdownButtonFormField<AccountTypes>));
+              await tester.pumpAndSettle();
+              await tester.tap(find.text(l10n.portfolio).last);
+              await tester.pumpAndSettle();
 
-      await pumpWidget(tester);
-      await tester.pumpAndSettle();
+              expect(findTextFieldByLabel(l10n.initialBalance), findsNothing);
+            }));
 
-      await tester.enterText(findTextFieldByLabel('Account Name'), 'Existing Account');
-      await tester.tap(find.text('Save'));
-      await tester.pump();
+    testWidgets('Cancel button pops the form', (tester) => tester.runAsync(() async {
+          await pumpWidget(tester);
 
-      expect(find.text('An account with this name already exists.'), findsOneWidget);
-    }));
+          expect(find.byType(AccountForm), findsOneWidget);
 
-    testWidgets('shows error when initial balance is empty', (tester) => tester.runAsync(() async {
-      await pumpWidget(tester);
-       await tester.pumpAndSettle();
+          await tester.tap(find.text(l10n.cancel));
+          await tester.pumpAndSettle();
 
-      await tester.enterText(findTextFieldByLabel('Account Name'), 'My Account');
-      await tester.enterText(findTextFieldByLabel('Initial Balance'), '');
-      await tester.tap(find.text('Save'));
-      await tester.pump();
+          expect(find.byType(AccountForm), findsNothing);
+        }));
 
-      expect(find.text('Please enter a balance'), findsOneWidget);
-    }));
-    
-    testWidgets('shows error when initial balance is not a number', (tester) => tester.runAsync(() async {
-      await pumpWidget(tester);
-       await tester.pumpAndSettle();
+    group('Validation', () {
+      testWidgets('Shows error for empty name', (tester) => tester.runAsync(() async {
+            await pumpWidget(tester);
 
-      await tester.enterText(findTextFieldByLabel('Account Name'), 'My Account');
-      await tester.enterText(findTextFieldByLabel('Initial Balance'), 'abc');
-      await tester.tap(find.text('Save'));
-      await tester.pump();
+            await tester.tap(find.text(l10n.save));
+            await tester.pump();
 
-      expect(find.text('Invalid number'), findsOneWidget);
-    }));
+            expect(find.text(l10n.pleaseEnterAName), findsOneWidget);
+          }));
 
-    testWidgets('shows error when initial balance is negative', (tester) => tester.runAsync(() async {
-      await pumpWidget(tester);
-      await tester.pumpAndSettle();
+      testWidgets('Shows error for duplicate name',
+          (tester) => tester.runAsync(() async {
+                await database.into(database.accounts).insert(const AccountsCompanion(
+                    name: Value('Existing Account'),
+                    balance: Value(100),
+                    initialBalance: Value(100),
+                    type: Value(AccountTypes.cash)));
 
-      await tester.enterText(findTextFieldByLabel('Account Name'), 'My Account');
-      await tester.enterText(findTextFieldByLabel('Initial Balance'), '-50');
-      await tester.tap(find.text('Save'));
-      await tester.pump();
+                await pumpWidget(tester);
 
-      expect(find.text('Initial balance cannot be negative.'), findsOneWidget);
-    }));
+                await tester.enterText(findTextFieldByLabel(l10n.accountName),
+                    'Existing Account');
+                await tester.tap(find.text(l10n.save));
+                await tester.pump();
 
-    testWidgets('dropdown selection updates account type', (tester) => tester.runAsync(() async {
-      await pumpWidget(tester);
-      await tester.pumpAndSettle();
+                expect(find.text(l10n.accountAlreadyExists), findsOneWidget);
+              }));
 
-      // Tap on the dropdown to open it
-      await tester.tap(findDropdownFieldByLabel('Type'));
-      await tester.pumpAndSettle();
+      testWidgets('Shows error for empty balance on cash account',
+          (tester) => tester.runAsync(() async {
+                await pumpWidget(tester);
 
-      // Tap on 'Bank' to select it
-      await tester.tap(find.text('Bank').last); // Use .last if multiple 'Bank' texts exist
-      await tester.pumpAndSettle();
+                await tester.enterText(
+                    findTextFieldByLabel(l10n.accountName), 'My Account');
+                await tester.enterText(
+                    findTextFieldByLabel(l10n.initialBalance), '');
+                await tester.tap(find.text(l10n.save));
+                await tester.pump();
 
-      // Enter data for other fields
-      await tester.enterText(findTextFieldByLabel('Account Name'), 'Bank Account');
-      await tester.enterText(findTextFieldByLabel('Initial Balance'), '200.00');
+                expect(find.text(l10n.pleaseEnterABalance), findsOneWidget);
+              }));
 
-      // Save the form
-      await tester.tap(find.text('Save'));
-      await tester.pumpAndSettle();
+      testWidgets('Shows error for invalid balance',
+          (tester) => tester.runAsync(() async {
+                await pumpWidget(tester);
 
-      // Verify the data was saved correctly with the updated type
-      final account = await (database.select(database.accounts)..where((a) => a.name.equals('Bank Account'))).getSingle();
-      expect(account.type, 'Bank');
-    }));
+                await tester.enterText(
+                    findTextFieldByLabel(l10n.accountName), 'My Account');
+                await tester.enterText(
+                    findTextFieldByLabel(l10n.initialBalance), 'abc');
+                await tester.tap(find.text(l10n.save));
+                await tester.pump();
 
-    testWidgets('cancel button pops the form', (tester) => tester.runAsync(() async {
-      await pumpWidget(tester);
-      await tester.pumpAndSettle();
+                expect(find.text(l10n.invalidNumber), findsOneWidget);
+              }));
 
-      // Verify the form is present
-      expect(find.byType(AccountForm), findsOneWidget);
+      testWidgets('Shows error for negative balance',
+          (tester) => tester.runAsync(() async {
+                await pumpWidget(tester);
 
-      // Tap the cancel button
-      await tester.tap(find.text('Cancel'));
-      await tester.pumpAndSettle();
+                await tester.enterText(
+                    findTextFieldByLabel(l10n.accountName), 'My Account');
+                await tester.enterText(
+                    findTextFieldByLabel(l10n.initialBalance), '-50');
+                await tester.tap(find.text(l10n.save));
+                await tester.pump();
 
-      // Verify the form is no longer present
-      expect(find.byType(AccountForm), findsNothing);
-    }));
+                expect(
+                    find.text(l10n.initialBalanceCannotBeNegative), findsOneWidget);
+              }));
+
+      testWidgets('Shows error for too many decimal places',
+          (tester) => tester.runAsync(() async {
+                await pumpWidget(tester);
+
+                await tester.enterText(
+                    findTextFieldByLabel(l10n.accountName), 'My Account');
+                await tester.enterText(
+                    findTextFieldByLabel(l10n.initialBalance), '10.123');
+                await tester.tap(find.text(l10n.save));
+                await tester.pump();
+
+                expect(
+                    find.text(l10n.amountTooManyDecimalPlaces), findsOneWidget);
+              }));
+    });
   });
 }

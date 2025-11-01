@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
-import 'package:xfin/database/bookings_dao.dart';
+import 'package:xfin/database/daos/bookings_dao.dart';
 import 'package:xfin/widgets/booking_form.dart';
 import 'package:xfin/widgets/delete_booking_dialog.dart';
 
@@ -17,7 +17,7 @@ class BookingsScreen extends StatelessWidget {
     );
   }
 
-  void _showDeleteDialog(BuildContext context, BookingWithAccounts bookingWithAccounts) {
+  void _showDeleteDialog(BuildContext context, BookingWithAccount bookingWithAccounts) {
     showDialog(
       context: context,
       builder: (_) => DeleteBookingDialog(bookingWithAccounts: bookingWithAccounts),
@@ -32,8 +32,8 @@ class BookingsScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Bookings'),
       ),
-      body: StreamBuilder<List<BookingWithAccounts>>(
-        stream: db.bookingsDao.watchBookingsWithAccounts(),
+      body: StreamBuilder<List<BookingWithAccount>>(
+        stream: db.bookingsDao.watchBookingsWithAccount(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -55,18 +55,7 @@ class BookingsScreen extends StatelessWidget {
               final item = bookingsWithAccounts[index];
               final booking = item.booking;
 
-              String accountFlowText;
-              Color amountColor;
-
-              final isTransfer = booking.sendingAccountId != null;
-
-              if (isTransfer) {
-                accountFlowText = '${item.sendingAccount!.name} → ${item.receivingAccount!.name}';
-                amountColor = Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black;
-              } else {
-                accountFlowText = item.receivingAccount?.name ?? 'Unknown Account';
-                amountColor = booking.amount < 0 ? Colors.red : Colors.green;
-              }
+              Color amountColor = booking.amount < 0 ? Colors.red : Colors.green;
 
               final dateString = booking.date.toString();
               final date = DateTime.parse(
@@ -74,8 +63,8 @@ class BookingsScreen extends StatelessWidget {
               final dateText = dateFormat.format(date);
 
               return ListTile(
-                title: Text(booking.reason ?? 'Überweisung'),
-                subtitle: Text(accountFlowText),
+                title: Text(booking.reason),
+                subtitle: Text(item.account?.name ?? 'Unknown Account'),
                 trailing: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.end,
