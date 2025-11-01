@@ -48,6 +48,9 @@ class BookingsDao extends DatabaseAccessor<AppDatabase> with _$BookingsDaoMixin 
       leftOuterJoin(accounts, accounts.id.equalsExp(bookings.accountId))
     ]);
 
+    // Only show bookings from non-archived accounts, or where the account has been deleted.
+    query.where(accounts.isArchived.equals(false) | accounts.id.isNull());
+
     query.orderBy([
       OrderingTerm.desc(bookings.date),
       OrderingTerm.desc(bookings.amount),
@@ -65,14 +68,15 @@ class BookingsDao extends DatabaseAccessor<AppDatabase> with _$BookingsDaoMixin 
 
   Future<Booking?> findMergeableBooking(BookingsCompanion newBooking) async {
     final newAmount = newBooking.amount.value;
-    final query = select(bookings)..where((tbl) =>
-      tbl.date.equals(newBooking.date.value) &
-      tbl.reason.equals(newBooking.reason.value) &
-      tbl.accountId.equals(newBooking.accountId.value) &
-      tbl.excludeFromAverage.equals(newBooking.excludeFromAverage.value) &
-      tbl.notes.isNull() &
-      ((tbl.amount.isBiggerThanValue(0) & Constant(newAmount > 0)) |
-      (tbl.amount.isSmallerThanValue(0) & Constant(newAmount < 0))));
+    final query = select(bookings)
+      ..where((tbl) =>
+          tbl.date.equals(newBooking.date.value) &
+          tbl.reason.equals(newBooking.reason.value) &
+          tbl.accountId.equals(newBooking.accountId.value) &
+          tbl.excludeFromAverage.equals(newBooking.excludeFromAverage.value) &
+          tbl.notes.isNull() &
+          ((tbl.amount.isBiggerThanValue(0) & Constant(newAmount > 0)) |
+              (tbl.amount.isSmallerThanValue(0) & Constant(newAmount < 0))));
     try {
       return await query.getSingle();
     } catch (e) {
@@ -85,7 +89,6 @@ class BookingsDao extends DatabaseAccessor<AppDatabase> with _$BookingsDaoMixin 
   Future<bool> _updateBooking(BookingsCompanion entry) => update(bookings).replace(entry);
   Future<int> _deleteBooking(int id) => (delete(bookings)..where((tbl) => tbl.id.equals(id))).go();
   Future<Booking> getBooking(int id) => (select(bookings)..where((tbl) => tbl.id.equals(id))).getSingle();
-
 
   // Transactional methods for booking manipulation
   Future<void> createBookingAndUpdateAccount(BookingsCompanion entry) {

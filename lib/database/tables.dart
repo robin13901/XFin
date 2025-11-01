@@ -104,7 +104,9 @@ class Transfers extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get date => integer()();
   RealColumn get amount => real()();
+  @ReferenceName('SendingTransfers')
   IntColumn get sendingAccountId => integer().references(Accounts, #id)();
+  @ReferenceName('ReceivingTransfers')
   IntColumn get receivingAccountId => integer().references(Accounts, #id)();
   TextColumn get notes => text().nullable()();
   BoolColumn get isGenerated => boolean()();
@@ -124,7 +126,9 @@ class Trades extends Table {
   RealColumn get pricePerShare => real()();
   RealColumn get profitAndLoss => real()();
   RealColumn get tradingFee => real()();
+  @ReferenceName('ClearingTrades')
   IntColumn get clearingAccountId => integer().references(Accounts, #id)();
+  @ReferenceName('PortfolioTrades')
   IntColumn get portfolioAccountId => integer().references(Accounts, #id)();
 }
 
@@ -149,7 +153,9 @@ class PeriodicTransfers extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get nextExecutionDate => integer()();
   RealColumn get amount => real()();
+  @ReferenceName('SendingPeriodicTransfers')
   IntColumn get sendingAccountId => integer().references(Accounts, #id)();
+  @ReferenceName('ReceivingPeriodicTransfers')
   IntColumn get receivingAccountId => integer().references(Accounts, #id)();
   TextColumn get notes => text().nullable()();
   TextColumn get cycle => text().map(const CyclesConverter())();
