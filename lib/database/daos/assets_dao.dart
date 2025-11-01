@@ -12,4 +12,8 @@ class AssetsDao extends DatabaseAccessor<AppDatabase> with _$AssetsDaoMixin {
     // name and tickerSymbol are checked by unique constraint in the table definition.
     // type is checked by the type converter.
   }
+
+  Future<int> addAsset(AssetsCompanion entry) => into(assets).insert(entry);
+
+  Future<Asset> getAsset(int id) => (select(assets)..where((a) => a.id.equals(id))).getSingle();
 }

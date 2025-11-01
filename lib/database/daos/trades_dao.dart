@@ -57,4 +57,70 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
       throw Exception('Portfolio account must be of type portfolio.');
     }
   }
+
+  Future<int> _addTrade(TradesCompanion entry) => into(trades).insert(entry);
+
+  Future<int> _deleteTrade(int id) => (delete(trades)..where((tbl) => tbl.id.equals(id))).go();
+
+  Future<Trade> getTrade(int id) => (select(trades)..where((tbl) => tbl.id.equals(id))).getSingle();
+
+  Future<int> createTradeAndUpdateAccounts(TradesCompanion entry) {
+    return transaction(() async {
+      final tradeId = await _addTrade(entry);
+      final trade = await getTrade(tradeId);
+      final isBuy = trade.type == TradeTypes.buy;
+
+      await db.accountsDao.updateBalance(trade.clearingAccountId, isBuy ? -trade.movedValue : trade.movedValue);
+      await db.accountsDao.updateBalance(trade.clearingAccountId, trade.tradingFee);
+
+      final assetOnAccount = await db.assetsOnAccountsDao.getAssetOnAccount(trade.portfolioAccountId, trade.assetId);
+      final newShares = assetOnAccount.sharesOwned + (isBuy ? trade.shares : -trade.shares);
+      final newBrokerBuyIn = assetOnAccount.brokerBuyIn + (isBuy ? trade.movedValue : 0);
+      final newNetBuyIn = newBrokerBuyIn / newShares;
+      final newBuyFeeTotal = assetOnAccount.buyFeeTotal + (isBuy ? trade.tradingFee.abs() : 0);
+      final newValue = newShares * trade.pricePerShare;
+
+      final updatedAssetOnAccount = AssetsOnAccountsCompanion(
+        accountId: Value(trade.portfolioAccountId),
+        assetId: Value(trade.assetId),
+        sharesOwned: Value(newShares),
+        brokerBuyIn: Value(newBrokerBuyIn),
+        netBuyIn: Value(newNetBuyIn),
+        buyFeeTotal: Value(newBuyFeeTotal),
+        value: Value(newValue),
+      );
+      await db.assetsOnAccountsDao.updateAssetsOnAccount(updatedAssetOnAccount);
+
+      return tradeId;
+    });
+  }
+
+  Future<void> deleteTradeAndUpdateAccounts(int id) {
+    return transaction(() async {
+      final trade = await getTrade(id);
+      await _deleteTrade(id);
+      final isBuy = trade.type == TradeTypes.buy;
+
+      await db.accountsDao.updateBalance(trade.clearingAccountId, isBuy ? trade.movedValue : -trade.movedValue);
+      await db.accountsDao.updateBalance(trade.clearingAccountId, -trade.tradingFee);
+
+      final assetOnAccount = await db.assetsOnAccountsDao.getAssetOnAccount(trade.portfolioAccountId, trade.assetId);
+      final newShares = assetOnAccount.sharesOwned - (isBuy ? trade.shares : -trade.shares);
+      final newBrokerBuyIn = assetOnAccount.brokerBuyIn - (isBuy ? trade.movedValue : 0.0);
+      final newNetBuyIn = newShares == 0 ? 0.0 : newBrokerBuyIn / newShares;
+      final newBuyFeeTotal = assetOnAccount.buyFeeTotal - (isBuy ? trade.tradingFee.abs() : 0.0);
+      final newValue = newShares * trade.pricePerShare;
+
+      final updatedAssetOnAccount = AssetsOnAccountsCompanion(
+        accountId: Value(trade.portfolioAccountId),
+        assetId: Value(trade.assetId),
+        sharesOwned: Value(newShares),
+        brokerBuyIn: Value(newBrokerBuyIn),
+        netBuyIn: Value(newNetBuyIn),
+        buyFeeTotal: Value(newBuyFeeTotal),
+        value: Value(newValue),
+      );
+      await db.assetsOnAccountsDao.updateAssetsOnAccount(updatedAssetOnAccount);
+    });
+  }
 }

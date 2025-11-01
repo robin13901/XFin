@@ -48,4 +48,29 @@ class TransfersDao extends DatabaseAccessor<AppDatabase> with _$TransfersDaoMixi
       throw Exception('Receiving account must be of type cash.');
     }
   }
+
+  Future<int> _addTransfer(TransfersCompanion entry) => into(transfers).insert(entry);
+
+  Future<int> _deleteTransfer(int id) => (delete(transfers)..where((tbl) => tbl.id.equals(id))).go();
+
+  Future<Transfer> getTransfer(int id) => (select(transfers)..where((tbl) => tbl.id.equals(id))).getSingle();
+
+  Future<int> createTransferAndUpdateAccounts(TransfersCompanion entry) {
+    return transaction(() async {
+      final transferId = await _addTransfer(entry);
+      final amount = entry.amount.value;
+      await db.accountsDao.updateBalance(entry.sendingAccountId.value, -amount);
+      await db.accountsDao.updateBalance(entry.receivingAccountId.value, amount);
+      return transferId;
+    });
+  }
+
+  Future<void> deleteTransferAndUpdateAccounts(int id) {
+    return transaction(() async {
+      final transfer = await getTransfer(id);
+      await _deleteTransfer(id);
+      await db.accountsDao.updateBalance(transfer.sendingAccountId, transfer.amount);
+      await db.accountsDao.updateBalance(transfer.receivingAccountId, -transfer.amount);
+    });
+  }
 }

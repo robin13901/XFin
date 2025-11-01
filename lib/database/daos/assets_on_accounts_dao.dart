@@ -30,4 +30,14 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase> with _$AssetsOnA
       throw Exception('Account must be of type portfolio.');
     }
   }
+
+  Future<void> updateAssetsOnAccount(AssetsOnAccountsCompanion entry) {
+    return into(assetsOnAccounts).insertOnConflictUpdate(entry);
+  }
+
+  Future<AssetOnAccount> getAssetOnAccount(int accountId, int assetId) {
+    return (select(assetsOnAccounts)
+          ..where((a) => a.accountId.equals(accountId) & a.assetId.equals(assetId)))
+        .getSingle();
+  }
 }
