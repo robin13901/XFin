@@ -451,6 +451,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delete'**
   String get delete;
+
+  /// No description provided for @assets.
+  ///
+  /// In en, this message translates to:
+  /// **'Assets'**
+  String get assets;
+
+  /// No description provided for @noAssets.
+  ///
+  /// In en, this message translates to:
+  /// **'No assets yet. Tap + to add one!'**
+  String get noAssets;
+
+  /// No description provided for @cannotDeleteAsset.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot Delete Asset'**
+  String get cannotDeleteAsset;
+
+  /// No description provided for @assetHasReferences.
+  ///
+  /// In en, this message translates to:
+  /// **'This asset has references and cannot be deleted.'**
+  String get assetHasReferences;
+
+  /// No description provided for @deleteAsset.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Asset'**
+  String get deleteAsset;
+
+  /// No description provided for @confirmDeleteAsset.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this asset?'**
+  String get confirmDeleteAsset;
+
+  /// No description provided for @assetName.
+  ///
+  /// In en, this message translates to:
+  /// **'Asset Name'**
+  String get assetName;
+
+  /// No description provided for @pleaseEnterAssetName.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter an asset name'**
+  String get pleaseEnterAssetName;
+
+  /// No description provided for @assetAlreadyExists.
+  ///
+  /// In en, this message translates to:
+  /// **'An asset with this name already exists'**
+  String get assetAlreadyExists;
+
+  /// No description provided for @tickerSymbol.
+  ///
+  /// In en, this message translates to:
+  /// **'Ticker Symbol'**
+  String get tickerSymbol;
+
+  /// No description provided for @pleaseEnterATickerSymbol.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a ticker symbol'**
+  String get pleaseEnterATickerSymbol;
+
+  /// No description provided for @tickerSymbolAlreadyExists.
+  ///
+  /// In en, this message translates to:
+  /// **'An asset with this ticker symbol already exists'**
+  String get tickerSymbolAlreadyExists;
+
+  /// No description provided for @stock.
+  ///
+  /// In en, this message translates to:
+  /// **'Stock'**
+  String get stock;
+
+  /// No description provided for @crypto.
+  ///
+  /// In en, this message translates to:
+  /// **'Crypto'**
+  String get crypto;
+
+  /// No description provided for @currency.
+  ///
+  /// In en, this message translates to:
+  /// **'Currency'**
+  String get currency;
+
+  /// No description provided for @commodity.
+  ///
+  /// In en, this message translates to:
+  /// **'Commodity'**
+  String get commodity;
+
+  /// No description provided for @value.
+  ///
+  /// In en, this message translates to:
+  /// **'Value'**
+  String get value;
+
+  /// No description provided for @sharesOwned.
+  ///
+  /// In en, this message translates to:
+  /// **'Shares'**
+  String get sharesOwned;
+
+  /// No description provided for @netBuyIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Net Buy In'**
+  String get netBuyIn;
+
+  /// No description provided for @update.
+  ///
+  /// In en, this message translates to:
+  /// **'Update'**
+  String get update;
+
+  /// No description provided for @ok.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get ok;
 }
 
 class _AppLocalizationsDelegate

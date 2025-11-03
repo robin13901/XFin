@@ -198,4 +198,72 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get delete => 'Löschen';
+
+  @override
+  String get assets => 'Assets';
+
+  @override
+  String get noAssets =>
+      'Noch keine Assets vorhanden. Tippe auf +, um eins hinzuzufügen!';
+
+  @override
+  String get cannotDeleteAsset => 'Asset kann nicht gelöscht werden';
+
+  @override
+  String get assetHasReferences =>
+      'Dieses Asset hat Referenzen und kann nicht gelöscht werden.';
+
+  @override
+  String get deleteAsset => 'Asset löschen';
+
+  @override
+  String get confirmDeleteAsset =>
+      'Sind Sie sicher, dass Sie dieses Asset löschen möchten?';
+
+  @override
+  String get assetName => 'Asset Name';
+
+  @override
+  String get pleaseEnterAssetName => 'Bitte geben Sie einen Asset-Namen ein';
+
+  @override
+  String get assetAlreadyExists =>
+      'Ein Asset mit diesem Namen existiert bereits';
+
+  @override
+  String get tickerSymbol => 'Tickersymbol';
+
+  @override
+  String get pleaseEnterATickerSymbol => 'Bitte geben Sie ein Tickersymbol ein';
+
+  @override
+  String get tickerSymbolAlreadyExists =>
+      'Ein Asset mit diesem Tickersymbol existiert bereits';
+
+  @override
+  String get stock => 'Aktie';
+
+  @override
+  String get crypto => 'Krypto';
+
+  @override
+  String get currency => 'Währung';
+
+  @override
+  String get commodity => 'Rohstoff';
+
+  @override
+  String get value => 'Wert';
+
+  @override
+  String get sharesOwned => 'Anteile';
+
+  @override
+  String get netBuyIn => 'Buy-In';
+
+  @override
+  String get update => 'Aktualisieren';
+
+  @override
+  String get ok => 'OK';
 }

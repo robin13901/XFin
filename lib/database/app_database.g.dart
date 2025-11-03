@@ -381,8 +381,57 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, Asset> {
       type: DriftSqlType.string,
       requiredDuringInsert: true,
       defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'));
+  static const VerificationMeta _valueMeta = const VerificationMeta('value');
   @override
-  List<GeneratedColumn> get $columns => [id, name, type, tickerSymbol];
+  late final GeneratedColumn<double> value = GeneratedColumn<double>(
+      'value', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0.0));
+  static const VerificationMeta _sharesOwnedMeta =
+      const VerificationMeta('sharesOwned');
+  @override
+  late final GeneratedColumn<double> sharesOwned = GeneratedColumn<double>(
+      'shares_owned', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0.0));
+  static const VerificationMeta _netBuyInMeta =
+      const VerificationMeta('netBuyIn');
+  @override
+  late final GeneratedColumn<double> netBuyIn = GeneratedColumn<double>(
+      'net_buy_in', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0.0));
+  static const VerificationMeta _brokerBuyInMeta =
+      const VerificationMeta('brokerBuyIn');
+  @override
+  late final GeneratedColumn<double> brokerBuyIn = GeneratedColumn<double>(
+      'broker_buy_in', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0.0));
+  static const VerificationMeta _buyFeeTotalMeta =
+      const VerificationMeta('buyFeeTotal');
+  @override
+  late final GeneratedColumn<double> buyFeeTotal = GeneratedColumn<double>(
+      'buy_fee_total', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0.0));
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        name,
+        type,
+        tickerSymbol,
+        value,
+        sharesOwned,
+        netBuyIn,
+        brokerBuyIn,
+        buyFeeTotal
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -410,6 +459,32 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, Asset> {
     } else if (isInserting) {
       context.missing(_tickerSymbolMeta);
     }
+    if (data.containsKey('value')) {
+      context.handle(
+          _valueMeta, value.isAcceptableOrUnknown(data['value']!, _valueMeta));
+    }
+    if (data.containsKey('shares_owned')) {
+      context.handle(
+          _sharesOwnedMeta,
+          sharesOwned.isAcceptableOrUnknown(
+              data['shares_owned']!, _sharesOwnedMeta));
+    }
+    if (data.containsKey('net_buy_in')) {
+      context.handle(_netBuyInMeta,
+          netBuyIn.isAcceptableOrUnknown(data['net_buy_in']!, _netBuyInMeta));
+    }
+    if (data.containsKey('broker_buy_in')) {
+      context.handle(
+          _brokerBuyInMeta,
+          brokerBuyIn.isAcceptableOrUnknown(
+              data['broker_buy_in']!, _brokerBuyInMeta));
+    }
+    if (data.containsKey('buy_fee_total')) {
+      context.handle(
+          _buyFeeTotalMeta,
+          buyFeeTotal.isAcceptableOrUnknown(
+              data['buy_fee_total']!, _buyFeeTotalMeta));
+    }
     return context;
   }
 
@@ -427,6 +502,16 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, Asset> {
           .read(DriftSqlType.string, data['${effectivePrefix}type'])!),
       tickerSymbol: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}ticker_symbol'])!,
+      value: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}value'])!,
+      sharesOwned: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}shares_owned'])!,
+      netBuyIn: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}net_buy_in'])!,
+      brokerBuyIn: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}broker_buy_in'])!,
+      buyFeeTotal: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}buy_fee_total'])!,
     );
   }
 
@@ -444,11 +529,21 @@ class Asset extends DataClass implements Insertable<Asset> {
   final String name;
   final AssetTypes type;
   final String tickerSymbol;
+  final double value;
+  final double sharesOwned;
+  final double netBuyIn;
+  final double brokerBuyIn;
+  final double buyFeeTotal;
   const Asset(
       {required this.id,
       required this.name,
       required this.type,
-      required this.tickerSymbol});
+      required this.tickerSymbol,
+      required this.value,
+      required this.sharesOwned,
+      required this.netBuyIn,
+      required this.brokerBuyIn,
+      required this.buyFeeTotal});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -458,6 +553,11 @@ class Asset extends DataClass implements Insertable<Asset> {
       map['type'] = Variable<String>($AssetsTable.$convertertype.toSql(type));
     }
     map['ticker_symbol'] = Variable<String>(tickerSymbol);
+    map['value'] = Variable<double>(value);
+    map['shares_owned'] = Variable<double>(sharesOwned);
+    map['net_buy_in'] = Variable<double>(netBuyIn);
+    map['broker_buy_in'] = Variable<double>(brokerBuyIn);
+    map['buy_fee_total'] = Variable<double>(buyFeeTotal);
     return map;
   }
 
@@ -467,6 +567,11 @@ class Asset extends DataClass implements Insertable<Asset> {
       name: Value(name),
       type: Value(type),
       tickerSymbol: Value(tickerSymbol),
+      value: Value(value),
+      sharesOwned: Value(sharesOwned),
+      netBuyIn: Value(netBuyIn),
+      brokerBuyIn: Value(brokerBuyIn),
+      buyFeeTotal: Value(buyFeeTotal),
     );
   }
 
@@ -478,6 +583,11 @@ class Asset extends DataClass implements Insertable<Asset> {
       name: serializer.fromJson<String>(json['name']),
       type: serializer.fromJson<AssetTypes>(json['type']),
       tickerSymbol: serializer.fromJson<String>(json['tickerSymbol']),
+      value: serializer.fromJson<double>(json['value']),
+      sharesOwned: serializer.fromJson<double>(json['sharesOwned']),
+      netBuyIn: serializer.fromJson<double>(json['netBuyIn']),
+      brokerBuyIn: serializer.fromJson<double>(json['brokerBuyIn']),
+      buyFeeTotal: serializer.fromJson<double>(json['buyFeeTotal']),
     );
   }
   @override
@@ -488,16 +598,34 @@ class Asset extends DataClass implements Insertable<Asset> {
       'name': serializer.toJson<String>(name),
       'type': serializer.toJson<AssetTypes>(type),
       'tickerSymbol': serializer.toJson<String>(tickerSymbol),
+      'value': serializer.toJson<double>(value),
+      'sharesOwned': serializer.toJson<double>(sharesOwned),
+      'netBuyIn': serializer.toJson<double>(netBuyIn),
+      'brokerBuyIn': serializer.toJson<double>(brokerBuyIn),
+      'buyFeeTotal': serializer.toJson<double>(buyFeeTotal),
     };
   }
 
   Asset copyWith(
-          {int? id, String? name, AssetTypes? type, String? tickerSymbol}) =>
+          {int? id,
+          String? name,
+          AssetTypes? type,
+          String? tickerSymbol,
+          double? value,
+          double? sharesOwned,
+          double? netBuyIn,
+          double? brokerBuyIn,
+          double? buyFeeTotal}) =>
       Asset(
         id: id ?? this.id,
         name: name ?? this.name,
         type: type ?? this.type,
         tickerSymbol: tickerSymbol ?? this.tickerSymbol,
+        value: value ?? this.value,
+        sharesOwned: sharesOwned ?? this.sharesOwned,
+        netBuyIn: netBuyIn ?? this.netBuyIn,
+        brokerBuyIn: brokerBuyIn ?? this.brokerBuyIn,
+        buyFeeTotal: buyFeeTotal ?? this.buyFeeTotal,
       );
   Asset copyWithCompanion(AssetsCompanion data) {
     return Asset(
@@ -507,6 +635,14 @@ class Asset extends DataClass implements Insertable<Asset> {
       tickerSymbol: data.tickerSymbol.present
           ? data.tickerSymbol.value
           : this.tickerSymbol,
+      value: data.value.present ? data.value.value : this.value,
+      sharesOwned:
+          data.sharesOwned.present ? data.sharesOwned.value : this.sharesOwned,
+      netBuyIn: data.netBuyIn.present ? data.netBuyIn.value : this.netBuyIn,
+      brokerBuyIn:
+          data.brokerBuyIn.present ? data.brokerBuyIn.value : this.brokerBuyIn,
+      buyFeeTotal:
+          data.buyFeeTotal.present ? data.buyFeeTotal.value : this.buyFeeTotal,
     );
   }
 
@@ -516,13 +652,19 @@ class Asset extends DataClass implements Insertable<Asset> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('type: $type, ')
-          ..write('tickerSymbol: $tickerSymbol')
+          ..write('tickerSymbol: $tickerSymbol, ')
+          ..write('value: $value, ')
+          ..write('sharesOwned: $sharesOwned, ')
+          ..write('netBuyIn: $netBuyIn, ')
+          ..write('brokerBuyIn: $brokerBuyIn, ')
+          ..write('buyFeeTotal: $buyFeeTotal')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, type, tickerSymbol);
+  int get hashCode => Object.hash(id, name, type, tickerSymbol, value,
+      sharesOwned, netBuyIn, brokerBuyIn, buyFeeTotal);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -530,7 +672,12 @@ class Asset extends DataClass implements Insertable<Asset> {
           other.id == this.id &&
           other.name == this.name &&
           other.type == this.type &&
-          other.tickerSymbol == this.tickerSymbol);
+          other.tickerSymbol == this.tickerSymbol &&
+          other.value == this.value &&
+          other.sharesOwned == this.sharesOwned &&
+          other.netBuyIn == this.netBuyIn &&
+          other.brokerBuyIn == this.brokerBuyIn &&
+          other.buyFeeTotal == this.buyFeeTotal);
 }
 
 class AssetsCompanion extends UpdateCompanion<Asset> {
@@ -538,17 +685,32 @@ class AssetsCompanion extends UpdateCompanion<Asset> {
   final Value<String> name;
   final Value<AssetTypes> type;
   final Value<String> tickerSymbol;
+  final Value<double> value;
+  final Value<double> sharesOwned;
+  final Value<double> netBuyIn;
+  final Value<double> brokerBuyIn;
+  final Value<double> buyFeeTotal;
   const AssetsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.type = const Value.absent(),
     this.tickerSymbol = const Value.absent(),
+    this.value = const Value.absent(),
+    this.sharesOwned = const Value.absent(),
+    this.netBuyIn = const Value.absent(),
+    this.brokerBuyIn = const Value.absent(),
+    this.buyFeeTotal = const Value.absent(),
   });
   AssetsCompanion.insert({
     this.id = const Value.absent(),
     required String name,
     required AssetTypes type,
     required String tickerSymbol,
+    this.value = const Value.absent(),
+    this.sharesOwned = const Value.absent(),
+    this.netBuyIn = const Value.absent(),
+    this.brokerBuyIn = const Value.absent(),
+    this.buyFeeTotal = const Value.absent(),
   })  : name = Value(name),
         type = Value(type),
         tickerSymbol = Value(tickerSymbol);
@@ -557,12 +719,22 @@ class AssetsCompanion extends UpdateCompanion<Asset> {
     Expression<String>? name,
     Expression<String>? type,
     Expression<String>? tickerSymbol,
+    Expression<double>? value,
+    Expression<double>? sharesOwned,
+    Expression<double>? netBuyIn,
+    Expression<double>? brokerBuyIn,
+    Expression<double>? buyFeeTotal,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (type != null) 'type': type,
       if (tickerSymbol != null) 'ticker_symbol': tickerSymbol,
+      if (value != null) 'value': value,
+      if (sharesOwned != null) 'shares_owned': sharesOwned,
+      if (netBuyIn != null) 'net_buy_in': netBuyIn,
+      if (brokerBuyIn != null) 'broker_buy_in': brokerBuyIn,
+      if (buyFeeTotal != null) 'buy_fee_total': buyFeeTotal,
     });
   }
 
@@ -570,12 +742,22 @@ class AssetsCompanion extends UpdateCompanion<Asset> {
       {Value<int>? id,
       Value<String>? name,
       Value<AssetTypes>? type,
-      Value<String>? tickerSymbol}) {
+      Value<String>? tickerSymbol,
+      Value<double>? value,
+      Value<double>? sharesOwned,
+      Value<double>? netBuyIn,
+      Value<double>? brokerBuyIn,
+      Value<double>? buyFeeTotal}) {
     return AssetsCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
       type: type ?? this.type,
       tickerSymbol: tickerSymbol ?? this.tickerSymbol,
+      value: value ?? this.value,
+      sharesOwned: sharesOwned ?? this.sharesOwned,
+      netBuyIn: netBuyIn ?? this.netBuyIn,
+      brokerBuyIn: brokerBuyIn ?? this.brokerBuyIn,
+      buyFeeTotal: buyFeeTotal ?? this.buyFeeTotal,
     );
   }
 
@@ -595,6 +777,21 @@ class AssetsCompanion extends UpdateCompanion<Asset> {
     if (tickerSymbol.present) {
       map['ticker_symbol'] = Variable<String>(tickerSymbol.value);
     }
+    if (value.present) {
+      map['value'] = Variable<double>(value.value);
+    }
+    if (sharesOwned.present) {
+      map['shares_owned'] = Variable<double>(sharesOwned.value);
+    }
+    if (netBuyIn.present) {
+      map['net_buy_in'] = Variable<double>(netBuyIn.value);
+    }
+    if (brokerBuyIn.present) {
+      map['broker_buy_in'] = Variable<double>(brokerBuyIn.value);
+    }
+    if (buyFeeTotal.present) {
+      map['buy_fee_total'] = Variable<double>(buyFeeTotal.value);
+    }
     return map;
   }
 
@@ -604,7 +801,12 @@ class AssetsCompanion extends UpdateCompanion<Asset> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('type: $type, ')
-          ..write('tickerSymbol: $tickerSymbol')
+          ..write('tickerSymbol: $tickerSymbol, ')
+          ..write('value: $value, ')
+          ..write('sharesOwned: $sharesOwned, ')
+          ..write('netBuyIn: $netBuyIn, ')
+          ..write('brokerBuyIn: $brokerBuyIn, ')
+          ..write('buyFeeTotal: $buyFeeTotal')
           ..write(')'))
         .toString();
   }
@@ -4555,12 +4757,22 @@ typedef $$AssetsTableCreateCompanionBuilder = AssetsCompanion Function({
   required String name,
   required AssetTypes type,
   required String tickerSymbol,
+  Value<double> value,
+  Value<double> sharesOwned,
+  Value<double> netBuyIn,
+  Value<double> brokerBuyIn,
+  Value<double> buyFeeTotal,
 });
 typedef $$AssetsTableUpdateCompanionBuilder = AssetsCompanion Function({
   Value<int> id,
   Value<String> name,
   Value<AssetTypes> type,
   Value<String> tickerSymbol,
+  Value<double> value,
+  Value<double> sharesOwned,
+  Value<double> netBuyIn,
+  Value<double> brokerBuyIn,
+  Value<double> buyFeeTotal,
 });
 
 final class $$AssetsTableReferences
@@ -4621,6 +4833,21 @@ class $$AssetsTableFilterComposer
 
   ColumnFilters<String> get tickerSymbol => $composableBuilder(
       column: $table.tickerSymbol, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get value => $composableBuilder(
+      column: $table.value, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get sharesOwned => $composableBuilder(
+      column: $table.sharesOwned, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get netBuyIn => $composableBuilder(
+      column: $table.netBuyIn, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get brokerBuyIn => $composableBuilder(
+      column: $table.brokerBuyIn, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get buyFeeTotal => $composableBuilder(
+      column: $table.buyFeeTotal, builder: (column) => ColumnFilters(column));
 
   Expression<bool> tradesRefs(
       Expression<bool> Function($$TradesTableFilterComposer f) f) {
@@ -4686,6 +4913,21 @@ class $$AssetsTableOrderingComposer
   ColumnOrderings<String> get tickerSymbol => $composableBuilder(
       column: $table.tickerSymbol,
       builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get value => $composableBuilder(
+      column: $table.value, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get sharesOwned => $composableBuilder(
+      column: $table.sharesOwned, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get netBuyIn => $composableBuilder(
+      column: $table.netBuyIn, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get brokerBuyIn => $composableBuilder(
+      column: $table.brokerBuyIn, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get buyFeeTotal => $composableBuilder(
+      column: $table.buyFeeTotal, builder: (column) => ColumnOrderings(column));
 }
 
 class $$AssetsTableAnnotationComposer
@@ -4708,6 +4950,21 @@ class $$AssetsTableAnnotationComposer
 
   GeneratedColumn<String> get tickerSymbol => $composableBuilder(
       column: $table.tickerSymbol, builder: (column) => column);
+
+  GeneratedColumn<double> get value =>
+      $composableBuilder(column: $table.value, builder: (column) => column);
+
+  GeneratedColumn<double> get sharesOwned => $composableBuilder(
+      column: $table.sharesOwned, builder: (column) => column);
+
+  GeneratedColumn<double> get netBuyIn =>
+      $composableBuilder(column: $table.netBuyIn, builder: (column) => column);
+
+  GeneratedColumn<double> get brokerBuyIn => $composableBuilder(
+      column: $table.brokerBuyIn, builder: (column) => column);
+
+  GeneratedColumn<double> get buyFeeTotal => $composableBuilder(
+      column: $table.buyFeeTotal, builder: (column) => column);
 
   Expression<T> tradesRefs<T extends Object>(
       Expression<T> Function($$TradesTableAnnotationComposer a) f) {
@@ -4779,24 +5036,44 @@ class $$AssetsTableTableManager extends RootTableManager<
             Value<String> name = const Value.absent(),
             Value<AssetTypes> type = const Value.absent(),
             Value<String> tickerSymbol = const Value.absent(),
+            Value<double> value = const Value.absent(),
+            Value<double> sharesOwned = const Value.absent(),
+            Value<double> netBuyIn = const Value.absent(),
+            Value<double> brokerBuyIn = const Value.absent(),
+            Value<double> buyFeeTotal = const Value.absent(),
           }) =>
               AssetsCompanion(
             id: id,
             name: name,
             type: type,
             tickerSymbol: tickerSymbol,
+            value: value,
+            sharesOwned: sharesOwned,
+            netBuyIn: netBuyIn,
+            brokerBuyIn: brokerBuyIn,
+            buyFeeTotal: buyFeeTotal,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
             required String name,
             required AssetTypes type,
             required String tickerSymbol,
+            Value<double> value = const Value.absent(),
+            Value<double> sharesOwned = const Value.absent(),
+            Value<double> netBuyIn = const Value.absent(),
+            Value<double> brokerBuyIn = const Value.absent(),
+            Value<double> buyFeeTotal = const Value.absent(),
           }) =>
               AssetsCompanion.insert(
             id: id,
             name: name,
             type: type,
             tickerSymbol: tickerSymbol,
+            value: value,
+            sharesOwned: sharesOwned,
+            netBuyIn: netBuyIn,
+            brokerBuyIn: brokerBuyIn,
+            buyFeeTotal: buyFeeTotal,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) =>

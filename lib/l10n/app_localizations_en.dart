@@ -196,4 +196,70 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get delete => 'Delete';
+
+  @override
+  String get assets => 'Assets';
+
+  @override
+  String get noAssets => 'No assets yet. Tap + to add one!';
+
+  @override
+  String get cannotDeleteAsset => 'Cannot Delete Asset';
+
+  @override
+  String get assetHasReferences =>
+      'This asset has references and cannot be deleted.';
+
+  @override
+  String get deleteAsset => 'Delete Asset';
+
+  @override
+  String get confirmDeleteAsset =>
+      'Are you sure you want to delete this asset?';
+
+  @override
+  String get assetName => 'Asset Name';
+
+  @override
+  String get pleaseEnterAssetName => 'Please enter an asset name';
+
+  @override
+  String get assetAlreadyExists => 'An asset with this name already exists';
+
+  @override
+  String get tickerSymbol => 'Ticker Symbol';
+
+  @override
+  String get pleaseEnterATickerSymbol => 'Please enter a ticker symbol';
+
+  @override
+  String get tickerSymbolAlreadyExists =>
+      'An asset with this ticker symbol already exists';
+
+  @override
+  String get stock => 'Stock';
+
+  @override
+  String get crypto => 'Crypto';
+
+  @override
+  String get currency => 'Currency';
+
+  @override
+  String get commodity => 'Commodity';
+
+  @override
+  String get value => 'Value';
+
+  @override
+  String get sharesOwned => 'Shares';
+
+  @override
+  String get netBuyIn => 'Net Buy In';
+
+  @override
+  String get update => 'Update';
+
+  @override
+  String get ok => 'OK';
 }

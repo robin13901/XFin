@@ -73,6 +73,11 @@ class Assets extends Table {
   TextColumn get name => text().unique()();
   TextColumn get type => text().map(const AssetTypesConverter())();
   TextColumn get tickerSymbol => text().unique()();
+  RealColumn get value => real().withDefault(const Constant(0.0))();
+  RealColumn get sharesOwned => real().withDefault(const Constant(0.0))();
+  RealColumn get netBuyIn => real().withDefault(const Constant(0.0))();
+  RealColumn get brokerBuyIn => real().withDefault(const Constant(0.0))();
+  RealColumn get buyFeeTotal => real().withDefault(const Constant(0.0))();
 }
 
 @TableIndex(name: 'bookings_account_id_date', columns: {#accountId, #date})
