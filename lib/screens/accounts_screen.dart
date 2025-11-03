@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/tables.dart';
+import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/widgets/account_form.dart';
 
 class AccountsScreen extends StatelessWidget {
@@ -17,7 +18,11 @@ class AccountsScreen extends StatelessWidget {
   }
 
   Future<void> _handleLongPress(
-      BuildContext context, AppDatabase db, Account account) async {
+    BuildContext context,
+    AppDatabase db,
+    Account account,
+    AppLocalizations l10n,
+  ) async {
     bool hasReferences = false;
     if (account.type == AccountTypes.cash) {
       final hasBookings = await db.accountsDao.hasBookings(account.id);
@@ -48,20 +53,19 @@ class AccountsScreen extends StatelessWidget {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Cannot Delete Account'),
-          content: const Text(
-              'This account has references and cannot be deleted. Would you like to archive it instead?'),
+          title: Text(l10n.cannotDeleteAccount),
+          content: Text(l10n.accountHasReferencesArchiveInstead),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: Text(l10n.cancel),
             ),
             TextButton(
               onPressed: () {
                 db.accountsDao.setArchived(account.id, true);
                 Navigator.of(context).pop();
               },
-              child: const Text('Archive'),
+              child: Text(l10n.archive),
             ),
           ],
         ),
@@ -70,19 +74,19 @@ class AccountsScreen extends StatelessWidget {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Delete Account'),
-          content: const Text('Are you sure you want to delete this account?'),
+          title: Text(l10n.deleteAccount),
+          content: Text(l10n.confirmDeleteAccount),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: Text(l10n.cancel),
             ),
             TextButton(
               onPressed: () {
                 db.accountsDao.deleteAccount(account.id);
                 Navigator.of(context).pop();
               },
-              child: const Text('Confirm'),
+              child: Text(l10n.confirm),
             ),
           ],
         ),
@@ -91,23 +95,23 @@ class AccountsScreen extends StatelessWidget {
   }
 
   void _handleArchivedAccountTap(
-      BuildContext context, AppDatabase db, Account account) {
+      BuildContext context, AppDatabase db, Account account, AppLocalizations l10n) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Unarchive Account'),
-        content: const Text('Do you want to unarchive this account?'),
+        title: Text(l10n.unarchiveAccount),
+        content: Text(l10n.confirmUnarchiveAccount),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () {
               db.accountsDao.setArchived(account.id, false);
               Navigator.of(context).pop();
             },
-            child: const Text('Confirm'),
+            child: Text(l10n.confirm),
           ),
         ],
       ),
@@ -117,11 +121,12 @@ class AccountsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final db = Provider.of<AppDatabase>(context);
+    final l10n = AppLocalizations.of(context)!;
     final currencyFormat = NumberFormat.currency(locale: 'de_DE', symbol: '€');
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Accounts'),
+        title: Text(l10n.accounts),
       ),
       body: Column(
         children: [
@@ -133,12 +138,12 @@ class AccountsScreen extends StatelessWidget {
                   return const Center(child: CircularProgressIndicator());
                 }
                 if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
+                  return Center(child: Text(l10n.error(snapshot.error.toString())));
                 }
                 final accounts = snapshot.data ?? [];
                 if (accounts.isEmpty) {
-                  return const Center(
-                      child: Text('No active accounts yet. Tap + to add one!'));
+                  return Center(
+                      child: Text(l10n.noActiveAccounts));
                 }
 
                 return ListView.builder(
@@ -157,7 +162,7 @@ class AccountsScreen extends StatelessWidget {
                       onTap: () {
                         // TODO: Navigate to account analysis screen.
                       },
-                      onLongPress: () => _handleLongPress(context, db, account),
+                      onLongPress: () => _handleLongPress(context, db, account, l10n),
                     );
                   },
                 );
@@ -177,7 +182,7 @@ class AccountsScreen extends StatelessWidget {
                 final archivedAccounts = snapshot.data!;
 
                 return ExpansionTile(
-                  title: const Text('Archived Accounts'),
+                  title: Text(l10n.archivedAccounts),
                   children: [
                     ListView.builder(
                       shrinkWrap: true,
@@ -196,7 +201,7 @@ class AccountsScreen extends StatelessWidget {
                             ),
                           ),
                           onTap: () =>
-                              _handleArchivedAccountTap(context, db, account),
+                              _handleArchivedAccountTap(context, db, account, l10n),
                         );
                       },
                     ),

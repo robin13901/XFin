@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/daos/bookings_dao.dart';
+import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/widgets/booking_form.dart';
 import 'package:xfin/widgets/delete_booking_dialog.dart';
 
@@ -17,20 +18,23 @@ class BookingsScreen extends StatelessWidget {
     );
   }
 
-  void _showDeleteDialog(BuildContext context, BookingWithAccount bookingWithAccounts) {
-    showDialog(
+  Future<void> _showDeleteDialog(
+      BuildContext context, BookingWithAccount bookingWithAccounts) async {
+    await showDialog(
       context: context,
-      builder: (_) => DeleteBookingDialog(bookingWithAccounts: bookingWithAccounts),
+      builder: (_) =>
+          DeleteBookingDialog(bookingWithAccount: bookingWithAccounts),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final db = Provider.of<AppDatabase>(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Bookings'),
+        title: Text(l10n.bookings),
       ),
       body: StreamBuilder<List<BookingWithAccount>>(
         stream: db.bookingsDao.watchBookingsWithAccount(),
@@ -39,15 +43,17 @@ class BookingsScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(child: Text('An error occurred: ${snapshot.error}'));
+            return Center(
+                child: Text(l10n.anErrorOccurred(snapshot.error.toString())));
           }
           final bookingsWithAccounts = snapshot.data ?? [];
           if (bookingsWithAccounts.isEmpty) {
-            return const Center(child: Text('No bookings yet.'));
+            return Center(child: Text(l10n.noBookingsYet));
           }
 
-          final currencyFormat = NumberFormat.currency(locale: 'de_DE', symbol: '€');
-          final dateFormat = DateFormat.yMd();
+          final currencyFormat =
+              NumberFormat.currency(locale: 'de_DE', symbol: '€');
+          final dateFormat = DateFormat('dd.MM.yyyy');
 
           return ListView.builder(
             itemCount: bookingsWithAccounts.length,
@@ -64,16 +70,18 @@ class BookingsScreen extends StatelessWidget {
 
               return ListTile(
                 title: Text(booking.reason),
-                subtitle: Text(item.account?.name ?? 'Unknown Account'),
+                subtitle: Text(item.account?.name ?? l10n.unknownAccount),
                 trailing: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
                       currencyFormat.format(booking.amount),
-                      style: TextStyle(color: amountColor, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                          color: amountColor, fontWeight: FontWeight.bold),
                     ),
-                    Text(dateText, style: Theme.of(context).textTheme.bodySmall),
+                    Text(dateText,
+                        style: Theme.of(context).textTheme.bodySmall),
                   ],
                 ),
                 onTap: () => _showBookingForm(context, booking),

@@ -8,41 +8,6 @@ part 'bookings_dao.g.dart';
 class BookingsDao extends DatabaseAccessor<AppDatabase> with _$BookingsDaoMixin {
   BookingsDao(super.db);
 
-  void _validateDate(int dateInt) {
-    final dateString = dateInt.toString();
-    if (dateString.length != 8) {
-      throw Exception('Date must be in yyyyMMdd format and a valid date.');
-    }
-
-    final year = int.tryParse(dateString.substring(0, 4)) ?? 0;
-    final month = int.tryParse(dateString.substring(4, 6)) ?? 0;
-    final day = int.tryParse(dateString.substring(6, 8)) ?? 0;
-
-    try {
-      final date = DateTime(year, month, day);
-      if (date.year != year || date.month != month || date.day != day) {
-        throw Exception('Date must be a valid date.');
-      }
-    } catch (e) {
-      throw Exception('Date must be a valid date.');
-    }
-  }
-
-  Future<void> validate(Booking booking) async {
-    _validateDate(booking.date);
-    if (booking.amount == 0) {
-      throw Exception('Amount must not be 0.');
-    }
-    if (booking.reason.isEmpty) {
-      throw Exception('Reason must not be empty.');
-    }
-
-    final account = await (select(accounts)..where((a) => a.id.equals(booking.accountId))).getSingle();
-    if (account.type != AccountTypes.cash) {
-      throw Exception('Account must be of type cash.');
-    }
-  }
-
   Stream<List<BookingWithAccount>> watchBookingsWithAccount() {
     final query = select(bookings).join([
       leftOuterJoin(accounts, accounts.id.equalsExp(bookings.accountId))
@@ -82,6 +47,11 @@ class BookingsDao extends DatabaseAccessor<AppDatabase> with _$BookingsDaoMixin 
     } catch (e) {
       return null;
     }
+  }
+
+  Stream<List<String>> watchDistinctReasons() {
+    final query = selectOnly(bookings, distinct: true)..addColumns([bookings.reason]);
+    return query.watch().map((rows) => rows.map((row) => row.read(bookings.reason)!).toList());
   }
 
   // Methods that are not transactional

@@ -3,16 +3,18 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/daos/bookings_dao.dart';
+import 'package:xfin/l10n/app_localizations.dart';
 
 class DeleteBookingDialog extends StatelessWidget {
-  final BookingWithAccount bookingWithAccounts;
+  final BookingWithAccount bookingWithAccount;
 
-  const DeleteBookingDialog({super.key, required this.bookingWithAccounts});
+  const DeleteBookingDialog({super.key, required this.bookingWithAccount});
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final db = Provider.of<AppDatabase>(context, listen: false);
-    final booking = bookingWithAccounts.booking;
+    final booking = bookingWithAccount.booking;
     final currencyFormat = NumberFormat.currency(locale: 'de_DE', symbol: '€');
 
     final dateString = booking.date.toString();
@@ -22,13 +24,13 @@ class DeleteBookingDialog extends StatelessWidget {
     final month = DateFormat('MMM', 'de_DE').format(date);
     final year = DateFormat('yyyy').format(date);
 
-    String accountName = bookingWithAccounts.account?.name ?? 'Unknown Account';
+    String accountName = bookingWithAccount.account?.name ?? 'Unknown Account';
     Color amountColor = booking.amount < 0 ? Colors.red : Colors.green;
 
     return AlertDialog(
-      title: const Text(
-          'Willst du diesen Eintrag wirklich löschen?',
-        textScaler: TextScaler.linear(0.8),
+      title: Text(
+        l10n.deleteBookingConfirmation,
+        textScaler: const TextScaler.linear(0.8),
       ),
       contentPadding: const EdgeInsets.all(2),
       content: Card(
@@ -77,7 +79,7 @@ class DeleteBookingDialog extends StatelessWidget {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Abbrechen'),
+          child: Text(l10n.cancel),
         ),
         FilledButton.tonal(
           onPressed: () async {
@@ -86,7 +88,7 @@ class DeleteBookingDialog extends StatelessWidget {
               Navigator.of(context).pop(); // Close the dialog
             }
           },
-          child: const Text('Löschen'),
+          child: Text(l10n.delete),
         ),
       ],
     );

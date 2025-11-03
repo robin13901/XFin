@@ -23,5 +23,53 @@
   "theme": "Thema",
   "system": "System",
   "light": "Hell",
-  "dark": "Dunkel"
+  "dark": "Dunkel",
+  "insufficientBalance": "Konto hat nicht genügend Guthaben für diese Abbuchung.",
+  "mergeBookings": "Buchungen zusammenführen?",
+  "mergeBookingsQuestion": "Eine ähnliche Buchung existiert bereits. Möchten Sie diese zusammenführen?",
+  "createNew": "Neu erstellen",
+  "merge": "Zusammenführen",
+  "date": "Datum",
+  "amount": "Betrag",
+  "pleaseEnterAnAmount": "Bitte gib einen Betrag an!",
+  "invalidInput": "Ungültige Eingabe!",
+  "tooManyDecimalPlaces": "Zu viele Nachkommastellen!",
+  "reason": "Grund",
+  "pleaseEnterAReason": "Bitte gib einen Grund an!",
+  "reasonReservedForTransfer": "Dieser Grund ist für Überweisungen reserviert.",
+  "account": "Konto",
+  "pleaseSelectAnAccount": "Bitte wähle ein Konto!",
+  "notes": "Notizen",
+  "excludeFromAverage": "Vom Durchschnitt ausschließen",
+  "dateCannotBeInTheFuture": "Das Datum darf nicht in der Zukunft liegen.",
+  "cannotDeleteAccount": "Konto kann nicht gelöscht werden",
+  "accountHasReferencesArchiveInstead": "Dieses Konto hat Referenzen und kann nicht gelöscht werden. Möchten Sie es stattdessen archivieren?",
+  "archive": "Archivieren",
+  "deleteAccount": "Konto löschen",
+  "confirmDeleteAccount": "Sind Sie sicher, dass Sie dieses Konto löschen möchten?",
+  "confirm": "Bestätigen",
+  "unarchiveAccount": "Konto dearchivieren",
+  "confirmUnarchiveAccount": "Möchten Sie dieses Konto dearchivieren?",
+  "error": "Fehler: {error}",
+  "@error": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "noActiveAccounts": "Noch keine aktiven Konten. Tippe auf +, um eins hinzuzufügen!",
+  "archivedAccounts": "Archivierte Konten",
+  "anErrorOccurred": "Ein Fehler ist aufgetreten: {error}",
+  "@anErrorOccurred": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "noBookingsYet": "Noch keine Buchungen vorhanden.",
+  "unknownAccount": "Unbekanntes Konto",
+  "deleteBookingConfirmation": "Buchung löschen?",
+  "delete": "Löschen"
 }

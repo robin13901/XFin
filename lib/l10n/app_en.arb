@@ -23,5 +23,53 @@
   "theme": "Theme",
   "system": "System",
   "light": "Light",
-  "dark": "Dark"
+  "dark": "Dark",
+  "insufficientBalance": "Account has insufficient balance for this debit.",
+  "mergeBookings": "Merge bookings?",
+  "mergeBookingsQuestion": "A similar booking already exists. Do you want to merge them?",
+  "createNew": "Create new",
+  "merge": "Merge",
+  "date": "Date",
+  "amount": "Amount",
+  "pleaseEnterAnAmount": "Please enter an amount!",
+  "invalidInput": "Invalid input!",
+  "tooManyDecimalPlaces": "Too many decimal places!",
+  "reason": "Reason",
+  "pleaseEnterAReason": "Please enter a reason!",
+  "reasonReservedForTransfer": "This reason is reserved for transfers.",
+  "account": "Account",
+  "pleaseSelectAnAccount": "Please select an account!",
+  "notes": "Notes",
+  "excludeFromAverage": "Exclude from average",
+  "dateCannotBeInTheFuture": "The date cannot be in the future.",
+  "cannotDeleteAccount": "Cannot Delete Account",
+  "accountHasReferencesArchiveInstead": "This account has references and cannot be deleted. Would you like to archive it instead?",
+  "archive": "Archive",
+  "deleteAccount": "Delete Account",
+  "confirmDeleteAccount": "Are you sure you want to delete this account?",
+  "confirm": "Confirm",
+  "unarchiveAccount": "Unarchive Account",
+  "confirmUnarchiveAccount": "Do you want to unarchive this account?",
+  "error": "Error: {error}",
+  "@error": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "noActiveAccounts": "No active accounts yet. Tap + to add one!",
+  "archivedAccounts": "Archived Accounts",
+  "anErrorOccurred": "An error occurred: {error}",
+  "@anErrorOccurred": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "noBookingsYet": "No bookings yet.",
+  "unknownAccount": "Unknown Account",
+  "deleteBookingConfirmation": "Delete Booking?",
+  "delete": "Delete"
 }

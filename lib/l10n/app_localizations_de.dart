@@ -84,4 +84,118 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get dark => 'Dunkel';
+
+  @override
+  String get insufficientBalance =>
+      'Konto hat nicht genügend Guthaben für diese Abbuchung.';
+
+  @override
+  String get mergeBookings => 'Buchungen zusammenführen?';
+
+  @override
+  String get mergeBookingsQuestion =>
+      'Eine ähnliche Buchung existiert bereits. Möchten Sie diese zusammenführen?';
+
+  @override
+  String get createNew => 'Neu erstellen';
+
+  @override
+  String get merge => 'Zusammenführen';
+
+  @override
+  String get date => 'Datum';
+
+  @override
+  String get amount => 'Betrag';
+
+  @override
+  String get pleaseEnterAnAmount => 'Bitte gib einen Betrag an!';
+
+  @override
+  String get invalidInput => 'Ungültige Eingabe!';
+
+  @override
+  String get tooManyDecimalPlaces => 'Zu viele Nachkommastellen!';
+
+  @override
+  String get reason => 'Grund';
+
+  @override
+  String get pleaseEnterAReason => 'Bitte gib einen Grund an!';
+
+  @override
+  String get reasonReservedForTransfer =>
+      'Dieser Grund ist für Überweisungen reserviert.';
+
+  @override
+  String get account => 'Konto';
+
+  @override
+  String get pleaseSelectAnAccount => 'Bitte wähle ein Konto!';
+
+  @override
+  String get notes => 'Notizen';
+
+  @override
+  String get excludeFromAverage => 'Vom Durchschnitt ausschließen';
+
+  @override
+  String get dateCannotBeInTheFuture =>
+      'Das Datum darf nicht in der Zukunft liegen.';
+
+  @override
+  String get cannotDeleteAccount => 'Konto kann nicht gelöscht werden';
+
+  @override
+  String get accountHasReferencesArchiveInstead =>
+      'Dieses Konto hat Referenzen und kann nicht gelöscht werden. Möchten Sie es stattdessen archivieren?';
+
+  @override
+  String get archive => 'Archivieren';
+
+  @override
+  String get deleteAccount => 'Konto löschen';
+
+  @override
+  String get confirmDeleteAccount =>
+      'Sind Sie sicher, dass Sie dieses Konto löschen möchten?';
+
+  @override
+  String get confirm => 'Bestätigen';
+
+  @override
+  String get unarchiveAccount => 'Konto dearchivieren';
+
+  @override
+  String get confirmUnarchiveAccount =>
+      'Möchten Sie dieses Konto dearchivieren?';
+
+  @override
+  String error(String error) {
+    return 'Fehler: $error';
+  }
+
+  @override
+  String get noActiveAccounts =>
+      'Noch keine aktiven Konten. Tippe auf +, um eins hinzuzufügen!';
+
+  @override
+  String get archivedAccounts => 'Archivierte Konten';
+
+  @override
+  String anErrorOccurred(String error) {
+    return 'Ein Fehler ist aufgetreten: $error';
+  }
+
+  @override
+  String get noBookingsYet => 'Noch keine Buchungen vorhanden.';
+
+  @override
+  String get unknownAccount => 'Unbekanntes Konto';
+
+  @override
+  String get deleteBookingConfirmation => 'Buchung löschen?';
+
+  @override
+  String get delete => 'Löschen';
 }

@@ -58,6 +58,11 @@ class AccountsDao extends DatabaseAccessor<AppDatabase> with _$AccountsDaoMixin 
   Stream<List<Account>> watchAllAccounts() =>
       (select(accounts)..where((a) => a.isArchived.equals(false))).watch();
 
+  Stream<List<Account>> watchCashAccounts() =>
+      (select(accounts)..where((a) =>
+      a.isArchived.equals(false) &
+      a.type.equalsValue(AccountTypes.cash))).watch();
+
   Stream<List<Account>> watchArchivedAccounts() =>
       (select(accounts)..where((a) => a.isArchived.equals(true))).watch();
       

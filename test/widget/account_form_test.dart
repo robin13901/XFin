@@ -62,21 +62,15 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Finder findTextFieldByLabel(String label) {
-    return find.byWidgetPredicate(
-      (widget) => widget is TextField && widget.decoration?.labelText == label,
-    );
-  }
-
   group('AccountForm', () {
     testWidgets('Submitting a cash account saves correct data',
         (tester) => tester.runAsync(() async {
               await pumpWidget(tester);
 
               await tester.enterText(
-                  findTextFieldByLabel(l10n.accountName), 'Cash Account');
+                  find.byKey(const Key('account_name_field')), 'Cash Account');
               await tester.enterText(
-                  findTextFieldByLabel(l10n.initialBalance), '150.50');
+                  find.byKey(const Key('initial_balance_field')), '150.50');
               await tester.tap(find.text(l10n.save));
               await tester.pumpAndSettle();
 
@@ -92,9 +86,9 @@ void main() {
         (tester) => tester.runAsync(() async {
               await pumpWidget(tester);
 
-              await tester.enterText(findTextFieldByLabel(l10n.accountName),
+              await tester.enterText(find.byKey(const Key('account_name_field')),
                   'Portfolio Account');
-              await tester.tap(find.byType(DropdownButtonFormField<AccountTypes>));
+              await tester.tap(find.byKey(const Key('account_type_dropdown')));
               await tester.pumpAndSettle();
               await tester.tap(find.text(l10n.portfolio).last);
               await tester.pumpAndSettle();
@@ -114,48 +108,52 @@ void main() {
         (tester) => tester.runAsync(() async {
               await pumpWidget(tester);
 
-              await tester.enterText(
-                  findTextFieldByLabel(l10n.accountName), 'Portfolio Account');
-              await tester.tap(find.byType(DropdownButtonFormField<AccountTypes>));
+              await tester.enterText(find.byKey(const Key('account_name_field')),
+                  'Portfolio Account');
+              await tester.tap(find.byKey(const Key('account_type_dropdown')));
               await tester.pumpAndSettle();
               await tester.tap(find.text(l10n.portfolio).last);
               await tester.pumpAndSettle();
 
-              expect(findTextFieldByLabel(l10n.initialBalance), findsNothing);
+              expect(find.byKey(const Key('initial_balance_field')), findsNothing);
             }));
 
-    testWidgets('Cancel button pops the form', (tester) => tester.runAsync(() async {
-          await pumpWidget(tester);
+    testWidgets('Cancel button pops the form',
+        (tester) => tester.runAsync(() async {
+              await pumpWidget(tester);
 
-          expect(find.byType(AccountForm), findsOneWidget);
+              expect(find.byType(AccountForm), findsOneWidget);
 
-          await tester.tap(find.text(l10n.cancel));
-          await tester.pumpAndSettle();
+              await tester.tap(find.text(l10n.cancel));
+              await tester.pumpAndSettle();
 
-          expect(find.byType(AccountForm), findsNothing);
-        }));
+              expect(find.byType(AccountForm), findsNothing);
+            }));
 
     group('Validation', () {
-      testWidgets('Shows error for empty name', (tester) => tester.runAsync(() async {
-            await pumpWidget(tester);
+      testWidgets('Shows error for empty name',
+          (tester) => tester.runAsync(() async {
+                await pumpWidget(tester);
 
-            await tester.tap(find.text(l10n.save));
-            await tester.pump();
+                await tester.tap(find.text(l10n.save));
+                await tester.pump();
 
-            expect(find.text(l10n.pleaseEnterAName), findsOneWidget);
-          }));
+                expect(find.text(l10n.pleaseEnterAName), findsOneWidget);
+              }));
 
       testWidgets('Shows error for duplicate name',
           (tester) => tester.runAsync(() async {
-                await database.into(database.accounts).insert(const AccountsCompanion(
-                    name: Value('Existing Account'),
-                    balance: Value(100),
-                    initialBalance: Value(100),
-                    type: Value(AccountTypes.cash)));
+                await database.into(database.accounts).insert(
+                    const AccountsCompanion(
+                        name: Value('Existing Account'),
+                        balance: Value(100),
+                        initialBalance: Value(100),
+                        type: Value(AccountTypes.cash)));
 
                 await pumpWidget(tester);
 
-                await tester.enterText(findTextFieldByLabel(l10n.accountName),
+                await tester.enterText(
+                    find.byKey(const Key('account_name_field')),
                     'Existing Account');
                 await tester.tap(find.text(l10n.save));
                 await tester.pump();
@@ -168,9 +166,9 @@ void main() {
                 await pumpWidget(tester);
 
                 await tester.enterText(
-                    findTextFieldByLabel(l10n.accountName), 'My Account');
+                    find.byKey(const Key('account_name_field')), 'My Account');
                 await tester.enterText(
-                    findTextFieldByLabel(l10n.initialBalance), '');
+                    find.byKey(const Key('initial_balance_field')), '');
                 await tester.tap(find.text(l10n.save));
                 await tester.pump();
 
@@ -182,9 +180,9 @@ void main() {
                 await pumpWidget(tester);
 
                 await tester.enterText(
-                    findTextFieldByLabel(l10n.accountName), 'My Account');
+                    find.byKey(const Key('account_name_field')), 'My Account');
                 await tester.enterText(
-                    findTextFieldByLabel(l10n.initialBalance), 'abc');
+                    find.byKey(const Key('initial_balance_field')), 'abc');
                 await tester.tap(find.text(l10n.save));
                 await tester.pump();
 
@@ -196,14 +194,15 @@ void main() {
                 await pumpWidget(tester);
 
                 await tester.enterText(
-                    findTextFieldByLabel(l10n.accountName), 'My Account');
+                    find.byKey(const Key('account_name_field')), 'My Account');
                 await tester.enterText(
-                    findTextFieldByLabel(l10n.initialBalance), '-50');
+                    find.byKey(const Key('initial_balance_field')), '-50');
                 await tester.tap(find.text(l10n.save));
                 await tester.pump();
 
                 expect(
-                    find.text(l10n.initialBalanceCannotBeNegative), findsOneWidget);
+                    find.text(l10n.initialBalanceCannotBeNegative),
+                    findsOneWidget);
               }));
 
       testWidgets('Shows error for too many decimal places',
@@ -211,14 +210,15 @@ void main() {
                 await pumpWidget(tester);
 
                 await tester.enterText(
-                    findTextFieldByLabel(l10n.accountName), 'My Account');
+                    find.byKey(const Key('account_name_field')), 'My Account');
                 await tester.enterText(
-                    findTextFieldByLabel(l10n.initialBalance), '10.123');
+                    find.byKey(const Key('initial_balance_field')), '10.123');
                 await tester.tap(find.text(l10n.save));
                 await tester.pump();
 
                 expect(
-                    find.text(l10n.amountTooManyDecimalPlaces), findsOneWidget);
+                    find.text(l10n.amountTooManyDecimalPlaces),
+                    findsOneWidget);
               }));
     });
   });

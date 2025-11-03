@@ -97,8 +97,7 @@ void main() {
       mockDb = FakeAppDatabase(accountsDao: fakeAccountsDao);
     });
 
-    testWidgets('should display a loading indicator when waiting for data',
-        (WidgetTester tester) async {
+    Future<AppLocalizations> setupWidget(WidgetTester tester) async {
       await tester.pumpWidget(
         Provider<AppDatabase>.value(
           value: mockDb,
@@ -109,21 +108,17 @@ void main() {
           ),
         ),
       );
+      return AppLocalizations.of(tester.element(find.byType(AccountsScreen)))!;
+    }
 
+    testWidgets('should display a loading indicator when waiting for data',
+        (WidgetTester tester) async {
+      await setupWidget(tester);
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
     });
 
     testWidgets('should display active accounts', (WidgetTester tester) async {
-      await tester.pumpWidget(
-        Provider<AppDatabase>.value(
-          value: mockDb,
-          child: const MaterialApp(
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: AccountsScreen(),
-          ),
-        ),
-      );
+      await setupWidget(tester);
 
       fakeAccountsDao.emitAllAccounts([account]);
       fakeAccountsDao.emitArchivedAccounts([]);
@@ -137,18 +132,8 @@ void main() {
     testWidgets(
         'should show archive dialog for cash account with references on long press',
         (WidgetTester tester) async {
+      final l10n = await setupWidget(tester);
       fakeAccountsDao.setHasBookings(true);
-
-      await tester.pumpWidget(
-        Provider<AppDatabase>.value(
-          value: mockDb,
-          child: const MaterialApp(
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: AccountsScreen(),
-          ),
-        ),
-      );
 
       fakeAccountsDao.emitAllAccounts([account]);
       fakeAccountsDao.emitArchivedAccounts([]);
@@ -158,29 +143,18 @@ void main() {
       await tester.longPress(find.text('Test Account'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Cannot Delete Account'), findsOneWidget);
-      expect(
-          find.text(
-              'This account has references and cannot be deleted. Would you like to archive it instead?'),
-          findsOneWidget);
+      expect(find.text(l10n.cannotDeleteAccount), findsOneWidget);
+      expect(find.text(l10n.accountHasReferencesArchiveInstead), findsOneWidget);
 
-      await tester.tap(find.text('Archive'));
+      await tester.tap(find.text(l10n.archive));
       await tester.pumpAndSettle();
     });
 
     testWidgets(
         'should show delete dialog for account without references on long press',
         (WidgetTester tester) async {
-      await tester.pumpWidget(
-        Provider<AppDatabase>.value(
-          value: mockDb,
-          child: const MaterialApp(
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: AccountsScreen(),
-          ),
-        ),
-      );
+      final l10n = await setupWidget(tester);
+      await setupWidget(tester);
 
       fakeAccountsDao.emitAllAccounts([account]);
       fakeAccountsDao.emitArchivedAccounts([]);
@@ -190,26 +164,16 @@ void main() {
       await tester.longPress(find.text('Test Account'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Delete Account'), findsOneWidget);
-      expect(find.text('Are you sure you want to delete this account?'),
-          findsOneWidget);
+      expect(find.text(l10n.deleteAccount), findsOneWidget);
+      expect(find.text(l10n.confirmDeleteAccount), findsOneWidget);
 
-      await tester.tap(find.text('Confirm'));
+      await tester.tap(find.text(l10n.confirm));
       await tester.pumpAndSettle();
     });
 
     testWidgets('should show unarchive dialog on archived account tap',
         (WidgetTester tester) async {
-      await tester.pumpWidget(
-        Provider<AppDatabase>.value(
-          value: mockDb,
-          child: const MaterialApp(
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: AccountsScreen(),
-          ),
-        ),
-      );
+      final l10n = await setupWidget(tester);
 
       fakeAccountsDao.emitAllAccounts([]);
       fakeAccountsDao.emitArchivedAccounts([archivedAccount]);
@@ -224,48 +188,28 @@ void main() {
       await tester.tap(find.text('Archived Account'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Unarchive Account'), findsOneWidget);
-      expect(
-          find.text('Do you want to unarchive this account?'), findsOneWidget);
+      expect(find.text(l10n.unarchiveAccount), findsOneWidget);
+      expect(find.text(l10n.confirmUnarchiveAccount), findsOneWidget);
 
-      await tester.tap(find.text('Confirm'));
+      await tester.tap(find.text(l10n.confirm));
       await tester.pumpAndSettle();
     });
 
     testWidgets('should display message when no active accounts exist',
         (WidgetTester tester) async {
-      await tester.pumpWidget(
-        Provider<AppDatabase>.value(
-          value: mockDb,
-          child: const MaterialApp(
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: AccountsScreen(),
-          ),
-        ),
-      );
+      final l10n = await setupWidget(tester);
 
       fakeAccountsDao.emitAllAccounts([]);
       fakeAccountsDao.emitArchivedAccounts([]);
 
       await tester.pumpAndSettle();
 
-      expect(find.text('No active accounts yet. Tap + to add one!'),
-          findsOneWidget);
+      expect(find.text(l10n.noActiveAccounts), findsOneWidget);
     });
 
     testWidgets('should open account form when FAB is tapped',
         (WidgetTester tester) async {
-      await tester.pumpWidget(
-        Provider<AppDatabase>.value(
-          value: mockDb,
-          child: const MaterialApp(
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: AccountsScreen(),
-          ),
-        ),
-      );
+      await setupWidget(tester);
 
       fakeAccountsDao.emitAllAccounts([]);
       fakeAccountsDao.emitArchivedAccounts([]);

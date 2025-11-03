@@ -247,6 +247,210 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Dark'**
   String get dark;
+
+  /// No description provided for @insufficientBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'Account has insufficient balance for this debit.'**
+  String get insufficientBalance;
+
+  /// No description provided for @mergeBookings.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge bookings?'**
+  String get mergeBookings;
+
+  /// No description provided for @mergeBookingsQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'A similar booking already exists. Do you want to merge them?'**
+  String get mergeBookingsQuestion;
+
+  /// No description provided for @createNew.
+  ///
+  /// In en, this message translates to:
+  /// **'Create new'**
+  String get createNew;
+
+  /// No description provided for @merge.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge'**
+  String get merge;
+
+  /// No description provided for @date.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get date;
+
+  /// No description provided for @amount.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount'**
+  String get amount;
+
+  /// No description provided for @pleaseEnterAnAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter an amount!'**
+  String get pleaseEnterAnAmount;
+
+  /// No description provided for @invalidInput.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid input!'**
+  String get invalidInput;
+
+  /// No description provided for @tooManyDecimalPlaces.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many decimal places!'**
+  String get tooManyDecimalPlaces;
+
+  /// No description provided for @reason.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason'**
+  String get reason;
+
+  /// No description provided for @pleaseEnterAReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a reason!'**
+  String get pleaseEnterAReason;
+
+  /// No description provided for @reasonReservedForTransfer.
+  ///
+  /// In en, this message translates to:
+  /// **'This reason is reserved for transfers.'**
+  String get reasonReservedForTransfer;
+
+  /// No description provided for @account.
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get account;
+
+  /// No description provided for @pleaseSelectAnAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select an account!'**
+  String get pleaseSelectAnAccount;
+
+  /// No description provided for @notes.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get notes;
+
+  /// No description provided for @excludeFromAverage.
+  ///
+  /// In en, this message translates to:
+  /// **'Exclude from average'**
+  String get excludeFromAverage;
+
+  /// No description provided for @dateCannotBeInTheFuture.
+  ///
+  /// In en, this message translates to:
+  /// **'The date cannot be in the future.'**
+  String get dateCannotBeInTheFuture;
+
+  /// No description provided for @cannotDeleteAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot Delete Account'**
+  String get cannotDeleteAccount;
+
+  /// No description provided for @accountHasReferencesArchiveInstead.
+  ///
+  /// In en, this message translates to:
+  /// **'This account has references and cannot be deleted. Would you like to archive it instead?'**
+  String get accountHasReferencesArchiveInstead;
+
+  /// No description provided for @archive.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive'**
+  String get archive;
+
+  /// No description provided for @deleteAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Account'**
+  String get deleteAccount;
+
+  /// No description provided for @confirmDeleteAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this account?'**
+  String get confirmDeleteAccount;
+
+  /// No description provided for @confirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get confirm;
+
+  /// No description provided for @unarchiveAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Unarchive Account'**
+  String get unarchiveAccount;
+
+  /// No description provided for @confirmUnarchiveAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Do you want to unarchive this account?'**
+  String get confirmUnarchiveAccount;
+
+  /// No description provided for @error.
+  ///
+  /// In en, this message translates to:
+  /// **'Error: {error}'**
+  String error(String error);
+
+  /// No description provided for @noActiveAccounts.
+  ///
+  /// In en, this message translates to:
+  /// **'No active accounts yet. Tap + to add one!'**
+  String get noActiveAccounts;
+
+  /// No description provided for @archivedAccounts.
+  ///
+  /// In en, this message translates to:
+  /// **'Archived Accounts'**
+  String get archivedAccounts;
+
+  /// No description provided for @anErrorOccurred.
+  ///
+  /// In en, this message translates to:
+  /// **'An error occurred: {error}'**
+  String anErrorOccurred(String error);
+
+  /// No description provided for @noBookingsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No bookings yet.'**
+  String get noBookingsYet;
+
+  /// No description provided for @unknownAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown Account'**
+  String get unknownAccount;
+
+  /// No description provided for @deleteBookingConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Booking?'**
+  String get deleteBookingConfirmation;
+
+  /// No description provided for @delete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get delete;
 }
 
 class _AppLocalizationsDelegate

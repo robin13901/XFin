@@ -121,7 +121,9 @@ class _AccountFormState extends State<AccountForm> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
+                const SizedBox(height: 6),
                 TextFormField(
+                  key: const Key('account_name_field'),
                   controller: _nameController,
                   decoration: InputDecoration(
                     labelText: l10n.accountName,
@@ -131,6 +133,7 @@ class _AccountFormState extends State<AccountForm> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<AccountTypes>(
+                  key: const Key('account_type_dropdown'),
                   initialValue: _type,
                   decoration: InputDecoration(
                     labelText: l10n.type,
@@ -153,6 +156,7 @@ class _AccountFormState extends State<AccountForm> {
                 if (_type == AccountTypes.cash) ...[
                   const SizedBox(height: 16),
                   TextFormField(
+                    key: const Key('initial_balance_field'),
                     controller: _initialBalanceController,
                     decoration: InputDecoration(
                       labelText: l10n.initialBalance,
