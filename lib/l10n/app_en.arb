@@ -34,9 +34,9 @@
   "pleaseEnterAnAmount": "Please enter an amount!",
   "invalidInput": "Invalid input!",
   "tooManyDecimalPlaces": "Too many decimal places!",
-  "reason": "Reason",
-  "pleaseEnterAReason": "Please enter a reason!",
-  "reasonReservedForTransfer": "This reason is reserved for transfers.",
+  "category": "Category",
+  "pleaseEnterACategory": "Please enter a category!",
+  "categoryReservedForTransfer": "This category is reserved for transfers.",
   "account": "Account",
   "pleaseSelectAnAccount": "Please select an account!",
   "notes": "Notes",
@@ -90,7 +90,7 @@
   "commodity": "Commodity",
   "value": "Value",
   "sharesOwned": "Shares",
-  "netBuyIn": "Net Buy In",
+  "netCostBasis": "Net Cost Basis",
   "update": "Update",
   "ok": "OK"
 }

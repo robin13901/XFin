@@ -34,8 +34,8 @@ void main() {
         tickerSymbol: 'TEST',
         value: const Value(100.0),
         sharesOwned: const Value(10.0),
-        netBuyIn: const Value(90.0),
-        brokerBuyIn: const Value(8.0),
+        netCostBasis: const Value(90.0),
+        brokerCostBasis: const Value(8.0),
         buyFeeTotal: const Value(2.0),
       );
       await assetsDao.addAsset(newAsset);
@@ -47,8 +47,8 @@ void main() {
       expect(assets.first.tickerSymbol, 'TEST');
       expect(assets.first.value, 100.0);
       expect(assets.first.sharesOwned, 10.0);
-      expect(assets.first.netBuyIn, 90.0);
-      expect(assets.first.brokerBuyIn, 8.0);
+      expect(assets.first.netCostBasis, 90.0);
+      expect(assets.first.brokerCostBasis, 8.0);
       expect(assets.first.buyFeeTotal, 2.0);
     });
 
@@ -59,8 +59,8 @@ void main() {
         tickerSymbol: 'ORIG',
         value: const Value(50.0),
         sharesOwned: const Value(5.0),
-        netBuyIn: const Value(40.0),
-        brokerBuyIn: const Value(3.0),
+        netCostBasis: const Value(40.0),
+        brokerCostBasis: const Value(3.0),
         buyFeeTotal: const Value(1.0),
       );
       final id = await assetsDao.addAsset(assetToInsert);
@@ -72,8 +72,8 @@ void main() {
         tickerSymbol: 'UPDT',
         value: 150.0,
         sharesOwned: 15.0,
-        netBuyIn: 130.0,
-        brokerBuyIn: 10.0,
+        netCostBasis: 130.0,
+        brokerCostBasis: 10.0,
         buyFeeTotal: 5.0,
       );
       await assetsDao.updateAsset(updatedAsset);
@@ -85,8 +85,8 @@ void main() {
       expect(assets.first.tickerSymbol, 'UPDT');
       expect(assets.first.value, 150.0);
       expect(assets.first.sharesOwned, 15.0);
-      expect(assets.first.netBuyIn, 130.0);
-      expect(assets.first.brokerBuyIn, 10.0);
+      expect(assets.first.netCostBasis, 130.0);
+      expect(assets.first.brokerCostBasis, 10.0);
       expect(assets.first.buyFeeTotal, 5.0);
     });
 
@@ -97,8 +97,8 @@ void main() {
         tickerSymbol: 'DEL',
         value: const Value(1.0),
         sharesOwned: const Value(1.0),
-        netBuyIn: const Value(1.0),
-        brokerBuyIn: const Value(1.0),
+        netCostBasis: const Value(1.0),
+        brokerCostBasis: const Value(1.0),
         buyFeeTotal: const Value(1.0),
       );
       final id = await assetsDao.addAsset(assetToInsert);
@@ -116,8 +116,8 @@ void main() {
         tickerSymbol: 'UAS',
         value: const Value(99.0),
         sharesOwned: const Value(9.0),
-        netBuyIn: const Value(89.0),
-        brokerBuyIn: const Value(7.0),
+        netCostBasis: const Value(89.0),
+        brokerCostBasis: const Value(7.0),
         buyFeeTotal: const Value(3.0),
       );
       final id = await assetsDao.addAsset(assetToInsert);
@@ -134,8 +134,8 @@ void main() {
         tickerSymbol: 'AWT',
         value: const Value(100.0), 
         sharesOwned: const Value(10.0), 
-        netBuyIn: const Value(1000.0), 
-        brokerBuyIn: const Value(0.0), 
+        netCostBasis: const Value(1000.0), 
+        brokerCostBasis: const Value(0.0), 
         buyFeeTotal: const Value(0.0),
       );
       final assetId = await assetsDao.addAsset(asset);
@@ -171,8 +171,8 @@ void main() {
         tickerSymbol: 'AWO',
         value: const Value(100.0), 
         sharesOwned: const Value(10.0), 
-        netBuyIn: const Value(1000.0), 
-        brokerBuyIn: const Value(0.0), 
+        netCostBasis: const Value(1000.0), 
+        brokerCostBasis: const Value(0.0), 
         buyFeeTotal: const Value(0.0),
       );
       final assetId = await assetsDao.addAsset(asset);
@@ -187,8 +187,8 @@ void main() {
         tickerSymbol: 'AOA',
         value: const Value(100.0), 
         sharesOwned: const Value(10.0), 
-        netBuyIn: const Value(1000.0), 
-        brokerBuyIn: const Value(0.0), 
+        netCostBasis: const Value(1000.0), 
+        brokerCostBasis: const Value(0.0), 
         buyFeeTotal: const Value(0.0),
       );
       final assetId = await assetsDao.addAsset(asset);
@@ -207,8 +207,8 @@ void main() {
         accountId: account.id,
         value: 0.0,
         sharesOwned: 5.0,
-        netBuyIn: 0.0,
-        brokerBuyIn: 0.0,
+        netCostBasis: 0.0,
+        brokerCostBasis: 0.0,
         buyFeeTotal: 0.0,
       ));
 
@@ -222,8 +222,8 @@ void main() {
         tickerSymbol: 'ANOA',
         value: const Value(100.0), 
         sharesOwned: const Value(10.0), 
-        netBuyIn: const Value(1000.0), 
-        brokerBuyIn: const Value(0.0), 
+        netCostBasis: const Value(1000.0), 
+        brokerCostBasis: const Value(0.0), 
         buyFeeTotal: const Value(0.0),
       );
       final assetId = await assetsDao.addAsset(asset);

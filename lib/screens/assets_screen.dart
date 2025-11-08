@@ -106,7 +106,7 @@ class AssetsScreen extends StatelessWidget {
                         children: [
                           Text('${l10n.value}: ${currencyFormat.format(asset.value)}'),
                           Text('${l10n.sharesOwned}: ${asset.sharesOwned.toStringAsFixed(2)}'),
-                          Text('${l10n.netBuyIn}: ${currencyFormat.format(asset.netBuyIn)}'),
+                          Text('${l10n.netCostBasis}: ${currencyFormat.format(asset.netCostBasis)}'),
                         ],
                       ),
                       trailing: Text(asset.type.name.toUpperCase()),

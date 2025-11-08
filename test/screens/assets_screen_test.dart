@@ -59,8 +59,8 @@ class FakeAssetsDao extends Fake implements AssetsDao {
         tickerSymbol: entry.tickerSymbol.value,
         value: entry.value.value,
         sharesOwned: entry.sharesOwned.value,
-        netBuyIn: entry.netBuyIn.value,
-        brokerBuyIn: entry.brokerBuyIn.value,
+        netCostBasis: entry.netCostBasis.value,
+        brokerCostBasis: entry.brokerCostBasis.value,
         buyFeeTotal: entry.buyFeeTotal.value,
       )
     ]);
@@ -137,8 +137,8 @@ void main() {
           tickerSymbol: 'AAPL',
           value: 150.75,
           sharesOwned: 10.5,
-          netBuyIn: 1400.0,
-          brokerBuyIn: 0.0,
+          netCostBasis: 1400.0,
+          brokerCostBasis: 0.0,
           buyFeeTotal: 0.0,
         ),
         const Asset(
@@ -148,8 +148,8 @@ void main() {
           tickerSymbol: 'BTC',
           value: 30000.0,
           sharesOwned: 0.5,
-          netBuyIn: 12000.0,
-          brokerBuyIn: 0.0,
+          netCostBasis: 12000.0,
+          brokerCostBasis: 0.0,
           buyFeeTotal: 0.0,
         ),
       ];
@@ -164,7 +164,7 @@ void main() {
       expect(
           find.text('${l10n.value}: ${currencyFormat.format(150.75)}'), findsOneWidget);
       expect(find.text('${l10n.sharesOwned}: 10.50'), findsOneWidget);
-      expect(find.text('${l10n.netBuyIn}: ${currencyFormat.format(1400.0)}'),
+      expect(find.text('${l10n.netCostBasis}: ${currencyFormat.format(1400.0)}'),
           findsOneWidget);
       expect(find.text(l10n.stock.toUpperCase()), findsOneWidget);
       expect(find.text(l10n.crypto.toUpperCase()), findsOneWidget);
@@ -193,8 +193,8 @@ void main() {
         tickerSymbol: 'ATD',
         value: 1.0,
         sharesOwned: 1.0,
-        netBuyIn: 1.0,
-        brokerBuyIn: 0.0,
+        netCostBasis: 1.0,
+        brokerCostBasis: 0.0,
         buyFeeTotal: 0.0,
       );
       fakeAssetsDao.emitAllAssets([asset]);
@@ -222,8 +222,8 @@ void main() {
         tickerSymbol: 'AWT',
         value: 1.0,
         sharesOwned: 1.0,
-        netBuyIn: 1.0,
-        brokerBuyIn: 0.0,
+        netCostBasis: 1.0,
+        brokerCostBasis: 0.0,
         buyFeeTotal: 0.0,
       );
       fakeAssetsDao.emitAllAssets([asset]);
@@ -252,8 +252,8 @@ void main() {
         tickerSymbol: 'AOA',
         value: 1.0,
         sharesOwned: 1.0,
-        netBuyIn: 1.0,
-        brokerBuyIn: 0.0,
+        netCostBasis: 1.0,
+        brokerCostBasis: 0.0,
         buyFeeTotal: 0.0,
       );
       fakeAssetsDao.emitAllAssets([asset]);
@@ -281,8 +281,8 @@ void main() {
         tickerSymbol: 'ATBD',
         value: 1.0,
         sharesOwned: 1.0,
-        netBuyIn: 1.0,
-        brokerBuyIn: 0.0,
+        netCostBasis: 1.0,
+        brokerCostBasis: 0.0,
         buyFeeTotal: 0.0,
       );
       fakeAssetsDao.emitAllAssets([asset]);
@@ -311,8 +311,8 @@ void main() {
         tickerSymbol: 'ATND',
         value: 1.0,
         sharesOwned: 1.0,
-        netBuyIn: 1.0,
-        brokerBuyIn: 0.0,
+        netCostBasis: 1.0,
+        brokerCostBasis: 0.0,
         buyFeeTotal: 0.0,
       );
       fakeAssetsDao.emitAllAssets([asset]);
@@ -340,8 +340,8 @@ void main() {
         tickerSymbol: 'AWT',
         value: 1.0,
         sharesOwned: 1.0,
-        netBuyIn: 1.0,
-        brokerBuyIn: 0.0,
+        netCostBasis: 1.0,
+        brokerCostBasis: 0.0,
         buyFeeTotal: 0.0,
       );
       fakeAssetsDao.emitAllAssets([asset]);

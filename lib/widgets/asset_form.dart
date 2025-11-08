@@ -70,8 +70,8 @@ class _AssetFormState extends State<AssetForm> {
         // Initialize new fields with 0.0
         value: const drift.Value(0.0),
         sharesOwned: const drift.Value(0.0),
-        netBuyIn: const drift.Value(0.0),
-        brokerBuyIn: const drift.Value(0.0),
+        netCostBasis: const drift.Value(0.0),
+        brokerCostBasis: const drift.Value(0.0),
         buyFeeTotal: const drift.Value(0.0),
       );
 

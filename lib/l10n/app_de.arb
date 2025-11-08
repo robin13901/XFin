@@ -34,9 +34,9 @@
   "pleaseEnterAnAmount": "Bitte gib einen Betrag an!",
   "invalidInput": "Ungültige Eingabe!",
   "tooManyDecimalPlaces": "Zu viele Nachkommastellen!",
-  "reason": "Grund",
-  "pleaseEnterAReason": "Bitte gib einen Grund an!",
-  "reasonReservedForTransfer": "Dieser Grund ist für Überweisungen reserviert.",
+  "category": "Kategorie",
+  "pleaseEnterACategory": "Bitte gib eine Kategorie an!",
+  "categoryReservedForTransfer": "Diese Kategorie ist für Überweisungen reserviert.",
   "account": "Konto",
   "pleaseSelectAnAccount": "Bitte wähle ein Konto!",
   "notes": "Notizen",
@@ -90,7 +90,7 @@
   "commodity": "Rohstoff",
   "value": "Wert",
   "sharesOwned": "Anteile",
-  "netBuyIn": "Buy-In",
+  "netCostBasis": "Netto-Kostenbasis",
   "update": "Aktualisieren",
   "ok": "OK"
 }

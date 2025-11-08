@@ -46,14 +46,14 @@ class TestDatabase {
         : 20230101;
     final companion = BookingsCompanion(
       date: Value(dateAsInt),
-      reason: Value(reason),
+      category: Value(reason),
       amount: Value(amount),
       accountId: Value(accountId),
       isGenerated: const Value(false),
     );
     await appDatabase.bookingsDao.createBookingAndUpdateAccount(companion);
     return await (appDatabase.select(appDatabase.bookings)
-          ..where((tbl) => tbl.reason.equals(reason)))
+          ..where((tbl) => tbl.category.equals(reason)))
         .getSingle();
   }
 }
@@ -172,7 +172,7 @@ void main() {
               final form = tester.widget<BookingForm>(find.byType(BookingForm));
               expect(form.booking, isNotNull);
               expect(form.booking!.id, booking.id);
-              expect(form.booking!.reason, 'Editable');
+              expect(form.booking!.category, 'Editable');
 
               await tester.pumpWidget(Container());
             }));

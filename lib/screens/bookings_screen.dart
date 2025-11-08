@@ -69,7 +69,7 @@ class BookingsScreen extends StatelessWidget {
               final dateText = dateFormat.format(date);
 
               return ListTile(
-                title: Text(booking.reason),
+                title: Text(booking.category),
                 subtitle: Text(item.account?.name ?? l10n.unknownAccount),
                 trailing: Column(
                   mainAxisAlignment: MainAxisAlignment.center,

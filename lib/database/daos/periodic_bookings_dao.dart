@@ -33,8 +33,8 @@ class PeriodicBookingsDao extends DatabaseAccessor<AppDatabase> with _$PeriodicB
     if (periodicBooking.amount == 0) {
       throw Exception('Amount must not be 0.');
     }
-    if (periodicBooking.reason.isEmpty) {
-      throw Exception('Reason must not be empty.');
+    if (periodicBooking.category.isEmpty) {
+      throw Exception('Category must not be empty.');
     }
 
     final account = await (select(accounts)..where((a) => a.id.equals(periodicBooking.accountId))).getSingle();

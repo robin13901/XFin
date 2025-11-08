@@ -75,8 +75,8 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
 
       final assetOnAccount = await db.assetsOnAccountsDao.getAssetOnAccount(trade.portfolioAccountId, trade.assetId);
       final newShares = assetOnAccount.sharesOwned + (isBuy ? trade.shares : -trade.shares);
-      final newBrokerBuyIn = assetOnAccount.brokerBuyIn + (isBuy ? trade.movedValue : 0);
-      final newNetBuyIn = newBrokerBuyIn / newShares;
+      final newBrokerCostBasis = assetOnAccount.brokerCostBasis + (isBuy ? trade.movedValue : 0);
+      final newNetCostBasis = newBrokerCostBasis / newShares;
       final newBuyFeeTotal = assetOnAccount.buyFeeTotal + (isBuy ? trade.tradingFee.abs() : 0);
       final newValue = newShares * trade.pricePerShare;
 
@@ -84,8 +84,8 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
         accountId: Value(trade.portfolioAccountId),
         assetId: Value(trade.assetId),
         sharesOwned: Value(newShares),
-        brokerBuyIn: Value(newBrokerBuyIn),
-        netBuyIn: Value(newNetBuyIn),
+        brokerCostBasis: Value(newBrokerCostBasis),
+        netCostBasis: Value(newNetCostBasis),
         buyFeeTotal: Value(newBuyFeeTotal),
         value: Value(newValue),
       );
@@ -106,8 +106,8 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
 
       final assetOnAccount = await db.assetsOnAccountsDao.getAssetOnAccount(trade.portfolioAccountId, trade.assetId);
       final newShares = assetOnAccount.sharesOwned - (isBuy ? trade.shares : -trade.shares);
-      final newBrokerBuyIn = assetOnAccount.brokerBuyIn - (isBuy ? trade.movedValue : 0.0);
-      final newNetBuyIn = newShares == 0 ? 0.0 : newBrokerBuyIn / newShares;
+      final newBrokerCostBasis = assetOnAccount.brokerCostBasis - (isBuy ? trade.movedValue : 0.0);
+      final newNetCostBasis = newShares == 0 ? 0.0 : newBrokerCostBasis / newShares;
       final newBuyFeeTotal = assetOnAccount.buyFeeTotal - (isBuy ? trade.tradingFee.abs() : 0.0);
       final newValue = newShares * trade.pricePerShare;
 
@@ -115,8 +115,8 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
         accountId: Value(trade.portfolioAccountId),
         assetId: Value(trade.assetId),
         sharesOwned: Value(newShares),
-        brokerBuyIn: Value(newBrokerBuyIn),
-        netBuyIn: Value(newNetBuyIn),
+        brokerCostBasis: Value(newBrokerCostBasis),
+        netCostBasis: Value(newNetCostBasis),
         buyFeeTotal: Value(newBuyFeeTotal),
         value: Value(newValue),
       );

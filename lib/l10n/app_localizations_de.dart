@@ -118,14 +118,14 @@ class AppLocalizationsDe extends AppLocalizations {
   String get tooManyDecimalPlaces => 'Zu viele Nachkommastellen!';
 
   @override
-  String get reason => 'Grund';
+  String get category => 'Kategorie';
 
   @override
-  String get pleaseEnterAReason => 'Bitte gib einen Grund an!';
+  String get pleaseEnterACategory => 'Bitte gib eine Kategorie an!';
 
   @override
-  String get reasonReservedForTransfer =>
-      'Dieser Grund ist für Überweisungen reserviert.';
+  String get categoryReservedForTransfer =>
+      'Diese Kategorie ist für Überweisungen reserviert.';
 
   @override
   String get account => 'Konto';
@@ -259,7 +259,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get sharesOwned => 'Anteile';
 
   @override
-  String get netBuyIn => 'Buy-In';
+  String get netCostBasis => 'Netto-Kostenbasis';
 
   @override
   String get update => 'Aktualisieren';

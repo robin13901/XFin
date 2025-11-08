@@ -52,25 +52,25 @@ void main() {
       // Arrange
       await bookingsDao.createBookingAndUpdateAccount(BookingsCompanion(
           date: const Value(20230101),
-          reason: const Value('Booking 1'),
+          category: const Value('Booking 1'),
           amount: const Value(100),
           isGenerated: const Value(false),
           accountId: Value(accountId1)));
       await bookingsDao.createBookingAndUpdateAccount(BookingsCompanion(
           date: const Value(20230102),
-          reason: const Value('Booking 2'),
+          category: const Value('Booking 2'),
           amount: const Value(200),
           isGenerated: const Value(false),
           accountId: Value(accountId1)));
       await bookingsDao.createBookingAndUpdateAccount(BookingsCompanion(
           date: const Value(20230102),
-          reason: const Value('Booking 3'),
+          category: const Value('Booking 3'),
           amount: const Value(50),
           isGenerated: const Value(false),
           accountId: Value(accountId2)));
       await bookingsDao.createBookingAndUpdateAccount(BookingsCompanion(
           date: const Value(20230103),
-          reason: const Value('Archived Booking'),
+          category: const Value('Archived Booking'),
           amount: const Value(50),
           isGenerated: const Value(false),
           accountId: Value(archivedAccountId)));
@@ -81,7 +81,7 @@ void main() {
 
       // Assert
       expect(result.length, 3);
-      expect(result.any((b) => b.booking.reason == 'Archived Booking'), isFalse);
+      expect(result.any((b) => b.booking.category == 'Archived Booking'), isFalse);
       expect(result[0].booking.date, 20230102);
       expect(result[0].booking.amount, 200); // Higher amount first for same date
       expect(result[1].booking.date, 20230102);
@@ -93,7 +93,7 @@ void main() {
       // Arrange
       final companion = BookingsCompanion(
           date: const Value(20230501),
-          reason: const Value('Groceries'),
+          category: const Value('Groceries'),
           amount: const Value(-50.0),
           accountId: Value(accountId1),
           excludeFromAverage: const Value(false),
@@ -115,7 +115,7 @@ void main() {
        // Arrange
       final companion = BookingsCompanion(
           date: const Value(20230501),
-          reason: const Value('Groceries'),
+          category: const Value('Groceries'),
           amount: const Value(-50.0),
           accountId: Value(accountId1),
           excludeFromAverage: const Value(false),
@@ -128,29 +128,29 @@ void main() {
       expect(mergeable, isNull);
     });
 
-    test('watchDistinctReasons returns unique, sorted reasons', () async {
+    test('watchDistinctCategorys returns unique, sorted categorys', () async {
       // Arrange
       await bookingsDao.createBookingAndUpdateAccount(BookingsCompanion(
           date: const Value(20230101),
-          reason: const Value('Groceries'),
+          category: const Value('Groceries'),
           amount: const Value(100),
           isGenerated: const Value(false),
           accountId: Value(accountId1)));
       await bookingsDao.createBookingAndUpdateAccount(BookingsCompanion(
           date: const Value(20230102),
-          reason: const Value('Salary'),
+          category: const Value('Salary'),
           amount: const Value(200),
           isGenerated: const Value(false),
           accountId: Value(accountId1)));
       await bookingsDao.createBookingAndUpdateAccount(BookingsCompanion(
           date: const Value(20230103),
-          reason: const Value('Groceries'),
+          category: const Value('Groceries'),
           amount: const Value(50),
           isGenerated: const Value(false),
           accountId: Value(accountId2)));
 
       // Act
-      final stream = bookingsDao.watchDistinctReasons();
+      final stream = bookingsDao.watchDistinctCategories();
       final result = await stream.first;
 
       // Assert
@@ -162,7 +162,7 @@ void main() {
       // Arrange
       final companion = BookingsCompanion(
           date: const Value(20230101),
-          reason: const Value('Salary'),
+          category: const Value('Salary'),
           amount: const Value(500),
           isGenerated: const Value(false),
           accountId: Value(accountId1));
@@ -173,7 +173,7 @@ void main() {
       // Assert
       final booking = await bookingsDao.getBooking(1);
       final account = await accountsDao.getAccount(accountId1);
-      expect(booking.reason, 'Salary');
+      expect(booking.category, 'Salary');
       expect(account.balance, 1500); // 1000 + 500
     });
 
@@ -181,7 +181,7 @@ void main() {
       // Arrange
       await bookingsDao.createBookingAndUpdateAccount(BookingsCompanion(
           date: const Value(20230101),
-          reason: const Value('Initial'),
+          category: const Value('Initial'),
           amount: const Value(100),
           isGenerated: const Value(false),
           accountId: Value(accountId1)));
@@ -204,7 +204,7 @@ void main() {
       // Arrange
        await bookingsDao.createBookingAndUpdateAccount(BookingsCompanion(
           date: const Value(20230101),
-          reason: const Value('Initial'),
+          category: const Value('Initial'),
           amount: const Value(100),
           isGenerated: const Value(false),
           accountId: Value(accountId1)));
@@ -225,7 +225,7 @@ void main() {
       // Arrange
       await bookingsDao.createBookingAndUpdateAccount(BookingsCompanion(
           date: const Value(20230101),
-          reason: const Value('Expense'),
+          category: const Value('Expense'),
           amount: const Value(-200),
           isGenerated: const Value(false),
           accountId: Value(accountId1)));

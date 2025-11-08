@@ -118,14 +118,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tooManyDecimalPlaces => 'Too many decimal places!';
 
   @override
-  String get reason => 'Reason';
+  String get category => 'Category';
 
   @override
-  String get pleaseEnterAReason => 'Please enter a reason!';
+  String get pleaseEnterACategory => 'Please enter a category!';
 
   @override
-  String get reasonReservedForTransfer =>
-      'This reason is reserved for transfers.';
+  String get categoryReservedForTransfer =>
+      'This category is reserved for transfers.';
 
   @override
   String get account => 'Account';
@@ -255,7 +255,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sharesOwned => 'Shares';
 
   @override
-  String get netBuyIn => 'Net Buy In';
+  String get netCostBasis => 'Net Cost Basis';
 
   @override
   String get update => 'Update';

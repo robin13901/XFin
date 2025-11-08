@@ -36,7 +36,7 @@ class TestDatabase {
   Future<Booking> createBooking({
     required int accountId,
     required double amount,
-    required String reason,
+    required String category,
     DateTime? date,
   }) async {
     final dateAsInt = date != null
@@ -44,13 +44,13 @@ class TestDatabase {
         : 20230101;
     final companion = BookingsCompanion(
         date: Value(dateAsInt),
-        reason: Value(reason),
+        category: Value(category),
         amount: Value(amount),
         accountId: Value(accountId),
         isGenerated: const Value(false));
     await appDatabase.bookingsDao.createBookingAndUpdateAccount(companion);
     return await (appDatabase.select(appDatabase.bookings)
-          ..where((tbl) => tbl.reason.equals(reason)))
+          ..where((tbl) => tbl.category.equals(category)))
         .getSingle();
   }
 }
@@ -141,7 +141,7 @@ void main() {
               expect(find.text(l10n.save), findsOneWidget);
               expect(
                   tester
-                      .widget<TextFormField>(find.descendant(of: find.byKey(const Key('reason_field')), matching: find.byType(TextFormField)))
+                      .widget<TextFormField>(find.descendant(of: find.byKey(const Key('category_field')), matching: find.byType(TextFormField)))
                       .controller!
                       .text,
                   '');
@@ -167,7 +167,7 @@ void main() {
               final booking = Booking(
                 id: 1,
                 date: 20230501,
-                reason: 'Existing Booking',
+                category: 'Existing Booking',
                 amount: -50.0,
                 accountId: accountId1,
                 excludeFromAverage: true,
@@ -197,19 +197,19 @@ void main() {
               await tester.pumpWidget(Container());
             }));
 
-    testWidgets('reason field shows autocomplete suggestions',
+    testWidgets('category field shows autocomplete suggestions',
         (tester) => tester.runAsync(() async {
               await db.createBooking(
-                  accountId: accountId1, amount: 10, reason: 'Food');
+                  accountId: accountId1, amount: 10, category: 'Food');
               await db.createBooking(
-                  accountId: accountId1, amount: 20, reason: 'Transport');
+                  accountId: accountId1, amount: 20, category: 'Transport');
               await db.createBooking(
-                  accountId: accountId1, amount: 30, reason: 'Food expenses');
+                  accountId: accountId1, amount: 30, category: 'Food expenses');
 
               await pumpWidget(tester);
 
-              final reasonField = find.byKey(const Key('reason_field'));
-              await tester.enterText(reasonField, 'F');
+              final categoryField = find.byKey(const Key('category_field'));
+              await tester.enterText(categoryField, 'F');
               await tester.pumpAndSettle();
 
               expect(find.text('Food'), findsOneWidget);
@@ -221,7 +221,7 @@ void main() {
 
               expect(
                   tester
-                      .widget<TextFormField>(find.descendant(of: reasonField, matching: find.byType(TextFormField)))
+                      .widget<TextFormField>(find.descendant(of: categoryField, matching: find.byType(TextFormField)))
                       .controller!
                       .text,
                   'Food');
@@ -272,19 +272,19 @@ void main() {
                 await tester.pumpWidget(Container());
               }));
 
-      testWidgets('shows errors for invalid reason',
+      testWidgets('shows errors for invalid category',
           (tester) => tester.runAsync(() async {
                 await pumpWidget(tester);
 
                 await tester.tap(find.text(l10n.save));
                 await tester.pumpAndSettle();
-                expect(find.text(l10n.pleaseEnterAReason), findsOneWidget);
+                expect(find.text(l10n.pleaseEnterACategory), findsOneWidget);
 
                 await tester.enterText(
-                    find.byKey(const Key('reason_field')), 'Überweisung');
+                    find.byKey(const Key('category_field')), 'Überweisung');
                 await tester.tap(find.text(l10n.save));
                 await tester.pumpAndSettle();
-                expect(find.text(l10n.reasonReservedForTransfer), findsOneWidget);
+                expect(find.text(l10n.categoryReservedForTransfer), findsOneWidget);
 
                 // Dispose the widget to ensure streams are cancelled.
                 await tester.pumpWidget(Container());
@@ -311,7 +311,7 @@ void main() {
                 await tester.enterText(
                     find.byKey(const Key('amount_field')), '-50.50');
                 await tester.enterText(
-                    find.byKey(const Key('reason_field')), 'Groceries');
+                    find.byKey(const Key('category_field')), 'Groceries');
                 await tester.tap(find.byKey(const Key('account_dropdown')));
                 await tester.pumpAndSettle();
                 await tester.tap(find.text('Test Account').last);
@@ -336,7 +336,7 @@ void main() {
 
                 await tester.enterText(find.byKey(const Key('amount_field')), '-150');
                 await tester.enterText(
-                    find.byKey(const Key('reason_field')), 'Too Expensive');
+                    find.byKey(const Key('category_field')), 'Too Expensive');
                 await tester.tap(find.byKey(const Key('account_dropdown')));
                 await tester.pumpAndSettle();
                 await tester.tap(find.text('Test Account').last);
@@ -357,13 +357,13 @@ void main() {
       testWidgets('Update existing booking successfully',
           (tester) => tester.runAsync(() async {
                 final booking = await db.createBooking(
-                    accountId: accountId1, amount: 50, reason: 'Initial');
+                    accountId: accountId1, amount: 50, category: 'Initial');
 
                 await pumpWidget(tester, booking: booking);
 
                 await tester.enterText(find.byKey(const Key('amount_field')), '-25');
                 await tester.enterText(
-                    find.byKey(const Key('reason_field')), 'Updated');
+                    find.byKey(const Key('category_field')), 'Updated');
 
                 await tester.tap(find.text(l10n.save));
                 await tester.pumpAndSettle();
@@ -381,14 +381,14 @@ void main() {
                 await db.createBooking(
                     accountId: accountId1,
                     amount: -30,
-                    reason: 'Groceries',
+                    category: 'Groceries',
                     date: DateTime.now());
 
                 await pumpWidget(tester);
 
                 await tester.enterText(find.byKey(const Key('amount_field')), '-20');
                 await tester.enterText(
-                    find.byKey(const Key('reason_field')), 'Groceries');
+                    find.byKey(const Key('category_field')), 'Groceries');
                 await tester.tap(find.byKey(const Key('account_dropdown')));
                 await tester.pumpAndSettle();
                 await tester.tap(find.text('Test Account').last);

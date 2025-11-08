@@ -36,7 +36,7 @@ class BookingsDao extends DatabaseAccessor<AppDatabase> with _$BookingsDaoMixin 
     final query = select(bookings)
       ..where((tbl) =>
           tbl.date.equals(newBooking.date.value) &
-          tbl.reason.equals(newBooking.reason.value) &
+          tbl.category.equals(newBooking.category.value) &
           tbl.accountId.equals(newBooking.accountId.value) &
           tbl.excludeFromAverage.equals(newBooking.excludeFromAverage.value) &
           tbl.notes.isNull() &
@@ -49,9 +49,9 @@ class BookingsDao extends DatabaseAccessor<AppDatabase> with _$BookingsDaoMixin 
     }
   }
 
-  Stream<List<String>> watchDistinctReasons() {
-    final query = selectOnly(bookings, distinct: true)..addColumns([bookings.reason]);
-    return query.watch().map((rows) => rows.map((row) => row.read(bookings.reason)!).toList());
+  Stream<List<String>> watchDistinctCategories() {
+    final query = selectOnly(bookings, distinct: true)..addColumns([bookings.category]);
+    return query.watch().map((rows) => rows.map((row) => row.read(bookings.category)!).toList());
   }
 
   // Methods that are not transactional

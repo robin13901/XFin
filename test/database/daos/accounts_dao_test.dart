@@ -102,7 +102,7 @@ void main() {
       final account = AccountsCompanion.insert(name: 'Test Account', balance: 1000.0, initialBalance: 1000.0, type: AccountTypes.cash);
       final accountId = await accountsDao.addAccount(account);
       
-      final booking = BookingsCompanion.insert(date: 20240101, amount: 100.0, reason: 'Test', accountId: accountId, isGenerated: false);
+      final booking = BookingsCompanion.insert(date: 20240101, amount: 100.0, category: 'Test', accountId: accountId, isGenerated: false);
       await bookingsDao.createBookingAndUpdateAccount(booking);
 
       expect(await accountsDao.hasBookings(accountId), isTrue);
@@ -141,7 +141,7 @@ void main() {
       final asset = AssetsCompanion.insert(name: 'Test Asset', type: AssetTypes.stock, tickerSymbol: 'TEST');
       final assetId = await assetsDao.addAsset(asset);
 
-      await database.assetsOnAccountsDao.updateAssetsOnAccount(AssetsOnAccountsCompanion(accountId: Value(portfolioAccountId), assetId: Value(assetId), value: const Value(0), sharesOwned: const Value(0), netBuyIn: const Value(0), brokerBuyIn: const Value(0), buyFeeTotal: const Value(0)));
+      await database.assetsOnAccountsDao.updateAssetsOnAccount(AssetsOnAccountsCompanion(accountId: Value(portfolioAccountId), assetId: Value(assetId), value: const Value(0), sharesOwned: const Value(0), netCostBasis: const Value(0), brokerCostBasis: const Value(0), buyFeeTotal: const Value(0)));
 
       final trade = TradesCompanion.insert(date: 20240101, assetId: assetId, type: TradeTypes.buy, movedValue: 1000.0, shares: 10.0, pricePerShare: 100.0, profitAndLoss: 0.0, tradingFee: -1.0, clearingAccountId: clearingAccountId, portfolioAccountId: portfolioAccountId);
       final tradeId = await tradesDao.createTradeAndUpdateAccounts(trade);

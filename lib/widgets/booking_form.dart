@@ -21,16 +21,16 @@ class _BookingFormState extends State<BookingForm> {
 
   late DateTime _date;
   late TextEditingController _amountController;
-  late TextEditingController _reasonController;
+  late TextEditingController _categoryController;
   late TextEditingController _notesController;
   late int? _accountId;
   late bool _excludeFromAverage;
   late bool _isGenerated;
 
-  late List<String> _distinctReasons;
-  StreamSubscription<List<String>>? _reasonSubscription;
+  late List<String> _distinctCategories;
+  StreamSubscription<List<String>>? _categorySubscription;
 
-  final _disallowedReasons = ['überweisung'];
+  final _disallowedCategories = ['überweisung'];
 
   @override
   void initState() {
@@ -38,10 +38,10 @@ class _BookingFormState extends State<BookingForm> {
     final booking = widget.booking;
     final db = Provider.of<AppDatabase>(context, listen: false);
 
-    _distinctReasons = [];
-    _reasonSubscription = db.bookingsDao.watchDistinctReasons().listen((reasons) {
+    _distinctCategories = [];
+    _categorySubscription = db.bookingsDao.watchDistinctCategories().listen((categories) {
       setState(() {
-        _distinctReasons = reasons;
+        _distinctCategories = categories;
       });
     });
 
@@ -52,7 +52,7 @@ class _BookingFormState extends State<BookingForm> {
           '${dateString.substring(0, 4)}-${dateString.substring(4, 6)}-${dateString.substring(6, 8)}');
       _amountController = 
           TextEditingController(text: booking.amount.toString());
-      _reasonController = TextEditingController(text: booking.reason);
+      _categoryController = TextEditingController(text: booking.category);
       _notesController = TextEditingController(text: booking.notes);
       _excludeFromAverage = booking.excludeFromAverage;
       _isGenerated = booking.isGenerated;
@@ -61,7 +61,7 @@ class _BookingFormState extends State<BookingForm> {
       // -> create new booking
       _date = DateTime.now();
       _amountController = TextEditingController();
-      _reasonController = TextEditingController();
+      _categoryController = TextEditingController();
       _notesController = TextEditingController();
       _accountId = null;
       _excludeFromAverage = false;
@@ -72,9 +72,9 @@ class _BookingFormState extends State<BookingForm> {
   @override
   void dispose() {
     _amountController.dispose();
-    _reasonController.dispose();
+    _categoryController.dispose();
     _notesController.dispose();
-    _reasonSubscription?.cancel();
+    _categorySubscription?.cancel();
     super.dispose();
   }
 
@@ -108,7 +108,7 @@ class _BookingFormState extends State<BookingForm> {
       final dateAsInt = int.parse(DateFormat('yyyyMMdd').format(_date));
       final companion = BookingsCompanion(
         date: drift.Value(dateAsInt),
-        reason: drift.Value(_reasonController.text.trim()),
+        category: drift.Value(_categoryController.text.trim()),
         notes: drift.Value(
             _notesController.text.isEmpty ? null : _notesController.text),
         excludeFromAverage: drift.Value(_excludeFromAverage),
@@ -184,12 +184,12 @@ class _BookingFormState extends State<BookingForm> {
     return null;
   }
 
-  String? _validateReason(String? value, AppLocalizations l10n) {
+  String? _validateCategory(String? value, AppLocalizations l10n) {
     if (value == null || value.isEmpty) {
-      return l10n.pleaseEnterAReason;
+      return l10n.pleaseEnterACategory;
     }
-    if (_disallowedReasons.contains(value.trim().toLowerCase())) {
-      return l10n.reasonReservedForTransfer;
+    if (_disallowedCategories.contains(value.trim().toLowerCase())) {
+      return l10n.categoryReservedForTransfer;
     }
     return null;
   }
@@ -270,18 +270,18 @@ class _BookingFormState extends State<BookingForm> {
                 ),
                 const SizedBox(height: 16),
                 Autocomplete<String>(
-                  key: const Key('reason_field'),
+                  key: const Key('category_field'),
                   optionsBuilder: (TextEditingValue textEditingValue) {
                     if (textEditingValue.text.isEmpty) {
                       return const Iterable<String>.empty();
                     }
-                    return _distinctReasons.where((reason) {
-                      return reason.toLowerCase().contains(textEditingValue.text.toLowerCase());
+                    return _distinctCategories.where((category) {
+                      return category.toLowerCase().contains(textEditingValue.text.toLowerCase());
                     });
                   },
                   onSelected: (String selection) {
                     setState(() {
-                      _reasonController.text = selection;
+                      _categoryController.text = selection;
                     });
                   },
                   fieldViewBuilder: (BuildContext context,
@@ -289,27 +289,27 @@ class _BookingFormState extends State<BookingForm> {
                       FocusNode focusNode,
                       void Function() onFieldSubmitted) {
                     // For existing bookings, ensure the Autocomplete's internal controller
-                    // reflects the initial reason from _reasonController.
+                    // reflects the initial category from _categoryController.
                     if (widget.booking != null &&
-                        _reasonController.text.isNotEmpty &&
-                        textEditingController.text != _reasonController.text) {
-                      textEditingController.text = _reasonController.text;
+                        _categoryController.text.isNotEmpty &&
+                        textEditingController.text != _categoryController.text) {
+                      textEditingController.text = _categoryController.text;
                     }
                     return TextFormField(
                       controller: textEditingController,
                       focusNode: focusNode,
                       decoration: InputDecoration(
-                        labelText: l10n.reason,
+                        labelText: l10n.category,
                         border: const OutlineInputBorder(),
                         errorMaxLines: 2,
                       ),
-                      validator: (value) => _validateReason(value, l10n),
+                      validator: (value) => _validateCategory(value, l10n),
                       onChanged: (value) {
-                        _reasonController.text = value; // Keep _reasonController in sync
+                        _categoryController.text = value; // Keep _categoryController in sync
                       },
                       onFieldSubmitted: (String value) {
                         onFieldSubmitted();
-                        _reasonController.text = value; // Also update on submit
+                        _categoryController.text = value; // Also update on submit
                       },
                     );
                   },

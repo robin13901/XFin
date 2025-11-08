@@ -43,8 +43,8 @@ class FakeAssetsDao extends Fake implements AssetsDao {
       tickerSymbol: entry.tickerSymbol.value,
       value: entry.value.value,
       sharesOwned: entry.sharesOwned.value,
-      netBuyIn: entry.netBuyIn.value,
-      brokerBuyIn: entry.brokerBuyIn.value,
+      netCostBasis: entry.netCostBasis.value,
+      brokerCostBasis: entry.brokerCostBasis.value,
       buyFeeTotal: entry.buyFeeTotal.value,
     );
     _assets.add(newAsset);
@@ -117,8 +117,8 @@ void main() {
         tickerSymbol: 'EXA',
         value: 0.0,
         sharesOwned: 0.0,
-        netBuyIn: 0.0,
-        brokerBuyIn: 0.0,
+        netCostBasis: 0.0,
+        brokerCostBasis: 0.0,
         buyFeeTotal: 0.0,
       );
 
@@ -152,8 +152,8 @@ void main() {
     //       tickerSymbol: 'DUPL',
     //       value: 0.0,
     //       sharesOwned: 0.0,
-    //       netBuyIn: 0.0,
-    //       brokerBuyIn: 0.0,
+    //       netCostBasis: 0.0,
+    //       brokerCostBasis: 0.0,
     //       buyFeeTotal: 0.0,
     //     )
     //   ]);
@@ -186,8 +186,8 @@ void main() {
     //       tickerSymbol: 'DUPLT',
     //       value: 0.0,
     //       sharesOwned: 0.0,
-    //       netBuyIn: 0.0,
-    //       brokerBuyIn: 0.0,
+    //       netCostBasis: 0.0,
+    //       brokerCostBasis: 0.0,
     //       buyFeeTotal: 0.0,
     //     )
     //   ]);
@@ -229,8 +229,8 @@ void main() {
         tickerSymbol: 'OLD',
         value: 0.0,
         sharesOwned: 0.0,
-        netBuyIn: 0.0,
-        brokerBuyIn: 0.0,
+        netCostBasis: 0.0,
+        brokerCostBasis: 0.0,
         buyFeeTotal: 0.0,
       );
 

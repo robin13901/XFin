@@ -308,23 +308,23 @@ abstract class AppLocalizations {
   /// **'Too many decimal places!'**
   String get tooManyDecimalPlaces;
 
-  /// No description provided for @reason.
+  /// No description provided for @category.
   ///
   /// In en, this message translates to:
-  /// **'Reason'**
-  String get reason;
+  /// **'Category'**
+  String get category;
 
-  /// No description provided for @pleaseEnterAReason.
+  /// No description provided for @pleaseEnterACategory.
   ///
   /// In en, this message translates to:
-  /// **'Please enter a reason!'**
-  String get pleaseEnterAReason;
+  /// **'Please enter a category!'**
+  String get pleaseEnterACategory;
 
-  /// No description provided for @reasonReservedForTransfer.
+  /// No description provided for @categoryReservedForTransfer.
   ///
   /// In en, this message translates to:
-  /// **'This reason is reserved for transfers.'**
-  String get reasonReservedForTransfer;
+  /// **'This category is reserved for transfers.'**
+  String get categoryReservedForTransfer;
 
   /// No description provided for @account.
   ///
@@ -560,11 +560,11 @@ abstract class AppLocalizations {
   /// **'Shares'**
   String get sharesOwned;
 
-  /// No description provided for @netBuyIn.
+  /// No description provided for @netCostBasis.
   ///
   /// In en, this message translates to:
-  /// **'Net Buy In'**
-  String get netBuyIn;
+  /// **'Net Cost Basis'**
+  String get netCostBasis;
 
   /// No description provided for @update.
   ///

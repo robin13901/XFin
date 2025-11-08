@@ -75,13 +75,13 @@ class Assets extends Table {
   TextColumn get tickerSymbol => text().unique()();
   RealColumn get value => real().withDefault(const Constant(0.0))();
   RealColumn get sharesOwned => real().withDefault(const Constant(0.0))();
-  RealColumn get netBuyIn => real().withDefault(const Constant(0.0))();
-  RealColumn get brokerBuyIn => real().withDefault(const Constant(0.0))();
+  RealColumn get netCostBasis => real().withDefault(const Constant(0.0))();
+  RealColumn get brokerCostBasis => real().withDefault(const Constant(0.0))();
   RealColumn get buyFeeTotal => real().withDefault(const Constant(0.0))();
 }
 
 @TableIndex(name: 'bookings_account_id_date', columns: {#accountId, #date})
-@TableIndex(name: 'bookings_reason_date_amount', columns: {#reason, #date, #amount})
+@TableIndex(name: 'bookings_category_date_amount', columns: {#category, #date, #amount})
 @TableIndex(
   name: 'bookings_complex_query',
   columns: {#date, #accountId, #amount, #excludeFromAverage, #isGenerated},
@@ -91,7 +91,7 @@ class Bookings extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get date => integer()();
   RealColumn get amount => real()();
-  TextColumn get reason => text()();
+  TextColumn get category => text()();
   IntColumn get accountId => integer().references(Accounts, #id)();
   TextColumn get notes => text().nullable()();
   BoolColumn get excludeFromAverage => boolean().withDefault(const Constant(false))();
@@ -145,7 +145,7 @@ class PeriodicBookings extends Table {
   IntColumn get nextExecutionDate => integer()();
   RealColumn get amount => real()();
   IntColumn get accountId => integer().references(Accounts, #id)();
-  TextColumn get reason => text()();
+  TextColumn get category => text()();
   TextColumn get notes => text().nullable()();
   TextColumn get cycle => text().map(const CyclesConverter())();
 }
@@ -172,8 +172,8 @@ class AssetsOnAccounts extends Table {
   IntColumn get assetId => integer().references(Assets, #id)();
   RealColumn get value => real()();
   RealColumn get sharesOwned => real()();
-  RealColumn get netBuyIn => real()();
-  RealColumn get brokerBuyIn => real()();
+  RealColumn get netCostBasis => real()();
+  RealColumn get brokerCostBasis => real()();
   RealColumn get buyFeeTotal => real()();
 
   @override
