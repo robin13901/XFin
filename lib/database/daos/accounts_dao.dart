@@ -66,7 +66,7 @@ class AccountsDao extends DatabaseAccessor<AppDatabase> with _$AccountsDaoMixin 
   Stream<List<Account>> watchArchivedAccounts() =>
       (select(accounts)..where((a) => a.isArchived.equals(true))).watch();
       
-  Future<int> addAccount(AccountsCompanion entry) => into(accounts).insert(entry);
+  Future<int> _addAccount(AccountsCompanion entry) => into(accounts).insert(entry);
   
   Future<void> deleteAccount(int id) => (delete(accounts)..where((a) => a.id.equals(id))).go();
 
@@ -84,5 +84,27 @@ class AccountsDao extends DatabaseAccessor<AppDatabase> with _$AccountsDaoMixin 
       variables: [Variable(delta), Variable(accountId)],
       updates: {accounts},
     );
+  }
+
+  Future<int> createAccount(AccountsCompanion account) {
+    return transaction(() async {
+      int accountId = await _addAccount(account);
+      if (account.type.value == AccountTypes.cash) {
+        await db.assetsDao.updateBaseCurrencyAsset(
+            account.initialBalance.value);
+
+        final assetOnAccount = AssetsOnAccountsCompanion(
+          accountId: Value(accountId),
+          assetId: const Value(1),
+          value: account.initialBalance,
+          sharesOwned: account.initialBalance,
+          netCostBasis: const Value(1.0),
+          brokerCostBasis: const Value(1.0),
+          buyFeeTotal: const Value(0.0),
+        );
+        await db.assetsOnAccountsDao.addAssetOnAccount(assetOnAccount);
+      }
+      return accountId;
+    });
   }
 }

@@ -83,7 +83,7 @@ class DeleteBookingDialog extends StatelessWidget {
         ),
         FilledButton.tonal(
           onPressed: () async {
-            await db.bookingsDao.deleteBookingAndUpdateAccount(booking.id);
+            await db.bookingsDao.deleteBooking(booking.id);
             if (context.mounted) {
               Navigator.of(context).pop(); // Close the dialog
             }

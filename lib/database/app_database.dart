@@ -45,4 +45,5 @@ class AppDatabase extends _$AppDatabase {
       await m.createAll();
     },
   );
+
 }

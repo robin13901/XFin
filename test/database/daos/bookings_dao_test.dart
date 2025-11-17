@@ -1,15 +1,25 @@
+import 'dart:ui';
+
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/daos/accounts_dao.dart';
 import 'package:xfin/database/daos/bookings_dao.dart';
 import 'package:xfin/database/tables.dart';
+import 'package:xfin/providers/base_currency_provider.dart';
 
 void main() {
   late AppDatabase db;
   late BookingsDao bookingsDao;
   late AccountsDao accountsDao;
+  late BaseCurrencyProvider currencyProvider;
+
+  setUpAll(() {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    SharedPreferences.setMockInitialValues({});
+  });
 
   setUp(() {
     db = AppDatabase(NativeDatabase.memory());
@@ -27,19 +37,35 @@ void main() {
     late int archivedAccountId;
 
     setUp(() async {
-      accountId1 = await accountsDao.addAccount(const AccountsCompanion(
+      const locale = Locale('en');
+      currencyProvider = BaseCurrencyProvider();
+      await currencyProvider.initialize(locale);
+
+      // Create base currency asset
+      await db.into(db.assets).insert(
+          const AssetsCompanion(
+              name: Value('EUR'),
+              type: Value(AssetTypes.currency),
+              tickerSymbol: Value('EUR'),
+              value: Value(0),
+              sharesOwned: Value(0),
+              brokerCostBasis: Value(1),
+              netCostBasis: Value(1),
+              buyFeeTotal: Value(0)));
+
+      accountId1 = await accountsDao.createAccount(const AccountsCompanion(
         name: Value('Account 1'),
         balance: Value(1000),
         initialBalance: Value(1000),
         type: Value(AccountTypes.cash),
       ));
-      accountId2 = await accountsDao.addAccount(const AccountsCompanion(
+      accountId2 = await accountsDao.createAccount(const AccountsCompanion(
         name: Value('Account 2'),
         balance: Value(500),
         initialBalance: Value(500),
         type: Value(AccountTypes.cash),
       ));
-      archivedAccountId = await accountsDao.addAccount(const AccountsCompanion(
+      archivedAccountId = await accountsDao.createAccount(const AccountsCompanion(
         name: Value('Archived Account'),
         balance: Value(0),
         initialBalance: Value(0),
@@ -50,25 +76,25 @@ void main() {
 
     test('watchBookingsWithAccount filters archived and orders correctly', () async {
       // Arrange
-      await bookingsDao.createBookingAndUpdateAccount(BookingsCompanion(
+      await bookingsDao.createBooking(BookingsCompanion(
           date: const Value(20230101),
           category: const Value('Booking 1'),
           amount: const Value(100),
           isGenerated: const Value(false),
           accountId: Value(accountId1)));
-      await bookingsDao.createBookingAndUpdateAccount(BookingsCompanion(
+      await bookingsDao.createBooking(BookingsCompanion(
           date: const Value(20230102),
           category: const Value('Booking 2'),
           amount: const Value(200),
           isGenerated: const Value(false),
           accountId: Value(accountId1)));
-      await bookingsDao.createBookingAndUpdateAccount(BookingsCompanion(
+      await bookingsDao.createBooking(BookingsCompanion(
           date: const Value(20230102),
           category: const Value('Booking 3'),
           amount: const Value(50),
           isGenerated: const Value(false),
           accountId: Value(accountId2)));
-      await bookingsDao.createBookingAndUpdateAccount(BookingsCompanion(
+      await bookingsDao.createBooking(BookingsCompanion(
           date: const Value(20230103),
           category: const Value('Archived Booking'),
           amount: const Value(50),
@@ -99,9 +125,9 @@ void main() {
           excludeFromAverage: const Value(false),
           isGenerated: const Value(false));
 
-      await bookingsDao.createBookingAndUpdateAccount(companion.copyWith(notes: const Value('some note'))); // Not mergeable
-      await bookingsDao.createBookingAndUpdateAccount(companion.copyWith(amount: const Value(50.0))); // Not mergeable (different sign)
-      await bookingsDao.createBookingAndUpdateAccount(companion); // This one is mergeable
+      await bookingsDao.createBooking(companion.copyWith(notes: const Value('some note'))); // Not mergeable
+      await bookingsDao.createBooking(companion.copyWith(amount: const Value(50.0))); // Not mergeable (different sign)
+      await bookingsDao.createBooking(companion); // This one is mergeable
 
       // Act
       final mergeable = await bookingsDao.findMergeableBooking(companion.copyWith(amount: const Value(-25.0)));
@@ -130,19 +156,19 @@ void main() {
 
     test('watchDistinctCategorys returns unique, sorted categorys', () async {
       // Arrange
-      await bookingsDao.createBookingAndUpdateAccount(BookingsCompanion(
+      await bookingsDao.createBooking(BookingsCompanion(
           date: const Value(20230101),
           category: const Value('Groceries'),
           amount: const Value(100),
           isGenerated: const Value(false),
           accountId: Value(accountId1)));
-      await bookingsDao.createBookingAndUpdateAccount(BookingsCompanion(
+      await bookingsDao.createBooking(BookingsCompanion(
           date: const Value(20230102),
           category: const Value('Salary'),
           amount: const Value(200),
           isGenerated: const Value(false),
           accountId: Value(accountId1)));
-      await bookingsDao.createBookingAndUpdateAccount(BookingsCompanion(
+      await bookingsDao.createBooking(BookingsCompanion(
           date: const Value(20230103),
           category: const Value('Groceries'),
           amount: const Value(50),
@@ -168,7 +194,7 @@ void main() {
           accountId: Value(accountId1));
 
       // Act
-      await bookingsDao.createBookingAndUpdateAccount(companion);
+      await bookingsDao.createBooking(companion);
 
       // Assert
       final booking = await bookingsDao.getBooking(1);
@@ -179,7 +205,7 @@ void main() {
 
     test('updateBookingAndUpdateAccount handles same account', () async {
       // Arrange
-      await bookingsDao.createBookingAndUpdateAccount(BookingsCompanion(
+      await bookingsDao.createBooking(BookingsCompanion(
           date: const Value(20230101),
           category: const Value('Initial'),
           amount: const Value(100),
@@ -189,7 +215,7 @@ void main() {
       final newCompanion = oldBooking.toCompanion(true).copyWith(amount: const Value(-50));
       
       // Act
-      await bookingsDao.updateBookingAndUpdateAccount(oldBooking, newCompanion);
+      await bookingsDao.updateBooking(oldBooking, newCompanion);
 
       // Assert
       final updatedBooking = await bookingsDao.getBooking(1);
@@ -202,7 +228,7 @@ void main() {
     
     test('updateBookingAndUpdateAccount handles different accounts', () async {
       // Arrange
-       await bookingsDao.createBookingAndUpdateAccount(BookingsCompanion(
+       await bookingsDao.createBooking(BookingsCompanion(
           date: const Value(20230101),
           category: const Value('Initial'),
           amount: const Value(100),
@@ -212,7 +238,7 @@ void main() {
       final newCompanion = oldBooking.toCompanion(true).copyWith(accountId: Value(accountId2));
 
       // Act
-      await bookingsDao.updateBookingAndUpdateAccount(oldBooking, newCompanion);
+      await bookingsDao.updateBooking(oldBooking, newCompanion);
 
       // Assert
       final account1 = await accountsDao.getAccount(accountId1);
@@ -223,7 +249,7 @@ void main() {
 
     test('deleteBookingAndUpdateAccount works correctly', () async {
       // Arrange
-      await bookingsDao.createBookingAndUpdateAccount(BookingsCompanion(
+      await bookingsDao.createBooking(BookingsCompanion(
           date: const Value(20230101),
           category: const Value('Expense'),
           amount: const Value(-200),
@@ -233,7 +259,7 @@ void main() {
       expect((await accountsDao.getAccount(accountId1)).balance, 800);
 
       // Act
-      await bookingsDao.deleteBookingAndUpdateAccount(1);
+      await bookingsDao.deleteBooking(1);
 
       // Assert
       final account = await accountsDao.getAccount(accountId1);

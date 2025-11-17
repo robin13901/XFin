@@ -35,4 +35,18 @@ class AssetsDao extends DatabaseAccessor<AppDatabase> with _$AssetsDaoMixin {
     final count = await (select(assetsOnAccounts)..where((a) => a.assetId.equals(assetId))).get().then((value) => value.length);
     return count > 0;
   }
+
+  Future getAssetByTickerSymbol(String tickerSymbol) async {
+    return (select(assets)..where((a) => a.tickerSymbol.equals(tickerSymbol))).getSingle();
+  }
+
+  Future<void> updateBaseCurrencyAsset(double amount) async {
+    Asset baseCurrencyAsset = await getAsset(1);
+    await (update(assets)..where((a) => a.id.equals(1))).write(
+      AssetsCompanion(
+        sharesOwned: Value(baseCurrencyAsset.sharesOwned + amount),
+        value: Value(baseCurrencyAsset.value + amount)
+      ),
+    );
+  }
 }

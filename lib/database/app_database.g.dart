@@ -1660,10 +1660,11 @@ class $TradesTable extends Trades with TableInfo<$TradesTable, Trade> {
       requiredDuringInsert: false,
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
-  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  static const VerificationMeta _datetimeMeta =
+      const VerificationMeta('datetime');
   @override
-  late final GeneratedColumn<int> date = GeneratedColumn<int>(
-      'date', aliasedName, false,
+  late final GeneratedColumn<int> datetime = GeneratedColumn<int>(
+      'datetime', aliasedName, false,
       type: DriftSqlType.int, requiredDuringInsert: true);
   static const VerificationMeta _assetIdMeta =
       const VerificationMeta('assetId');
@@ -1679,12 +1680,20 @@ class $TradesTable extends Trades with TableInfo<$TradesTable, Trade> {
       GeneratedColumn<String>('type', aliasedName, false,
               type: DriftSqlType.string, requiredDuringInsert: true)
           .withConverter<TradeTypes>($TradesTable.$convertertype);
-  static const VerificationMeta _movedValueMeta =
-      const VerificationMeta('movedValue');
+  static const VerificationMeta _clearingAccountValueDeltaMeta =
+      const VerificationMeta('clearingAccountValueDelta');
   @override
-  late final GeneratedColumn<double> movedValue = GeneratedColumn<double>(
-      'moved_value', aliasedName, false,
-      type: DriftSqlType.double, requiredDuringInsert: true);
+  late final GeneratedColumn<double> clearingAccountValueDelta =
+      GeneratedColumn<double>(
+          'clearing_account_value_delta', aliasedName, false,
+          type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _portfolioAccountValueDeltaMeta =
+      const VerificationMeta('portfolioAccountValueDelta');
+  @override
+  late final GeneratedColumn<double> portfolioAccountValueDelta =
+      GeneratedColumn<double>(
+          'portfolio_account_value_delta', aliasedName, false,
+          type: DriftSqlType.double, requiredDuringInsert: true);
   static const VerificationMeta _sharesMeta = const VerificationMeta('shares');
   @override
   late final GeneratedColumn<double> shares = GeneratedColumn<double>(
@@ -1696,17 +1705,28 @@ class $TradesTable extends Trades with TableInfo<$TradesTable, Trade> {
   late final GeneratedColumn<double> pricePerShare = GeneratedColumn<double>(
       'price_per_share', aliasedName, false,
       type: DriftSqlType.double, requiredDuringInsert: true);
-  static const VerificationMeta _profitAndLossMeta =
-      const VerificationMeta('profitAndLoss');
+  static const VerificationMeta _profitAndLossAbsMeta =
+      const VerificationMeta('profitAndLossAbs');
   @override
-  late final GeneratedColumn<double> profitAndLoss = GeneratedColumn<double>(
-      'profit_and_loss', aliasedName, false,
+  late final GeneratedColumn<double> profitAndLossAbs = GeneratedColumn<double>(
+      'profit_and_loss_abs', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _profitAndLossRelMeta =
+      const VerificationMeta('profitAndLossRel');
+  @override
+  late final GeneratedColumn<double> profitAndLossRel = GeneratedColumn<double>(
+      'profit_and_loss_rel', aliasedName, false,
       type: DriftSqlType.double, requiredDuringInsert: true);
   static const VerificationMeta _tradingFeeMeta =
       const VerificationMeta('tradingFee');
   @override
   late final GeneratedColumn<double> tradingFee = GeneratedColumn<double>(
       'trading_fee', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _taxMeta = const VerificationMeta('tax');
+  @override
+  late final GeneratedColumn<double> tax = GeneratedColumn<double>(
+      'tax', aliasedName, false,
       type: DriftSqlType.double, requiredDuringInsert: true);
   static const VerificationMeta _clearingAccountIdMeta =
       const VerificationMeta('clearingAccountId');
@@ -1729,14 +1749,17 @@ class $TradesTable extends Trades with TableInfo<$TradesTable, Trade> {
   @override
   List<GeneratedColumn> get $columns => [
         id,
-        date,
+        datetime,
         assetId,
         type,
-        movedValue,
+        clearingAccountValueDelta,
+        portfolioAccountValueDelta,
         shares,
         pricePerShare,
-        profitAndLoss,
+        profitAndLossAbs,
+        profitAndLossRel,
         tradingFee,
+        tax,
         clearingAccountId,
         portfolioAccountId
       ];
@@ -1753,11 +1776,11 @@ class $TradesTable extends Trades with TableInfo<$TradesTable, Trade> {
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     }
-    if (data.containsKey('date')) {
-      context.handle(
-          _dateMeta, date.isAcceptableOrUnknown(data['date']!, _dateMeta));
+    if (data.containsKey('datetime')) {
+      context.handle(_datetimeMeta,
+          datetime.isAcceptableOrUnknown(data['datetime']!, _datetimeMeta));
     } else if (isInserting) {
-      context.missing(_dateMeta);
+      context.missing(_datetimeMeta);
     }
     if (data.containsKey('asset_id')) {
       context.handle(_assetIdMeta,
@@ -1765,13 +1788,23 @@ class $TradesTable extends Trades with TableInfo<$TradesTable, Trade> {
     } else if (isInserting) {
       context.missing(_assetIdMeta);
     }
-    if (data.containsKey('moved_value')) {
+    if (data.containsKey('clearing_account_value_delta')) {
       context.handle(
-          _movedValueMeta,
-          movedValue.isAcceptableOrUnknown(
-              data['moved_value']!, _movedValueMeta));
+          _clearingAccountValueDeltaMeta,
+          clearingAccountValueDelta.isAcceptableOrUnknown(
+              data['clearing_account_value_delta']!,
+              _clearingAccountValueDeltaMeta));
     } else if (isInserting) {
-      context.missing(_movedValueMeta);
+      context.missing(_clearingAccountValueDeltaMeta);
+    }
+    if (data.containsKey('portfolio_account_value_delta')) {
+      context.handle(
+          _portfolioAccountValueDeltaMeta,
+          portfolioAccountValueDelta.isAcceptableOrUnknown(
+              data['portfolio_account_value_delta']!,
+              _portfolioAccountValueDeltaMeta));
+    } else if (isInserting) {
+      context.missing(_portfolioAccountValueDeltaMeta);
     }
     if (data.containsKey('shares')) {
       context.handle(_sharesMeta,
@@ -1787,13 +1820,21 @@ class $TradesTable extends Trades with TableInfo<$TradesTable, Trade> {
     } else if (isInserting) {
       context.missing(_pricePerShareMeta);
     }
-    if (data.containsKey('profit_and_loss')) {
+    if (data.containsKey('profit_and_loss_abs')) {
       context.handle(
-          _profitAndLossMeta,
-          profitAndLoss.isAcceptableOrUnknown(
-              data['profit_and_loss']!, _profitAndLossMeta));
+          _profitAndLossAbsMeta,
+          profitAndLossAbs.isAcceptableOrUnknown(
+              data['profit_and_loss_abs']!, _profitAndLossAbsMeta));
     } else if (isInserting) {
-      context.missing(_profitAndLossMeta);
+      context.missing(_profitAndLossAbsMeta);
+    }
+    if (data.containsKey('profit_and_loss_rel')) {
+      context.handle(
+          _profitAndLossRelMeta,
+          profitAndLossRel.isAcceptableOrUnknown(
+              data['profit_and_loss_rel']!, _profitAndLossRelMeta));
+    } else if (isInserting) {
+      context.missing(_profitAndLossRelMeta);
     }
     if (data.containsKey('trading_fee')) {
       context.handle(
@@ -1802,6 +1843,12 @@ class $TradesTable extends Trades with TableInfo<$TradesTable, Trade> {
               data['trading_fee']!, _tradingFeeMeta));
     } else if (isInserting) {
       context.missing(_tradingFeeMeta);
+    }
+    if (data.containsKey('tax')) {
+      context.handle(
+          _taxMeta, tax.isAcceptableOrUnknown(data['tax']!, _taxMeta));
+    } else if (isInserting) {
+      context.missing(_taxMeta);
     }
     if (data.containsKey('clearing_account_id')) {
       context.handle(
@@ -1830,22 +1877,30 @@ class $TradesTable extends Trades with TableInfo<$TradesTable, Trade> {
     return Trade(
       id: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
-      date: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}date'])!,
+      datetime: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}datetime'])!,
       assetId: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}asset_id'])!,
       type: $TradesTable.$convertertype.fromSql(attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}type'])!),
-      movedValue: attachedDatabase.typeMapping
-          .read(DriftSqlType.double, data['${effectivePrefix}moved_value'])!,
+      clearingAccountValueDelta: attachedDatabase.typeMapping.read(
+          DriftSqlType.double,
+          data['${effectivePrefix}clearing_account_value_delta'])!,
+      portfolioAccountValueDelta: attachedDatabase.typeMapping.read(
+          DriftSqlType.double,
+          data['${effectivePrefix}portfolio_account_value_delta'])!,
       shares: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}shares'])!,
       pricePerShare: attachedDatabase.typeMapping.read(
           DriftSqlType.double, data['${effectivePrefix}price_per_share'])!,
-      profitAndLoss: attachedDatabase.typeMapping.read(
-          DriftSqlType.double, data['${effectivePrefix}profit_and_loss'])!,
+      profitAndLossAbs: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}profit_and_loss_abs'])!,
+      profitAndLossRel: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}profit_and_loss_rel'])!,
       tradingFee: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}trading_fee'])!,
+      tax: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}tax'])!,
       clearingAccountId: attachedDatabase.typeMapping.read(
           DriftSqlType.int, data['${effectivePrefix}clearing_account_id'])!,
       portfolioAccountId: attachedDatabase.typeMapping.read(
@@ -1864,42 +1919,53 @@ class $TradesTable extends Trades with TableInfo<$TradesTable, Trade> {
 
 class Trade extends DataClass implements Insertable<Trade> {
   final int id;
-  final int date;
+  final int datetime;
   final int assetId;
   final TradeTypes type;
-  final double movedValue;
+  final double clearingAccountValueDelta;
+  final double portfolioAccountValueDelta;
   final double shares;
   final double pricePerShare;
-  final double profitAndLoss;
+  final double profitAndLossAbs;
+  final double profitAndLossRel;
   final double tradingFee;
+  final double tax;
   final int clearingAccountId;
   final int portfolioAccountId;
   const Trade(
       {required this.id,
-      required this.date,
+      required this.datetime,
       required this.assetId,
       required this.type,
-      required this.movedValue,
+      required this.clearingAccountValueDelta,
+      required this.portfolioAccountValueDelta,
       required this.shares,
       required this.pricePerShare,
-      required this.profitAndLoss,
+      required this.profitAndLossAbs,
+      required this.profitAndLossRel,
       required this.tradingFee,
+      required this.tax,
       required this.clearingAccountId,
       required this.portfolioAccountId});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
-    map['date'] = Variable<int>(date);
+    map['datetime'] = Variable<int>(datetime);
     map['asset_id'] = Variable<int>(assetId);
     {
       map['type'] = Variable<String>($TradesTable.$convertertype.toSql(type));
     }
-    map['moved_value'] = Variable<double>(movedValue);
+    map['clearing_account_value_delta'] =
+        Variable<double>(clearingAccountValueDelta);
+    map['portfolio_account_value_delta'] =
+        Variable<double>(portfolioAccountValueDelta);
     map['shares'] = Variable<double>(shares);
     map['price_per_share'] = Variable<double>(pricePerShare);
-    map['profit_and_loss'] = Variable<double>(profitAndLoss);
+    map['profit_and_loss_abs'] = Variable<double>(profitAndLossAbs);
+    map['profit_and_loss_rel'] = Variable<double>(profitAndLossRel);
     map['trading_fee'] = Variable<double>(tradingFee);
+    map['tax'] = Variable<double>(tax);
     map['clearing_account_id'] = Variable<int>(clearingAccountId);
     map['portfolio_account_id'] = Variable<int>(portfolioAccountId);
     return map;
@@ -1908,14 +1974,17 @@ class Trade extends DataClass implements Insertable<Trade> {
   TradesCompanion toCompanion(bool nullToAbsent) {
     return TradesCompanion(
       id: Value(id),
-      date: Value(date),
+      datetime: Value(datetime),
       assetId: Value(assetId),
       type: Value(type),
-      movedValue: Value(movedValue),
+      clearingAccountValueDelta: Value(clearingAccountValueDelta),
+      portfolioAccountValueDelta: Value(portfolioAccountValueDelta),
       shares: Value(shares),
       pricePerShare: Value(pricePerShare),
-      profitAndLoss: Value(profitAndLoss),
+      profitAndLossAbs: Value(profitAndLossAbs),
+      profitAndLossRel: Value(profitAndLossRel),
       tradingFee: Value(tradingFee),
+      tax: Value(tax),
       clearingAccountId: Value(clearingAccountId),
       portfolioAccountId: Value(portfolioAccountId),
     );
@@ -1926,14 +1995,19 @@ class Trade extends DataClass implements Insertable<Trade> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Trade(
       id: serializer.fromJson<int>(json['id']),
-      date: serializer.fromJson<int>(json['date']),
+      datetime: serializer.fromJson<int>(json['datetime']),
       assetId: serializer.fromJson<int>(json['assetId']),
       type: serializer.fromJson<TradeTypes>(json['type']),
-      movedValue: serializer.fromJson<double>(json['movedValue']),
+      clearingAccountValueDelta:
+          serializer.fromJson<double>(json['clearingAccountValueDelta']),
+      portfolioAccountValueDelta:
+          serializer.fromJson<double>(json['portfolioAccountValueDelta']),
       shares: serializer.fromJson<double>(json['shares']),
       pricePerShare: serializer.fromJson<double>(json['pricePerShare']),
-      profitAndLoss: serializer.fromJson<double>(json['profitAndLoss']),
+      profitAndLossAbs: serializer.fromJson<double>(json['profitAndLossAbs']),
+      profitAndLossRel: serializer.fromJson<double>(json['profitAndLossRel']),
       tradingFee: serializer.fromJson<double>(json['tradingFee']),
+      tax: serializer.fromJson<double>(json['tax']),
       clearingAccountId: serializer.fromJson<int>(json['clearingAccountId']),
       portfolioAccountId: serializer.fromJson<int>(json['portfolioAccountId']),
     );
@@ -1943,14 +2017,19 @@ class Trade extends DataClass implements Insertable<Trade> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
-      'date': serializer.toJson<int>(date),
+      'datetime': serializer.toJson<int>(datetime),
       'assetId': serializer.toJson<int>(assetId),
       'type': serializer.toJson<TradeTypes>(type),
-      'movedValue': serializer.toJson<double>(movedValue),
+      'clearingAccountValueDelta':
+          serializer.toJson<double>(clearingAccountValueDelta),
+      'portfolioAccountValueDelta':
+          serializer.toJson<double>(portfolioAccountValueDelta),
       'shares': serializer.toJson<double>(shares),
       'pricePerShare': serializer.toJson<double>(pricePerShare),
-      'profitAndLoss': serializer.toJson<double>(profitAndLoss),
+      'profitAndLossAbs': serializer.toJson<double>(profitAndLossAbs),
+      'profitAndLossRel': serializer.toJson<double>(profitAndLossRel),
       'tradingFee': serializer.toJson<double>(tradingFee),
+      'tax': serializer.toJson<double>(tax),
       'clearingAccountId': serializer.toJson<int>(clearingAccountId),
       'portfolioAccountId': serializer.toJson<int>(portfolioAccountId),
     };
@@ -1958,46 +2037,62 @@ class Trade extends DataClass implements Insertable<Trade> {
 
   Trade copyWith(
           {int? id,
-          int? date,
+          int? datetime,
           int? assetId,
           TradeTypes? type,
-          double? movedValue,
+          double? clearingAccountValueDelta,
+          double? portfolioAccountValueDelta,
           double? shares,
           double? pricePerShare,
-          double? profitAndLoss,
+          double? profitAndLossAbs,
+          double? profitAndLossRel,
           double? tradingFee,
+          double? tax,
           int? clearingAccountId,
           int? portfolioAccountId}) =>
       Trade(
         id: id ?? this.id,
-        date: date ?? this.date,
+        datetime: datetime ?? this.datetime,
         assetId: assetId ?? this.assetId,
         type: type ?? this.type,
-        movedValue: movedValue ?? this.movedValue,
+        clearingAccountValueDelta:
+            clearingAccountValueDelta ?? this.clearingAccountValueDelta,
+        portfolioAccountValueDelta:
+            portfolioAccountValueDelta ?? this.portfolioAccountValueDelta,
         shares: shares ?? this.shares,
         pricePerShare: pricePerShare ?? this.pricePerShare,
-        profitAndLoss: profitAndLoss ?? this.profitAndLoss,
+        profitAndLossAbs: profitAndLossAbs ?? this.profitAndLossAbs,
+        profitAndLossRel: profitAndLossRel ?? this.profitAndLossRel,
         tradingFee: tradingFee ?? this.tradingFee,
+        tax: tax ?? this.tax,
         clearingAccountId: clearingAccountId ?? this.clearingAccountId,
         portfolioAccountId: portfolioAccountId ?? this.portfolioAccountId,
       );
   Trade copyWithCompanion(TradesCompanion data) {
     return Trade(
       id: data.id.present ? data.id.value : this.id,
-      date: data.date.present ? data.date.value : this.date,
+      datetime: data.datetime.present ? data.datetime.value : this.datetime,
       assetId: data.assetId.present ? data.assetId.value : this.assetId,
       type: data.type.present ? data.type.value : this.type,
-      movedValue:
-          data.movedValue.present ? data.movedValue.value : this.movedValue,
+      clearingAccountValueDelta: data.clearingAccountValueDelta.present
+          ? data.clearingAccountValueDelta.value
+          : this.clearingAccountValueDelta,
+      portfolioAccountValueDelta: data.portfolioAccountValueDelta.present
+          ? data.portfolioAccountValueDelta.value
+          : this.portfolioAccountValueDelta,
       shares: data.shares.present ? data.shares.value : this.shares,
       pricePerShare: data.pricePerShare.present
           ? data.pricePerShare.value
           : this.pricePerShare,
-      profitAndLoss: data.profitAndLoss.present
-          ? data.profitAndLoss.value
-          : this.profitAndLoss,
+      profitAndLossAbs: data.profitAndLossAbs.present
+          ? data.profitAndLossAbs.value
+          : this.profitAndLossAbs,
+      profitAndLossRel: data.profitAndLossRel.present
+          ? data.profitAndLossRel.value
+          : this.profitAndLossRel,
       tradingFee:
           data.tradingFee.present ? data.tradingFee.value : this.tradingFee,
+      tax: data.tax.present ? data.tax.value : this.tax,
       clearingAccountId: data.clearingAccountId.present
           ? data.clearingAccountId.value
           : this.clearingAccountId,
@@ -2011,14 +2106,17 @@ class Trade extends DataClass implements Insertable<Trade> {
   String toString() {
     return (StringBuffer('Trade(')
           ..write('id: $id, ')
-          ..write('date: $date, ')
+          ..write('datetime: $datetime, ')
           ..write('assetId: $assetId, ')
           ..write('type: $type, ')
-          ..write('movedValue: $movedValue, ')
+          ..write('clearingAccountValueDelta: $clearingAccountValueDelta, ')
+          ..write('portfolioAccountValueDelta: $portfolioAccountValueDelta, ')
           ..write('shares: $shares, ')
           ..write('pricePerShare: $pricePerShare, ')
-          ..write('profitAndLoss: $profitAndLoss, ')
+          ..write('profitAndLossAbs: $profitAndLossAbs, ')
+          ..write('profitAndLossRel: $profitAndLossRel, ')
           ..write('tradingFee: $tradingFee, ')
+          ..write('tax: $tax, ')
           ..write('clearingAccountId: $clearingAccountId, ')
           ..write('portfolioAccountId: $portfolioAccountId')
           ..write(')'))
@@ -2028,14 +2126,17 @@ class Trade extends DataClass implements Insertable<Trade> {
   @override
   int get hashCode => Object.hash(
       id,
-      date,
+      datetime,
       assetId,
       type,
-      movedValue,
+      clearingAccountValueDelta,
+      portfolioAccountValueDelta,
       shares,
       pricePerShare,
-      profitAndLoss,
+      profitAndLossAbs,
+      profitAndLossRel,
       tradingFee,
+      tax,
       clearingAccountId,
       portfolioAccountId);
   @override
@@ -2043,88 +2144,111 @@ class Trade extends DataClass implements Insertable<Trade> {
       identical(this, other) ||
       (other is Trade &&
           other.id == this.id &&
-          other.date == this.date &&
+          other.datetime == this.datetime &&
           other.assetId == this.assetId &&
           other.type == this.type &&
-          other.movedValue == this.movedValue &&
+          other.clearingAccountValueDelta == this.clearingAccountValueDelta &&
+          other.portfolioAccountValueDelta == this.portfolioAccountValueDelta &&
           other.shares == this.shares &&
           other.pricePerShare == this.pricePerShare &&
-          other.profitAndLoss == this.profitAndLoss &&
+          other.profitAndLossAbs == this.profitAndLossAbs &&
+          other.profitAndLossRel == this.profitAndLossRel &&
           other.tradingFee == this.tradingFee &&
+          other.tax == this.tax &&
           other.clearingAccountId == this.clearingAccountId &&
           other.portfolioAccountId == this.portfolioAccountId);
 }
 
 class TradesCompanion extends UpdateCompanion<Trade> {
   final Value<int> id;
-  final Value<int> date;
+  final Value<int> datetime;
   final Value<int> assetId;
   final Value<TradeTypes> type;
-  final Value<double> movedValue;
+  final Value<double> clearingAccountValueDelta;
+  final Value<double> portfolioAccountValueDelta;
   final Value<double> shares;
   final Value<double> pricePerShare;
-  final Value<double> profitAndLoss;
+  final Value<double> profitAndLossAbs;
+  final Value<double> profitAndLossRel;
   final Value<double> tradingFee;
+  final Value<double> tax;
   final Value<int> clearingAccountId;
   final Value<int> portfolioAccountId;
   const TradesCompanion({
     this.id = const Value.absent(),
-    this.date = const Value.absent(),
+    this.datetime = const Value.absent(),
     this.assetId = const Value.absent(),
     this.type = const Value.absent(),
-    this.movedValue = const Value.absent(),
+    this.clearingAccountValueDelta = const Value.absent(),
+    this.portfolioAccountValueDelta = const Value.absent(),
     this.shares = const Value.absent(),
     this.pricePerShare = const Value.absent(),
-    this.profitAndLoss = const Value.absent(),
+    this.profitAndLossAbs = const Value.absent(),
+    this.profitAndLossRel = const Value.absent(),
     this.tradingFee = const Value.absent(),
+    this.tax = const Value.absent(),
     this.clearingAccountId = const Value.absent(),
     this.portfolioAccountId = const Value.absent(),
   });
   TradesCompanion.insert({
     this.id = const Value.absent(),
-    required int date,
+    required int datetime,
     required int assetId,
     required TradeTypes type,
-    required double movedValue,
+    required double clearingAccountValueDelta,
+    required double portfolioAccountValueDelta,
     required double shares,
     required double pricePerShare,
-    required double profitAndLoss,
+    required double profitAndLossAbs,
+    required double profitAndLossRel,
     required double tradingFee,
+    required double tax,
     required int clearingAccountId,
     required int portfolioAccountId,
-  })  : date = Value(date),
+  })  : datetime = Value(datetime),
         assetId = Value(assetId),
         type = Value(type),
-        movedValue = Value(movedValue),
+        clearingAccountValueDelta = Value(clearingAccountValueDelta),
+        portfolioAccountValueDelta = Value(portfolioAccountValueDelta),
         shares = Value(shares),
         pricePerShare = Value(pricePerShare),
-        profitAndLoss = Value(profitAndLoss),
+        profitAndLossAbs = Value(profitAndLossAbs),
+        profitAndLossRel = Value(profitAndLossRel),
         tradingFee = Value(tradingFee),
+        tax = Value(tax),
         clearingAccountId = Value(clearingAccountId),
         portfolioAccountId = Value(portfolioAccountId);
   static Insertable<Trade> custom({
     Expression<int>? id,
-    Expression<int>? date,
+    Expression<int>? datetime,
     Expression<int>? assetId,
     Expression<String>? type,
-    Expression<double>? movedValue,
+    Expression<double>? clearingAccountValueDelta,
+    Expression<double>? portfolioAccountValueDelta,
     Expression<double>? shares,
     Expression<double>? pricePerShare,
-    Expression<double>? profitAndLoss,
+    Expression<double>? profitAndLossAbs,
+    Expression<double>? profitAndLossRel,
     Expression<double>? tradingFee,
+    Expression<double>? tax,
     Expression<int>? clearingAccountId,
     Expression<int>? portfolioAccountId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (date != null) 'date': date,
+      if (datetime != null) 'datetime': datetime,
       if (assetId != null) 'asset_id': assetId,
       if (type != null) 'type': type,
-      if (movedValue != null) 'moved_value': movedValue,
+      if (clearingAccountValueDelta != null)
+        'clearing_account_value_delta': clearingAccountValueDelta,
+      if (portfolioAccountValueDelta != null)
+        'portfolio_account_value_delta': portfolioAccountValueDelta,
       if (shares != null) 'shares': shares,
       if (pricePerShare != null) 'price_per_share': pricePerShare,
-      if (profitAndLoss != null) 'profit_and_loss': profitAndLoss,
+      if (profitAndLossAbs != null) 'profit_and_loss_abs': profitAndLossAbs,
+      if (profitAndLossRel != null) 'profit_and_loss_rel': profitAndLossRel,
       if (tradingFee != null) 'trading_fee': tradingFee,
+      if (tax != null) 'tax': tax,
       if (clearingAccountId != null) 'clearing_account_id': clearingAccountId,
       if (portfolioAccountId != null)
         'portfolio_account_id': portfolioAccountId,
@@ -2133,26 +2257,34 @@ class TradesCompanion extends UpdateCompanion<Trade> {
 
   TradesCompanion copyWith(
       {Value<int>? id,
-      Value<int>? date,
+      Value<int>? datetime,
       Value<int>? assetId,
       Value<TradeTypes>? type,
-      Value<double>? movedValue,
+      Value<double>? clearingAccountValueDelta,
+      Value<double>? portfolioAccountValueDelta,
       Value<double>? shares,
       Value<double>? pricePerShare,
-      Value<double>? profitAndLoss,
+      Value<double>? profitAndLossAbs,
+      Value<double>? profitAndLossRel,
       Value<double>? tradingFee,
+      Value<double>? tax,
       Value<int>? clearingAccountId,
       Value<int>? portfolioAccountId}) {
     return TradesCompanion(
       id: id ?? this.id,
-      date: date ?? this.date,
+      datetime: datetime ?? this.datetime,
       assetId: assetId ?? this.assetId,
       type: type ?? this.type,
-      movedValue: movedValue ?? this.movedValue,
+      clearingAccountValueDelta:
+          clearingAccountValueDelta ?? this.clearingAccountValueDelta,
+      portfolioAccountValueDelta:
+          portfolioAccountValueDelta ?? this.portfolioAccountValueDelta,
       shares: shares ?? this.shares,
       pricePerShare: pricePerShare ?? this.pricePerShare,
-      profitAndLoss: profitAndLoss ?? this.profitAndLoss,
+      profitAndLossAbs: profitAndLossAbs ?? this.profitAndLossAbs,
+      profitAndLossRel: profitAndLossRel ?? this.profitAndLossRel,
       tradingFee: tradingFee ?? this.tradingFee,
+      tax: tax ?? this.tax,
       clearingAccountId: clearingAccountId ?? this.clearingAccountId,
       portfolioAccountId: portfolioAccountId ?? this.portfolioAccountId,
     );
@@ -2164,8 +2296,8 @@ class TradesCompanion extends UpdateCompanion<Trade> {
     if (id.present) {
       map['id'] = Variable<int>(id.value);
     }
-    if (date.present) {
-      map['date'] = Variable<int>(date.value);
+    if (datetime.present) {
+      map['datetime'] = Variable<int>(datetime.value);
     }
     if (assetId.present) {
       map['asset_id'] = Variable<int>(assetId.value);
@@ -2174,8 +2306,13 @@ class TradesCompanion extends UpdateCompanion<Trade> {
       map['type'] =
           Variable<String>($TradesTable.$convertertype.toSql(type.value));
     }
-    if (movedValue.present) {
-      map['moved_value'] = Variable<double>(movedValue.value);
+    if (clearingAccountValueDelta.present) {
+      map['clearing_account_value_delta'] =
+          Variable<double>(clearingAccountValueDelta.value);
+    }
+    if (portfolioAccountValueDelta.present) {
+      map['portfolio_account_value_delta'] =
+          Variable<double>(portfolioAccountValueDelta.value);
     }
     if (shares.present) {
       map['shares'] = Variable<double>(shares.value);
@@ -2183,11 +2320,17 @@ class TradesCompanion extends UpdateCompanion<Trade> {
     if (pricePerShare.present) {
       map['price_per_share'] = Variable<double>(pricePerShare.value);
     }
-    if (profitAndLoss.present) {
-      map['profit_and_loss'] = Variable<double>(profitAndLoss.value);
+    if (profitAndLossAbs.present) {
+      map['profit_and_loss_abs'] = Variable<double>(profitAndLossAbs.value);
+    }
+    if (profitAndLossRel.present) {
+      map['profit_and_loss_rel'] = Variable<double>(profitAndLossRel.value);
     }
     if (tradingFee.present) {
       map['trading_fee'] = Variable<double>(tradingFee.value);
+    }
+    if (tax.present) {
+      map['tax'] = Variable<double>(tax.value);
     }
     if (clearingAccountId.present) {
       map['clearing_account_id'] = Variable<int>(clearingAccountId.value);
@@ -2202,14 +2345,17 @@ class TradesCompanion extends UpdateCompanion<Trade> {
   String toString() {
     return (StringBuffer('TradesCompanion(')
           ..write('id: $id, ')
-          ..write('date: $date, ')
+          ..write('datetime: $datetime, ')
           ..write('assetId: $assetId, ')
           ..write('type: $type, ')
-          ..write('movedValue: $movedValue, ')
+          ..write('clearingAccountValueDelta: $clearingAccountValueDelta, ')
+          ..write('portfolioAccountValueDelta: $portfolioAccountValueDelta, ')
           ..write('shares: $shares, ')
           ..write('pricePerShare: $pricePerShare, ')
-          ..write('profitAndLoss: $profitAndLoss, ')
+          ..write('profitAndLossAbs: $profitAndLossAbs, ')
+          ..write('profitAndLossRel: $profitAndLossRel, ')
           ..write('tradingFee: $tradingFee, ')
+          ..write('tax: $tax, ')
           ..write('clearingAccountId: $clearingAccountId, ')
           ..write('portfolioAccountId: $portfolioAccountId')
           ..write(')'))
@@ -3749,14 +3895,14 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       'CREATE INDEX transfers_receiving_account_id_date ON transfers (receiving_account_id, date)');
   late final Index transfersComplexQuery = Index('transfers_complex_query',
       'CREATE INDEX transfers_complex_query ON transfers (date, receiving_account_id, amount, is_generated)');
-  late final Index tradesAssetIdDate = Index('trades_asset_id_date',
-      'CREATE INDEX trades_asset_id_date ON trades (asset_id, date)');
-  late final Index tradesClearingAccountIdDate = Index(
-      'trades_clearing_account_id_date',
-      'CREATE INDEX trades_clearing_account_id_date ON trades (clearing_account_id, date)');
-  late final Index tradesPortfolioAccountIdDate = Index(
-      'trades_portfolio_account_id_date',
-      'CREATE INDEX trades_portfolio_account_id_date ON trades (portfolio_account_id, date)');
+  late final Index tradesAssetIdDatetime = Index('trades_asset_id_datetime',
+      'CREATE INDEX trades_asset_id_datetime ON trades (asset_id, datetime)');
+  late final Index tradesClearingAccountIdDatetime = Index(
+      'trades_clearing_account_id_datetime',
+      'CREATE INDEX trades_clearing_account_id_datetime ON trades (clearing_account_id, datetime)');
+  late final Index tradesPortfolioAccountIdDatetime = Index(
+      'trades_portfolio_account_id_datetime',
+      'CREATE INDEX trades_portfolio_account_id_datetime ON trades (portfolio_account_id, datetime)');
   late final Index periodicBookingsAccountId = Index(
       'periodic_bookings_account_id',
       'CREATE INDEX periodic_bookings_account_id ON periodic_bookings (account_id)');
@@ -3808,9 +3954,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         transfersSendingAccountIdDate,
         transfersReceivingAccountIdDate,
         transfersComplexQuery,
-        tradesAssetIdDate,
-        tradesClearingAccountIdDate,
-        tradesPortfolioAccountIdDate,
+        tradesAssetIdDatetime,
+        tradesClearingAccountIdDatetime,
+        tradesPortfolioAccountIdDatetime,
         periodicBookingsAccountId,
         periodicBookingsNextExecutionDate,
         periodicTransfersSendingAccountId,
@@ -5837,27 +5983,33 @@ typedef $$TransfersTableProcessedTableManager = ProcessedTableManager<
     PrefetchHooks Function({bool sendingAccountId, bool receivingAccountId})>;
 typedef $$TradesTableCreateCompanionBuilder = TradesCompanion Function({
   Value<int> id,
-  required int date,
+  required int datetime,
   required int assetId,
   required TradeTypes type,
-  required double movedValue,
+  required double clearingAccountValueDelta,
+  required double portfolioAccountValueDelta,
   required double shares,
   required double pricePerShare,
-  required double profitAndLoss,
+  required double profitAndLossAbs,
+  required double profitAndLossRel,
   required double tradingFee,
+  required double tax,
   required int clearingAccountId,
   required int portfolioAccountId,
 });
 typedef $$TradesTableUpdateCompanionBuilder = TradesCompanion Function({
   Value<int> id,
-  Value<int> date,
+  Value<int> datetime,
   Value<int> assetId,
   Value<TradeTypes> type,
-  Value<double> movedValue,
+  Value<double> clearingAccountValueDelta,
+  Value<double> portfolioAccountValueDelta,
   Value<double> shares,
   Value<double> pricePerShare,
-  Value<double> profitAndLoss,
+  Value<double> profitAndLossAbs,
+  Value<double> profitAndLossRel,
   Value<double> tradingFee,
+  Value<double> tax,
   Value<int> clearingAccountId,
   Value<int> portfolioAccountId,
 });
@@ -5923,16 +6075,21 @@ class $$TradesTableFilterComposer
   ColumnFilters<int> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<int> get date => $composableBuilder(
-      column: $table.date, builder: (column) => ColumnFilters(column));
+  ColumnFilters<int> get datetime => $composableBuilder(
+      column: $table.datetime, builder: (column) => ColumnFilters(column));
 
   ColumnWithTypeConverterFilters<TradeTypes, TradeTypes, String> get type =>
       $composableBuilder(
           column: $table.type,
           builder: (column) => ColumnWithTypeConverterFilters(column));
 
-  ColumnFilters<double> get movedValue => $composableBuilder(
-      column: $table.movedValue, builder: (column) => ColumnFilters(column));
+  ColumnFilters<double> get clearingAccountValueDelta => $composableBuilder(
+      column: $table.clearingAccountValueDelta,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get portfolioAccountValueDelta => $composableBuilder(
+      column: $table.portfolioAccountValueDelta,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<double> get shares => $composableBuilder(
       column: $table.shares, builder: (column) => ColumnFilters(column));
@@ -5940,11 +6097,19 @@ class $$TradesTableFilterComposer
   ColumnFilters<double> get pricePerShare => $composableBuilder(
       column: $table.pricePerShare, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<double> get profitAndLoss => $composableBuilder(
-      column: $table.profitAndLoss, builder: (column) => ColumnFilters(column));
+  ColumnFilters<double> get profitAndLossAbs => $composableBuilder(
+      column: $table.profitAndLossAbs,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get profitAndLossRel => $composableBuilder(
+      column: $table.profitAndLossRel,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<double> get tradingFee => $composableBuilder(
       column: $table.tradingFee, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get tax => $composableBuilder(
+      column: $table.tax, builder: (column) => ColumnFilters(column));
 
   $$AssetsTableFilterComposer get assetId {
     final $$AssetsTableFilterComposer composer = $composerBuilder(
@@ -6019,14 +6184,19 @@ class $$TradesTableOrderingComposer
   ColumnOrderings<int> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<int> get date => $composableBuilder(
-      column: $table.date, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<int> get datetime => $composableBuilder(
+      column: $table.datetime, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get type => $composableBuilder(
       column: $table.type, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<double> get movedValue => $composableBuilder(
-      column: $table.movedValue, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<double> get clearingAccountValueDelta => $composableBuilder(
+      column: $table.clearingAccountValueDelta,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get portfolioAccountValueDelta => $composableBuilder(
+      column: $table.portfolioAccountValueDelta,
+      builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<double> get shares => $composableBuilder(
       column: $table.shares, builder: (column) => ColumnOrderings(column));
@@ -6035,12 +6205,19 @@ class $$TradesTableOrderingComposer
       column: $table.pricePerShare,
       builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<double> get profitAndLoss => $composableBuilder(
-      column: $table.profitAndLoss,
+  ColumnOrderings<double> get profitAndLossAbs => $composableBuilder(
+      column: $table.profitAndLossAbs,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get profitAndLossRel => $composableBuilder(
+      column: $table.profitAndLossRel,
       builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<double> get tradingFee => $composableBuilder(
       column: $table.tradingFee, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get tax => $composableBuilder(
+      column: $table.tax, builder: (column) => ColumnOrderings(column));
 
   $$AssetsTableOrderingComposer get assetId {
     final $$AssetsTableOrderingComposer composer = $composerBuilder(
@@ -6115,14 +6292,17 @@ class $$TradesTableAnnotationComposer
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<int> get date =>
-      $composableBuilder(column: $table.date, builder: (column) => column);
+  GeneratedColumn<int> get datetime =>
+      $composableBuilder(column: $table.datetime, builder: (column) => column);
 
   GeneratedColumnWithTypeConverter<TradeTypes, String> get type =>
       $composableBuilder(column: $table.type, builder: (column) => column);
 
-  GeneratedColumn<double> get movedValue => $composableBuilder(
-      column: $table.movedValue, builder: (column) => column);
+  GeneratedColumn<double> get clearingAccountValueDelta => $composableBuilder(
+      column: $table.clearingAccountValueDelta, builder: (column) => column);
+
+  GeneratedColumn<double> get portfolioAccountValueDelta => $composableBuilder(
+      column: $table.portfolioAccountValueDelta, builder: (column) => column);
 
   GeneratedColumn<double> get shares =>
       $composableBuilder(column: $table.shares, builder: (column) => column);
@@ -6130,11 +6310,17 @@ class $$TradesTableAnnotationComposer
   GeneratedColumn<double> get pricePerShare => $composableBuilder(
       column: $table.pricePerShare, builder: (column) => column);
 
-  GeneratedColumn<double> get profitAndLoss => $composableBuilder(
-      column: $table.profitAndLoss, builder: (column) => column);
+  GeneratedColumn<double> get profitAndLossAbs => $composableBuilder(
+      column: $table.profitAndLossAbs, builder: (column) => column);
+
+  GeneratedColumn<double> get profitAndLossRel => $composableBuilder(
+      column: $table.profitAndLossRel, builder: (column) => column);
 
   GeneratedColumn<double> get tradingFee => $composableBuilder(
       column: $table.tradingFee, builder: (column) => column);
+
+  GeneratedColumn<double> get tax =>
+      $composableBuilder(column: $table.tax, builder: (column) => column);
 
   $$AssetsTableAnnotationComposer get assetId {
     final $$AssetsTableAnnotationComposer composer = $composerBuilder(
@@ -6222,53 +6408,65 @@ class $$TradesTableTableManager extends RootTableManager<
               $$TradesTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
             Value<int> id = const Value.absent(),
-            Value<int> date = const Value.absent(),
+            Value<int> datetime = const Value.absent(),
             Value<int> assetId = const Value.absent(),
             Value<TradeTypes> type = const Value.absent(),
-            Value<double> movedValue = const Value.absent(),
+            Value<double> clearingAccountValueDelta = const Value.absent(),
+            Value<double> portfolioAccountValueDelta = const Value.absent(),
             Value<double> shares = const Value.absent(),
             Value<double> pricePerShare = const Value.absent(),
-            Value<double> profitAndLoss = const Value.absent(),
+            Value<double> profitAndLossAbs = const Value.absent(),
+            Value<double> profitAndLossRel = const Value.absent(),
             Value<double> tradingFee = const Value.absent(),
+            Value<double> tax = const Value.absent(),
             Value<int> clearingAccountId = const Value.absent(),
             Value<int> portfolioAccountId = const Value.absent(),
           }) =>
               TradesCompanion(
             id: id,
-            date: date,
+            datetime: datetime,
             assetId: assetId,
             type: type,
-            movedValue: movedValue,
+            clearingAccountValueDelta: clearingAccountValueDelta,
+            portfolioAccountValueDelta: portfolioAccountValueDelta,
             shares: shares,
             pricePerShare: pricePerShare,
-            profitAndLoss: profitAndLoss,
+            profitAndLossAbs: profitAndLossAbs,
+            profitAndLossRel: profitAndLossRel,
             tradingFee: tradingFee,
+            tax: tax,
             clearingAccountId: clearingAccountId,
             portfolioAccountId: portfolioAccountId,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
-            required int date,
+            required int datetime,
             required int assetId,
             required TradeTypes type,
-            required double movedValue,
+            required double clearingAccountValueDelta,
+            required double portfolioAccountValueDelta,
             required double shares,
             required double pricePerShare,
-            required double profitAndLoss,
+            required double profitAndLossAbs,
+            required double profitAndLossRel,
             required double tradingFee,
+            required double tax,
             required int clearingAccountId,
             required int portfolioAccountId,
           }) =>
               TradesCompanion.insert(
             id: id,
-            date: date,
+            datetime: datetime,
             assetId: assetId,
             type: type,
-            movedValue: movedValue,
+            clearingAccountValueDelta: clearingAccountValueDelta,
+            portfolioAccountValueDelta: portfolioAccountValueDelta,
             shares: shares,
             pricePerShare: pricePerShare,
-            profitAndLoss: profitAndLoss,
+            profitAndLossAbs: profitAndLossAbs,
+            profitAndLossRel: profitAndLossRel,
             tradingFee: tradingFee,
+            tax: tax,
             clearingAccountId: clearingAccountId,
             portfolioAccountId: portfolioAccountId,
           ),

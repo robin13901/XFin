@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart';
 
 // Enums
-enum AssetTypes { stock, crypto, currency, commodity }
+enum AssetTypes { stock, crypto, etf, bond, currency, commodity }
 enum AccountTypes { cash, portfolio }
 enum TradeTypes { buy, sell }
 enum Cycles { daily, weekly, monthly, quarterly, yearly }
@@ -117,20 +117,23 @@ class Transfers extends Table {
   BoolColumn get isGenerated => boolean()();
 }
 
-@TableIndex(name: 'trades_asset_id_date', columns: {#assetId, #date})
-@TableIndex(name: 'trades_clearing_account_id_date', columns: {#clearingAccountId, #date})
-@TableIndex(name: 'trades_portfolio_account_id_date', columns: {#portfolioAccountId, #date})
+@TableIndex(name: 'trades_asset_id_datetime', columns: {#assetId, #datetime})
+@TableIndex(name: 'trades_clearing_account_id_datetime', columns: {#clearingAccountId, #datetime})
+@TableIndex(name: 'trades_portfolio_account_id_datetime', columns: {#portfolioAccountId, #datetime})
 @DataClassName('Trade')
 class Trades extends Table {
   IntColumn get id => integer().autoIncrement()();
-  IntColumn get date => integer()();
+  IntColumn get datetime => integer()();
   IntColumn get assetId => integer().references(Assets, #id)();
   TextColumn get type => text().map(const TradeTypesConverter())();
-  RealColumn get movedValue => real()();
+  RealColumn get clearingAccountValueDelta => real()();
+  RealColumn get portfolioAccountValueDelta => real()();
   RealColumn get shares => real()();
   RealColumn get pricePerShare => real()();
-  RealColumn get profitAndLoss => real()();
+  RealColumn get profitAndLossAbs => real()();
+  RealColumn get profitAndLossRel => real()();
   RealColumn get tradingFee => real()();
+  RealColumn get tax => real()();
   @ReferenceName('ClearingTrades')
   IntColumn get clearingAccountId => integer().references(Accounts, #id)();
   @ReferenceName('PortfolioTrades')

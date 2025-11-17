@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
+import 'package:xfin/providers/base_currency_provider.dart';
+import '../validators.dart';
 
 class AccountForm extends StatefulWidget {
   const AccountForm({super.key});
@@ -53,13 +55,13 @@ class _AccountFormState extends State<AccountForm> {
           ? 0.0
           : double.parse(_initialBalanceController.text.replaceAll(',', '.'));
 
-      final companion = AccountsCompanion(
+      final account = AccountsCompanion(
         name: drift.Value(name),
         balance: drift.Value(initialBalance),
         initialBalance: drift.Value(initialBalance),
         type: drift.Value(_type),
       );
-      await db.accountsDao.addAccount(companion);
+      await db.accountsDao.createAccount(account);
 
       if (mounted) {
         Navigator.of(context).pop();
@@ -78,26 +80,6 @@ class _AccountFormState extends State<AccountForm> {
     return null;
   }
 
-  String? _validateInitialBalance(String? value) {
-    final l10n = AppLocalizations.of(context)!;
-    if (value == null || value.isEmpty) {
-      return l10n.pleaseEnterABalance;
-    }
-    final sanitizedValue = value.replaceAll(',', '.');
-    final balance = double.tryParse(sanitizedValue);
-    if (balance == null) {
-      return l10n.invalidNumber;
-    }
-    if (balance < 0) {
-      return l10n.initialBalanceCannotBeNegative;
-    }
-    if (sanitizedValue.contains('.') &&
-        sanitizedValue.split('.').last.length > 2) {
-      return l10n.amountTooManyDecimalPlaces;
-    }
-    return null;
-  }
-
   String _getAccountTypeName(AppLocalizations l10n, AccountTypes type) {
     switch (type) {
       case AccountTypes.cash:
@@ -109,7 +91,10 @@ class _AccountFormState extends State<AccountForm> {
 
   @override
   Widget build(BuildContext context) {
+    final currencyProvider = Provider.of<BaseCurrencyProvider>(context);
     final l10n = AppLocalizations.of(context)!;
+    final validator = Validator(l10n);
+
     return Padding(
       padding: MediaQuery.of(context).viewInsets,
       child: SingleChildScrollView(
@@ -152,6 +137,7 @@ class _AccountFormState extends State<AccountForm> {
                       });
                     }
                   },
+                  validator: (value) => value == null ? l10n.pleaseSelectAType : null,
                 ),
                 if (_type == AccountTypes.cash) ...[
                   const SizedBox(height: 16),
@@ -161,11 +147,10 @@ class _AccountFormState extends State<AccountForm> {
                     decoration: InputDecoration(
                       labelText: l10n.initialBalance,
                       border: const OutlineInputBorder(),
-                      suffixText: '€',
+                      suffixText: currencyProvider.symbol, // Use the symbol from the provider
                     ),
-                    keyboardType: const TextInputType.numberWithOptions(
-                        signed: true, decimal: true),
-                    validator: _validateInitialBalance,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: false),
+                    validator: (value) => validator.validateMaxTwoDecimalsGreaterEqualZero(value),
                   ),
                 ],
                 const SizedBox(height: 16),

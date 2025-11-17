@@ -7,6 +7,9 @@ import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 
+import '../providers/base_currency_provider.dart';
+import '../validators.dart';
+
 class BookingForm extends StatefulWidget {
   final Booking? booking;
 
@@ -85,7 +88,7 @@ class _BookingFormState extends State<BookingForm> {
         .toCompanion(false)
         .copyWith(amount: drift.Value(mergedAmount));
     await db.bookingsDao
-        .updateBookingAndUpdateAccount(existingBooking, updatedCompanion);
+        .updateBooking(existingBooking, updatedCompanion);
   }
 
   Future<void> _saveForm() async {
@@ -142,15 +145,15 @@ class _BookingFormState extends State<BookingForm> {
           if (confirmed == true) {
             await _performMerge(db, mergeable, companion);
           } else {
-            await db.bookingsDao.createBookingAndUpdateAccount(companion);
+            await db.bookingsDao.createBooking(companion);
           }
         } else {
-          await db.bookingsDao.createBookingAndUpdateAccount(companion);
+          await db.bookingsDao.createBooking(companion);
         }
       } else if (widget.booking == null) {
-        await db.bookingsDao.createBookingAndUpdateAccount(companion);
+        await db.bookingsDao.createBooking(companion);
       } else {
-        await db.bookingsDao.updateBookingAndUpdateAccount(
+        await db.bookingsDao.updateBooking(
           widget.booking!,
           companion.copyWith(id: drift.Value(widget.booking!.id)),
         );
@@ -165,21 +168,6 @@ class _BookingFormState extends State<BookingForm> {
   String? _validateDate(DateTime? value, AppLocalizations l10n) {
     if (value != null && value.isAfter(DateTime.now())) {
       return l10n.dateCannotBeInTheFuture;
-    }
-    return null;
-  }
-
-  String? _validateAmount(String? value, AppLocalizations l10n) {
-    if (value == null || value.isEmpty) {
-      return l10n.pleaseEnterAnAmount;
-    }
-    final cleanValue = value.replaceAll(',', '.');
-    final amount = double.tryParse(cleanValue);
-    if (amount == null) {
-      return l10n.invalidInput;
-    }
-    if (RegExp(r'^-?\d+(\.\d{3,})$').hasMatch(cleanValue)) {
-      return l10n.tooManyDecimalPlaces;
     }
     return null;
   }
@@ -204,7 +192,10 @@ class _BookingFormState extends State<BookingForm> {
   @override
   Widget build(BuildContext context) {
     final db = Provider.of<AppDatabase>(context, listen: false);
+    final currencyProvider = Provider.of<BaseCurrencyProvider>(context);
     final l10n = AppLocalizations.of(context)!;
+    final validator = Validator(l10n);
+
     return Padding(
       padding: MediaQuery.of(context).viewInsets,
       child: SingleChildScrollView(
@@ -258,12 +249,12 @@ class _BookingFormState extends State<BookingForm> {
                         decoration: InputDecoration(
                           labelText: l10n.amount,
                           border: const OutlineInputBorder(),
-                          suffixText: '€',
+                          suffixText: currencyProvider.symbol,
                           errorMaxLines: 2,
                         ),
                         keyboardType: const TextInputType.numberWithOptions(
                             signed: true, decimal: true),
-                        validator: (value) => _validateAmount(value, l10n),
+                        validator: (value) => validator.validateMaxTwoDecimals(value),
                       ),
                     ),
                   ],

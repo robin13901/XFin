@@ -5,9 +5,11 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
+import 'package:xfin/providers/base_currency_provider.dart';
 import 'package:xfin/screens/bookings_screen.dart';
 import 'package:xfin/widgets/booking_form.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -25,7 +27,7 @@ class TestDatabase {
   }
 
   Future<int> createAccount(String name, {double balance = 100.0}) async {
-    return await appDatabase.accountsDao.addAccount(
+    return await appDatabase.accountsDao.createAccount(
       AccountsCompanion(
         name: Value(name),
         balance: Value(balance),
@@ -51,7 +53,7 @@ class TestDatabase {
       accountId: Value(accountId),
       isGenerated: const Value(false),
     );
-    await appDatabase.bookingsDao.createBookingAndUpdateAccount(companion);
+    await appDatabase.bookingsDao.createBooking(companion);
     return await (appDatabase.select(appDatabase.bookings)
           ..where((tbl) => tbl.category.equals(reason)))
         .getSingle();
@@ -60,13 +62,31 @@ class TestDatabase {
 
 void main() {
   late TestDatabase db;
+  late BaseCurrencyProvider currencyProvider;
 
   setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    SharedPreferences.setMockInitialValues({});
     await initializeDateFormatting('de_DE', null);
   });
 
-  setUp(() {
+  setUp(() async {
     db = TestDatabase();
+    const locale = Locale('en');
+    currencyProvider = BaseCurrencyProvider();
+    await currencyProvider.initialize(locale);
+
+    // Create base currency asset
+    await db.appDatabase.into(db.appDatabase.assets).insert(const AssetsCompanion(
+        name: Value('EUR'),
+        type: Value(AssetTypes.currency),
+        tickerSymbol: Value('EUR'),
+        value: Value(0),
+        sharesOwned: Value(0),
+        brokerCostBasis: Value(1),
+        netCostBasis: Value(1),
+        buyFeeTotal: Value(0)
+    ));
   });
 
   tearDown(() async {
@@ -75,8 +95,15 @@ void main() {
 
   Future<AppLocalizations> pumpWidget(WidgetTester tester) async {
     await tester.pumpWidget(
-      Provider<AppDatabase>.value(
-        value: db.appDatabase,
+      MultiProvider(
+        providers: [
+          Provider<AppDatabase>.value(
+            value: db.appDatabase,
+          ),
+          ChangeNotifierProvider<BaseCurrencyProvider>.value(
+            value: currencyProvider,
+          ),
+        ],
         child: const MaterialApp(
           localizationsDelegates: [
             AppLocalizations.delegate,
@@ -165,6 +192,7 @@ void main() {
               await pumpWidget(tester);
               await tester.pumpAndSettle();
 
+              // Tap the list item to open the BookingForm
               await tester.tap(find.text('Editable'));
               await tester.pumpAndSettle();
 

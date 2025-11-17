@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:oktoast/oktoast.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/connection/connection.dart' as connection;
 import 'package:xfin/providers/language_provider.dart';
 import 'package:xfin/providers/theme_provider.dart';
+import 'package:xfin/providers/base_currency_provider.dart'; // Import the new provider
 import 'package:xfin/screens/accounts_screen.dart';
 import 'package:xfin/screens/analysis_screen.dart';
 import 'package:xfin/screens/bookings_screen.dart';
+import 'package:xfin/screens/currency_selection_screen.dart'; // Import the new screen
 import 'package:xfin/screens/more_screen.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -25,6 +28,13 @@ void main() async {
   final languageProvider = LanguageProvider();
   await languageProvider.loadLocale();
 
+  // Initialize CurrencyProvider and load the symbol
+  final currencyProvider = BaseCurrencyProvider();
+  await currencyProvider.initialize(languageProvider.appLocale);
+
+  final prefs = await SharedPreferences.getInstance();
+  final bool currencySelected = prefs.getBool('currency_selected') ?? false;
+
   runApp(
     MultiProvider(
       providers: [
@@ -34,14 +44,16 @@ void main() async {
         ),
         ChangeNotifierProvider.value(value: themeProvider),
         ChangeNotifierProvider.value(value: languageProvider),
+        ChangeNotifierProvider.value(value: currencyProvider), // Add CurrencyProvider
       ],
-      child: const MyApp(),
+      child: MyApp(initialRoute: currencySelected ? '/main' : '/currencySelection'),
     ),
   );
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final String initialRoute;
+  const MyApp({super.key, required this.initialRoute});
 
   @override
   Widget build(BuildContext context) {
@@ -69,7 +81,11 @@ class MyApp extends StatelessWidget {
             Locale('en', ''), // English, no country code
             Locale('de', ''), // German, no country code
           ],
-          home: const MainScreen(),
+          initialRoute: initialRoute, // Set initial route dynamically
+          routes: {
+            '/currencySelection': (context) => const CurrencySelectionScreen(),
+            '/main': (context) => const MainScreen(),
+          },
           builder: (context, child) => OKToast(child: child!),
         );
       },

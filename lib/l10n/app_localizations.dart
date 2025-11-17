@@ -251,8 +251,14 @@ abstract class AppLocalizations {
   /// No description provided for @insufficientBalance.
   ///
   /// In en, this message translates to:
-  /// **'Account has insufficient balance for this debit.'**
+  /// **'Insufficient balance'**
   String get insufficientBalance;
+
+  /// No description provided for @insufficientShares.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough shares'**
+  String get insufficientShares;
 
   /// No description provided for @mergeBookings.
   ///
@@ -283,6 +289,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Date'**
   String get date;
+
+  /// No description provided for @datetime.
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get datetime;
 
   /// No description provided for @amount.
   ///
@@ -542,6 +554,18 @@ abstract class AppLocalizations {
   /// **'Currency'**
   String get currency;
 
+  /// No description provided for @etf.
+  ///
+  /// In en, this message translates to:
+  /// **'ETF'**
+  String get etf;
+
+  /// No description provided for @bond.
+  ///
+  /// In en, this message translates to:
+  /// **'Bond'**
+  String get bond;
+
   /// No description provided for @commodity.
   ///
   /// In en, this message translates to:
@@ -577,6 +601,138 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'OK'**
   String get ok;
+
+  /// No description provided for @trades.
+  ///
+  /// In en, this message translates to:
+  /// **'Trades'**
+  String get trades;
+
+  /// No description provided for @noTrades.
+  ///
+  /// In en, this message translates to:
+  /// **'No trades yet. Tap + to add one!'**
+  String get noTrades;
+
+  /// No description provided for @pricePerShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Price per Share'**
+  String get pricePerShare;
+
+  /// No description provided for @tradingFee.
+  ///
+  /// In en, this message translates to:
+  /// **'Trading Fee'**
+  String get tradingFee;
+
+  /// No description provided for @clearingAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Clearing Account'**
+  String get clearingAccount;
+
+  /// No description provided for @portfolioAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Portfolio Account'**
+  String get portfolioAccount;
+
+  /// No description provided for @pleaseSelectADate.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select date and time!'**
+  String get pleaseSelectADate;
+
+  /// No description provided for @pleaseSelectAType.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select a type!'**
+  String get pleaseSelectAType;
+
+  /// No description provided for @pleaseSelectAnAsset.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select an asset!'**
+  String get pleaseSelectAnAsset;
+
+  /// No description provided for @pleaseEnterAValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a value!'**
+  String get pleaseEnterAValue;
+
+  /// No description provided for @pleaseEnterAValidNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a valid number!'**
+  String get pleaseEnterAValidNumber;
+
+  /// No description provided for @pleaseEnterAValidFee.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a valid fee!'**
+  String get pleaseEnterAValidFee;
+
+  /// No description provided for @asset.
+  ///
+  /// In en, this message translates to:
+  /// **'Asset'**
+  String get asset;
+
+  /// No description provided for @shares.
+  ///
+  /// In en, this message translates to:
+  /// **'Shares'**
+  String get shares;
+
+  /// No description provided for @profitAndLoss.
+  ///
+  /// In en, this message translates to:
+  /// **'Profit & Loss'**
+  String get profitAndLoss;
+
+  /// No description provided for @tax.
+  ///
+  /// In en, this message translates to:
+  /// **'Tax'**
+  String get tax;
+
+  /// No description provided for @pleaseSelectCurrency.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select a currency!'**
+  String get pleaseSelectCurrency;
+
+  /// No description provided for @selectCurrency.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Currency'**
+  String get selectCurrency;
+
+  /// No description provided for @currencySelectionPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select your base currency. This cannot be changed later.'**
+  String get currencySelectionPrompt;
+
+  /// No description provided for @returnOnInvestment.
+  ///
+  /// In en, this message translates to:
+  /// **'Return on Investment'**
+  String get returnOnInvestment;
+
+  /// No description provided for @valueMustBeGreaterZero.
+  ///
+  /// In en, this message translates to:
+  /// **'Value must be > 0'**
+  String get valueMustBeGreaterZero;
+
+  /// No description provided for @valueMustBeGreaterEqualZero.
+  ///
+  /// In en, this message translates to:
+  /// **'Value must be ≥ 0'**
+  String get valueMustBeGreaterEqualZero;
 }
 
 class _AppLocalizationsDelegate

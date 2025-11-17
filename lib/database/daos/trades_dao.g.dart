@@ -7,4 +7,6 @@ mixin _$TradesDaoMixin on DatabaseAccessor<AppDatabase> {
   $AssetsTable get assets => attachedDatabase.assets;
   $AccountsTable get accounts => attachedDatabase.accounts;
   $TradesTable get trades => attachedDatabase.trades;
+  $AssetsOnAccountsTable get assetsOnAccounts =>
+      attachedDatabase.assetsOnAccounts;
 }

@@ -86,8 +86,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get dark => 'Dunkel';
 
   @override
-  String get insufficientBalance =>
-      'Konto hat nicht genügend Guthaben für diese Abbuchung.';
+  String get insufficientBalance => 'Unzureichender Kontostand';
+
+  @override
+  String get insufficientShares => 'Nicht genügend Anteile';
 
   @override
   String get mergeBookings => 'Buchungen zusammenführen?';
@@ -104,6 +106,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get date => 'Datum';
+
+  @override
+  String get datetime => 'Zeitpunkt';
 
   @override
   String get amount => 'Betrag';
@@ -250,6 +255,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get currency => 'Währung';
 
   @override
+  String get etf => 'ETF';
+
+  @override
+  String get bond => 'Anleihe';
+
+  @override
   String get commodity => 'Rohstoff';
 
   @override
@@ -266,4 +277,73 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get ok => 'OK';
+
+  @override
+  String get trades => 'Trades';
+
+  @override
+  String get noTrades =>
+      'Noch keine Trades vorhanden. Tippe auf +, um einen hinzuzufügen!';
+
+  @override
+  String get pricePerShare => 'Preis pro Aktie';
+
+  @override
+  String get tradingFee => 'Handelsgebühr';
+
+  @override
+  String get clearingAccount => 'Verrechnungskonto';
+
+  @override
+  String get portfolioAccount => 'Portfolio-Konto';
+
+  @override
+  String get pleaseSelectADate => 'Please select date and time!';
+
+  @override
+  String get pleaseSelectAType => 'Bitte wählen Sie einen Typ!';
+
+  @override
+  String get pleaseSelectAnAsset => 'Bitte wählen Sie ein Asset!';
+
+  @override
+  String get pleaseEnterAValue => 'Bitte geben Sie einen Wert ein!';
+
+  @override
+  String get pleaseEnterAValidNumber =>
+      'Bitte geben Sie eine gültige Zahl ein!';
+
+  @override
+  String get pleaseEnterAValidFee => 'Bitte geben Sie eine gültige Gebühr ein!';
+
+  @override
+  String get asset => 'Asset';
+
+  @override
+  String get shares => 'Anteile';
+
+  @override
+  String get profitAndLoss => 'Profit & Loss';
+
+  @override
+  String get tax => 'Steuer';
+
+  @override
+  String get pleaseSelectCurrency => 'Bitte wählen Sie eine Währung!';
+
+  @override
+  String get selectCurrency => 'Währung auswählen';
+
+  @override
+  String get currencySelectionPrompt =>
+      'Bitte wählen Sie Ihre Basiswährung. Dies kann später nicht mehr geändert werden.';
+
+  @override
+  String get returnOnInvestment => 'Rendite';
+
+  @override
+  String get valueMustBeGreaterZero => 'Wert muss > 0 sein';
+
+  @override
+  String get valueMustBeGreaterEqualZero => 'Wert muss ≥ 0 sein';
 }

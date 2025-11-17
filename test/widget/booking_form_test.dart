@@ -5,9 +5,11 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:oktoast/oktoast.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
+import 'package:xfin/providers/base_currency_provider.dart';
 import 'package:xfin/widgets/booking_form.dart';
 
 // A test database that uses an in-memory sqlite database.
@@ -23,7 +25,7 @@ class TestDatabase {
   }
 
   Future<int> createAccount(String name, {double balance = 100.0}) async {
-    return await appDatabase.accountsDao.addAccount(
+    return await appDatabase.accountsDao.createAccount(
       AccountsCompanion(
         name: Value(name),
         balance: Value(balance),
@@ -48,27 +50,41 @@ class TestDatabase {
         amount: Value(amount),
         accountId: Value(accountId),
         isGenerated: const Value(false));
-    await appDatabase.bookingsDao.createBookingAndUpdateAccount(companion);
+    await appDatabase.bookingsDao.createBooking(companion);
     return await (appDatabase.select(appDatabase.bookings)
           ..where((tbl) => tbl.category.equals(category)))
         .getSingle();
   }
 }
 
-Future<AppLocalizations> setupL10n() {
-  // You might need to adjust this depending on how your l10n is generated/loaded.
-  // This is a common way to load it in tests.
-  return AppLocalizations.delegate.load(const Locale('en'));
-}
-
 void main() {
   late TestDatabase db;
   late AppLocalizations l10n;
+  late BaseCurrencyProvider currencyProvider;
+
+  setUpAll(() {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    SharedPreferences.setMockInitialValues({});
+  });
 
   setUp(() async {
     db = TestDatabase();
-    // Get the l10n instance
-    l10n = await setupL10n();
+    const locale = Locale('en');
+    l10n = await AppLocalizations.delegate.load(locale);
+    currencyProvider = BaseCurrencyProvider();
+    await currencyProvider.initialize(locale);
+
+    // Create base currency asset
+    await db.appDatabase.into(db.appDatabase.assets).insert(const AssetsCompanion(
+        name: Value('EUR'),
+        type: Value(AssetTypes.currency),
+        tickerSymbol: Value('EUR'),
+        value: Value(0),
+        sharesOwned: Value(0),
+        brokerCostBasis: Value(1),
+        netCostBasis: Value(1),
+        buyFeeTotal: Value(0)
+    ));
   });
 
   tearDown(() async {
@@ -77,29 +93,68 @@ void main() {
 
   Future<void> pumpWidget(WidgetTester tester, {Booking? booking}) async {
     await tester.pumpWidget(
-      Provider<AppDatabase>.value(
-        value: db.appDatabase,
-        child: MaterialApp(
-          localizationsDelegates: const [
-            AppLocalizations.delegate,
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
+      MaterialApp(
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: MultiProvider(
+          providers: [
+            Provider<AppDatabase>(
+              create: (_) => db.appDatabase,
+            ),
+            ChangeNotifierProvider<BaseCurrencyProvider>(
+              create: (_) => currencyProvider,
+            ),
           ],
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: Scaffold(
-            body: BookingForm(booking: booking),
-          ),
+          child: Builder(builder: (context) {
+            return Scaffold(
+              body: Center(
+                child: ElevatedButton(
+                  child: const Text('Show Form'),
+                  onPressed: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      builder: (_) => MultiProvider(
+                        providers: [
+                          Provider<AppDatabase>.value(
+                            value: db.appDatabase,
+                          ),
+                          ChangeNotifierProvider<BaseCurrencyProvider>.value(
+                            value: currencyProvider,
+                          ),
+                        ],
+                        child: BookingForm(booking: booking),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            );
+          }),
         ),
       ),
     );
-    await tester.pumpAndSettle(); // Let the stream builders load
+
+    await tester.tap(find.text('Show Form'));
+    await tester.pumpAndSettle();
   }
 
   Future<void> pumpWidgetWithToast(WidgetTester tester, {Booking? booking}) async {
     await tester.pumpWidget(
-      Provider<AppDatabase>.value(
-        value: db.appDatabase,
+      MultiProvider(
+        providers: [
+          Provider<AppDatabase>.value(
+            value: db.appDatabase,
+          ),
+          ChangeNotifierProvider<BaseCurrencyProvider>.value(
+            value: currencyProvider,
+          ),
+        ],
         child: OKToast(
           child: MaterialApp(
             localizationsDelegates: const [
@@ -123,7 +178,7 @@ void main() {
     late int accountId1;
 
     setUp(() async {
-      accountId1 = await db.appDatabase.accountsDao.addAccount(
+      accountId1 = await db.appDatabase.accountsDao.createAccount(
         const AccountsCompanion(
           name: Value('Test Account'),
           balance: Value(100.0),
@@ -254,7 +309,7 @@ void main() {
 
                 await tester.tap(find.text(l10n.save));
                 await tester.pumpAndSettle();
-                expect(find.text(l10n.pleaseEnterAnAmount), findsOneWidget);
+                expect(find.text(l10n.pleaseEnterAValue), findsOneWidget);
 
                 await tester.enterText(
                     find.byKey(const Key('amount_field')), 'invalid');

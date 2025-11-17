@@ -8,13 +8,21 @@ part 'assets_on_accounts_dao.g.dart';
 class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase> with _$AssetsOnAccountsDaoMixin {
   AssetsOnAccountsDao(super.db);
 
-  Future<void> updateAssetsOnAccount(AssetsOnAccountsCompanion entry) {
-    return into(assetsOnAccounts).insertOnConflictUpdate(entry);
-  }
+  Future<int> addAssetOnAccount(AssetsOnAccountsCompanion entry) => into(assetsOnAccounts).insert(entry);
 
   Future<AssetOnAccount> getAssetOnAccount(int accountId, int assetId) {
     return (select(assetsOnAccounts)
           ..where((a) => a.accountId.equals(accountId) & a.assetId.equals(assetId)))
         .getSingle();
+  }
+
+  Future<void> updateBaseCurrencyAssetOnAccount(int accountId, double amount) async {
+    AssetOnAccount baseCurrencyAssetOnAccount = await getAssetOnAccount(accountId, 1);
+    await (update(assetsOnAccounts)..where((a) => a.assetId.equals(1) & a.accountId.equals(accountId))).write(
+      AssetsOnAccountsCompanion(
+        sharesOwned: Value(baseCurrencyAssetOnAccount.sharesOwned + amount),
+        value: Value(baseCurrencyAssetOnAccount.value + amount)
+      ),
+    );
   }
 }

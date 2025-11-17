@@ -150,13 +150,16 @@ void main() {
 
       await database.into(database.trades).insert(TradesCompanion.insert(
         assetId: assetId,
-        date: 20240101,
+        datetime: 20240101,
         type: TradeTypes.buy,
-        movedValue: 1000.0,
+        clearingAccountValueDelta: -1001.0,
+        portfolioAccountValueDelta: 1000.0,
         shares: 10.0,
         pricePerShare: 100.0,
-        profitAndLoss: 0.0,
+        profitAndLossAbs: 0.0,
+        profitAndLossRel: 0.0,
         tradingFee: -1.0,
+        tax: 0.0,
         clearingAccountId: account.id,
         portfolioAccountId: account.id, // Using same for simplicity
       ));

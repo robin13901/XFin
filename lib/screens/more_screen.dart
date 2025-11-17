@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/screens/settings_screen.dart';
-import 'package:xfin/screens/assets_screen.dart'; // New import
+import 'package:xfin/screens/assets_screen.dart';
+import 'package:xfin/screens/trades_screen.dart'; // New import
 
 class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key});
@@ -45,7 +46,6 @@ class MoreScreen extends StatelessWidget {
                           ),
                         ),
                       ),
-                      // New Card for Assets
                       Card(
                         margin: const EdgeInsets.all(16.0),
                         child: InkWell(
@@ -58,9 +58,29 @@ class MoreScreen extends StatelessWidget {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(Icons.monetization_on, size: 32), // Example icon
+                              const Icon(Icons.monetization_on, size: 32),
                               const SizedBox(height: 8),
-                              Text(l10n.assets), // Using l10n for "Assets"
+                              Text(l10n.assets),
+                            ],
+                          ),
+                        ),
+                      ),
+                      // New Card for Trades
+                      Card(
+                        margin: const EdgeInsets.all(16.0),
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const TradesScreen()),
+                            );
+                          },
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.swap_horiz, size: 32), // Example icon
+                              const SizedBox(height: 8),
+                              Text(l10n.trades),
                             ],
                           ),
                         ),

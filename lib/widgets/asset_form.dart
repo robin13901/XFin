@@ -67,7 +67,6 @@ class _AssetFormState extends State<AssetForm> {
         name: drift.Value(name),
         type: drift.Value(_type),
         tickerSymbol: drift.Value(tickerSymbol),
-        // Initialize new fields with 0.0
         value: const drift.Value(0.0),
         sharesOwned: const drift.Value(0.0),
         netCostBasis: const drift.Value(0.0),
@@ -121,6 +120,10 @@ class _AssetFormState extends State<AssetForm> {
         return l10n.stock;
       case AssetTypes.crypto:
         return l10n.crypto;
+      case AssetTypes.etf:
+        return l10n.etf;
+      case AssetTypes.bond:
+        return l10n.bond;
       case AssetTypes.currency:
         return l10n.currency;
       case AssetTypes.commodity:

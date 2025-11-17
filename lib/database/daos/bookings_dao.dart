@@ -60,39 +60,48 @@ class BookingsDao extends DatabaseAccessor<AppDatabase> with _$BookingsDaoMixin 
   Future<int> _deleteBooking(int id) => (delete(bookings)..where((tbl) => tbl.id.equals(id))).go();
   Future<Booking> getBooking(int id) => (select(bookings)..where((tbl) => tbl.id.equals(id))).getSingle();
 
-  // Transactional methods for booking manipulation
-  Future<void> createBookingAndUpdateAccount(BookingsCompanion entry) {
+  Future<void> createBooking(BookingsCompanion booking) {
     return transaction(() async {
-      await _addBooking(entry);
-      final amount = entry.amount.value;
-      await db.accountsDao.updateBalance(entry.accountId.value, amount);
+      await _addBooking(booking);
+      await db.accountsDao.updateBalance(booking.accountId.value, booking.amount.value);
+
+      await db.assetsOnAccountsDao.updateBaseCurrencyAssetOnAccount(booking.accountId.value, booking.amount.value);
+      await db.assetsDao.updateBaseCurrencyAsset(booking.amount.value);
     });
   }
 
-  Future<void> updateBookingAndUpdateAccount(Booking oldBooking, BookingsCompanion newBooking) {
+  Future<void> updateBooking(Booking oldBooking, BookingsCompanion newBooking) {
     return transaction(() async {
       await _updateBooking(newBooking);
 
       final oldAmount = oldBooking.amount;
       final newAmount = newBooking.amount.value;
+      final amountDelta = newAmount - oldAmount;
       final oldAccountId = oldBooking.accountId;
       final newAccountId = newBooking.accountId.value;
 
+      await db.assetsDao.updateBaseCurrencyAsset(amountDelta);
+
       if (oldAccountId == newAccountId) {
-        final amountDelta = newAmount - oldAmount;
         await db.accountsDao.updateBalance(oldAccountId, amountDelta);
+        await db.assetsOnAccountsDao.updateBaseCurrencyAssetOnAccount(oldAccountId, amountDelta);
       } else {
         await db.accountsDao.updateBalance(oldAccountId, -oldAmount);
+        await db.assetsOnAccountsDao.updateBaseCurrencyAssetOnAccount(oldAccountId, -oldAmount);
+
         await db.accountsDao.updateBalance(newAccountId, newAmount);
+        await db.assetsOnAccountsDao.updateBaseCurrencyAssetOnAccount(newAccountId, newAmount);
       }
     });
   }
 
-  Future<void> deleteBookingAndUpdateAccount(int id) {
+  Future<void> deleteBooking(int id) {
     return transaction(() async {
       final booking = await getBooking(id);
       await _deleteBooking(id);
       await db.accountsDao.updateBalance(booking.accountId, -booking.amount);
+      await db.assetsOnAccountsDao.updateBaseCurrencyAssetOnAccount(booking.accountId, -booking.amount);
+      await db.assetsDao.updateBaseCurrencyAsset(-booking.amount);
     });
   }
 }

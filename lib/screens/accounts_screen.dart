@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/widgets/account_form.dart';
+
+import '../providers/base_currency_provider.dart';
 
 class AccountsScreen extends StatelessWidget {
   const AccountsScreen({super.key});
@@ -122,7 +123,7 @@ class AccountsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final db = Provider.of<AppDatabase>(context);
     final l10n = AppLocalizations.of(context)!;
-    final currencyFormat = NumberFormat.currency(locale: 'de_DE', symbol: '€');
+    final currencyProvider = Provider.of<BaseCurrencyProvider>(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -153,7 +154,7 @@ class AccountsScreen extends StatelessWidget {
                     return ListTile(
                       title: Text(account.name),
                       trailing: Text(
-                        currencyFormat.format(account.balance),
+                        currencyProvider.format.format(account.balance),
                         style: TextStyle(
                           color: account.balance < 0 ? Colors.red : Colors.green,
                           fontWeight: FontWeight.bold,
@@ -193,7 +194,7 @@ class AccountsScreen extends StatelessWidget {
                         return ListTile(
                           title: Text(account.name),
                           trailing: Text(
-                            currencyFormat.format(account.balance),
+                            currencyProvider.format.format(account.balance),
                             style: TextStyle(
                               color:
                                   account.balance < 0 ? Colors.red : Colors.green,
