@@ -86,6 +86,8 @@ class AccountsDao extends DatabaseAccessor<AppDatabase> with _$AccountsDaoMixin 
     );
   }
 
+  Future<List<Account>> getAllAccounts() => select(accounts).get();
+
   Future<int> createAccount(AccountsCompanion account) {
     return transaction(() async {
       int accountId = await _addAccount(account);

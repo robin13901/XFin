@@ -8,7 +8,7 @@ class Validator {
   Validator(this.l10n);
   
   String? validateNotInitial(String? value) {
-    if (value == null || value.isEmpty) return l10n.pleaseEnterAValue;
+    if (value == null || value.trim().isEmpty) return l10n.pleaseEnterAValue;
     return null;
   }
 
@@ -56,6 +56,12 @@ class Validator {
       if (ownedShares < sharesToBeSold) return l10n.insufficientShares;
     }
 
+    return null;
+  }
+
+  String? validateUniqueAccountName(String? value, List<String> existingValues) {
+    if (validateNotInitial(value) case String error) return error;
+    if (existingValues.contains(value!.trim())) return l10n.accountAlreadyExists;
     return null;
   }
 }

@@ -30,12 +30,11 @@ class _AccountFormState extends State<AccountForm> {
     _existingAccountNames = [];
 
     final db = Provider.of<AppDatabase>(context, listen: false);
-    db.accountsDao.watchAllAccounts().first.then((accounts) {
-      if (mounted) {
-        setState(() {
-          _existingAccountNames = accounts.map((a) => a.name).toList();
-        });
-      }
+    db.accountsDao.getAllAccounts().then((accounts) {
+      if (!mounted) return;
+      setState(() {
+        _existingAccountNames = accounts.map((a) => a.name).toList();
+      });
     });
   }
 
@@ -67,17 +66,6 @@ class _AccountFormState extends State<AccountForm> {
         Navigator.of(context).pop();
       }
     }
-  }
-
-  String? _validateName(String? value) {
-    final l10n = AppLocalizations.of(context)!;
-    if (value == null || value.isEmpty) {
-      return l10n.pleaseEnterAName;
-    }
-    if (_existingAccountNames.contains(value.trim())) {
-      return l10n.accountAlreadyExists;
-    }
-    return null;
   }
 
   String _getAccountTypeName(AppLocalizations l10n, AccountTypes type) {
@@ -114,7 +102,7 @@ class _AccountFormState extends State<AccountForm> {
                     labelText: l10n.accountName,
                     border: const OutlineInputBorder(),
                   ),
-                  validator: _validateName,
+                  validator: (value) => validator.validateUniqueAccountName(value, _existingAccountNames),
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<AccountTypes>(

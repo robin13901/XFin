@@ -6,7 +6,6 @@ import '../tables.dart';
 
 part 'trades_dao.g.dart';
 
-// New data class to hold a trade and its associated asset
 class TradeWithAsset {
   final Trade trade;
   final Asset asset;
@@ -93,15 +92,11 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
             value: Value(updatedValue),
             buyFeeTotal: Value(updatedBuyFeeTotal),
             netCostBasis: Value(updatedShares > 0 ? updatedValue / updatedShares : 0),
-            brokerCostBasis: Value(updatedShares > 0 ? (updatedValue - updatedBuyFeeTotal) / updatedShares : 0),
+            brokerCostBasis: Value(updatedShares > 0 ? (updatedValue + updatedBuyFeeTotal) / updatedShares : 0),
           ),
         );
 
       } else { // Sell
-
-        if (assetOnAccount.sharesOwned < shares) {
-          throw Exception('Not enough shares to sell.');
-        }
 
         final pastTrades = await (select(trades)
               ..where((t) =>
@@ -189,7 +184,7 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
         value: Value(totalValue),
         buyFeeTotal: Value(totalBuyFee),
         netCostBasis: Value(totalShares > 0 ? totalValue / totalShares : 0),
-        brokerCostBasis: Value(totalShares > 0 ? (totalValue - totalBuyFee) / totalShares : 0),
+        brokerCostBasis: Value(totalShares > 0 ? (totalValue + (tradeType == TradeTypes.buy ? totalBuyFee : -totalBuyFee)) / totalShares : 0),
       ));
 
       // 5. Update Account Balances
@@ -207,13 +202,6 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
       await db.assetsOnAccountsDao.updateBaseCurrencyAssetOnAccount(clearingAccountId, clearingAccountValueDelta);
       await db.assetsDao.updateBaseCurrencyAsset(clearingAccountValueDelta);
     });
-  }
-
-  Future<void> deleteTrade(int id) {
-    // Note: Deleting trades can have complex repercussions on asset values and cost basis.
-    // A full implementation would require recalculating all subsequent trades.
-    // This simplified version just deletes the trade record.
-    return (delete(trades)..where((t) => t.id.equals(id))).go();
   }
 
   Future<Trade> getTrade(int id) {
