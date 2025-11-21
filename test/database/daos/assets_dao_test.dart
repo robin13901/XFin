@@ -7,18 +7,16 @@ import 'package:xfin/database/tables.dart';
 import 'package:xfin/database/daos/assets_dao.dart';
 
 void main() {
-  late AppDatabase database;
+  late AppDatabase db;
   late AssetsDao assetsDao;
 
-  // Setup a new in-memory database before each test
   setUp(() {
-    database = AppDatabase(NativeDatabase.memory());
-    assetsDao = database.assetsDao;
+    db = AppDatabase(NativeDatabase.memory());
+    assetsDao = db.assetsDao;
   });
 
-  // Close the database after each test
   tearDown(() async {
-    await database.close();
+    await db.close();
   });
 
   group('AssetsDao', () {
@@ -27,7 +25,7 @@ void main() {
       expect(assets, isEmpty);
     });
 
-    test('addAsset inserts a new asset and watchAllAssets reflects it', () async {
+    test('"insert" inserts a new asset and watchAllAssets reflects it', () async {
       final newAsset = AssetsCompanion.insert(
         name: 'Test Asset',
         type: AssetTypes.stock,
@@ -38,7 +36,7 @@ void main() {
         brokerCostBasis: const Value(8.0),
         buyFeeTotal: const Value(2.0),
       );
-      await assetsDao.addAsset(newAsset);
+      await assetsDao.insert(newAsset);
 
       final assets = await assetsDao.watchAllAssets().first;
       expect(assets.length, 1);
@@ -53,7 +51,7 @@ void main() {
     });
 
     test('updateAsset updates an existing asset', () async {
-      final assetToInsert = AssetsCompanion.insert(
+      final id = await assetsDao.insert(AssetsCompanion.insert(
         name: 'Original Asset',
         type: AssetTypes.stock,
         tickerSymbol: 'ORIG',
@@ -62,8 +60,7 @@ void main() {
         netCostBasis: const Value(40.0),
         brokerCostBasis: const Value(3.0),
         buyFeeTotal: const Value(1.0),
-      );
-      final id = await assetsDao.addAsset(assetToInsert);
+      ));
       final originalAsset = (await assetsDao.getAsset(id));
 
       final updatedAsset = originalAsset.copyWith(
@@ -91,7 +88,7 @@ void main() {
     });
 
     test('deleteAsset deletes an asset', () async {
-      final assetToInsert = AssetsCompanion.insert(
+      final id = await assetsDao.insert(AssetsCompanion.insert(
         name: 'Asset to Delete',
         type: AssetTypes.stock,
         tickerSymbol: 'DEL',
@@ -100,8 +97,7 @@ void main() {
         netCostBasis: const Value(1.0),
         brokerCostBasis: const Value(1.0),
         buyFeeTotal: const Value(1.0),
-      );
-      final id = await assetsDao.addAsset(assetToInsert);
+      ));
 
       await assetsDao.deleteAsset(id);
 
@@ -120,9 +116,27 @@ void main() {
         brokerCostBasis: const Value(7.0),
         buyFeeTotal: const Value(3.0),
       );
-      final id = await assetsDao.addAsset(assetToInsert);
+      final id = await assetsDao.insert(assetToInsert);
 
       final retrievedAsset = await assetsDao.getAsset(id);
+      expect(retrievedAsset.name, 'Unique Asset');
+      expect(retrievedAsset.id, id);
+    });
+
+    test('getAssetByTickerSymbol', () async {
+      final assetToInsert = AssetsCompanion.insert(
+        name: 'Unique Asset',
+        type: AssetTypes.currency,
+        tickerSymbol: 'UAS',
+        value: const Value(99.0),
+        sharesOwned: const Value(9.0),
+        netCostBasis: const Value(89.0),
+        brokerCostBasis: const Value(7.0),
+        buyFeeTotal: const Value(3.0),
+      );
+      final id = await assetsDao.insert(assetToInsert);
+
+      final retrievedAsset = await assetsDao.getAssetByTickerSymbol('UAS');
       expect(retrievedAsset.name, 'Unique Asset');
       expect(retrievedAsset.id, id);
     });
@@ -138,8 +152,8 @@ void main() {
         brokerCostBasis: const Value(0.0), 
         buyFeeTotal: const Value(0.0),
       );
-      final assetId = await assetsDao.addAsset(asset);
-      final account = await database.into(database.accounts).insertReturning(
+      final assetId = await assetsDao.insert(asset);
+      final account = await db.into(db.accounts).insertReturning(
         AccountsCompanion.insert(
           name: 'Clearing Account',
           balance: 10000.0,
@@ -148,7 +162,7 @@ void main() {
         ),
       );
 
-      await database.into(database.trades).insert(TradesCompanion.insert(
+      await db.into(db.trades).insert(TradesCompanion.insert(
         assetId: assetId,
         datetime: 20240101,
         type: TradeTypes.buy,
@@ -178,7 +192,7 @@ void main() {
         brokerCostBasis: const Value(0.0), 
         buyFeeTotal: const Value(0.0),
       );
-      final assetId = await assetsDao.addAsset(asset);
+      final assetId = await assetsDao.insert(asset);
 
       expect(await assetsDao.hasTrades(assetId), isFalse);
     });
@@ -194,9 +208,9 @@ void main() {
         brokerCostBasis: const Value(0.0), 
         buyFeeTotal: const Value(0.0),
       );
-      final assetId = await assetsDao.addAsset(asset);
+      final assetId = await assetsDao.insert(asset);
       
-      final account = await database.into(database.accounts).insertReturning(
+      final account = await db.into(db.accounts).insertReturning(
         AccountsCompanion.insert(
           name: 'Portfolio Account',
           balance: 0.0,
@@ -205,7 +219,7 @@ void main() {
         ),
       );
 
-      await database.into(database.assetsOnAccounts).insert(AssetsOnAccountsCompanion.insert(
+      await db.into(db.assetsOnAccounts).insert(AssetsOnAccountsCompanion.insert(
         assetId: assetId,
         accountId: account.id,
         value: 0.0,
@@ -229,7 +243,7 @@ void main() {
         brokerCostBasis: const Value(0.0), 
         buyFeeTotal: const Value(0.0),
       );
-      final assetId = await assetsDao.addAsset(asset);
+      final assetId = await assetsDao.insert(asset);
 
       expect(await assetsDao.hasAssetsOnAccounts(assetId), isFalse);
     });

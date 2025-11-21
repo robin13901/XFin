@@ -83,7 +83,7 @@ class _AssetFormState extends State<AssetForm> {
           tickerSymbol: tickerSymbol,
         ));
       } else {
-        await db.assetsDao.addAsset(companion);
+        await db.assetsDao.insert(companion);
       }
 
       if (mounted) {

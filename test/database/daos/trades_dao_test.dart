@@ -243,7 +243,8 @@ void main() {
       expect(newAssetOnAccount.sharesOwned, closeTo(0.001, 1e-9));
       expect(newAssetOnAccount.value, closeTo(0.001 * 40000, 1e-9));
       expect(newAssetOnAccount.netCostBasis, closeTo(40 / 0.001, 1e-9));
-      expect(newAssetOnAccount.brokerCostBasis, closeTo((40 + 1) / 0.001, 1e-9));
+      expect(
+          newAssetOnAccount.brokerCostBasis, closeTo((40 + 1) / 0.001, 1e-9));
       expect(newAssetOnAccount.buyFeeTotal, closeTo(1, 1e-9));
     });
   });
@@ -264,9 +265,10 @@ void main() {
       ));
 
       final aoaOne1 = await (db.select(db.assetsOnAccounts)
-        ..where((a) =>
-        a.assetId.equals(assetOne.id) & a.accountId.equals(
-            portfolioAccount.id))).getSingle();
+            ..where((a) =>
+                a.assetId.equals(assetOne.id) &
+                a.accountId.equals(portfolioAccount.id)))
+          .getSingle();
       expect(aoaOne1.sharesOwned, closeTo(50, 1e-9));
       expect(aoaOne1.value, closeTo(802.7, 1e-9));
       expect(aoaOne1.buyFeeTotal, closeTo(1, 1e-9));
@@ -274,7 +276,8 @@ void main() {
       expect(aoaOne1.netCostBasis, closeTo(802.7 / 50, 1e-9));
 
       final assetOne1 = await (db.select(db.assets)
-        ..where((a) => a.id.equals(assetOne.id))).getSingle();
+            ..where((a) => a.id.equals(assetOne.id)))
+          .getSingle();
       expect(assetOne1.sharesOwned, closeTo(50, 1e-9));
       expect(assetOne1.value, closeTo(802.7, 1e-9));
       expect(assetOne1.buyFeeTotal, closeTo(1, 1e-9));
@@ -282,11 +285,13 @@ void main() {
       expect(assetOne1.netCostBasis, closeTo(802.7 / 50, 1e-9));
 
       final clearing1 = await (db.select(db.accounts)
-        ..where((a) => a.id.equals(clearingAccount.id))).getSingle();
+            ..where((a) => a.id.equals(clearingAccount.id)))
+          .getSingle();
       expect(clearing1.balance, closeTo(5000 - 802.7 - 1, 1e-9));
 
       final portfolio1 = await (db.select(db.accounts)
-        ..where((a) => a.id.equals(portfolioAccount.id))).getSingle();
+            ..where((a) => a.id.equals(portfolioAccount.id)))
+          .getSingle();
       expect(portfolio1.balance, closeTo(0 + 802.7, 1e-9));
 
       // Trade 2
@@ -303,9 +308,10 @@ void main() {
       ));
 
       final aoaTwo2 = await (db.select(db.assetsOnAccounts)
-        ..where((a) =>
-        a.assetId.equals(assetTwo.id) & a.accountId.equals(
-            portfolioAccount.id))).getSingle();
+            ..where((a) =>
+                a.assetId.equals(assetTwo.id) &
+                a.accountId.equals(portfolioAccount.id)))
+          .getSingle();
       expect(aoaTwo2.sharesOwned, closeTo(4.936808, 1e-9));
       expect(aoaTwo2.value, closeTo(499.8, 1e-9));
       expect(aoaTwo2.buyFeeTotal, closeTo(1, 1e-9));
@@ -313,7 +319,8 @@ void main() {
       expect(aoaTwo2.netCostBasis, closeTo(499.8 / 4.936808, 1e-9));
 
       final assetTwo2 = await (db.select(db.assets)
-        ..where((a) => a.id.equals(assetTwo.id))).getSingle();
+            ..where((a) => a.id.equals(assetTwo.id)))
+          .getSingle();
       expect(assetTwo2.sharesOwned, closeTo(4.936808, 1e-9));
       expect(assetTwo2.value, closeTo(499.8, 1e-9));
       expect(assetTwo2.buyFeeTotal, closeTo(1, 1e-9));
@@ -321,11 +328,13 @@ void main() {
       expect(assetTwo2.netCostBasis, closeTo(499.8 / 4.936808, 1e-9));
 
       final clearing2 = await (db.select(db.accounts)
-        ..where((a) => a.id.equals(clearingAccount.id))).getSingle();
+            ..where((a) => a.id.equals(clearingAccount.id)))
+          .getSingle();
       expect(clearing2.balance, closeTo(4196.3 - 499.8 - 1, 1e-9));
 
       final portfolio2 = await (db.select(db.accounts)
-        ..where((a) => a.id.equals(portfolioAccount.id))).getSingle();
+            ..where((a) => a.id.equals(portfolioAccount.id)))
+          .getSingle();
       expect(portfolio2.balance, closeTo(802.7 + 499.8, 1e-9));
 
       // Trade 3
@@ -342,9 +351,10 @@ void main() {
       ));
 
       final aoaOne3 = await (db.select(db.assetsOnAccounts)
-        ..where((a) =>
-        a.assetId.equals(assetOne.id) & a.accountId.equals(
-            portfolioAccount.id))).getSingle();
+            ..where((a) =>
+                a.assetId.equals(assetOne.id) &
+                a.accountId.equals(portfolioAccount.id)))
+          .getSingle();
       expect(aoaOne3.sharesOwned, closeTo(50 + 34, 1e-9));
       expect(aoaOne3.value, closeTo(802.7 + 382.64, 1e-9));
       expect(aoaOne3.buyFeeTotal, closeTo(1 + 1, 1e-9));
@@ -352,19 +362,23 @@ void main() {
       expect(aoaOne3.netCostBasis, closeTo((802.7 + 382.64) / 84, 1e-9));
 
       final assetOne3 = await (db.select(db.assets)
-        ..where((a) => a.id.equals(assetOne.id))).getSingle();
+            ..where((a) => a.id.equals(assetOne.id)))
+          .getSingle();
       expect(assetOne3.sharesOwned, closeTo(50 + 34, 1e-9));
       expect(assetOne3.value, closeTo(802.7 + 382.64, 1e-9));
       expect(assetOne3.buyFeeTotal, closeTo(1 + 1, 1e-9));
-      expect(assetOne3.brokerCostBasis, closeTo((802.7 + 382.64 + 2) / 84, 1e-9));
+      expect(
+          assetOne3.brokerCostBasis, closeTo((802.7 + 382.64 + 2) / 84, 1e-9));
       expect(assetOne3.netCostBasis, closeTo((802.7 + 382.64) / 84, 1e-9));
 
       final clearing3 = await (db.select(db.accounts)
-        ..where((a) => a.id.equals(clearingAccount.id))).getSingle();
+            ..where((a) => a.id.equals(clearingAccount.id)))
+          .getSingle();
       expect(clearing3.balance, closeTo(3695.5 - 382.64 - 1, 1e-9));
 
       final portfolio3 = await (db.select(db.accounts)
-        ..where((a) => a.id.equals(portfolioAccount.id))).getSingle();
+            ..where((a) => a.id.equals(portfolioAccount.id)))
+          .getSingle();
       expect(portfolio3.balance, closeTo(1302.5 + 382.64, 1e-9));
 
       // Trade 4
@@ -381,29 +395,38 @@ void main() {
       ));
 
       final aoaTwo4 = await (db.select(db.assetsOnAccounts)
-        ..where((a) =>
-        a.assetId.equals(assetTwo.id) & a.accountId.equals(
-            portfolioAccount.id))).getSingle();
+            ..where((a) =>
+                a.assetId.equals(assetTwo.id) &
+                a.accountId.equals(portfolioAccount.id)))
+          .getSingle();
       expect(aoaTwo4.sharesOwned, closeTo(3, 1e-9));
       expect(aoaTwo4.value, closeTo(499.8 - 196.0814839062, 1e-9));
-      expect(aoaTwo4.buyFeeTotal, closeTo(1, 1e-9));
-      expect(aoaTwo4.brokerCostBasis, closeTo((499.8 - 196.0814839062 - 1) / 3, 1e-9));
+      expect(aoaTwo4.buyFeeTotal,
+          closeTo(1 - (1.936808 / 4.936808), 1e-9)); // = 0.607680104229291
+      expect(aoaTwo4.brokerCostBasis,
+          closeTo((499.8 - 196.0814839062 + 0.607680104229291) / 3, 1e-9));
       expect(aoaTwo4.netCostBasis, closeTo((499.8 - 196.0814839062) / 3, 1e-9));
 
       final assetTwo4 = await (db.select(db.assets)
-        ..where((a) => a.id.equals(assetTwo.id))).getSingle();
+            ..where((a) => a.id.equals(assetTwo.id)))
+          .getSingle();
       expect(assetTwo4.sharesOwned, closeTo(3, 1e-9));
       expect(assetTwo4.value, closeTo(499.8 - 196.0814839062, 1e-9));
-      expect(assetTwo4.buyFeeTotal, closeTo(1, 1e-9));
-      expect(assetTwo4.brokerCostBasis, closeTo((499.8 - 196.0814839062 - 1) / 3, 1e-9));
-      expect(assetTwo4.netCostBasis, closeTo((499.8 - 196.0814839062) / 3, 1e-9));
+      expect(assetTwo4.buyFeeTotal,
+          closeTo(1 - (1.936808 / 4.936808), 1e-9)); // = 0.607680104229291
+      expect(assetTwo4.brokerCostBasis,
+          closeTo((499.8 - 196.0814839062 + 0.607680104229291) / 3, 1e-9));
+      expect(
+          assetTwo4.netCostBasis, closeTo((499.8 - 196.0814839062) / 3, 1e-9));
 
       final clearing4 = await (db.select(db.accounts)
-        ..where((a) => a.id.equals(clearingAccount.id))).getSingle();
+            ..where((a) => a.id.equals(clearingAccount.id)))
+          .getSingle();
       expect(clearing4.balance, closeTo(3311.86 + 397.4, 1e-9));
 
       final portfolio4 = await (db.select(db.accounts)
-        ..where((a) => a.id.equals(portfolioAccount.id))).getSingle();
+            ..where((a) => a.id.equals(portfolioAccount.id)))
+          .getSingle();
       expect(portfolio4.balance, closeTo(1685.14 - 196.0814839062, 1e-9));
 
       // Trade 5
@@ -420,9 +443,10 @@ void main() {
       ));
 
       final aoaOne5 = await (db.select(db.assetsOnAccounts)
-        ..where((a) =>
-        a.assetId.equals(assetOne.id) & a.accountId.equals(
-            portfolioAccount.id))).getSingle();
+            ..where((a) =>
+                a.assetId.equals(assetOne.id) &
+                a.accountId.equals(portfolioAccount.id)))
+          .getSingle();
       expect(aoaOne5.sharesOwned, closeTo(0, 1e-9));
       expect(aoaOne5.value, closeTo(0, 1e-9));
       expect(aoaOne5.buyFeeTotal, closeTo(0, 1e-9));
@@ -430,7 +454,8 @@ void main() {
       expect(aoaOne5.netCostBasis, closeTo(0, 1e-9));
 
       final assetOne5 = await (db.select(db.assets)
-        ..where((a) => a.id.equals(assetOne.id))).getSingle();
+            ..where((a) => a.id.equals(assetOne.id)))
+          .getSingle();
       expect(assetOne5.sharesOwned, closeTo(0, 1e-9));
       expect(assetOne5.value, closeTo(0, 1e-9));
       expect(assetOne5.buyFeeTotal, closeTo(0, 1e-9));
@@ -438,11 +463,13 @@ void main() {
       expect(assetOne5.netCostBasis, closeTo(0, 1e-9));
 
       final clearing5 = await (db.select(db.accounts)
-        ..where((a) => a.id.equals(clearingAccount.id))).getSingle();
+            ..where((a) => a.id.equals(clearingAccount.id)))
+          .getSingle();
       expect(clearing5.balance, closeTo(3709.26 + 558.02, 1e-9));
 
       final portfolio5 = await (db.select(db.accounts)
-        ..where((a) => a.id.equals(portfolioAccount.id))).getSingle();
+            ..where((a) => a.id.equals(portfolioAccount.id)))
+          .getSingle();
       expect(portfolio5.balance, closeTo(1489.0585160938 - 1185.34, 1e-9));
 
       // Add new account to test differentiation of Asset and AssetsOnAccount
@@ -469,9 +496,10 @@ void main() {
       ));
 
       final aoaTwo6 = await (db.select(db.assetsOnAccounts)
-        ..where((a) =>
-        a.assetId.equals(assetTwo.id) & a.accountId.equals(
-            portfolioAccount2.id))).getSingle();
+            ..where((a) =>
+                a.assetId.equals(assetTwo.id) &
+                a.accountId.equals(portfolioAccount2.id)))
+          .getSingle();
       expect(aoaTwo6.sharesOwned, closeTo(10, 1e-9));
       expect(aoaTwo6.value, closeTo(2000, 1e-9));
       expect(aoaTwo6.buyFeeTotal, closeTo(1, 1e-9));
@@ -479,24 +507,29 @@ void main() {
       expect(aoaTwo6.netCostBasis, closeTo(2000 / 10, 1e-9));
 
       final assetTwo6 = await (db.select(db.assets)
-        ..where((a) => a.id.equals(assetTwo.id))).getSingle();
+            ..where((a) => a.id.equals(assetTwo.id)))
+          .getSingle();
       expect(assetTwo6.sharesOwned, closeTo(3 + 10, 1e-9));
       expect(assetTwo6.value, closeTo(303.7185160938 + 2000, 1e-9));
-      expect(assetTwo6.buyFeeTotal, closeTo(1 + 1, 1e-9));
-      expect(assetTwo6.brokerCostBasis, closeTo((303.7185160938 + 2000 + 2) / 13, 1e-9));
-      expect(assetTwo6.netCostBasis, closeTo((303.7185160938 + 2000) / 13, 1e-9));
+      expect(assetTwo6.buyFeeTotal, closeTo(0.607680104229291 + 1, 1e-9));
+      expect(assetTwo6.brokerCostBasis,
+          closeTo((303.7185160938 + 2000 + 1.607680104229291) / 13, 1e-9));
+      expect(
+          assetTwo6.netCostBasis, closeTo((303.7185160938 + 2000) / 13, 1e-9));
 
       final clearing6 = await (db.select(db.accounts)
-        ..where((a) => a.id.equals(clearingAccount.id))).getSingle();
+            ..where((a) => a.id.equals(clearingAccount.id)))
+          .getSingle();
       expect(clearing6.balance, closeTo(4267.28 - 2000 - 1, 1e-9));
 
       final portfolio2_6 = await (db.select(db.accounts)
-        ..where((a) => a.id.equals(portfolioAccount2.id))).getSingle();
+            ..where((a) => a.id.equals(portfolioAccount2.id)))
+          .getSingle();
       expect(portfolio2_6.balance, closeTo(2000, 1e-9));
 
       // Trade 7
       await tradesDao.processTrade(TradesCompanion(
-        datetime: const drift.Value(20250106000000),
+        datetime: const drift.Value(20250107000000),
         assetId: drift.Value(assetTwo.id),
         type: const drift.Value(TradeTypes.sell),
         shares: const drift.Value(3),
@@ -508,9 +541,10 @@ void main() {
       ));
 
       final aoaTwo7 = await (db.select(db.assetsOnAccounts)
-        ..where((a) =>
-        a.assetId.equals(assetTwo.id) & a.accountId.equals(
-            portfolioAccount.id))).getSingle();
+            ..where((a) =>
+                a.assetId.equals(assetTwo.id) &
+                a.accountId.equals(portfolioAccount.id)))
+          .getSingle();
       expect(aoaTwo7.sharesOwned, closeTo(0, 1e-9));
       expect(aoaTwo7.value, closeTo(0, 1e-9));
       expect(aoaTwo7.buyFeeTotal, closeTo(0, 1e-9));
@@ -518,9 +552,10 @@ void main() {
       expect(aoaTwo7.netCostBasis, closeTo(0, 1e-9));
 
       final aoaTwo2_7 = await (db.select(db.assetsOnAccounts)
-        ..where((a) =>
-        a.assetId.equals(assetTwo.id) & a.accountId.equals(
-            portfolioAccount2.id))).getSingle();
+            ..where((a) =>
+                a.assetId.equals(assetTwo.id) &
+                a.accountId.equals(portfolioAccount2.id)))
+          .getSingle();
       expect(aoaTwo2_7.sharesOwned, closeTo(10, 1e-9));
       expect(aoaTwo2_7.value, closeTo(2000, 1e-9));
       expect(aoaTwo2_7.buyFeeTotal, closeTo(1, 1e-9));
@@ -528,20 +563,93 @@ void main() {
       expect(aoaTwo2_7.netCostBasis, closeTo(2000 / 10, 1e-9));
 
       final assetTwo7 = await (db.select(db.assets)
-        ..where((a) => a.id.equals(assetTwo.id))).getSingle();
+            ..where((a) => a.id.equals(assetTwo.id)))
+          .getSingle();
       expect(assetTwo7.sharesOwned, closeTo(10, 1e-9));
       expect(assetTwo7.value, closeTo(2000, 1e-9));
-      expect(assetTwo7.buyFeeTotal, closeTo(1, 1e-9));
-      expect(assetTwo7.brokerCostBasis, closeTo((2000 - 1) / 10, 1e-9));
+      expect(assetTwo7.buyFeeTotal, closeTo(1.607680104229291 - 1, 1e-9));
+      expect(assetTwo7.brokerCostBasis,
+          closeTo((2000 + 0.607680104229291) / 10, 1e-9));
       expect(assetTwo7.netCostBasis, closeTo(2000 / 10, 1e-9));
 
       final clearing7 = await (db.select(db.accounts)
-        ..where((a) => a.id.equals(clearingAccount.id))).getSingle();
+            ..where((a) => a.id.equals(clearingAccount.id)))
+          .getSingle();
       expect(clearing7.balance, closeTo(2267.28 + 604.18 - 1, 1e-9));
 
       final portfolio7 = await (db.select(db.accounts)
-        ..where((a) => a.id.equals(portfolioAccount.id))).getSingle();
+            ..where((a) => a.id.equals(portfolioAccount.id)))
+          .getSingle();
       expect(portfolio7.balance, closeTo(0, 1e-9));
+    });
+
+    test('buy 2, buy 2, sell 3 - test one sell consumes more than one lot',
+        () async {
+      await tradesDao.processTrade(TradesCompanion(
+        datetime: const drift.Value(20250101000000),
+        assetId: drift.Value(assetOne.id),
+        type: const drift.Value(TradeTypes.buy),
+        shares: const drift.Value(2),
+        pricePerShare: const drift.Value(10),
+        tradingFee: const drift.Value(1),
+        tax: const drift.Value(0),
+        clearingAccountId: drift.Value(clearingAccount.id),
+        portfolioAccountId: drift.Value(portfolioAccount.id),
+      ));
+
+      await tradesDao.processTrade(TradesCompanion(
+        datetime: const drift.Value(20250102000000),
+        assetId: drift.Value(assetOne.id),
+        type: const drift.Value(TradeTypes.buy),
+        shares: const drift.Value(2),
+        pricePerShare: const drift.Value(15),
+        tradingFee: const drift.Value(1),
+        tax: const drift.Value(0),
+        clearingAccountId: drift.Value(clearingAccount.id),
+        portfolioAccountId: drift.Value(portfolioAccount.id),
+      ));
+
+      await tradesDao.processTrade(TradesCompanion(
+        datetime: const drift.Value(20250103000000),
+        assetId: drift.Value(assetOne.id),
+        type: const drift.Value(TradeTypes.sell),
+        shares: const drift.Value(3),
+        pricePerShare: const drift.Value(20),
+        tradingFee: const drift.Value(1),
+        tax: const drift.Value(0),
+        clearingAccountId: drift.Value(clearingAccount.id),
+        portfolioAccountId: drift.Value(portfolioAccount.id),
+      ));
+
+      final aoaOne1 = await (db.select(db.assetsOnAccounts)
+            ..where((a) =>
+                a.assetId.equals(assetOne.id) &
+                a.accountId.equals(portfolioAccount.id)))
+          .getSingle();
+      expect(aoaOne1.sharesOwned, closeTo(1, 1e-9));
+      expect(aoaOne1.value, closeTo(15, 1e-9));
+      expect(aoaOne1.buyFeeTotal, closeTo(0.5, 1e-9));
+      expect(aoaOne1.brokerCostBasis, closeTo((15 + 0.5) / 1, 1e-9));
+      expect(aoaOne1.netCostBasis, closeTo(15 / 1, 1e-9));
+
+      final assetOne1 = await (db.select(db.assets)
+            ..where((a) => a.id.equals(assetOne.id)))
+          .getSingle();
+      expect(assetOne1.sharesOwned, closeTo(1, 1e-9));
+      expect(assetOne1.value, closeTo(15, 1e-9));
+      expect(assetOne1.buyFeeTotal, closeTo(0.5, 1e-9));
+      expect(assetOne1.brokerCostBasis, closeTo((15 + 0.5) / 1, 1e-9));
+      expect(assetOne1.netCostBasis, closeTo(15 / 1, 1e-9));
+
+      final clearing1 = await (db.select(db.accounts)
+            ..where((a) => a.id.equals(clearingAccount.id)))
+          .getSingle();
+      expect(clearing1.balance, closeTo(5000 - 20 - 30 + 60 - 3, 1e-9));
+
+      final portfolio1 = await (db.select(db.accounts)
+            ..where((a) => a.id.equals(portfolioAccount.id)))
+          .getSingle();
+      expect(portfolio1.balance, closeTo(0 + 20 + 30 - 20 - 15, 1e-9));
     });
   });
 

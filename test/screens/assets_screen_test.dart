@@ -49,7 +49,7 @@ class FakeAssetsDao extends Fake implements AssetsDao {
   }
 
   @override
-  Future<int> addAsset(AssetsCompanion entry) async {
+  Future<int> insert(AssetsCompanion entry) async {
     _addedAssetId = 1; // Simulate a new ID
     _allAssetsController.add([
       Asset(

@@ -5,13 +5,13 @@ import '../tables.dart';
 part 'bookings_dao.g.dart';
 
 @DriftAccessor(tables: [Bookings, Accounts])
-class BookingsDao extends DatabaseAccessor<AppDatabase> with _$BookingsDaoMixin {
+class BookingsDao extends DatabaseAccessor<AppDatabase>
+    with _$BookingsDaoMixin {
   BookingsDao(super.db);
 
   Stream<List<BookingWithAccount>> watchBookingsWithAccount() {
-    final query = select(bookings).join([
-      leftOuterJoin(accounts, accounts.id.equalsExp(bookings.accountId))
-    ]);
+    final query = select(bookings).join(
+        [leftOuterJoin(accounts, accounts.id.equalsExp(bookings.accountId))]);
 
     // Only show bookings from non-archived accounts, or where the account has been deleted.
     query.where(accounts.isArchived.equals(false) | accounts.id.isNull());
@@ -42,30 +42,37 @@ class BookingsDao extends DatabaseAccessor<AppDatabase> with _$BookingsDaoMixin 
           tbl.notes.isNull() &
           ((tbl.amount.isBiggerThanValue(0) & Constant(newAmount > 0)) |
               (tbl.amount.isSmallerThanValue(0) & Constant(newAmount < 0))));
-    try {
-      return await query.getSingle();
-    } catch (e) {
-      return null;
-    }
+    return await query.getSingleOrNull();
   }
 
   Stream<List<String>> watchDistinctCategories() {
-    final query = selectOnly(bookings, distinct: true)..addColumns([bookings.category]);
-    return query.watch().map((rows) => rows.map((row) => row.read(bookings.category)!).toList());
+    final query = selectOnly(bookings, distinct: true)
+      ..addColumns([bookings.category]);
+    return query.watch().map(
+        (rows) => rows.map((row) => row.read(bookings.category)!).toList());
   }
 
   // Methods that are not transactional
-  Future<int> _addBooking(BookingsCompanion entry) => into(bookings).insert(entry);
-  Future<bool> _updateBooking(BookingsCompanion entry) => update(bookings).replace(entry);
-  Future<int> _deleteBooking(int id) => (delete(bookings)..where((tbl) => tbl.id.equals(id))).go();
-  Future<Booking> getBooking(int id) => (select(bookings)..where((tbl) => tbl.id.equals(id))).getSingle();
+  Future<int> _addBooking(BookingsCompanion entry) =>
+      into(bookings).insert(entry);
+
+  Future<bool> _updateBooking(BookingsCompanion entry) =>
+      update(bookings).replace(entry);
+
+  Future<int> _deleteBooking(int id) =>
+      (delete(bookings)..where((tbl) => tbl.id.equals(id))).go();
+
+  Future<Booking> getBooking(int id) =>
+      (select(bookings)..where((tbl) => tbl.id.equals(id))).getSingle();
 
   Future<void> createBooking(BookingsCompanion booking) {
     return transaction(() async {
       await _addBooking(booking);
-      await db.accountsDao.updateBalance(booking.accountId.value, booking.amount.value);
+      await db.accountsDao
+          .updateBalance(booking.accountId.value, booking.amount.value);
 
-      await db.assetsOnAccountsDao.updateBaseCurrencyAssetOnAccount(booking.accountId.value, booking.amount.value);
+      await db.assetsOnAccountsDao.updateBaseCurrencyAssetOnAccount(
+          booking.accountId.value, booking.amount.value);
       await db.assetsDao.updateBaseCurrencyAsset(booking.amount.value);
     });
   }
@@ -84,13 +91,16 @@ class BookingsDao extends DatabaseAccessor<AppDatabase> with _$BookingsDaoMixin 
 
       if (oldAccountId == newAccountId) {
         await db.accountsDao.updateBalance(oldAccountId, amountDelta);
-        await db.assetsOnAccountsDao.updateBaseCurrencyAssetOnAccount(oldAccountId, amountDelta);
+        await db.assetsOnAccountsDao
+            .updateBaseCurrencyAssetOnAccount(oldAccountId, amountDelta);
       } else {
         await db.accountsDao.updateBalance(oldAccountId, -oldAmount);
-        await db.assetsOnAccountsDao.updateBaseCurrencyAssetOnAccount(oldAccountId, -oldAmount);
+        await db.assetsOnAccountsDao
+            .updateBaseCurrencyAssetOnAccount(oldAccountId, -oldAmount);
 
         await db.accountsDao.updateBalance(newAccountId, newAmount);
-        await db.assetsOnAccountsDao.updateBaseCurrencyAssetOnAccount(newAccountId, newAmount);
+        await db.assetsOnAccountsDao
+            .updateBaseCurrencyAssetOnAccount(newAccountId, newAmount);
       }
     });
   }
@@ -100,7 +110,8 @@ class BookingsDao extends DatabaseAccessor<AppDatabase> with _$BookingsDaoMixin 
       final booking = await getBooking(id);
       await _deleteBooking(id);
       await db.accountsDao.updateBalance(booking.accountId, -booking.amount);
-      await db.assetsOnAccountsDao.updateBaseCurrencyAssetOnAccount(booking.accountId, -booking.amount);
+      await db.assetsOnAccountsDao
+          .updateBaseCurrencyAssetOnAccount(booking.accountId, -booking.amount);
       await db.assetsDao.updateBaseCurrencyAsset(-booking.amount);
     });
   }

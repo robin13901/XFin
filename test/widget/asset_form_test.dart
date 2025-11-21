@@ -33,7 +33,7 @@ class FakeAssetsDao extends Fake implements AssetsDao {
   Stream<List<Asset>> watchAllAssets() => _allAssetsController.stream;
 
   @override
-  Future<int> addAsset(AssetsCompanion entry) async {
+  Future<int> insert(AssetsCompanion entry) async {
     _lastAddedAsset = entry;
     final newId = _assets.isEmpty ? 1 : _assets.last.id + 1;
     final newAsset = Asset(

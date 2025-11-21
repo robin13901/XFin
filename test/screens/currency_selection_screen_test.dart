@@ -79,7 +79,7 @@ void main() {
 
     // Wire up database DAO
     when(() => mockDb.assetsDao).thenReturn(mockAssetsDao);
-    when(() => mockAssetsDao.addAsset(any())).thenAnswer((_) async => 1);
+    when(() => mockAssetsDao.insert(any())).thenAnswer((_) async => 1);
 
     // Default behaviors for providers
     when(() => mockBaseProvider.initialize(any())).thenAnswer((_) async {});
@@ -186,7 +186,7 @@ void main() {
       expect(prefs.getBool('currency_selected'), isTrue);
 
       // Verify that the database DAO addAsset was called once
-      verify(() => mockAssetsDao.addAsset(any())).called(1);
+      verify(() => mockAssetsDao.insert(any())).called(1);
 
       // Verify BaseCurrencyProvider.initialize was called with the appLocale from LanguageProvider
       verify(() => mockBaseProvider.initialize(const Locale('en', 'US'))).called(1);
@@ -216,7 +216,7 @@ void main() {
       expect(prefs.getString('selected_currency'), 'JPY');
       expect(prefs.getBool('currency_selected'), isTrue);
 
-      verify(() => mockAssetsDao.addAsset(any())).called(1);
+      verify(() => mockAssetsDao.insert(any())).called(1);
       verify(() => mockBaseProvider.initialize(const Locale('en', 'US'))).called(1);
       expect(find.text('MAIN_SCREEN'), findsOneWidget);
     });

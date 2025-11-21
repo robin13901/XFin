@@ -42,7 +42,7 @@ class AccountsScreen extends StatelessWidget {
           hasGoals;
     } else if (account.type == AccountTypes.portfolio) {
       final hasAssetsOnAccounts =
-          await db.accountsDao.hasAssetsOnAccounts(account.id);
+          await db.accountsDao.hasAssets(account.id);
       final hasTrades = await db.accountsDao.hasTrades(account.id);
       final hasGoals = await db.accountsDao.hasGoals(account.id);
       hasReferences = hasAssetsOnAccounts || hasTrades || hasGoals;

@@ -47,7 +47,7 @@ class _CurrencySelectionScreenState extends State<CurrencySelectionScreen> {
           brokerCostBasis: const drift.Value(1.0),
           buyFeeTotal: const drift.Value(0.0),
         );
-        await db.assetsDao.addAsset(asset);
+        await db.assetsDao.insert(asset);
       }
       if (mounted) await Provider.of<BaseCurrencyProvider>(context, listen: false).initialize(Provider.of<LanguageProvider>(context, listen: false).appLocale);
       if (mounted) Navigator.of(context).pushReplacementNamed('/main');

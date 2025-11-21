@@ -1,53 +1,20 @@
-import 'dart:ui';
-
 import 'package:drift/drift.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:test/test.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/daos/accounts_dao.dart';
-import 'package:xfin/database/daos/assets_dao.dart';
-import 'package:xfin/database/daos/bookings_dao.dart';
-import 'package:xfin/database/daos/trades_dao.dart';
-import 'package:xfin/database/daos/transfers_dao.dart';
 import 'package:drift/native.dart';
 import 'package:xfin/database/tables.dart';
-import 'package:xfin/providers/base_currency_provider.dart';
 
 void main() {
   late AppDatabase db;
   late AccountsDao accountsDao;
-  late BookingsDao bookingsDao;
-  late TransfersDao transfersDao;
-  late AssetsDao assetsDao;
-  late TradesDao tradesDao;
-  late BaseCurrencyProvider currencyProvider;
-
-  setUpAll(() {
-    SharedPreferences.setMockInitialValues({});
-  });
 
   setUp(() async {
     db = AppDatabase(NativeDatabase.memory());
     accountsDao = db.accountsDao;
-    bookingsDao = db.bookingsDao;
-    transfersDao = db.transfersDao;
-    assetsDao = db.assetsDao;
-    tradesDao = db.tradesDao;
 
-    const locale = Locale('en');
-    currencyProvider = BaseCurrencyProvider();
-    await currencyProvider.initialize(locale);
-
-    // Create base currency asset
-    await db.into(db.assets).insert(const AssetsCompanion(
-        name: Value('EUR'),
-        type: Value(AssetTypes.currency),
-        tickerSymbol: Value('EUR'),
-        value: Value(0),
-        sharesOwned: Value(0),
-        brokerCostBasis: Value(1),
-        netCostBasis: Value(1),
-        buyFeeTotal: Value(0)));
+    await db.into(db.assets).insert(AssetsCompanion.insert(
+        name: 'EUR', type: AssetTypes.currency, tickerSymbol: 'EUR'));
   });
 
   tearDown(() async {
@@ -55,42 +22,42 @@ void main() {
   });
 
   group('AccountsDao Tests', () {
-    test('addAccount and getAccount', () async {
-      final account = AccountsCompanion.insert(
-          name: 'Test Account',
-          balance: 1000.0,
-          initialBalance: 1000.0,
-          type: AccountTypes.cash);
-      final id = await accountsDao.createAccount(account);
-      final result = await accountsDao.getAccount(id);
+    late int accountId;
 
-      expect(result.id, id);
-      expect(result.name, 'Test Account');
-      expect(result.balance, 1000.0);
-      expect(result.isArchived, false);
+    setUp(() async {
+      accountId = await db.into(db.accounts).insert(AccountsCompanion.insert(
+          name: 'A', balance: 0, initialBalance: 0, type: AccountTypes.cash));
+    });
+
+    test('createAccount', () async {
+      final id = await accountsDao.createAccount(AccountsCompanion.insert(
+          name: 'B', balance: 0, initialBalance: 0, type: AccountTypes.cash));
+
+      final act = await accountsDao.getAccount(id);
+      expect(act.id, id);
+      expect(act.name, 'B');
+      expect(act.balance, 0);
+      expect(act.initialBalance, 0);
+      expect(act.isArchived, false);
+    });
+
+    test('getAccount', () async {
+      final act = await accountsDao.getAccount(accountId);
+      expect(act.id, accountId);
     });
 
     test('deleteAccount', () async {
-      final account = AccountsCompanion.insert(
-          name: 'Test Account',
-          balance: 1000.0,
-          initialBalance: 1000.0,
-          type: AccountTypes.cash);
-      final id = await accountsDao.createAccount(account);
-
-      await accountsDao.deleteAccount(id);
-
-      expect(() async => await accountsDao.getAccount(id),
+      await accountsDao.deleteAccount(accountId);
+      expect(() async => await accountsDao.getAccount(accountId),
           throwsA(isA<StateError>()));
     });
 
     test('setArchived', () async {
-      final account = AccountsCompanion.insert(
+      final id = await db.into(db.accounts).insert(AccountsCompanion.insert(
           name: 'Test Account',
           balance: 1000.0,
           initialBalance: 1000.0,
-          type: AccountTypes.cash);
-      final id = await accountsDao.createAccount(account);
+          type: AccountTypes.cash));
 
       await accountsDao.setArchived(id, true);
       var result = await accountsDao.getAccount(id);
@@ -102,12 +69,11 @@ void main() {
     });
 
     test('updateBalance', () async {
-      final account = AccountsCompanion.insert(
+      final id = await db.into(db.accounts).insert(AccountsCompanion.insert(
           name: 'Test Account',
           balance: 1000.0,
           initialBalance: 1000.0,
-          type: AccountTypes.cash);
-      final id = await accountsDao.createAccount(account);
+          type: AccountTypes.cash));
 
       await accountsDao.updateBalance(id, 500.0);
       var result = await accountsDao.getAccount(id);
@@ -119,20 +85,12 @@ void main() {
     });
 
     test('watchAllAccounts and watchArchivedAccounts', () async {
-      final account1 = AccountsCompanion.insert(
-          name: 'Active Account',
-          balance: 1000.0,
-          initialBalance: 1000.0,
-          type: AccountTypes.cash,
-          isArchived: const Value(false));
-      final account2 = AccountsCompanion.insert(
+      await db.into(db.accounts).insert(AccountsCompanion.insert(
           name: 'Archived Account',
-          balance: 2000.0,
-          initialBalance: 2000.0,
+          balance: 0.0,
+          initialBalance: 0.0,
           type: AccountTypes.cash,
-          isArchived: const Value(true));
-      await accountsDao.createAccount(account1);
-      await accountsDao.createAccount(account2);
+          isArchived: const Value(true)));
 
       final activeAccountsStream = accountsDao.watchAllAccounts();
       final archivedAccountsStream = accountsDao.watchArchivedAccounts();
@@ -141,121 +99,178 @@ void main() {
           activeAccountsStream,
           emits(isA<List<Account>>()
               .having((list) => list.length, 'length', 1)
-              .having((list) => list.first.name, 'name', 'Active Account')));
+              .having((list) => list.first.name, 'name', 'A')));
       expect(
           archivedAccountsStream,
           emits(isA<List<Account>>()
               .having((list) => list.length, 'length', 1)
               .having((list) => list.first.name, 'name', 'Archived Account')));
     });
+  });
+
+  group('Has references tests', () {
+    late Account cashAccount1, cashAccount2, portfolioAccount;
+    late Asset asset;
+
+    setUp(() async {
+      cashAccount1 = const Account(
+          id: 1,
+          name: 'Cash Account 1',
+          balance: 5000,
+          initialBalance: 5000,
+          type: AccountTypes.cash,
+          isArchived: false);
+
+      cashAccount2 = const Account(
+          id: 2,
+          name: 'Cash Account 2',
+          balance: 2000,
+          initialBalance: 2000,
+          type: AccountTypes.cash,
+          isArchived: false);
+
+      portfolioAccount = const Account(
+          id: 3,
+          name: 'Portfolio Account',
+          balance: 10,
+          initialBalance: 0,
+          type: AccountTypes.portfolio,
+          isArchived: false);
+
+      asset = const Asset(
+          id: 2,
+          name: 'Test Asset',
+          type: AssetTypes.stock,
+          tickerSymbol: 'TEST',
+          value: 0,
+          sharesOwned: 0,
+          netCostBasis: 0,
+          brokerCostBasis: 0,
+          buyFeeTotal: 0);
+
+      await db.into(db.accounts).insert(cashAccount1.toCompanion(false));
+      await db.into(db.accounts).insert(cashAccount2.toCompanion(false));
+      await db.into(db.accounts).insert(portfolioAccount.toCompanion(false));
+      await db.into(db.assets).insert(asset.toCompanion(false));
+    });
 
     test('hasBookings', () async {
-      final account = AccountsCompanion.insert(
-          name: 'Test Account',
-          balance: 1000.0,
-          initialBalance: 1000.0,
-          type: AccountTypes.cash);
-      final accountId = await accountsDao.createAccount(account);
+      expect(await accountsDao.hasBookings(cashAccount1.id), isFalse);
 
-      final booking = BookingsCompanion.insert(
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
           date: 20240101,
           amount: 100.0,
           category: 'Test',
-          accountId: accountId,
-          isGenerated: false);
-      await bookingsDao.createBooking(booking);
+          accountId: cashAccount1.id,
+          isGenerated: false));
 
-      expect(await accountsDao.hasBookings(accountId), isTrue);
+      expect(await accountsDao.hasBookings(cashAccount1.id), isTrue);
+    });
 
-      final insertedBooking = await bookingsDao.getBooking(1);
+    test('hasPeriodicBookings', () async {
+      expect(await accountsDao.hasPeriodicBookings(cashAccount1.id), isFalse);
 
-      await bookingsDao.deleteBooking(insertedBooking.id);
+      await db.into(db.periodicBookings).insert(
+          PeriodicBookingsCompanion.insert(
+              nextExecutionDate: 20251010,
+              amount: 5,
+              accountId: 1,
+              category: 'Test',
+              cycle: Cycles.monthly));
 
-      expect(await accountsDao.hasBookings(accountId), isFalse);
+      expect(await accountsDao.hasPeriodicBookings(cashAccount1.id), isTrue);
     });
 
     test('hasTransfers', () async {
-      final account1 = AccountsCompanion.insert(
-          name: 'Account 1',
-          balance: 1000.0,
-          initialBalance: 1000.0,
-          type: AccountTypes.cash);
-      final account2 = AccountsCompanion.insert(
-          name: 'Account 2',
-          balance: 1000.0,
-          initialBalance: 1000.0,
-          type: AccountTypes.cash);
-      final accountId1 = await accountsDao.createAccount(account1);
-      final accountId2 = await accountsDao.createAccount(account2);
+      expect(await accountsDao.hasTransfers(cashAccount1.id), isFalse);
+      expect(await accountsDao.hasTransfers(cashAccount2.id), isFalse);
 
-      final transfer = TransfersCompanion.insert(
+      await db.into(db.transfers).insert(TransfersCompanion.insert(
           date: 20240101,
           amount: 100.0,
-          sendingAccountId: accountId1,
-          receivingAccountId: accountId2,
-          isGenerated: false);
-      final transferId =
-          await transfersDao.createTransferAndUpdateAccounts(transfer);
+          sendingAccountId: cashAccount1.id,
+          receivingAccountId: cashAccount2.id,
+          isGenerated: false));
 
-      expect(await accountsDao.hasTransfers(accountId1), isTrue);
-      expect(await accountsDao.hasTransfers(accountId2), isTrue);
+      expect(await accountsDao.hasTransfers(cashAccount1.id), isTrue);
+      expect(await accountsDao.hasTransfers(cashAccount2.id), isTrue);
+    });
 
-      await transfersDao.deleteTransferAndUpdateAccounts(transferId);
+    test('hasPeriodicTransfers', () async {
+      expect(await accountsDao.hasPeriodicTransfers(cashAccount1.id), isFalse);
+      expect(await accountsDao.hasPeriodicTransfers(cashAccount2.id), isFalse);
 
-      expect(await accountsDao.hasTransfers(accountId1), isFalse);
-      expect(await accountsDao.hasTransfers(accountId2), isFalse);
+      await db.into(db.periodicTransfers).insert(
+          PeriodicTransfersCompanion.insert(
+              nextExecutionDate: 20251010,
+              amount: 5,
+              sendingAccountId: 1,
+              receivingAccountId: 2,
+              cycle: Cycles.monthly));
+
+      expect(await accountsDao.hasPeriodicTransfers(cashAccount1.id), isTrue);
+      expect(await accountsDao.hasPeriodicTransfers(cashAccount2.id), isTrue);
     });
 
     test('hasTrades', () async {
-      final clearingAccount = AccountsCompanion.insert(
-          name: 'Clearing Account',
-          balance: 10000.0,
-          initialBalance: 10000.0,
-          type: AccountTypes.cash);
-      final portfolioAccount = AccountsCompanion.insert(
-          name: 'Portfolio Account',
-          balance: 0.0,
-          initialBalance: 0.0,
-          type: AccountTypes.portfolio);
-      final clearingAccountId =
-          await accountsDao.createAccount(clearingAccount);
-      final portfolioAccountId =
-          await accountsDao.createAccount(portfolioAccount);
+      expect(await accountsDao.hasTrades(cashAccount1.id), isFalse);
+      expect(await accountsDao.hasTrades(portfolioAccount.id), isFalse);
 
-      final asset = AssetsCompanion.insert(
-          name: 'Test Asset', type: AssetTypes.stock, tickerSymbol: 'TEST');
-      final assetId = await assetsDao.addAsset(asset);
+      await db.into(db.assetsOnAccounts).insert(
+          AssetsOnAccountsCompanion.insert(
+              accountId: portfolioAccount.id,
+              assetId: asset.id,
+              value: 0,
+              sharesOwned: 0,
+              netCostBasis: 0,
+              brokerCostBasis: 0,
+              buyFeeTotal: 0));
 
-      await db.assetsOnAccountsDao.addAssetOnAccount(AssetsOnAccountsCompanion(
-          accountId: Value(portfolioAccountId),
-          assetId: Value(assetId),
-          value: const Value(0),
-          sharesOwned: const Value(0),
-          netCostBasis: const Value(0),
-          brokerCostBasis: const Value(0),
-          buyFeeTotal: const Value(0)));
-
-      final trade = TradesCompanion.insert(
+      await db.into(db.trades).insert(TradesCompanion.insert(
           datetime: 20240101,
-          assetId: assetId,
+          assetId: asset.id,
           type: TradeTypes.buy,
-          clearingAccountValueDelta: -1001.0,
-          portfolioAccountValueDelta: 1000.0,
-          shares: 10.0,
-          pricePerShare: 100.0,
-          profitAndLossAbs: 0.0,
-          profitAndLossRel: 0.0,
-          tradingFee: -1.0,
-          tax: 0.0,
-          clearingAccountId: clearingAccountId,
-          portfolioAccountId: portfolioAccountId);
-      expect(await accountsDao.hasTrades(clearingAccountId), isFalse);
-      expect(await accountsDao.hasTrades(portfolioAccountId), isFalse);
+          clearingAccountValueDelta: -1,
+          portfolioAccountValueDelta: 1,
+          shares: 1,
+          pricePerShare: 1,
+          profitAndLossAbs: 0,
+          profitAndLossRel: 0,
+          tradingFee: 0,
+          tax: 0,
+          clearingAccountId: cashAccount1.id,
+          portfolioAccountId: portfolioAccount.id));
 
-      await tradesDao.processTrade(trade);
+      expect(await accountsDao.hasTrades(cashAccount1.id), isTrue);
+      expect(await accountsDao.hasTrades(portfolioAccount.id), isTrue);
+    });
 
-      expect(await accountsDao.hasTrades(clearingAccountId), isTrue);
-      expect(await accountsDao.hasTrades(portfolioAccountId), isTrue);
+    test('hasAssets', () async {
+      expect(await accountsDao.hasAssets(portfolioAccount.id), isFalse);
+
+      await db.into(db.assetsOnAccounts).insert(
+          AssetsOnAccountsCompanion.insert(
+              accountId: 3,
+              assetId: 2,
+              value: 1,
+              sharesOwned: 1,
+              netCostBasis: 1,
+              brokerCostBasis: 1,
+              buyFeeTotal: 0));
+
+      expect(await accountsDao.hasAssets(portfolioAccount.id), isTrue);
+    });
+
+    test('hasGoals', () async {
+      expect(await accountsDao.hasGoals(cashAccount1.id), isFalse);
+
+      await db.into(db.goals).insert(GoalsCompanion.insert(
+          accountId: Value(cashAccount1.id),
+          createdOn: 20251010,
+          targetDate: 20261010,
+          targetAmount: 15000));
+
+      expect(await accountsDao.hasGoals(cashAccount1.id), isTrue);
     });
   });
 }
