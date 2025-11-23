@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart' hide isNotNull, isNull;
+import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -11,13 +11,12 @@ import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/providers/base_currency_provider.dart';
 import 'package:xfin/screens/accounts_screen.dart';
 import 'package:xfin/widgets/account_form.dart';
-import 'package:flutter/gestures.dart'; // Added for kLongPressTimeout
+import 'package:flutter/gestures.dart';
 
 void main() {
   late AppDatabase db;
   late BaseCurrencyProvider currencyProvider;
-  late Account testAccount;
-  late Account archivedAccount;
+  late Account cashAccount, portfolioAccount, archivedAccount;
 
   setUpAll(() {
     TestWidgetsFlutterBinding.ensureInitialized();
@@ -30,20 +29,11 @@ void main() {
     currencyProvider = BaseCurrencyProvider();
     await currencyProvider.initialize(locale);
 
-    // Create base currency asset
-    await db.into(db.assets).insert(const AssetsCompanion(
-        name: Value('EUR'),
-        type: Value(AssetTypes.currency),
-        tickerSymbol: Value('EUR'),
-        value: Value(0),
-        sharesOwned: Value(0),
-        brokerCostBasis: Value(1),
-        netCostBasis: Value(1),
-        buyFeeTotal: Value(0)));
+    await db.into(db.assets).insert(AssetsCompanion.insert(
+        name: 'EUR', type: AssetTypes.currency, tickerSymbol: 'EUR'));
 
-    testAccount = const Account(
+    cashAccount = const Account(
       id: 1,
-      // ID will be auto-incremented by drift, so this is just a placeholder
       name: 'Test Account',
       balance: 1000,
       initialBalance: 1000,
@@ -51,9 +41,17 @@ void main() {
       isArchived: false,
     );
 
+    portfolioAccount = const Account(
+      id: 2,
+      name: 'Portfolio Account',
+      balance: 0,
+      initialBalance: 0,
+      type: AccountTypes.portfolio,
+      isArchived: false,
+    );
+
     archivedAccount = const Account(
       id: 2,
-      // ID will be auto-incremented by drift, so this is just a placeholder
       name: 'Archived Account',
       balance: 500,
       initialBalance: 500,
@@ -134,7 +132,7 @@ void main() {
 
     group('with active accounts', () {
       setUp(() async {
-        await db.into(db.accounts).insert(testAccount.toCompanion(true));
+        await db.into(db.accounts).insert(cashAccount.toCompanion(true));
       });
 
       testWidgets(
@@ -149,13 +147,30 @@ void main() {
               }));
 
       testWidgets(
-          'should show delete dialog for account without references on long press',
+          'test delete dialog for account without references on long press',
           (tester) => tester.runAsync(() async {
                 final l10n = await pumpWidget(tester);
                 await tester.pumpAndSettle();
 
-                final offset = tester.getCenter(find.text('Test Account'));
-                final gesture = await tester.startGesture(offset);
+                // Cancel deletion
+                Offset offset = tester.getCenter(find.text('Test Account'));
+                TestGesture gesture = await tester.startGesture(offset);
+                await tester.pump();
+                await Future.delayed(kLongPressTimeout);
+                await gesture.up();
+                await tester.pumpAndSettle();
+
+                expect(find.text(l10n.deleteAccount), findsOneWidget);
+                expect(find.text(l10n.confirmDeleteAccount), findsOneWidget);
+
+                await tester.tap(find.text(l10n.cancel));
+                await tester.pumpAndSettle();
+
+                expect(find.text('Test Account'), findsOneWidget);
+
+                // Confirm deletion
+                offset = tester.getCenter(find.text('Test Account'));
+                gesture = await tester.startGesture(offset);
                 await tester.pump();
                 await Future.delayed(kLongPressTimeout);
                 await gesture.up();
@@ -173,16 +188,22 @@ void main() {
               }));
     });
 
-    group('with account with bookings', () {
+    group('with accounts with references', () {
       setUp(() async {
-        await db.into(db.accounts).insert(testAccount.toCompanion(true));
+        await db.into(db.accounts).insert(cashAccount.toCompanion(true));
+        await db.into(db.accounts).insert(portfolioAccount.toCompanion(true));
         await db.into(db.bookings).insert(BookingsCompanion.insert(
               date: 20230101,
               category: 'Food',
               amount: -50,
-              accountId: testAccount.id,
+              accountId: cashAccount.id,
               isGenerated: false,
             ));
+        await db.into(db.goals).insert(GoalsCompanion.insert(
+            createdOn: 20250101,
+            targetDate: 20260101,
+            targetAmount: 1000,
+            accountId: const Value(2)));
       });
 
       testWidgets(
@@ -191,8 +212,26 @@ void main() {
                 final l10n = await pumpWidget(tester);
                 await tester.pumpAndSettle();
 
-                final offset = tester.getCenter(find.text('Test Account'));
-                final gesture = await tester.startGesture(offset);
+                // Cancel archiving
+                Offset offset = tester.getCenter(find.text('Test Account'));
+                TestGesture gesture = await tester.startGesture(offset);
+                await tester.pump();
+                await Future.delayed(kLongPressTimeout);
+                await gesture.up();
+                await tester.pumpAndSettle();
+
+                expect(find.text(l10n.cannotDeleteAccount), findsOneWidget);
+                expect(find.text(l10n.accountHasReferencesArchiveInstead),
+                    findsOneWidget);
+
+                await tester.tap(find.text(l10n.cancel));
+                await tester.pumpAndSettle();
+
+                expect(find.text('Test Account'), findsOneWidget);
+
+                // Confirm archiving
+                offset = tester.getCenter(find.text('Test Account'));
+                gesture = await tester.startGesture(offset);
                 await tester.pump();
                 await Future.delayed(kLongPressTimeout);
                 await gesture.up();
@@ -205,8 +244,50 @@ void main() {
                 await tester.tap(find.text(l10n.archive));
                 await tester.pumpAndSettle();
 
-                expect(find.text('Test Account'),
-                    findsNothing); // It should be archived, so not displayed in active accounts
+                expect(find.text('Test Account'), findsNothing);
+
+                await tester.pumpWidget(Container());
+              }));
+
+      testWidgets(
+          'should show archive dialog for portfolio account with references on long press',
+          (tester) => tester.runAsync(() async {
+                final l10n = await pumpWidget(tester);
+                await tester.pumpAndSettle();
+
+                // Cancel archiving
+                Offset offset =
+                    tester.getCenter(find.text('Portfolio Account'));
+                TestGesture gesture = await tester.startGesture(offset);
+                await tester.pump();
+                await Future.delayed(kLongPressTimeout);
+                await gesture.up();
+                await tester.pumpAndSettle();
+
+                expect(find.text(l10n.cannotDeleteAccount), findsOneWidget);
+                expect(find.text(l10n.accountHasReferencesArchiveInstead),
+                    findsOneWidget);
+
+                await tester.tap(find.text(l10n.cancel));
+                await tester.pumpAndSettle();
+
+                expect(find.text('Portfolio Account'), findsOneWidget);
+
+                offset = tester.getCenter(find.text('Portfolio Account'));
+                gesture = await tester.startGesture(offset);
+                await tester.pump();
+                await Future.delayed(kLongPressTimeout);
+                await gesture.up();
+                await tester.pumpAndSettle();
+
+                expect(find.text(l10n.cannotDeleteAccount), findsOneWidget);
+                expect(find.text(l10n.accountHasReferencesArchiveInstead),
+                    findsOneWidget);
+
+                await tester.tap(find.text(l10n.archive));
+                await tester.pumpAndSettle();
+
+                expect(find.text('Portfolio Account'), findsNothing);
 
                 await tester.pumpWidget(Container());
               }));
