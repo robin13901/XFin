@@ -1,4 +1,3 @@
-import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -12,81 +11,23 @@ import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/providers/base_currency_provider.dart';
 import 'package:xfin/screens/bookings_screen.dart';
 import 'package:xfin/widgets/booking_form.dart';
-import 'package:intl/date_symbol_data_local.dart';
-
-// A test database that uses an in-memory sqlite database.
-class TestDatabase {
-  late final AppDatabase appDatabase;
-
-  TestDatabase() {
-    appDatabase = AppDatabase(NativeDatabase.memory());
-  }
-
-  Future<void> close() {
-    return appDatabase.close();
-  }
-
-  Future<int> createAccount(String name, {double balance = 100.0}) async {
-    return await appDatabase.accountsDao.createAccount(
-      AccountsCompanion(
-        name: Value(name),
-        balance: Value(balance),
-        initialBalance: Value(balance),
-        type: const Value(AccountTypes.cash)
-      ),
-    );
-  }
-
-  Future<Booking> createBooking({
-    required int accountId,
-    required double amount,
-    required String reason,
-    DateTime? date,
-  }) async {
-    final dateAsInt = date != null
-        ? int.parse(date.toIso8601String().substring(0, 10).replaceAll('-', ''))
-        : 20230101;
-    final companion = BookingsCompanion(
-      date: Value(dateAsInt),
-      category: Value(reason),
-      amount: Value(amount),
-      accountId: Value(accountId),
-      isGenerated: const Value(false),
-    );
-    await appDatabase.bookingsDao.createBooking(companion);
-    return await (appDatabase.select(appDatabase.bookings)
-          ..where((tbl) => tbl.category.equals(reason)))
-        .getSingle();
-  }
-}
+import 'package:xfin/widgets/delete_booking_dialog.dart';
+import 'package:flutter/gestures.dart';
 
 void main() {
-  late TestDatabase db;
+  late AppDatabase db;
   late BaseCurrencyProvider currencyProvider;
 
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     SharedPreferences.setMockInitialValues({});
-    await initializeDateFormatting('de_DE', null);
   });
 
   setUp(() async {
-    db = TestDatabase();
+    db = AppDatabase(NativeDatabase.memory());
     const locale = Locale('en');
     currencyProvider = BaseCurrencyProvider();
     await currencyProvider.initialize(locale);
-
-    // Create base currency asset
-    await db.appDatabase.into(db.appDatabase.assets).insert(const AssetsCompanion(
-        name: Value('EUR'),
-        type: Value(AssetTypes.currency),
-        tickerSymbol: Value('EUR'),
-        value: Value(0),
-        sharesOwned: Value(0),
-        brokerCostBasis: Value(1),
-        netCostBasis: Value(1),
-        buyFeeTotal: Value(0)
-    ));
   });
 
   tearDown(() async {
@@ -98,7 +39,7 @@ void main() {
       MultiProvider(
         providers: [
           Provider<AppDatabase>.value(
-            value: db.appDatabase,
+            value: db,
           ),
           ChangeNotifierProvider<BaseCurrencyProvider>.value(
             value: currencyProvider,
@@ -119,141 +60,185 @@ void main() {
     return AppLocalizations.of(tester.element(find.byType(BookingsScreen)))!;
   }
 
-  group('BookingsScreen Tests', () {
-    testWidgets('shows loading indicator and then empty message',
+  testWidgets(
+      'shows loading indicator and then empty message',
+      (tester) => tester.runAsync(() async {
+            final l10n = await pumpWidget(tester);
+            expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+            await tester.pumpAndSettle();
+
+            expect(find.text(l10n.noBookingsYet), findsOneWidget);
+            expect(find.byType(ListView), findsNothing);
+
+            await tester.pumpWidget(Container());
+          }));
+
+  testWidgets(
+      'tapping FAB opens BookingForm for new booking',
+      (tester) => tester.runAsync(() async {
+            await pumpWidget(tester);
+            await tester.pumpAndSettle();
+
+            await tester.tap(find.byIcon(Icons.add));
+            await tester.pumpAndSettle();
+
+            expect(find.byType(BookingForm), findsOneWidget);
+            final form = tester.widget<BookingForm>(find.byType(BookingForm));
+            expect(form.booking, isNull);
+
+            await tester.pumpWidget(Container());
+          }));
+
+  group('with initial bookings', () {
+    late Account account;
+    late Booking booking1, booking2;
+
+    setUp(() async {
+      account = const Account(
+          id: 1,
+          name: 'A',
+          balance: 0,
+          initialBalance: 0,
+          type: AccountTypes.cash,
+          isArchived: false);
+
+      await db.into(db.accounts).insert(account.toCompanion(false));
+
+      await db.into(db.assets).insert(AssetsCompanion.insert(
+          name: 'EUR', type: AssetTypes.currency, tickerSymbol: 'EUR'));
+      await db.into(db.assetsOnAccounts).insert(AssetsOnAccountsCompanion.insert(
+          accountId: account.id,
+          assetId: 1,
+          value: 0,
+          sharesOwned: 0,
+          netCostBasis: 0,
+          brokerCostBasis: 0,
+          buyFeeTotal: 0));
+
+      booking1 = Booking(
+        id: 1,
+        date: 20250101,
+        amount: 1,
+        category: 'Income',
+        accountId: account.id,
+        excludeFromAverage: false,
+        isGenerated: false,
+      );
+
+      booking2 = Booking(
+        id: 2,
+        date: 20250101,
+        amount: -1,
+        category: 'Expense',
+        accountId: account.id,
+        excludeFromAverage: false,
+        isGenerated: false,
+      );
+
+      await db.into(db.bookings).insert(booking1.toCompanion(false));
+      await db.into(db.bookings).insert(booking2.toCompanion(false));
+    });
+
+    testWidgets(
+        'displays bookings correctly',
         (tester) => tester.runAsync(() async {
               final l10n = await pumpWidget(tester);
-              expect(find.byType(CircularProgressIndicator), findsOneWidget);
-
               await tester.pumpAndSettle();
 
-              expect(find.text(l10n.noBookingsYet), findsOneWidget);
-              expect(find.byType(ListView), findsNothing);
-
-              await tester.pumpWidget(Container());
-            }));
-
-    testWidgets('displays bookings correctly',
-        (tester) => tester.runAsync(() async {
-              // Arrange
-              final accountId =
-                  await db.createAccount('Test Account');
-              await db.createBooking(
-                  accountId: accountId,
-                  reason: 'Income',
-                  amount: 1000,
-                  date: DateTime(2023, 5, 1));
-              await db.createBooking(
-                  accountId: accountId,
-                  reason: 'Expense',
-                  amount: -50.55,
-                  date: DateTime(2023, 5, 2));
-
-              // Act
-              final l10n = await pumpWidget(tester);
-              await tester.pumpAndSettle(); // Wait for the stream
-
-              // Assert
               expect(find.byType(ListView), findsOneWidget);
               expect(find.text(l10n.noBookingsYet), findsNothing);
+              expect(find.text('A'), findsNWidgets(2));
 
-              // Verify first item (Expense, because of ordering)
+              // Income Booking
+              expect(find.widgetWithText(ListTile, 'Income'), findsOneWidget);
+              final incomeAmountFinder = find.text(
+                  NumberFormat.currency(locale: 'de_DE', symbol: '€')
+                      .format(1));
+              expect(incomeAmountFinder, findsOneWidget);
+              final incomeAmountWidget =
+                  tester.widget<Text>(incomeAmountFinder);
+              expect(incomeAmountWidget.style!.color, Colors.green);
+
+              // Expense Booking
               expect(find.widgetWithText(ListTile, 'Expense'), findsOneWidget);
-              expect(find.text('Test Account'), findsNWidgets(2)); // Subtitle for both
-              final expenseAmountFinder =
-                  find.text(NumberFormat.currency(locale: 'de_DE', symbol: '€').format(-50.55));
+              final expenseAmountFinder = find.text(
+                  NumberFormat.currency(locale: 'de_DE', symbol: '€')
+                      .format(-1));
               expect(expenseAmountFinder, findsOneWidget);
-              final expenseAmountWidget = tester.widget<Text>(expenseAmountFinder);
+              final expenseAmountWidget =
+                  tester.widget<Text>(expenseAmountFinder);
               expect(expenseAmountWidget.style!.color, Colors.red);
 
               await tester.pumpWidget(Container());
             }));
 
-    testWidgets('tapping FAB opens BookingForm for new booking',
+    testWidgets(
+        'tapping a list item opens BookingForm for editing',
         (tester) => tester.runAsync(() async {
-              await pumpWidget(tester);
+                            await pumpWidget(tester);
               await tester.pumpAndSettle();
 
-              await tester.tap(find.byIcon(Icons.add));
-              await tester.pumpAndSettle();
-
-              expect(find.byType(BookingForm), findsOneWidget);
-              final form = tester.widget<BookingForm>(find.byType(BookingForm));
-              expect(form.booking, isNull); // New booking form has null booking
-
-              await tester.pumpWidget(Container());
-            }));
-
-    testWidgets('tapping a list item opens BookingForm for editing',
-        (tester) => tester.runAsync(() async {
-              final accountId = await db.createAccount('Test Account');
-              final booking = await db.createBooking(
-                  accountId: accountId, reason: 'Editable', amount: 123);
-              await pumpWidget(tester);
-              await tester.pumpAndSettle();
-
-              // Tap the list item to open the BookingForm
-              await tester.tap(find.text('Editable'));
+              await tester.tap(find.text('Income'));
               await tester.pumpAndSettle();
 
               expect(find.byType(BookingForm), findsOneWidget);
               final form = tester.widget<BookingForm>(find.byType(BookingForm));
               expect(form.booking, isNotNull);
-              expect(form.booking!.id, booking.id);
-              expect(form.booking!.category, 'Editable');
+              expect(form.booking!.id, booking1.id);
+              expect(form.booking!.category, 'Income');
 
               await tester.pumpWidget(Container());
             }));
-            
-    // testWidgets('long-pressing a list item opens DeleteBookingDialog',
-    //     (tester) => tester.runAsync(() async {
-    //           final accountId = await db.createAccount('Test Account');
-    //           await db.createBooking(
-    //               accountId: accountId, reason: 'Deletable', amount: 456);
-    //           final l10n = await pumpWidget(tester);
-    //           await tester.pumpAndSettle();
-    //
-    //           await tester.longPress(find.text('Deletable'));
-    //           await tester.pumpAndSettle();
-    //
-    //           // Find the dialog by its title text
-    //           expect(find.text(l10n.deleteBookingConfirmation), findsOneWidget);
-    //           // Also verify some content
-    //           expect(find.text('Deletable'), findsOneWidget);
-    //
-    //           await tester.pumpWidget(Container());
-    //         }));
-    //
-    // testWidgets('deletes booking after confirming in dialog',
-    //     (tester) => tester.runAsync(() async {
-    //           // Arrange
-    //           final accountId = await db.createAccount('Test Account');
-    //           await db.createBooking(
-    //               accountId: accountId, reason: 'Will be deleted', amount: 999);
-    //           final l10n = await pumpWidget(tester);
-    //           await tester.pumpAndSettle();
-    //
-    //           // Pre-condition check
-    //           expect(find.text('Will be deleted'), findsOneWidget);
-    //
-    //           // Act
-    //           await tester.longPress(find.widgetWithText(ListTile, 'Will be deleted'));
-    //           await tester.pumpAndSettle();
-    //
-    //           // Dialog is shown, find by title
-    //           final dialogTitleFinder = find.text(l10n.deleteBookingConfirmation);
-    //           expect(dialogTitleFinder, findsOneWidget);
-    //
-    //           // Tap the delete button
-    //           await tester.tap(find.widgetWithText(FilledButton, l10n.delete));
-    //           await tester.pumpAndSettle();
-    //
-    //           // Assert dialog is gone
-    //           expect(dialogTitleFinder, findsNothing);
-    //           // Item is removed from the list
-    //           expect(find.text('Will be deleted'), findsNothing);
-    //
-    //           await tester.pumpWidget(Container());
-    //         }));
+
+    testWidgets(
+        'long-pressing a list item opens DeleteBookingDialog',
+        (tester) => tester.runAsync(() async {
+              final l10n = await pumpWidget(tester);
+              await tester.pumpAndSettle();
+
+              // Manually simulate a long press gesture
+              final offset = tester.getCenter(find.text('Income'));
+              final gesture = await tester.startGesture(offset);
+              await tester.pump();
+              await Future.delayed(kLongPressTimeout);
+              await gesture.up();
+              await tester.pumpAndSettle();
+
+              expect(find.byType(DeleteBookingDialog), findsOneWidget);
+              expect(find.text(l10n.deleteBookingConfirmation), findsOneWidget);
+              expect(find.text('Income'), findsWidgets);
+
+              await tester.pumpWidget(Container());
+            }));
+
+    testWidgets(
+        'deletes booking after confirming in dialog',
+        (tester) => tester.runAsync(() async {
+              final l10n = await pumpWidget(tester);
+              await tester.pumpAndSettle();
+
+              expect(find.text('Income'), findsOneWidget);
+
+              // Manually simulate a long press gesture
+              final offset = tester.getCenter(find.text('Income'));
+              final gesture = await tester.startGesture(offset);
+              await tester.pump();
+              await Future.delayed(kLongPressTimeout);
+              await gesture.up();
+              await tester.pumpAndSettle();
+
+              final dialogTitleFinder =
+                  find.text(l10n.deleteBookingConfirmation);
+              expect(dialogTitleFinder, findsOneWidget);
+
+              await tester.tap(find.widgetWithText(FilledButton, l10n.delete));
+              await tester.pumpAndSettle();
+
+              expect(dialogTitleFinder, findsNothing);
+              expect(find.text('Income'), findsNothing);
+
+              await tester.pumpWidget(Container());
+            }));
   });
 }
