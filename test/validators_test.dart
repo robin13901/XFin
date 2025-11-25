@@ -134,6 +134,33 @@ void main() {
     });
   });
 
+  group('validateMaxTwoDecimalsNotZero', () {
+    test('propagates decimal errors', () {
+      expect(validator.validateMaxTwoDecimalsNotZero(null), l10n.pleaseEnterAValue);
+      expect(validator.validateMaxTwoDecimalsNotZero('bad'), l10n.invalidInput);
+    });
+
+    test('rejects numbers with more than 2 decimals even if <> 0', () {
+      expect(validator.validateMaxTwoDecimalsNotZero('1.234'),
+          l10n.tooManyDecimalPlaces);
+      expect(validator.validateMaxTwoDecimalsNotZero('-2.999'),
+          l10n.tooManyDecimalPlaces);
+    });
+
+    test('rejects numbers equal to 0', () {
+      expect(validator.validateMaxTwoDecimalsNotZero('0'),
+          l10n.valueCannotBeZero);
+      expect(validator.validateMaxTwoDecimalsNotZero('-0.00'),
+          l10n.valueCannotBeZero);
+    });
+
+    test('accepts non-zero numbers with up to 2 decimals', () {
+      expect(validator.validateMaxTwoDecimalsNotZero('0.01'), isNull);
+      expect(validator.validateMaxTwoDecimalsNotZero('-1.2'), isNull);
+      expect(validator.validateMaxTwoDecimalsNotZero('5'), isNull);
+    });
+  });
+
   group('validateMaxTwoDecimalsGreaterZero', () {
     test('propagates greater-zero errors', () {
       expect(validator.validateMaxTwoDecimalsGreaterZero(null),
@@ -273,6 +300,34 @@ void main() {
         'Cash',
         [],
       ), isNull);
+    });
+  });
+
+  group('validateAccountSelected', () {
+    test('account is selected', () {
+      expect(validator.validateAccountSelected(1), null);
+    });
+
+    test('account is not selected', () {
+      expect(validator.validateAccountSelected(null), l10n.pleaseSelectAnAccount);
+    });
+  });
+
+  group('validateDate', () {
+    test('date is null', () {
+      expect(validator.validateDate(null), l10n.pleaseEnterAValue);
+    });
+
+    test('date is in the past', () {
+      expect(validator.validateDate(DateTime(2021)), null);
+    });
+
+    test('date is now', () {
+      expect(validator.validateDate(DateTime.now()), null);
+    });
+
+    test('date is in the future', () {
+      expect(validator.validateDate(DateTime(2099)), l10n.dateCannotBeInTheFuture);
     });
   });
 }

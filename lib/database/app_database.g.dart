@@ -877,9 +877,10 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
   late final GeneratedColumn<bool> isGenerated = GeneratedColumn<bool>(
       'is_generated', aliasedName, false,
       type: DriftSqlType.bool,
-      requiredDuringInsert: true,
+      requiredDuringInsert: false,
       defaultConstraints: GeneratedColumn.constraintIsAlways(
-          'CHECK ("is_generated" IN (0, 1))'));
+          'CHECK ("is_generated" IN (0, 1))'),
+      defaultValue: const Constant(false));
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -943,8 +944,6 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
           _isGeneratedMeta,
           isGenerated.isAcceptableOrUnknown(
               data['is_generated']!, _isGeneratedMeta));
-    } else if (isInserting) {
-      context.missing(_isGeneratedMeta);
     }
     return context;
   }
@@ -1151,12 +1150,11 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
     required int accountId,
     this.notes = const Value.absent(),
     this.excludeFromAverage = const Value.absent(),
-    required bool isGenerated,
+    this.isGenerated = const Value.absent(),
   })  : date = Value(date),
         amount = Value(amount),
         category = Value(category),
-        accountId = Value(accountId),
-        isGenerated = Value(isGenerated);
+        accountId = Value(accountId);
   static Insertable<Booking> custom({
     Expression<int>? id,
     Expression<int>? date,
@@ -5302,7 +5300,7 @@ typedef $$BookingsTableCreateCompanionBuilder = BookingsCompanion Function({
   required int accountId,
   Value<String?> notes,
   Value<bool> excludeFromAverage,
-  required bool isGenerated,
+  Value<bool> isGenerated,
 });
 typedef $$BookingsTableUpdateCompanionBuilder = BookingsCompanion Function({
   Value<int> id,
@@ -5539,7 +5537,7 @@ class $$BookingsTableTableManager extends RootTableManager<
             required int accountId,
             Value<String?> notes = const Value.absent(),
             Value<bool> excludeFromAverage = const Value.absent(),
-            required bool isGenerated,
+            Value<bool> isGenerated = const Value.absent(),
           }) =>
               BookingsCompanion.insert(
             id: id,

@@ -98,6 +98,7 @@ class _AccountFormState extends State<AccountForm> {
                 TextFormField(
                   key: const Key('account_name_field'),
                   controller: _nameController,
+                  textCapitalization: TextCapitalization.words,
                   decoration: InputDecoration(
                     labelText: l10n.accountName,
                     border: const OutlineInputBorder(),

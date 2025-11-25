@@ -181,8 +181,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get noActiveAccounts =>
-      'Noch keine aktiven Konten. Tippe auf +, um eins hinzuzufügen!';
+  String get noActiveAccounts => 'Noch keine aktiven Konten vorhanden';
 
   @override
   String get archivedAccounts => 'Archivierte Konten';
@@ -193,7 +192,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get noBookingsYet => 'Noch keine Buchungen vorhanden.';
+  String get noBookingsYet => 'Noch keine Buchungen vorhanden';
 
   @override
   String get unknownAccount => 'Unbekanntes Konto';
@@ -208,8 +207,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get assets => 'Assets';
 
   @override
-  String get noAssets =>
-      'Noch keine Assets vorhanden. Tippe auf +, um eins hinzuzufügen!';
+  String get noAssets => 'Noch keine Assets vorhanden';
 
   @override
   String get cannotDeleteAsset => 'Asset kann nicht gelöscht werden';
@@ -282,8 +280,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get trades => 'Trades';
 
   @override
-  String get noTrades =>
-      'Noch keine Trades vorhanden. Tippe auf +, um einen hinzuzufügen!';
+  String get noTrades => 'Noch keine Trades vorhanden';
 
   @override
   String get pricePerShare => 'Preis pro Aktie';
@@ -342,8 +339,15 @@ class AppLocalizationsDe extends AppLocalizations {
   String get returnOnInvestment => 'Rendite';
 
   @override
+  String get actionCancelledDueToDataInconsistency =>
+      'Diese Aktion is nicht möglich, da sie zu Dateninkonsistenz führen würde';
+
+  @override
   String get valueMustBeGreaterZero => 'Wert muss > 0 sein';
 
   @override
   String get valueMustBeGreaterEqualZero => 'Wert muss ≥ 0 sein';
+
+  @override
+  String get valueCannotBeZero => 'Wert darf nicht 0 sein';
 }

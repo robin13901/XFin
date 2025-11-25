@@ -60,7 +60,7 @@
       }
     }
   },
-  "noActiveAccounts": "Noch keine aktiven Konten. Tippe auf +, um eins hinzuzufügen!",
+  "noActiveAccounts": "Noch keine aktiven Konten vorhanden",
   "archivedAccounts": "Archivierte Konten",
   "anErrorOccurred": "Ein Fehler ist aufgetreten: {error}",
   "@anErrorOccurred": {
@@ -70,12 +70,12 @@
       }
     }
   },
-  "noBookingsYet": "Noch keine Buchungen vorhanden.",
+  "noBookingsYet": "Noch keine Buchungen vorhanden",
   "unknownAccount": "Unbekanntes Konto",
   "deleteBookingConfirmation": "Buchung löschen?",
   "delete": "Löschen",
   "assets": "Assets",
-  "noAssets": "Noch keine Assets vorhanden. Tippe auf +, um eins hinzuzufügen!",
+  "noAssets": "Noch keine Assets vorhanden",
   "cannotDeleteAsset": "Asset kann nicht gelöscht werden",
   "assetHasReferences": "Dieses Asset hat Referenzen und kann nicht gelöscht werden.",
   "deleteAsset": "Asset löschen",
@@ -98,7 +98,7 @@
   "update": "Aktualisieren",
   "ok": "OK",
   "trades": "Trades",
-  "noTrades": "Noch keine Trades vorhanden. Tippe auf +, um einen hinzuzufügen!",
+  "noTrades": "Noch keine Trades vorhanden",
   "pricePerShare": "Preis pro Aktie",
   "tradingFee": "Handelsgebühr",
   "clearingAccount": "Verrechnungskonto",
@@ -117,7 +117,9 @@
   "selectCurrency": "Währung auswählen",
   "currencySelectionPrompt": "Bitte wählen Sie Ihre Basiswährung. Dies kann später nicht mehr geändert werden.",
   "returnOnInvestment": "Rendite",
+  "actionCancelledDueToDataInconsistency": "Diese Aktion is nicht möglich, da sie zu Dateninkonsistenz führen würde",
 
   "valueMustBeGreaterZero": "Wert muss > 0 sein",
-  "valueMustBeGreaterEqualZero": "Wert muss ≥ 0 sein"
+  "valueMustBeGreaterEqualZero": "Wert muss ≥ 0 sein",
+  "valueCannotBeZero": "Wert darf nicht 0 sein"
 }

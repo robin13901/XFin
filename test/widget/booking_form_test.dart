@@ -213,7 +213,6 @@ void main() {
                       .value,
                   isFalse);
 
-              // Dispose the widget to ensure streams are cancelled.
               await tester.pumpWidget(Container());
             }));
 
@@ -248,7 +247,6 @@ void main() {
                       .initialValue,
                   accountId1);
 
-              // Dispose the widget to ensure streams are cancelled.
               await tester.pumpWidget(Container());
             }));
 
@@ -281,35 +279,17 @@ void main() {
                       .text,
                   'Food');
 
-              // Dispose the widget to ensure streams are cancelled.
               await tester.pumpWidget(Container());
             }));
 
     group('Validation', () {
-      testWidgets('shows error if date is in the future',
-          (tester) => tester.runAsync(() async {
-                await pumpWidget(tester);
-
-                await tester.tap(find.byIcon(Icons.calendar_today));
-                await tester.pumpAndSettle();
-                await tester.tap(find.text('OK')); // Select today
-                await tester.pumpAndSettle();
-
-                final dateField = tester
-                    .widget<FormField<String>>(find.byKey(const Key('date_field')));
-                expect(dateField.validator, isNotNull);
-
-                // Dispose the widget to ensure streams are cancelled.
-                await tester.pumpWidget(Container());
-              }));
-
       testWidgets('shows errors for invalid amount',
           (tester) => tester.runAsync(() async {
                 await pumpWidget(tester);
 
                 await tester.tap(find.text(l10n.save));
                 await tester.pumpAndSettle();
-                expect(find.text(l10n.pleaseEnterAValue), findsOneWidget);
+                expect(find.text(l10n.pleaseEnterAValue), findsWidgets);
 
                 await tester.enterText(
                     find.byKey(const Key('amount_field')), 'invalid');
@@ -323,7 +303,6 @@ void main() {
                 await tester.pumpAndSettle();
                 expect(find.text(l10n.tooManyDecimalPlaces), findsOneWidget);
 
-                // Dispose the widget to ensure streams are cancelled.
                 await tester.pumpWidget(Container());
               }));
 
@@ -333,15 +312,8 @@ void main() {
 
                 await tester.tap(find.text(l10n.save));
                 await tester.pumpAndSettle();
-                expect(find.text(l10n.pleaseEnterACategory), findsOneWidget);
+                expect(find.text(l10n.pleaseEnterAValue), findsWidgets);
 
-                await tester.enterText(
-                    find.byKey(const Key('category_field')), 'Überweisung');
-                await tester.tap(find.text(l10n.save));
-                await tester.pumpAndSettle();
-                expect(find.text(l10n.categoryReservedForTransfer), findsOneWidget);
-
-                // Dispose the widget to ensure streams are cancelled.
                 await tester.pumpWidget(Container());
               }));
 
@@ -353,7 +325,6 @@ void main() {
                 await tester.pumpAndSettle();
                 expect(find.text(l10n.pleaseSelectAnAccount), findsOneWidget);
 
-                // Dispose the widget to ensure streams are cancelled.
                 await tester.pumpWidget(Container());
               }));
     });
@@ -381,7 +352,6 @@ void main() {
                     await (db.appDatabase.select(db.appDatabase.bookings)).get();
                 expect(bookings.length, 1);
 
-                // Dispose the widget to ensure streams are cancelled.
                 await tester.pumpWidget(Container());
               }));
 
@@ -405,7 +375,6 @@ void main() {
                 await tester.pumpAndSettle(
                     const Duration(seconds: 3)); // let toast disappear
 
-                // Dispose the widget to ensure streams are cancelled.
                 await tester.pumpWidget(Container());
               }));
 
@@ -427,7 +396,6 @@ void main() {
                     await db.appDatabase.bookingsDao.getBooking(booking.id);
                 expect(updatedBooking.amount, -25);
 
-                // Dispose the widget to ensure streams are cancelled.
                 await tester.pumpWidget(Container());
               }));
 
@@ -461,7 +429,6 @@ void main() {
                     await (db.appDatabase.select(db.appDatabase.bookings)).get();
                 expect(bookings.length, 1);
 
-                // Dispose the widget to ensure streams are cancelled.
                 await tester.pumpWidget(Container());
               }));
     });

@@ -95,7 +95,7 @@ class Bookings extends Table {
   IntColumn get accountId => integer().references(Accounts, #id)();
   TextColumn get notes => text().nullable()();
   BoolColumn get excludeFromAverage => boolean().withDefault(const Constant(false))();
-  BoolColumn get isGenerated => boolean()();
+  BoolColumn get isGenerated => boolean().withDefault(const Constant(false))();
 }
 
 @TableIndex(name: 'transfers_sending_account_id_date', columns: {#sendingAccountId, #date})

@@ -149,6 +149,7 @@ class _AssetFormState extends State<AssetForm> {
                 TextFormField(
                   key: const Key('asset_name_field'),
                   controller: _nameController,
+                  textCapitalization: TextCapitalization.words,
                   decoration: InputDecoration(
                     labelText: l10n.assetName, // New string needed
                     border: const OutlineInputBorder(),
@@ -159,6 +160,7 @@ class _AssetFormState extends State<AssetForm> {
                 TextFormField(
                   key: const Key('asset_ticker_symbol_field'),
                   controller: _tickerSymbolController,
+                  textCapitalization: TextCapitalization.characters,
                   decoration: InputDecoration(
                     labelText: l10n.tickerSymbol, // New string needed
                     border: const OutlineInputBorder(),

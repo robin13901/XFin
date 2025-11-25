@@ -723,6 +723,9 @@ void main() {
       // stub tradesDao.processTrade to succeed
       when(() => mockTradesDao.processTrade(any())).thenAnswer((_) async => 1);
 
+      when(() => mockAccountsDao.leadsToInconsistentBalanceHistory(
+          newTrade: any(named: 'newTrade'))).thenAnswer((_) async => false);
+
       await openForm(tester);
 
       // pick date
@@ -830,6 +833,9 @@ void main() {
       // Make processTrade throw
       when(() => mockTradesDao.processTrade(any()))
           .thenThrow(Exception('boom'));
+
+      when(() => mockAccountsDao.leadsToInconsistentBalanceHistory(
+          newTrade: any(named: 'newTrade'))).thenAnswer((_) async => false);
 
       await openForm(tester);
 

@@ -33,8 +33,6 @@ class _BookingFormState extends State<BookingForm> {
   late List<String> _distinctCategories;
   StreamSubscription<List<String>>? _categorySubscription;
 
-  final _disallowedCategories = ['überweisung'];
-
   @override
   void initState() {
     super.initState();
@@ -42,7 +40,8 @@ class _BookingFormState extends State<BookingForm> {
     final db = Provider.of<AppDatabase>(context, listen: false);
 
     _distinctCategories = [];
-    _categorySubscription = db.bookingsDao.watchDistinctCategories().listen((categories) {
+    _categorySubscription =
+        db.bookingsDao.watchDistinctCategories().listen((categories) {
       setState(() {
         _distinctCategories = categories;
       });
@@ -53,7 +52,7 @@ class _BookingFormState extends State<BookingForm> {
       final dateString = booking.date.toString();
       _date = DateTime.parse(
           '${dateString.substring(0, 4)}-${dateString.substring(4, 6)}-${dateString.substring(6, 8)}');
-      _amountController = 
+      _amountController =
           TextEditingController(text: booking.amount.toString());
       _categoryController = TextEditingController(text: booking.category);
       _notesController = TextEditingController(text: booking.notes);
@@ -87,8 +86,19 @@ class _BookingFormState extends State<BookingForm> {
     final updatedCompanion = existingBooking
         .toCompanion(false)
         .copyWith(amount: drift.Value(mergedAmount));
-    await db.bookingsDao
-        .updateBooking(existingBooking, updatedCompanion);
+
+    if (await db.accountsDao.leadsToInconsistentBalanceHistory(
+      originalBooking: existingBooking,
+      newBooking: updatedCompanion,
+    )) {
+      if (mounted) {
+        showToast(AppLocalizations.of(context)!
+            .actionCancelledDueToDataInconsistency);
+      }
+      return;
+    }
+
+    await db.bookingsDao.updateBooking(existingBooking, updatedCompanion);
   }
 
   Future<void> _saveForm() async {
@@ -121,9 +131,11 @@ class _BookingFormState extends State<BookingForm> {
       );
 
       if (widget.booking == null && _notesController.text.isEmpty) {
+        // -> Create case, merge is an option
         final mergeable = await db.bookingsDao.findMergeableBooking(companion);
 
         if (mergeable != null && mounted) {
+          // -> Perform merge
           final confirmed = await showDialog<bool>(
             context: context,
             builder: (context) => AlertDialog(
@@ -144,49 +156,51 @@ class _BookingFormState extends State<BookingForm> {
 
           if (confirmed == true) {
             await _performMerge(db, mergeable, companion);
+            if (mounted) Navigator.of(context).pop();
+            return;
           } else {
+            if (await db.accountsDao.leadsToInconsistentBalanceHistory(
+              newBooking: companion,
+            )) {
+              showToast(l10n.actionCancelledDueToDataInconsistency);
+              return;
+            }
             await db.bookingsDao.createBooking(companion);
           }
         } else {
+          if (await db.accountsDao.leadsToInconsistentBalanceHistory(
+            newBooking: companion,
+          )) {
+            showToast(l10n.actionCancelledDueToDataInconsistency);
+            return;
+          }
           await db.bookingsDao.createBooking(companion);
         }
       } else if (widget.booking == null) {
+        // -> Create case, merge not an option
+        if (await db.accountsDao.leadsToInconsistentBalanceHistory(
+          newBooking: companion,
+        )) {
+          showToast(l10n.actionCancelledDueToDataInconsistency);
+          return;
+        }
         await db.bookingsDao.createBooking(companion);
       } else {
+        if (await db.accountsDao.leadsToInconsistentBalanceHistory(
+          originalBooking: widget.booking,
+          newBooking: companion,
+        )) {
+          showToast(l10n.actionCancelledDueToDataInconsistency);
+          return;
+        }
         await db.bookingsDao.updateBooking(
           widget.booking!,
           companion.copyWith(id: drift.Value(widget.booking!.id)),
         );
       }
 
-      if (mounted) {
-        Navigator.of(context).pop();
-      }
+      if (mounted) Navigator.of(context).pop();
     }
-  }
-
-  String? _validateDate(DateTime? value, AppLocalizations l10n) {
-    if (value != null && value.isAfter(DateTime.now())) {
-      return l10n.dateCannotBeInTheFuture;
-    }
-    return null;
-  }
-
-  String? _validateCategory(String? value, AppLocalizations l10n) {
-    if (value == null || value.isEmpty) {
-      return l10n.pleaseEnterACategory;
-    }
-    if (_disallowedCategories.contains(value.trim().toLowerCase())) {
-      return l10n.categoryReservedForTransfer;
-    }
-    return null;
-  }
-
-  String? _validateAccount(int? value, AppLocalizations l10n) {
-    if (value == null) {
-      return l10n.pleaseSelectAnAccount;
-    }
-    return null;
   }
 
   @override
@@ -238,7 +252,7 @@ class _BookingFormState extends State<BookingForm> {
                         controller: TextEditingController(
                           text: DateFormat('dd.MM.yyyy').format(_date),
                         ),
-                        validator: (_) => _validateDate(_date, l10n),
+                        validator: (_) => validator.validateDate(_date),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -254,7 +268,8 @@ class _BookingFormState extends State<BookingForm> {
                         ),
                         keyboardType: const TextInputType.numberWithOptions(
                             signed: true, decimal: true),
-                        validator: (value) => validator.validateMaxTwoDecimals(value),
+                        validator: (value) =>
+                            validator.validateMaxTwoDecimalsNotZero(value),
                       ),
                     ),
                   ],
@@ -267,7 +282,9 @@ class _BookingFormState extends State<BookingForm> {
                       return const Iterable<String>.empty();
                     }
                     return _distinctCategories.where((category) {
-                      return category.toLowerCase().contains(textEditingValue.text.toLowerCase());
+                      return category
+                          .toLowerCase()
+                          .contains(textEditingValue.text.toLowerCase());
                     });
                   },
                   onSelected: (String selection) {
@@ -283,24 +300,28 @@ class _BookingFormState extends State<BookingForm> {
                     // reflects the initial category from _categoryController.
                     if (widget.booking != null &&
                         _categoryController.text.isNotEmpty &&
-                        textEditingController.text != _categoryController.text) {
+                        textEditingController.text !=
+                            _categoryController.text) {
                       textEditingController.text = _categoryController.text;
                     }
                     return TextFormField(
                       controller: textEditingController,
                       focusNode: focusNode,
+                      textCapitalization: TextCapitalization.words,
                       decoration: InputDecoration(
                         labelText: l10n.category,
                         border: const OutlineInputBorder(),
                         errorMaxLines: 2,
                       ),
-                      validator: (value) => _validateCategory(value, l10n),
+                      validator: (value) => validator.validateNotInitial(value),
                       onChanged: (value) {
-                        _categoryController.text = value; // Keep _categoryController in sync
+                        _categoryController.text =
+                            value; // Keep _categoryController in sync
                       },
                       onFieldSubmitted: (String value) {
                         onFieldSubmitted();
-                        _categoryController.text = value; // Also update on submit
+                        _categoryController.text =
+                            value; // Also update on submit
                       },
                     );
                   },
@@ -323,7 +344,8 @@ class _BookingFormState extends State<BookingForm> {
                             value: account.id, child: Text(account.name));
                       }).toList(),
                       onChanged: (value) => setState(() => _accountId = value),
-                      validator: (value) => _validateAccount(value, l10n),
+                      validator: (value) =>
+                          validator.validateAccountSelected(value),
                     );
                   },
                 ),
@@ -331,6 +353,7 @@ class _BookingFormState extends State<BookingForm> {
                 TextFormField(
                   key: const Key('notes_field'),
                   controller: _notesController,
+                  textCapitalization: TextCapitalization.sentences,
                   decoration: InputDecoration(
                       labelText: l10n.notes,
                       border: const OutlineInputBorder()),

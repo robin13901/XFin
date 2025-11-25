@@ -1,20 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:oktoast/oktoast.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/daos/bookings_dao.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 
-class DeleteBookingDialog extends StatelessWidget {
+class DeleteBookingDialog extends StatefulWidget {
   final BookingWithAccount bookingWithAccount;
 
   const DeleteBookingDialog({super.key, required this.bookingWithAccount});
 
   @override
+  State<DeleteBookingDialog> createState() => _DeleteBookingDialogState();
+}
+
+class _DeleteBookingDialogState extends State<DeleteBookingDialog> {
+  @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final db = Provider.of<AppDatabase>(context, listen: false);
-    final booking = bookingWithAccount.booking;
+    final booking = widget.bookingWithAccount.booking;
     final currencyFormat = NumberFormat.currency(locale: 'de_DE', symbol: '€');
 
     final dateString = booking.date.toString();
@@ -24,7 +30,8 @@ class DeleteBookingDialog extends StatelessWidget {
     final month = DateFormat('MMM', 'de_DE').format(date);
     final year = DateFormat('yyyy').format(date);
 
-    String accountName = bookingWithAccount.account?.name ?? 'Unknown Account';
+    String accountName =
+        widget.bookingWithAccount.account?.name ?? 'Unknown Account';
     Color amountColor = booking.amount < 0 ? Colors.red : Colors.green;
 
     return AlertDialog(
@@ -42,18 +49,9 @@ class DeleteBookingDialog extends StatelessWidget {
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    day,
-                    textScaler: const TextScaler.linear(0.8)
-                  ),
-                  Text(
-                      month,
-                      textScaler: const TextScaler.linear(0.8)
-                  ),
-                  Text(
-                      year,
-                      textScaler: const TextScaler.linear(0.8)
-                  )
+                  Text(day, textScaler: const TextScaler.linear(0.8)),
+                  Text(month, textScaler: const TextScaler.linear(0.8)),
+                  Text(year, textScaler: const TextScaler.linear(0.8))
                 ],
               ),
               const SizedBox(width: 16),
@@ -62,15 +60,18 @@ class DeleteBookingDialog extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(booking.category, style: Theme.of(context).textTheme.titleMedium),
-                    Text(accountName, style: Theme.of(context).textTheme.bodySmall),
+                    Text(booking.category,
+                        style: Theme.of(context).textTheme.titleMedium),
+                    Text(accountName,
+                        style: Theme.of(context).textTheme.bodySmall),
                   ],
                 ),
               ),
               const SizedBox(width: 16),
               Text(
                 currencyFormat.format(booking.amount),
-                style: TextStyle(color: amountColor, fontWeight: FontWeight.bold),
+                style:
+                    TextStyle(color: amountColor, fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -83,9 +84,17 @@ class DeleteBookingDialog extends StatelessWidget {
         ),
         FilledButton.tonal(
           onPressed: () async {
+            if (await db.accountsDao
+                .leadsToInconsistentBalanceHistory(originalBooking: booking)) {
+              if (context.mounted) {
+                showToast(AppLocalizations.of(context)!
+                    .actionCancelledDueToDataInconsistency);
+              }
+              return;
+            }
             await db.bookingsDao.deleteBooking(booking.id);
             if (context.mounted) {
-              Navigator.of(context).pop(); // Close the dialog
+              Navigator.of(context, rootNavigator: true).pop();
             }
           },
           child: Text(l10n.delete),

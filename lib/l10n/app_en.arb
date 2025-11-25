@@ -60,7 +60,7 @@
       }
     }
   },
-  "noActiveAccounts": "No active accounts yet. Tap + to add one!",
+  "noActiveAccounts": "No active accounts yet",
   "archivedAccounts": "Archived Accounts",
   "anErrorOccurred": "An error occurred: {error}",
   "@anErrorOccurred": {
@@ -70,12 +70,12 @@
       }
     }
   },
-  "noBookingsYet": "No bookings yet.",
+  "noBookingsYet": "No bookings yet",
   "unknownAccount": "Unknown Account",
   "deleteBookingConfirmation": "Delete Booking?",
   "delete": "Delete",
   "assets": "Assets",
-  "noAssets": "No assets yet. Tap + to add one!",
+  "noAssets": "No assets yet",
   "cannotDeleteAsset": "Cannot Delete Asset",
   "assetHasReferences": "This asset has references and cannot be deleted.",
   "deleteAsset": "Delete Asset",
@@ -98,7 +98,7 @@
   "update": "Update",
   "ok": "OK",
   "trades": "Trades",
-  "noTrades": "No trades yet. Tap + to add one!",
+  "noTrades": "No trades yet",
   "pricePerShare": "Price per Share",
   "tradingFee": "Trading Fee",
   "clearingAccount": "Clearing Account",
@@ -117,7 +117,9 @@
   "selectCurrency": "Select Currency",
   "currencySelectionPrompt": "Please select your base currency. This cannot be changed later.",
   "returnOnInvestment": "Return on Investment",
+  "actionCancelledDueToDataInconsistency": "This action is not possible because it would lead to data inconsistency",
 
   "valueMustBeGreaterZero": "Value must be > 0",
-  "valueMustBeGreaterEqualZero": "Value must be ≥ 0"
+  "valueMustBeGreaterEqualZero": "Value must be ≥ 0",
+  "valueCannotBeZero": "Value must not be 0"
 }

@@ -193,12 +193,10 @@ void main() {
         await db.into(db.accounts).insert(cashAccount.toCompanion(true));
         await db.into(db.accounts).insert(portfolioAccount.toCompanion(true));
         await db.into(db.bookings).insert(BookingsCompanion.insert(
-              date: 20230101,
-              category: 'Food',
-              amount: -50,
-              accountId: cashAccount.id,
-              isGenerated: false,
-            ));
+            date: 20230101,
+            category: 'Food',
+            amount: -50,
+            accountId: cashAccount.id));
         await db.into(db.goals).insert(GoalsCompanion.insert(
             createdOn: 20250101,
             targetDate: 20260101,

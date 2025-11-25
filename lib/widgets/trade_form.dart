@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:oktoast/oktoast.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/tables.dart';
@@ -11,6 +12,7 @@ import '../validators.dart';
 
 class TradeForm extends StatefulWidget {
   final Trade? trade;
+
   const TradeForm({super.key, this.trade});
 
   @override
@@ -59,16 +61,21 @@ class _TradeFormState extends State<TradeForm> {
   }
 
   Future<void> _loadInitialData() async {
-    final currencyProvider = Provider.of<BaseCurrencyProvider>(context, listen: false);
+    final currencyProvider =
+        Provider.of<BaseCurrencyProvider>(context, listen: false);
     final db = Provider.of<AppDatabase>(context, listen: false);
     final allAssets = await db.assetsDao.watchAllAssets().first;
     final allAccounts = await db.accountsDao.watchAllAccounts().first;
 
     if (mounted) {
       setState(() {
-        _assets = allAssets.where((a) => a.tickerSymbol != currencyProvider.tickerSymbol).toList();
-        _cashAccounts = allAccounts.where((a) => a.type == AccountTypes.cash).toList();
-        _portfolioAccounts = allAccounts.where((a) => a.type == AccountTypes.portfolio).toList();
+        _assets = allAssets
+            .where((a) => a.tickerSymbol != currencyProvider.tickerSymbol)
+            .toList();
+        _cashAccounts =
+            allAccounts.where((a) => a.type == AccountTypes.cash).toList();
+        _portfolioAccounts =
+            allAccounts.where((a) => a.type == AccountTypes.portfolio).toList();
       });
     }
   }
@@ -87,9 +94,11 @@ class _TradeFormState extends State<TradeForm> {
     if (_selectedAsset == null || _selectedPortfolioAccount == null) return;
     final db = Provider.of<AppDatabase>(context, listen: false);
     try {
-      final assetOnAccount = await db.assetsOnAccountsDao.getAssetOnAccount(_selectedPortfolioAccount!.id, _selectedAsset!.id);
+      final assetOnAccount = await db.assetsOnAccountsDao
+          .getAssetOnAccount(_selectedPortfolioAccount!.id, _selectedAsset!.id);
       if (mounted) setState(() => _ownedShares = assetOnAccount.sharesOwned);
-    } catch (e) { // Asset not in account, so 0 shares owned.
+    } catch (e) {
+      // Asset not in account, so 0 shares owned.
       if (mounted) setState(() => _ownedShares = 0);
     }
   }
@@ -108,11 +117,13 @@ class _TradeFormState extends State<TradeForm> {
         initialTime: TimeOfDay.fromDateTime(_selectedDate ?? DateTime.now()),
       );
       if (pickedTime != null) {
-        final picked = DateTime(pickedDate.year, pickedDate.month, pickedDate.day, pickedTime.hour, pickedTime.minute);
+        final picked = DateTime(pickedDate.year, pickedDate.month,
+            pickedDate.day, pickedTime.hour, pickedTime.minute);
         if (picked != _selectedDate) {
           setState(() {
             _selectedDate = picked;
-            _dateController.text = "${DateFormat('dd.MM.yyyy, HH:mm').format(picked)} Uhr";
+            _dateController.text =
+                "${DateFormat('dd.MM.yyyy, HH:mm').format(picked)} Uhr";
           });
         }
       }
@@ -122,21 +133,30 @@ class _TradeFormState extends State<TradeForm> {
   Future<void> _saveForm() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final l10n = AppLocalizations.of(context)!;
     final db = Provider.of<AppDatabase>(context, listen: false);
 
     final trade = TradesCompanion(
-      datetime: drift.Value(int.parse(DateFormat('yyyyMMddHHmmss').format(_selectedDate!))),
-      assetId: drift.Value(_selectedAsset!.id),
-      type: drift.Value(_tradeType!),
-      shares: drift.Value(double.parse(_sharesController.text)),
-      pricePerShare: drift.Value(double.parse(_pricePerShareController.text)),
-      tradingFee: drift.Value(double.parse(_tradingFeeController.text)),
-      tax: _tradeType == TradeTypes.sell ? drift.Value(double.parse(_taxController.text)) : const drift.Value(0),
-      clearingAccountId: drift.Value(_selectedClearingAccount!.id),
-      portfolioAccountId: drift.Value(_selectedPortfolioAccount!.id)
-    );
+        datetime: drift.Value(
+            int.parse(DateFormat('yyyyMMddHHmmss').format(_selectedDate!))),
+        assetId: drift.Value(_selectedAsset!.id),
+        type: drift.Value(_tradeType!),
+        shares: drift.Value(double.parse(_sharesController.text)),
+        pricePerShare: drift.Value(double.parse(_pricePerShareController.text)),
+        tradingFee: drift.Value(double.parse(_tradingFeeController.text)),
+        tax: _tradeType == TradeTypes.sell
+            ? drift.Value(double.parse(_taxController.text))
+            : const drift.Value(0),
+        clearingAccountId: drift.Value(_selectedClearingAccount!.id),
+        portfolioAccountId: drift.Value(_selectedPortfolioAccount!.id));
 
     try {
+      if (await db.accountsDao.leadsToInconsistentBalanceHistory(
+        newTrade: trade,
+      )) {
+        showToast(l10n.actionCancelledDueToDataInconsistency);
+        return;
+      }
       await db.tradesDao.processTrade(trade);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
@@ -179,21 +199,32 @@ class _TradeFormState extends State<TradeForm> {
                 const SizedBox(height: 16),
                 DropdownButtonFormField<TradeTypes>(
                     initialValue: _tradeType,
-                    decoration: InputDecoration(labelText: l10n.type, border: const OutlineInputBorder()),
-                    items: TradeTypes.values.map((type) => DropdownMenuItem(value: type, child: Text(type.name))).toList(),
+                    decoration: InputDecoration(
+                        labelText: l10n.type,
+                        border: const OutlineInputBorder()),
+                    items: TradeTypes.values
+                        .map((type) => DropdownMenuItem(
+                            value: type, child: Text(type.name)))
+                        .toList(),
                     onChanged: (value) => setState(() => _tradeType = value!),
-                    validator: (value) => value == null ? l10n.pleaseSelectAType : null
-                ),
+                    validator: (value) =>
+                        value == null ? l10n.pleaseSelectAType : null),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<Asset>(
                   initialValue: _selectedAsset,
-                  decoration: InputDecoration(labelText: l10n.asset, border: const OutlineInputBorder()),
-                  items: _assets.map((asset) => DropdownMenuItem(value: asset, child: Text(asset.name))).toList(),
+                  decoration: InputDecoration(
+                      labelText: l10n.asset,
+                      border: const OutlineInputBorder()),
+                  items: _assets
+                      .map((asset) => DropdownMenuItem(
+                          value: asset, child: Text(asset.name)))
+                      .toList(),
                   onChanged: (value) {
                     setState(() => _selectedAsset = value);
                     _fetchOwnedShares();
                   },
-                  validator: (value) => value == null ? l10n.pleaseSelectAnAsset : null,
+                  validator: (value) =>
+                      value == null ? l10n.pleaseSelectAnAsset : null,
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -201,9 +232,14 @@ class _TradeFormState extends State<TradeForm> {
                     Expanded(
                       child: TextFormField(
                         controller: _sharesController,
-                        decoration: InputDecoration(labelText: l10n.shares, border: const OutlineInputBorder()),
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        validator: (value) => validator.validateSufficientSharesToSell(value, _ownedShares, _tradeType),
+                        decoration: InputDecoration(
+                            labelText: l10n.shares,
+                            border: const OutlineInputBorder()),
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        validator: (value) =>
+                            validator.validateSufficientSharesToSell(
+                                value, _ownedShares, _tradeType),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -215,8 +251,10 @@ class _TradeFormState extends State<TradeForm> {
                           border: const OutlineInputBorder(),
                           suffixText: currencyProvider.symbol,
                         ),
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                        validator: (value) => validator.validateMaxTwoDecimalsGreaterEqualZero(value),
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true, signed: true),
+                        validator: (value) => validator
+                            .validateMaxTwoDecimalsGreaterEqualZero(value),
                       ),
                     ),
                   ],
@@ -232,8 +270,10 @@ class _TradeFormState extends State<TradeForm> {
                           border: const OutlineInputBorder(),
                           suffixText: currencyProvider.symbol,
                         ),
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        validator: (value) => validator.validateDecimalGreaterZero(value),
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        validator: (value) =>
+                            validator.validateDecimalGreaterZero(value),
                       ),
                     ),
                     if (_tradeType == TradeTypes.sell) ...[
@@ -246,8 +286,10 @@ class _TradeFormState extends State<TradeForm> {
                             border: const OutlineInputBorder(),
                             suffixText: currencyProvider.symbol,
                           ),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          validator: (value) => validator.validateMaxTwoDecimalsGreaterEqualZero(value),
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true),
+                          validator: (value) => validator
+                              .validateMaxTwoDecimalsGreaterEqualZero(value),
                         ),
                       ),
                     ]
@@ -255,44 +297,64 @@ class _TradeFormState extends State<TradeForm> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<Account>(
-                  initialValue: _selectedClearingAccount,
-                  decoration: InputDecoration(labelText: l10n.clearingAccount, border: const OutlineInputBorder()),
-                  items: _cashAccounts.map((account) => DropdownMenuItem(value: account, child: Text(account.name))).toList(),
-                  onChanged: (value) => setState(() => _selectedClearingAccount = value),
-                  validator: (value) {
-                    String? error = validator.validateNotInitial(value?.name);
-                    if (_tradeType == TradeTypes.buy) {
-                      try {
-                        double shares = double.parse(_sharesController.text);
-                        double pricePerShare = double.parse(_pricePerShareController.text);
-                        double tradingFee = double.parse(_tradingFeeController.text);
-                        double clearingAccountValueDelta = shares * pricePerShare + tradingFee;
-                        if (value!.balance < clearingAccountValueDelta) error = l10n.insufficientBalance;
-                      } catch (e) {
-                        return error;
+                    initialValue: _selectedClearingAccount,
+                    decoration: InputDecoration(
+                        labelText: l10n.clearingAccount,
+                        border: const OutlineInputBorder()),
+                    items: _cashAccounts
+                        .map((account) => DropdownMenuItem(
+                            value: account, child: Text(account.name)))
+                        .toList(),
+                    onChanged: (value) =>
+                        setState(() => _selectedClearingAccount = value),
+                    validator: (value) {
+                      String? error = validator.validateNotInitial(value?.name);
+                      if (_tradeType == TradeTypes.buy) {
+                        try {
+                          double shares = double.parse(_sharesController.text);
+                          double pricePerShare =
+                          double.parse(_pricePerShareController.text);
+                          double tradingFee =
+                          double.parse(_tradingFeeController.text);
+                          double clearingAccountValueDelta =
+                              shares * pricePerShare + tradingFee;
+                          if (value!.balance < clearingAccountValueDelta) {
+                            error = l10n.insufficientBalance;
+                          }
+                        } catch (e) {
+                          return error;
+                        }
                       }
-                    }
-                    return error;
-                  }
-                ),
+                      return error;
+                    }),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<Account>(
                   initialValue: _selectedPortfolioAccount,
-                  decoration: InputDecoration(labelText: l10n.portfolioAccount, border: const OutlineInputBorder()),
-                  items: _portfolioAccounts.map((account) => DropdownMenuItem(value: account, child: Text(account.name))).toList(),
+                  decoration: InputDecoration(
+                      labelText: l10n.portfolioAccount,
+                      border: const OutlineInputBorder()),
+                  items: _portfolioAccounts
+                      .map((account) => DropdownMenuItem(
+                          value: account, child: Text(account.name)))
+                      .toList(),
                   onChanged: (value) {
                     setState(() => _selectedPortfolioAccount = value);
                     _fetchOwnedShares();
                   },
-                  validator: (value) => value == null ? l10n.pleaseSelectAnAccount : null,
+                  validator: (value) =>
+                      value == null ? l10n.pleaseSelectAnAccount : null,
                 ),
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(l10n.cancel)),
+                    TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: Text(l10n.cancel)),
                     const SizedBox(width: 8),
-                    ElevatedButton(onPressed: _saveForm, child: Text(_isEditing ? l10n.update : l10n.save)),
+                    ElevatedButton(
+                        onPressed: _saveForm,
+                        child: Text(_isEditing ? l10n.update : l10n.save)),
                   ],
                 ),
               ],

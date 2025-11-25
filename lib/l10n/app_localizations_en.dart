@@ -180,7 +180,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get noActiveAccounts => 'No active accounts yet. Tap + to add one!';
+  String get noActiveAccounts => 'No active accounts yet';
 
   @override
   String get archivedAccounts => 'Archived Accounts';
@@ -191,7 +191,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get noBookingsYet => 'No bookings yet.';
+  String get noBookingsYet => 'No bookings yet';
 
   @override
   String get unknownAccount => 'Unknown Account';
@@ -206,7 +206,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get assets => 'Assets';
 
   @override
-  String get noAssets => 'No assets yet. Tap + to add one!';
+  String get noAssets => 'No assets yet';
 
   @override
   String get cannotDeleteAsset => 'Cannot Delete Asset';
@@ -278,7 +278,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get trades => 'Trades';
 
   @override
-  String get noTrades => 'No trades yet. Tap + to add one!';
+  String get noTrades => 'No trades yet';
 
   @override
   String get pricePerShare => 'Price per Share';
@@ -336,8 +336,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get returnOnInvestment => 'Return on Investment';
 
   @override
+  String get actionCancelledDueToDataInconsistency =>
+      'This action is not possible because it would lead to data inconsistency';
+
+  @override
   String get valueMustBeGreaterZero => 'Value must be > 0';
 
   @override
   String get valueMustBeGreaterEqualZero => 'Value must be ≥ 0';
+
+  @override
+  String get valueCannotBeZero => 'Value must not be 0';
 }

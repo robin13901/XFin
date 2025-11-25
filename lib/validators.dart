@@ -36,6 +36,12 @@ class Validator {
     return null;
   }
 
+  String? validateMaxTwoDecimalsNotZero(String? value) {
+    if (validateMaxTwoDecimals(value) case String error) return error;
+    if (double.parse(value!) == 0) return l10n.valueCannotBeZero;
+    return null;
+  }
+
   String? validateMaxTwoDecimalsGreaterZero(String? value) {
     if (validateDecimalGreaterZero(value) case String error) return error;
     if (value!.contains('.') && value.split('.')[1].length > 2) return l10n.tooManyDecimalPlaces;
@@ -62,6 +68,16 @@ class Validator {
   String? validateUniqueAccountName(String? value, List<String> existingValues) {
     if (validateNotInitial(value) case String error) return error;
     if (existingValues.contains(value!.trim())) return l10n.accountAlreadyExists;
+    return null;
+  }
+
+  String? validateAccountSelected(int? accountId) {
+    return accountId == null ? l10n.pleaseSelectAnAccount : null;
+  }
+
+  String? validateDate(DateTime? value) {
+    if (value == null) return l10n.pleaseEnterAValue;
+    if (value.isAfter(DateTime.now())) return l10n.dateCannotBeInTheFuture;
     return null;
   }
 }

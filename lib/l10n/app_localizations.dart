@@ -425,7 +425,7 @@ abstract class AppLocalizations {
   /// No description provided for @noActiveAccounts.
   ///
   /// In en, this message translates to:
-  /// **'No active accounts yet. Tap + to add one!'**
+  /// **'No active accounts yet'**
   String get noActiveAccounts;
 
   /// No description provided for @archivedAccounts.
@@ -443,7 +443,7 @@ abstract class AppLocalizations {
   /// No description provided for @noBookingsYet.
   ///
   /// In en, this message translates to:
-  /// **'No bookings yet.'**
+  /// **'No bookings yet'**
   String get noBookingsYet;
 
   /// No description provided for @unknownAccount.
@@ -473,7 +473,7 @@ abstract class AppLocalizations {
   /// No description provided for @noAssets.
   ///
   /// In en, this message translates to:
-  /// **'No assets yet. Tap + to add one!'**
+  /// **'No assets yet'**
   String get noAssets;
 
   /// No description provided for @cannotDeleteAsset.
@@ -611,7 +611,7 @@ abstract class AppLocalizations {
   /// No description provided for @noTrades.
   ///
   /// In en, this message translates to:
-  /// **'No trades yet. Tap + to add one!'**
+  /// **'No trades yet'**
   String get noTrades;
 
   /// No description provided for @pricePerShare.
@@ -722,6 +722,12 @@ abstract class AppLocalizations {
   /// **'Return on Investment'**
   String get returnOnInvestment;
 
+  /// No description provided for @actionCancelledDueToDataInconsistency.
+  ///
+  /// In en, this message translates to:
+  /// **'This action is not possible because it would lead to data inconsistency'**
+  String get actionCancelledDueToDataInconsistency;
+
   /// No description provided for @valueMustBeGreaterZero.
   ///
   /// In en, this message translates to:
@@ -733,6 +739,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Value must be ≥ 0'**
   String get valueMustBeGreaterEqualZero;
+
+  /// No description provided for @valueCannotBeZero.
+  ///
+  /// In en, this message translates to:
+  /// **'Value must not be 0'**
+  String get valueCannotBeZero;
 }
 
 class _AppLocalizationsDelegate
