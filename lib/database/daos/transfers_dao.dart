@@ -49,6 +49,8 @@ class TransfersDao extends DatabaseAccessor<AppDatabase> with _$TransfersDaoMixi
     }
   }
 
+  Future<List<Transfer>> getAllTransfers() => select(transfers).get();
+
   Future<int> _addTransfer(TransfersCompanion entry) => into(transfers).insert(entry);
 
   Future<int> _deleteTransfer(int id) => (delete(transfers)..where((tbl) => tbl.id.equals(id))).go();

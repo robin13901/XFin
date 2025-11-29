@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' hide isNull;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -163,11 +164,11 @@ void main() {
           .insert(AssetsOnAccountsCompanion.insert(
             accountId: portfolioAccount.id,
             assetId: asset.id,
-            value: 1000,
-            sharesOwned: 10,
-            netCostBasis: 1000,
-            brokerCostBasis: 1000,
-            buyFeeTotal: 10,
+            value: const Value(1000),
+            sharesOwned: const Value(10),
+            netCostBasis: const Value(1000),
+            brokerCostBasis: const Value(1000),
+            buyFeeTotal: const Value(10),
           ));
 
       final buyTrade = TradesCompanion.insert(
@@ -176,14 +177,11 @@ void main() {
         assetId: asset.id,
         shares: 5,
         pricePerShare: 100,
-        tradingFee: 5,
-        tax: 0,
+        tradingFee: const Value(5),
         clearingAccountId: clearingAccount.id,
         portfolioAccountId: portfolioAccount.id,
         clearingAccountValueDelta: -505,
-        portfolioAccountValueDelta: 500,
-        profitAndLossAbs: 0,
-        profitAndLossRel: 0,
+        portfolioAccountValueDelta: 500
       );
 
       final sellTradePositivePnl = TradesCompanion.insert(
@@ -192,15 +190,15 @@ void main() {
         assetId: asset.id,
         shares: 2,
         pricePerShare: 120,
-        tradingFee: 5,
-        tax: 5,
+        tradingFee: const Value(5),
+        tax: const Value(5),
         clearingAccountId: clearingAccount.id,
         portfolioAccountId: portfolioAccount.id,
         clearingAccountValueDelta: 230,
         portfolioAccountValueDelta: -240,
-        profitAndLossAbs: 30,
+        profitAndLossAbs: const Value(30),
         // (120 * 2) - (100 * 2) - 5 - 5 = 30
-        profitAndLossRel: 0.15, // 30 / (2 * 100)
+        profitAndLossRel: const Value(0.15), // 30 / (2 * 100)
       );
 
       final sellTradeNegativePnl = TradesCompanion.insert(
@@ -209,15 +207,14 @@ void main() {
         assetId: asset.id,
         shares: 3,
         pricePerShare: 90,
-        tradingFee: 5,
-        tax: 0,
+        tradingFee: const Value(5),
         clearingAccountId: clearingAccount.id,
         portfolioAccountId: portfolioAccount.id,
         clearingAccountValueDelta: 265,
         portfolioAccountValueDelta: -270,
-        profitAndLossAbs: -35,
+        profitAndLossAbs: const Value(-35),
         // (90 * 3) - (100 * 3) - 5 = -35
-        profitAndLossRel: -0.1167,
+        profitAndLossRel: const Value(-0.1167),
       );
 
       await db.into(db.trades).insert(buyTrade);

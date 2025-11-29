@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'daos/accounts_dao.dart';
+import 'daos/analysis_dao.dart';
 import 'daos/assets_dao.dart';
 import 'daos/assets_on_accounts_dao.dart';
 import 'daos/bookings_dao.dart';
@@ -24,6 +25,7 @@ part 'app_database.g.dart';
   Goals
 ], daos: [
   AccountsDao,
+  AnalysisDao,
   AssetsDao,
   AssetsOnAccountsDao,
   BookingsDao,

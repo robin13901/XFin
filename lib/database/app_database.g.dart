@@ -29,13 +29,17 @@ class $AccountsTable extends Accounts with TableInfo<$AccountsTable, Account> {
   @override
   late final GeneratedColumn<double> balance = GeneratedColumn<double>(
       'balance', aliasedName, false,
-      type: DriftSqlType.double, requiredDuringInsert: true);
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
   static const VerificationMeta _initialBalanceMeta =
       const VerificationMeta('initialBalance');
   @override
   late final GeneratedColumn<double> initialBalance = GeneratedColumn<double>(
       'initial_balance', aliasedName, false,
-      type: DriftSqlType.double, requiredDuringInsert: true);
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
   @override
   late final GeneratedColumnWithTypeConverter<AccountTypes, String> type =
       GeneratedColumn<String>('type', aliasedName, false,
@@ -76,16 +80,12 @@ class $AccountsTable extends Accounts with TableInfo<$AccountsTable, Account> {
     if (data.containsKey('balance')) {
       context.handle(_balanceMeta,
           balance.isAcceptableOrUnknown(data['balance']!, _balanceMeta));
-    } else if (isInserting) {
-      context.missing(_balanceMeta);
     }
     if (data.containsKey('initial_balance')) {
       context.handle(
           _initialBalanceMeta,
           initialBalance.isAcceptableOrUnknown(
               data['initial_balance']!, _initialBalanceMeta));
-    } else if (isInserting) {
-      context.missing(_initialBalanceMeta);
     }
     if (data.containsKey('is_archived')) {
       context.handle(
@@ -265,13 +265,11 @@ class AccountsCompanion extends UpdateCompanion<Account> {
   AccountsCompanion.insert({
     this.id = const Value.absent(),
     required String name,
-    required double balance,
-    required double initialBalance,
+    this.balance = const Value.absent(),
+    this.initialBalance = const Value.absent(),
     required AccountTypes type,
     this.isArchived = const Value.absent(),
   })  : name = Value(name),
-        balance = Value(balance),
-        initialBalance = Value(initialBalance),
         type = Value(type);
   static Insertable<Account> custom({
     Expression<int>? id,
@@ -387,7 +385,7 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, Asset> {
       'value', aliasedName, false,
       type: DriftSqlType.double,
       requiredDuringInsert: false,
-      defaultValue: const Constant(0.0));
+      defaultValue: const Constant(0));
   static const VerificationMeta _sharesOwnedMeta =
       const VerificationMeta('sharesOwned');
   @override
@@ -395,7 +393,7 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, Asset> {
       'shares_owned', aliasedName, false,
       type: DriftSqlType.double,
       requiredDuringInsert: false,
-      defaultValue: const Constant(0.0));
+      defaultValue: const Constant(0));
   static const VerificationMeta _netCostBasisMeta =
       const VerificationMeta('netCostBasis');
   @override
@@ -403,7 +401,7 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, Asset> {
       'net_cost_basis', aliasedName, false,
       type: DriftSqlType.double,
       requiredDuringInsert: false,
-      defaultValue: const Constant(0.0));
+      defaultValue: const Constant(1));
   static const VerificationMeta _brokerCostBasisMeta =
       const VerificationMeta('brokerCostBasis');
   @override
@@ -411,7 +409,7 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, Asset> {
       'broker_cost_basis', aliasedName, false,
       type: DriftSqlType.double,
       requiredDuringInsert: false,
-      defaultValue: const Constant(0.0));
+      defaultValue: const Constant(1));
   static const VerificationMeta _buyFeeTotalMeta =
       const VerificationMeta('buyFeeTotal');
   @override
@@ -419,7 +417,7 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, Asset> {
       'buy_fee_total', aliasedName, false,
       type: DriftSqlType.double,
       requiredDuringInsert: false,
-      defaultValue: const Constant(0.0));
+      defaultValue: const Constant(0));
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -1299,9 +1297,10 @@ class $TransfersTable extends Transfers
   late final GeneratedColumn<bool> isGenerated = GeneratedColumn<bool>(
       'is_generated', aliasedName, false,
       type: DriftSqlType.bool,
-      requiredDuringInsert: true,
+      requiredDuringInsert: false,
       defaultConstraints: GeneratedColumn.constraintIsAlways(
-          'CHECK ("is_generated" IN (0, 1))'));
+          'CHECK ("is_generated" IN (0, 1))'),
+      defaultValue: const Constant(false));
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -1362,8 +1361,6 @@ class $TransfersTable extends Transfers
           _isGeneratedMeta,
           isGenerated.isAcceptableOrUnknown(
               data['is_generated']!, _isGeneratedMeta));
-    } else if (isInserting) {
-      context.missing(_isGeneratedMeta);
     }
     return context;
   }
@@ -1556,12 +1553,11 @@ class TransfersCompanion extends UpdateCompanion<Transfer> {
     required int sendingAccountId,
     required int receivingAccountId,
     this.notes = const Value.absent(),
-    required bool isGenerated,
+    this.isGenerated = const Value.absent(),
   })  : date = Value(date),
         amount = Value(amount),
         sendingAccountId = Value(sendingAccountId),
-        receivingAccountId = Value(receivingAccountId),
-        isGenerated = Value(isGenerated);
+        receivingAccountId = Value(receivingAccountId);
   static Insertable<Transfer> custom({
     Expression<int>? id,
     Expression<int>? date,
@@ -1708,24 +1704,32 @@ class $TradesTable extends Trades with TableInfo<$TradesTable, Trade> {
   @override
   late final GeneratedColumn<double> profitAndLossAbs = GeneratedColumn<double>(
       'profit_and_loss_abs', aliasedName, false,
-      type: DriftSqlType.double, requiredDuringInsert: true);
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
   static const VerificationMeta _profitAndLossRelMeta =
       const VerificationMeta('profitAndLossRel');
   @override
   late final GeneratedColumn<double> profitAndLossRel = GeneratedColumn<double>(
       'profit_and_loss_rel', aliasedName, false,
-      type: DriftSqlType.double, requiredDuringInsert: true);
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
   static const VerificationMeta _tradingFeeMeta =
       const VerificationMeta('tradingFee');
   @override
   late final GeneratedColumn<double> tradingFee = GeneratedColumn<double>(
       'trading_fee', aliasedName, false,
-      type: DriftSqlType.double, requiredDuringInsert: true);
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
   static const VerificationMeta _taxMeta = const VerificationMeta('tax');
   @override
   late final GeneratedColumn<double> tax = GeneratedColumn<double>(
       'tax', aliasedName, false,
-      type: DriftSqlType.double, requiredDuringInsert: true);
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
   static const VerificationMeta _clearingAccountIdMeta =
       const VerificationMeta('clearingAccountId');
   @override
@@ -1823,30 +1827,22 @@ class $TradesTable extends Trades with TableInfo<$TradesTable, Trade> {
           _profitAndLossAbsMeta,
           profitAndLossAbs.isAcceptableOrUnknown(
               data['profit_and_loss_abs']!, _profitAndLossAbsMeta));
-    } else if (isInserting) {
-      context.missing(_profitAndLossAbsMeta);
     }
     if (data.containsKey('profit_and_loss_rel')) {
       context.handle(
           _profitAndLossRelMeta,
           profitAndLossRel.isAcceptableOrUnknown(
               data['profit_and_loss_rel']!, _profitAndLossRelMeta));
-    } else if (isInserting) {
-      context.missing(_profitAndLossRelMeta);
     }
     if (data.containsKey('trading_fee')) {
       context.handle(
           _tradingFeeMeta,
           tradingFee.isAcceptableOrUnknown(
               data['trading_fee']!, _tradingFeeMeta));
-    } else if (isInserting) {
-      context.missing(_tradingFeeMeta);
     }
     if (data.containsKey('tax')) {
       context.handle(
           _taxMeta, tax.isAcceptableOrUnknown(data['tax']!, _taxMeta));
-    } else if (isInserting) {
-      context.missing(_taxMeta);
     }
     if (data.containsKey('clearing_account_id')) {
       context.handle(
@@ -2197,10 +2193,10 @@ class TradesCompanion extends UpdateCompanion<Trade> {
     required double portfolioAccountValueDelta,
     required double shares,
     required double pricePerShare,
-    required double profitAndLossAbs,
-    required double profitAndLossRel,
-    required double tradingFee,
-    required double tax,
+    this.profitAndLossAbs = const Value.absent(),
+    this.profitAndLossRel = const Value.absent(),
+    this.tradingFee = const Value.absent(),
+    this.tax = const Value.absent(),
     required int clearingAccountId,
     required int portfolioAccountId,
   })  : datetime = Value(datetime),
@@ -2210,10 +2206,6 @@ class TradesCompanion extends UpdateCompanion<Trade> {
         portfolioAccountValueDelta = Value(portfolioAccountValueDelta),
         shares = Value(shares),
         pricePerShare = Value(pricePerShare),
-        profitAndLossAbs = Value(profitAndLossAbs),
-        profitAndLossRel = Value(profitAndLossRel),
-        tradingFee = Value(tradingFee),
-        tax = Value(tax),
         clearingAccountId = Value(clearingAccountId),
         portfolioAccountId = Value(portfolioAccountId);
   static Insertable<Trade> custom({
@@ -2410,11 +2402,29 @@ class $PeriodicBookingsTable extends PeriodicBookings
   @override
   late final GeneratedColumnWithTypeConverter<Cycles, String> cycle =
       GeneratedColumn<String>('cycle', aliasedName, false,
-              type: DriftSqlType.string, requiredDuringInsert: true)
+              type: DriftSqlType.string,
+              requiredDuringInsert: false,
+              defaultValue: Constant(Cycles.monthly.name))
           .withConverter<Cycles>($PeriodicBookingsTable.$convertercycle);
+  static const VerificationMeta _monthlyAverageFactorMeta =
+      const VerificationMeta('monthlyAverageFactor');
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, nextExecutionDate, amount, accountId, category, notes, cycle];
+  late final GeneratedColumn<double> monthlyAverageFactor =
+      GeneratedColumn<double>('monthly_average_factor', aliasedName, false,
+          type: DriftSqlType.double,
+          requiredDuringInsert: false,
+          defaultValue: const Constant(1));
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        nextExecutionDate,
+        amount,
+        accountId,
+        category,
+        notes,
+        cycle,
+        monthlyAverageFactor
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -2458,6 +2468,12 @@ class $PeriodicBookingsTable extends PeriodicBookings
       context.handle(
           _notesMeta, notes.isAcceptableOrUnknown(data['notes']!, _notesMeta));
     }
+    if (data.containsKey('monthly_average_factor')) {
+      context.handle(
+          _monthlyAverageFactorMeta,
+          monthlyAverageFactor.isAcceptableOrUnknown(
+              data['monthly_average_factor']!, _monthlyAverageFactorMeta));
+    }
     return context;
   }
 
@@ -2482,6 +2498,9 @@ class $PeriodicBookingsTable extends PeriodicBookings
       cycle: $PeriodicBookingsTable.$convertercycle.fromSql(attachedDatabase
           .typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}cycle'])!),
+      monthlyAverageFactor: attachedDatabase.typeMapping.read(
+          DriftSqlType.double,
+          data['${effectivePrefix}monthly_average_factor'])!,
     );
   }
 
@@ -2502,6 +2521,7 @@ class PeriodicBooking extends DataClass implements Insertable<PeriodicBooking> {
   final String category;
   final String? notes;
   final Cycles cycle;
+  final double monthlyAverageFactor;
   const PeriodicBooking(
       {required this.id,
       required this.nextExecutionDate,
@@ -2509,7 +2529,8 @@ class PeriodicBooking extends DataClass implements Insertable<PeriodicBooking> {
       required this.accountId,
       required this.category,
       this.notes,
-      required this.cycle});
+      required this.cycle,
+      required this.monthlyAverageFactor});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -2525,6 +2546,7 @@ class PeriodicBooking extends DataClass implements Insertable<PeriodicBooking> {
       map['cycle'] =
           Variable<String>($PeriodicBookingsTable.$convertercycle.toSql(cycle));
     }
+    map['monthly_average_factor'] = Variable<double>(monthlyAverageFactor);
     return map;
   }
 
@@ -2538,6 +2560,7 @@ class PeriodicBooking extends DataClass implements Insertable<PeriodicBooking> {
       notes:
           notes == null && nullToAbsent ? const Value.absent() : Value(notes),
       cycle: Value(cycle),
+      monthlyAverageFactor: Value(monthlyAverageFactor),
     );
   }
 
@@ -2552,6 +2575,8 @@ class PeriodicBooking extends DataClass implements Insertable<PeriodicBooking> {
       category: serializer.fromJson<String>(json['category']),
       notes: serializer.fromJson<String?>(json['notes']),
       cycle: serializer.fromJson<Cycles>(json['cycle']),
+      monthlyAverageFactor:
+          serializer.fromJson<double>(json['monthlyAverageFactor']),
     );
   }
   @override
@@ -2565,6 +2590,7 @@ class PeriodicBooking extends DataClass implements Insertable<PeriodicBooking> {
       'category': serializer.toJson<String>(category),
       'notes': serializer.toJson<String?>(notes),
       'cycle': serializer.toJson<Cycles>(cycle),
+      'monthlyAverageFactor': serializer.toJson<double>(monthlyAverageFactor),
     };
   }
 
@@ -2575,7 +2601,8 @@ class PeriodicBooking extends DataClass implements Insertable<PeriodicBooking> {
           int? accountId,
           String? category,
           Value<String?> notes = const Value.absent(),
-          Cycles? cycle}) =>
+          Cycles? cycle,
+          double? monthlyAverageFactor}) =>
       PeriodicBooking(
         id: id ?? this.id,
         nextExecutionDate: nextExecutionDate ?? this.nextExecutionDate,
@@ -2584,6 +2611,7 @@ class PeriodicBooking extends DataClass implements Insertable<PeriodicBooking> {
         category: category ?? this.category,
         notes: notes.present ? notes.value : this.notes,
         cycle: cycle ?? this.cycle,
+        monthlyAverageFactor: monthlyAverageFactor ?? this.monthlyAverageFactor,
       );
   PeriodicBooking copyWithCompanion(PeriodicBookingsCompanion data) {
     return PeriodicBooking(
@@ -2596,6 +2624,9 @@ class PeriodicBooking extends DataClass implements Insertable<PeriodicBooking> {
       category: data.category.present ? data.category.value : this.category,
       notes: data.notes.present ? data.notes.value : this.notes,
       cycle: data.cycle.present ? data.cycle.value : this.cycle,
+      monthlyAverageFactor: data.monthlyAverageFactor.present
+          ? data.monthlyAverageFactor.value
+          : this.monthlyAverageFactor,
     );
   }
 
@@ -2608,14 +2639,15 @@ class PeriodicBooking extends DataClass implements Insertable<PeriodicBooking> {
           ..write('accountId: $accountId, ')
           ..write('category: $category, ')
           ..write('notes: $notes, ')
-          ..write('cycle: $cycle')
+          ..write('cycle: $cycle, ')
+          ..write('monthlyAverageFactor: $monthlyAverageFactor')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
-      id, nextExecutionDate, amount, accountId, category, notes, cycle);
+  int get hashCode => Object.hash(id, nextExecutionDate, amount, accountId,
+      category, notes, cycle, monthlyAverageFactor);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2626,7 +2658,8 @@ class PeriodicBooking extends DataClass implements Insertable<PeriodicBooking> {
           other.accountId == this.accountId &&
           other.category == this.category &&
           other.notes == this.notes &&
-          other.cycle == this.cycle);
+          other.cycle == this.cycle &&
+          other.monthlyAverageFactor == this.monthlyAverageFactor);
 }
 
 class PeriodicBookingsCompanion extends UpdateCompanion<PeriodicBooking> {
@@ -2637,6 +2670,7 @@ class PeriodicBookingsCompanion extends UpdateCompanion<PeriodicBooking> {
   final Value<String> category;
   final Value<String?> notes;
   final Value<Cycles> cycle;
+  final Value<double> monthlyAverageFactor;
   const PeriodicBookingsCompanion({
     this.id = const Value.absent(),
     this.nextExecutionDate = const Value.absent(),
@@ -2645,6 +2679,7 @@ class PeriodicBookingsCompanion extends UpdateCompanion<PeriodicBooking> {
     this.category = const Value.absent(),
     this.notes = const Value.absent(),
     this.cycle = const Value.absent(),
+    this.monthlyAverageFactor = const Value.absent(),
   });
   PeriodicBookingsCompanion.insert({
     this.id = const Value.absent(),
@@ -2653,12 +2688,12 @@ class PeriodicBookingsCompanion extends UpdateCompanion<PeriodicBooking> {
     required int accountId,
     required String category,
     this.notes = const Value.absent(),
-    required Cycles cycle,
+    this.cycle = const Value.absent(),
+    this.monthlyAverageFactor = const Value.absent(),
   })  : nextExecutionDate = Value(nextExecutionDate),
         amount = Value(amount),
         accountId = Value(accountId),
-        category = Value(category),
-        cycle = Value(cycle);
+        category = Value(category);
   static Insertable<PeriodicBooking> custom({
     Expression<int>? id,
     Expression<int>? nextExecutionDate,
@@ -2667,6 +2702,7 @@ class PeriodicBookingsCompanion extends UpdateCompanion<PeriodicBooking> {
     Expression<String>? category,
     Expression<String>? notes,
     Expression<String>? cycle,
+    Expression<double>? monthlyAverageFactor,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2676,6 +2712,8 @@ class PeriodicBookingsCompanion extends UpdateCompanion<PeriodicBooking> {
       if (category != null) 'category': category,
       if (notes != null) 'notes': notes,
       if (cycle != null) 'cycle': cycle,
+      if (monthlyAverageFactor != null)
+        'monthly_average_factor': monthlyAverageFactor,
     });
   }
 
@@ -2686,7 +2724,8 @@ class PeriodicBookingsCompanion extends UpdateCompanion<PeriodicBooking> {
       Value<int>? accountId,
       Value<String>? category,
       Value<String?>? notes,
-      Value<Cycles>? cycle}) {
+      Value<Cycles>? cycle,
+      Value<double>? monthlyAverageFactor}) {
     return PeriodicBookingsCompanion(
       id: id ?? this.id,
       nextExecutionDate: nextExecutionDate ?? this.nextExecutionDate,
@@ -2695,6 +2734,7 @@ class PeriodicBookingsCompanion extends UpdateCompanion<PeriodicBooking> {
       category: category ?? this.category,
       notes: notes ?? this.notes,
       cycle: cycle ?? this.cycle,
+      monthlyAverageFactor: monthlyAverageFactor ?? this.monthlyAverageFactor,
     );
   }
 
@@ -2723,6 +2763,10 @@ class PeriodicBookingsCompanion extends UpdateCompanion<PeriodicBooking> {
       map['cycle'] = Variable<String>(
           $PeriodicBookingsTable.$convertercycle.toSql(cycle.value));
     }
+    if (monthlyAverageFactor.present) {
+      map['monthly_average_factor'] =
+          Variable<double>(monthlyAverageFactor.value);
+    }
     return map;
   }
 
@@ -2735,7 +2779,8 @@ class PeriodicBookingsCompanion extends UpdateCompanion<PeriodicBooking> {
           ..write('accountId: $accountId, ')
           ..write('category: $category, ')
           ..write('notes: $notes, ')
-          ..write('cycle: $cycle')
+          ..write('cycle: $cycle, ')
+          ..write('monthlyAverageFactor: $monthlyAverageFactor')
           ..write(')'))
         .toString();
   }
@@ -2793,8 +2838,18 @@ class $PeriodicTransfersTable extends PeriodicTransfers
   @override
   late final GeneratedColumnWithTypeConverter<Cycles, String> cycle =
       GeneratedColumn<String>('cycle', aliasedName, false,
-              type: DriftSqlType.string, requiredDuringInsert: true)
+              type: DriftSqlType.string,
+              requiredDuringInsert: false,
+              defaultValue: Constant(Cycles.monthly.name))
           .withConverter<Cycles>($PeriodicTransfersTable.$convertercycle);
+  static const VerificationMeta _monthlyAverageFactorMeta =
+      const VerificationMeta('monthlyAverageFactor');
+  @override
+  late final GeneratedColumn<double> monthlyAverageFactor =
+      GeneratedColumn<double>('monthly_average_factor', aliasedName, false,
+          type: DriftSqlType.double,
+          requiredDuringInsert: false,
+          defaultValue: const Constant(1));
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -2803,7 +2858,8 @@ class $PeriodicTransfersTable extends PeriodicTransfers
         sendingAccountId,
         receivingAccountId,
         notes,
-        cycle
+        cycle,
+        monthlyAverageFactor
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2852,6 +2908,12 @@ class $PeriodicTransfersTable extends PeriodicTransfers
       context.handle(
           _notesMeta, notes.isAcceptableOrUnknown(data['notes']!, _notesMeta));
     }
+    if (data.containsKey('monthly_average_factor')) {
+      context.handle(
+          _monthlyAverageFactorMeta,
+          monthlyAverageFactor.isAcceptableOrUnknown(
+              data['monthly_average_factor']!, _monthlyAverageFactorMeta));
+    }
     return context;
   }
 
@@ -2876,6 +2938,9 @@ class $PeriodicTransfersTable extends PeriodicTransfers
       cycle: $PeriodicTransfersTable.$convertercycle.fromSql(attachedDatabase
           .typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}cycle'])!),
+      monthlyAverageFactor: attachedDatabase.typeMapping.read(
+          DriftSqlType.double,
+          data['${effectivePrefix}monthly_average_factor'])!,
     );
   }
 
@@ -2897,6 +2962,7 @@ class PeriodicTransfer extends DataClass
   final int receivingAccountId;
   final String? notes;
   final Cycles cycle;
+  final double monthlyAverageFactor;
   const PeriodicTransfer(
       {required this.id,
       required this.nextExecutionDate,
@@ -2904,7 +2970,8 @@ class PeriodicTransfer extends DataClass
       required this.sendingAccountId,
       required this.receivingAccountId,
       this.notes,
-      required this.cycle});
+      required this.cycle,
+      required this.monthlyAverageFactor});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -2920,6 +2987,7 @@ class PeriodicTransfer extends DataClass
       map['cycle'] = Variable<String>(
           $PeriodicTransfersTable.$convertercycle.toSql(cycle));
     }
+    map['monthly_average_factor'] = Variable<double>(monthlyAverageFactor);
     return map;
   }
 
@@ -2933,6 +3001,7 @@ class PeriodicTransfer extends DataClass
       notes:
           notes == null && nullToAbsent ? const Value.absent() : Value(notes),
       cycle: Value(cycle),
+      monthlyAverageFactor: Value(monthlyAverageFactor),
     );
   }
 
@@ -2947,6 +3016,8 @@ class PeriodicTransfer extends DataClass
       receivingAccountId: serializer.fromJson<int>(json['receivingAccountId']),
       notes: serializer.fromJson<String?>(json['notes']),
       cycle: serializer.fromJson<Cycles>(json['cycle']),
+      monthlyAverageFactor:
+          serializer.fromJson<double>(json['monthlyAverageFactor']),
     );
   }
   @override
@@ -2960,6 +3031,7 @@ class PeriodicTransfer extends DataClass
       'receivingAccountId': serializer.toJson<int>(receivingAccountId),
       'notes': serializer.toJson<String?>(notes),
       'cycle': serializer.toJson<Cycles>(cycle),
+      'monthlyAverageFactor': serializer.toJson<double>(monthlyAverageFactor),
     };
   }
 
@@ -2970,7 +3042,8 @@ class PeriodicTransfer extends DataClass
           int? sendingAccountId,
           int? receivingAccountId,
           Value<String?> notes = const Value.absent(),
-          Cycles? cycle}) =>
+          Cycles? cycle,
+          double? monthlyAverageFactor}) =>
       PeriodicTransfer(
         id: id ?? this.id,
         nextExecutionDate: nextExecutionDate ?? this.nextExecutionDate,
@@ -2979,6 +3052,7 @@ class PeriodicTransfer extends DataClass
         receivingAccountId: receivingAccountId ?? this.receivingAccountId,
         notes: notes.present ? notes.value : this.notes,
         cycle: cycle ?? this.cycle,
+        monthlyAverageFactor: monthlyAverageFactor ?? this.monthlyAverageFactor,
       );
   PeriodicTransfer copyWithCompanion(PeriodicTransfersCompanion data) {
     return PeriodicTransfer(
@@ -2995,6 +3069,9 @@ class PeriodicTransfer extends DataClass
           : this.receivingAccountId,
       notes: data.notes.present ? data.notes.value : this.notes,
       cycle: data.cycle.present ? data.cycle.value : this.cycle,
+      monthlyAverageFactor: data.monthlyAverageFactor.present
+          ? data.monthlyAverageFactor.value
+          : this.monthlyAverageFactor,
     );
   }
 
@@ -3007,14 +3084,15 @@ class PeriodicTransfer extends DataClass
           ..write('sendingAccountId: $sendingAccountId, ')
           ..write('receivingAccountId: $receivingAccountId, ')
           ..write('notes: $notes, ')
-          ..write('cycle: $cycle')
+          ..write('cycle: $cycle, ')
+          ..write('monthlyAverageFactor: $monthlyAverageFactor')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode => Object.hash(id, nextExecutionDate, amount,
-      sendingAccountId, receivingAccountId, notes, cycle);
+      sendingAccountId, receivingAccountId, notes, cycle, monthlyAverageFactor);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3025,7 +3103,8 @@ class PeriodicTransfer extends DataClass
           other.sendingAccountId == this.sendingAccountId &&
           other.receivingAccountId == this.receivingAccountId &&
           other.notes == this.notes &&
-          other.cycle == this.cycle);
+          other.cycle == this.cycle &&
+          other.monthlyAverageFactor == this.monthlyAverageFactor);
 }
 
 class PeriodicTransfersCompanion extends UpdateCompanion<PeriodicTransfer> {
@@ -3036,6 +3115,7 @@ class PeriodicTransfersCompanion extends UpdateCompanion<PeriodicTransfer> {
   final Value<int> receivingAccountId;
   final Value<String?> notes;
   final Value<Cycles> cycle;
+  final Value<double> monthlyAverageFactor;
   const PeriodicTransfersCompanion({
     this.id = const Value.absent(),
     this.nextExecutionDate = const Value.absent(),
@@ -3044,6 +3124,7 @@ class PeriodicTransfersCompanion extends UpdateCompanion<PeriodicTransfer> {
     this.receivingAccountId = const Value.absent(),
     this.notes = const Value.absent(),
     this.cycle = const Value.absent(),
+    this.monthlyAverageFactor = const Value.absent(),
   });
   PeriodicTransfersCompanion.insert({
     this.id = const Value.absent(),
@@ -3052,12 +3133,12 @@ class PeriodicTransfersCompanion extends UpdateCompanion<PeriodicTransfer> {
     required int sendingAccountId,
     required int receivingAccountId,
     this.notes = const Value.absent(),
-    required Cycles cycle,
+    this.cycle = const Value.absent(),
+    this.monthlyAverageFactor = const Value.absent(),
   })  : nextExecutionDate = Value(nextExecutionDate),
         amount = Value(amount),
         sendingAccountId = Value(sendingAccountId),
-        receivingAccountId = Value(receivingAccountId),
-        cycle = Value(cycle);
+        receivingAccountId = Value(receivingAccountId);
   static Insertable<PeriodicTransfer> custom({
     Expression<int>? id,
     Expression<int>? nextExecutionDate,
@@ -3066,6 +3147,7 @@ class PeriodicTransfersCompanion extends UpdateCompanion<PeriodicTransfer> {
     Expression<int>? receivingAccountId,
     Expression<String>? notes,
     Expression<String>? cycle,
+    Expression<double>? monthlyAverageFactor,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3076,6 +3158,8 @@ class PeriodicTransfersCompanion extends UpdateCompanion<PeriodicTransfer> {
         'receiving_account_id': receivingAccountId,
       if (notes != null) 'notes': notes,
       if (cycle != null) 'cycle': cycle,
+      if (monthlyAverageFactor != null)
+        'monthly_average_factor': monthlyAverageFactor,
     });
   }
 
@@ -3086,7 +3170,8 @@ class PeriodicTransfersCompanion extends UpdateCompanion<PeriodicTransfer> {
       Value<int>? sendingAccountId,
       Value<int>? receivingAccountId,
       Value<String?>? notes,
-      Value<Cycles>? cycle}) {
+      Value<Cycles>? cycle,
+      Value<double>? monthlyAverageFactor}) {
     return PeriodicTransfersCompanion(
       id: id ?? this.id,
       nextExecutionDate: nextExecutionDate ?? this.nextExecutionDate,
@@ -3095,6 +3180,7 @@ class PeriodicTransfersCompanion extends UpdateCompanion<PeriodicTransfer> {
       receivingAccountId: receivingAccountId ?? this.receivingAccountId,
       notes: notes ?? this.notes,
       cycle: cycle ?? this.cycle,
+      monthlyAverageFactor: monthlyAverageFactor ?? this.monthlyAverageFactor,
     );
   }
 
@@ -3123,6 +3209,10 @@ class PeriodicTransfersCompanion extends UpdateCompanion<PeriodicTransfer> {
       map['cycle'] = Variable<String>(
           $PeriodicTransfersTable.$convertercycle.toSql(cycle.value));
     }
+    if (monthlyAverageFactor.present) {
+      map['monthly_average_factor'] =
+          Variable<double>(monthlyAverageFactor.value);
+    }
     return map;
   }
 
@@ -3135,7 +3225,8 @@ class PeriodicTransfersCompanion extends UpdateCompanion<PeriodicTransfer> {
           ..write('sendingAccountId: $sendingAccountId, ')
           ..write('receivingAccountId: $receivingAccountId, ')
           ..write('notes: $notes, ')
-          ..write('cycle: $cycle')
+          ..write('cycle: $cycle, ')
+          ..write('monthlyAverageFactor: $monthlyAverageFactor')
           ..write(')'))
         .toString();
   }
@@ -3169,31 +3260,41 @@ class $AssetsOnAccountsTable extends AssetsOnAccounts
   @override
   late final GeneratedColumn<double> value = GeneratedColumn<double>(
       'value', aliasedName, false,
-      type: DriftSqlType.double, requiredDuringInsert: true);
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
   static const VerificationMeta _sharesOwnedMeta =
       const VerificationMeta('sharesOwned');
   @override
   late final GeneratedColumn<double> sharesOwned = GeneratedColumn<double>(
       'shares_owned', aliasedName, false,
-      type: DriftSqlType.double, requiredDuringInsert: true);
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
   static const VerificationMeta _netCostBasisMeta =
       const VerificationMeta('netCostBasis');
   @override
   late final GeneratedColumn<double> netCostBasis = GeneratedColumn<double>(
       'net_cost_basis', aliasedName, false,
-      type: DriftSqlType.double, requiredDuringInsert: true);
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(1));
   static const VerificationMeta _brokerCostBasisMeta =
       const VerificationMeta('brokerCostBasis');
   @override
   late final GeneratedColumn<double> brokerCostBasis = GeneratedColumn<double>(
       'broker_cost_basis', aliasedName, false,
-      type: DriftSqlType.double, requiredDuringInsert: true);
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(1));
   static const VerificationMeta _buyFeeTotalMeta =
       const VerificationMeta('buyFeeTotal');
   @override
   late final GeneratedColumn<double> buyFeeTotal = GeneratedColumn<double>(
       'buy_fee_total', aliasedName, false,
-      type: DriftSqlType.double, requiredDuringInsert: true);
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
   @override
   List<GeneratedColumn> get $columns => [
         accountId,
@@ -3229,40 +3330,30 @@ class $AssetsOnAccountsTable extends AssetsOnAccounts
     if (data.containsKey('value')) {
       context.handle(
           _valueMeta, value.isAcceptableOrUnknown(data['value']!, _valueMeta));
-    } else if (isInserting) {
-      context.missing(_valueMeta);
     }
     if (data.containsKey('shares_owned')) {
       context.handle(
           _sharesOwnedMeta,
           sharesOwned.isAcceptableOrUnknown(
               data['shares_owned']!, _sharesOwnedMeta));
-    } else if (isInserting) {
-      context.missing(_sharesOwnedMeta);
     }
     if (data.containsKey('net_cost_basis')) {
       context.handle(
           _netCostBasisMeta,
           netCostBasis.isAcceptableOrUnknown(
               data['net_cost_basis']!, _netCostBasisMeta));
-    } else if (isInserting) {
-      context.missing(_netCostBasisMeta);
     }
     if (data.containsKey('broker_cost_basis')) {
       context.handle(
           _brokerCostBasisMeta,
           brokerCostBasis.isAcceptableOrUnknown(
               data['broker_cost_basis']!, _brokerCostBasisMeta));
-    } else if (isInserting) {
-      context.missing(_brokerCostBasisMeta);
     }
     if (data.containsKey('buy_fee_total')) {
       context.handle(
           _buyFeeTotalMeta,
           buyFeeTotal.isAcceptableOrUnknown(
               data['buy_fee_total']!, _buyFeeTotalMeta));
-    } else if (isInserting) {
-      context.missing(_buyFeeTotalMeta);
     }
     return context;
   }
@@ -3451,19 +3542,14 @@ class AssetsOnAccountsCompanion extends UpdateCompanion<AssetOnAccount> {
   AssetsOnAccountsCompanion.insert({
     required int accountId,
     required int assetId,
-    required double value,
-    required double sharesOwned,
-    required double netCostBasis,
-    required double brokerCostBasis,
-    required double buyFeeTotal,
+    this.value = const Value.absent(),
+    this.sharesOwned = const Value.absent(),
+    this.netCostBasis = const Value.absent(),
+    this.brokerCostBasis = const Value.absent(),
+    this.buyFeeTotal = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : accountId = Value(accountId),
-        assetId = Value(assetId),
-        value = Value(value),
-        sharesOwned = Value(sharesOwned),
-        netCostBasis = Value(netCostBasis),
-        brokerCostBasis = Value(brokerCostBasis),
-        buyFeeTotal = Value(buyFeeTotal);
+        assetId = Value(assetId);
   static Insertable<AssetOnAccount> custom({
     Expression<int>? accountId,
     Expression<int>? assetId,
@@ -3921,6 +4007,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final Index goalsTargetDate = Index('goals_target_date',
       'CREATE INDEX goals_target_date ON goals (target_date)');
   late final AccountsDao accountsDao = AccountsDao(this as AppDatabase);
+  late final AnalysisDao analysisDao = AnalysisDao(this as AppDatabase);
   late final AssetsDao assetsDao = AssetsDao(this as AppDatabase);
   late final AssetsOnAccountsDao assetsOnAccountsDao =
       AssetsOnAccountsDao(this as AppDatabase);
@@ -3968,8 +4055,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
 typedef $$AccountsTableCreateCompanionBuilder = AccountsCompanion Function({
   Value<int> id,
   required String name,
-  required double balance,
-  required double initialBalance,
+  Value<double> balance,
+  Value<double> initialBalance,
   required AccountTypes type,
   Value<bool> isArchived,
 });
@@ -4707,8 +4794,8 @@ class $$AccountsTableTableManager extends RootTableManager<
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
             required String name,
-            required double balance,
-            required double initialBalance,
+            Value<double> balance = const Value.absent(),
+            Value<double> initialBalance = const Value.absent(),
             required AccountTypes type,
             Value<bool> isArchived = const Value.absent(),
           }) =>
@@ -5610,7 +5697,7 @@ typedef $$TransfersTableCreateCompanionBuilder = TransfersCompanion Function({
   required int sendingAccountId,
   required int receivingAccountId,
   Value<String?> notes,
-  required bool isGenerated,
+  Value<bool> isGenerated,
 });
 typedef $$TransfersTableUpdateCompanionBuilder = TransfersCompanion Function({
   Value<int> id,
@@ -5899,7 +5986,7 @@ class $$TransfersTableTableManager extends RootTableManager<
             required int sendingAccountId,
             required int receivingAccountId,
             Value<String?> notes = const Value.absent(),
-            required bool isGenerated,
+            Value<bool> isGenerated = const Value.absent(),
           }) =>
               TransfersCompanion.insert(
             id: id,
@@ -5988,10 +6075,10 @@ typedef $$TradesTableCreateCompanionBuilder = TradesCompanion Function({
   required double portfolioAccountValueDelta,
   required double shares,
   required double pricePerShare,
-  required double profitAndLossAbs,
-  required double profitAndLossRel,
-  required double tradingFee,
-  required double tax,
+  Value<double> profitAndLossAbs,
+  Value<double> profitAndLossRel,
+  Value<double> tradingFee,
+  Value<double> tax,
   required int clearingAccountId,
   required int portfolioAccountId,
 });
@@ -6445,10 +6532,10 @@ class $$TradesTableTableManager extends RootTableManager<
             required double portfolioAccountValueDelta,
             required double shares,
             required double pricePerShare,
-            required double profitAndLossAbs,
-            required double profitAndLossRel,
-            required double tradingFee,
-            required double tax,
+            Value<double> profitAndLossAbs = const Value.absent(),
+            Value<double> profitAndLossRel = const Value.absent(),
+            Value<double> tradingFee = const Value.absent(),
+            Value<double> tax = const Value.absent(),
             required int clearingAccountId,
             required int portfolioAccountId,
           }) =>
@@ -6553,7 +6640,8 @@ typedef $$PeriodicBookingsTableCreateCompanionBuilder
   required int accountId,
   required String category,
   Value<String?> notes,
-  required Cycles cycle,
+  Value<Cycles> cycle,
+  Value<double> monthlyAverageFactor,
 });
 typedef $$PeriodicBookingsTableUpdateCompanionBuilder
     = PeriodicBookingsCompanion Function({
@@ -6564,6 +6652,7 @@ typedef $$PeriodicBookingsTableUpdateCompanionBuilder
   Value<String> category,
   Value<String?> notes,
   Value<Cycles> cycle,
+  Value<double> monthlyAverageFactor,
 });
 
 final class $$PeriodicBookingsTableReferences extends BaseReferences<
@@ -6617,6 +6706,10 @@ class $$PeriodicBookingsTableFilterComposer
           column: $table.cycle,
           builder: (column) => ColumnWithTypeConverterFilters(column));
 
+  ColumnFilters<double> get monthlyAverageFactor => $composableBuilder(
+      column: $table.monthlyAverageFactor,
+      builder: (column) => ColumnFilters(column));
+
   $$AccountsTableFilterComposer get accountId {
     final $$AccountsTableFilterComposer composer = $composerBuilder(
         composer: this,
@@ -6666,6 +6759,10 @@ class $$PeriodicBookingsTableOrderingComposer
   ColumnOrderings<String> get cycle => $composableBuilder(
       column: $table.cycle, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<double> get monthlyAverageFactor => $composableBuilder(
+      column: $table.monthlyAverageFactor,
+      builder: (column) => ColumnOrderings(column));
+
   $$AccountsTableOrderingComposer get accountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
         composer: this,
@@ -6713,6 +6810,9 @@ class $$PeriodicBookingsTableAnnotationComposer
 
   GeneratedColumnWithTypeConverter<Cycles, String> get cycle =>
       $composableBuilder(column: $table.cycle, builder: (column) => column);
+
+  GeneratedColumn<double> get monthlyAverageFactor => $composableBuilder(
+      column: $table.monthlyAverageFactor, builder: (column) => column);
 
   $$AccountsTableAnnotationComposer get accountId {
     final $$AccountsTableAnnotationComposer composer = $composerBuilder(
@@ -6766,6 +6866,7 @@ class $$PeriodicBookingsTableTableManager extends RootTableManager<
             Value<String> category = const Value.absent(),
             Value<String?> notes = const Value.absent(),
             Value<Cycles> cycle = const Value.absent(),
+            Value<double> monthlyAverageFactor = const Value.absent(),
           }) =>
               PeriodicBookingsCompanion(
             id: id,
@@ -6775,6 +6876,7 @@ class $$PeriodicBookingsTableTableManager extends RootTableManager<
             category: category,
             notes: notes,
             cycle: cycle,
+            monthlyAverageFactor: monthlyAverageFactor,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -6783,7 +6885,8 @@ class $$PeriodicBookingsTableTableManager extends RootTableManager<
             required int accountId,
             required String category,
             Value<String?> notes = const Value.absent(),
-            required Cycles cycle,
+            Value<Cycles> cycle = const Value.absent(),
+            Value<double> monthlyAverageFactor = const Value.absent(),
           }) =>
               PeriodicBookingsCompanion.insert(
             id: id,
@@ -6793,6 +6896,7 @@ class $$PeriodicBookingsTableTableManager extends RootTableManager<
             category: category,
             notes: notes,
             cycle: cycle,
+            monthlyAverageFactor: monthlyAverageFactor,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (
@@ -6859,7 +6963,8 @@ typedef $$PeriodicTransfersTableCreateCompanionBuilder
   required int sendingAccountId,
   required int receivingAccountId,
   Value<String?> notes,
-  required Cycles cycle,
+  Value<Cycles> cycle,
+  Value<double> monthlyAverageFactor,
 });
 typedef $$PeriodicTransfersTableUpdateCompanionBuilder
     = PeriodicTransfersCompanion Function({
@@ -6870,6 +6975,7 @@ typedef $$PeriodicTransfersTableUpdateCompanionBuilder
   Value<int> receivingAccountId,
   Value<String?> notes,
   Value<Cycles> cycle,
+  Value<double> monthlyAverageFactor,
 });
 
 final class $$PeriodicTransfersTableReferences extends BaseReferences<
@@ -6934,6 +7040,10 @@ class $$PeriodicTransfersTableFilterComposer
       $composableBuilder(
           column: $table.cycle,
           builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnFilters<double> get monthlyAverageFactor => $composableBuilder(
+      column: $table.monthlyAverageFactor,
+      builder: (column) => ColumnFilters(column));
 
   $$AccountsTableFilterComposer get sendingAccountId {
     final $$AccountsTableFilterComposer composer = $composerBuilder(
@@ -7001,6 +7111,10 @@ class $$PeriodicTransfersTableOrderingComposer
   ColumnOrderings<String> get cycle => $composableBuilder(
       column: $table.cycle, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<double> get monthlyAverageFactor => $composableBuilder(
+      column: $table.monthlyAverageFactor,
+      builder: (column) => ColumnOrderings(column));
+
   $$AccountsTableOrderingComposer get sendingAccountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
         composer: this,
@@ -7065,6 +7179,9 @@ class $$PeriodicTransfersTableAnnotationComposer
 
   GeneratedColumnWithTypeConverter<Cycles, String> get cycle =>
       $composableBuilder(column: $table.cycle, builder: (column) => column);
+
+  GeneratedColumn<double> get monthlyAverageFactor => $composableBuilder(
+      column: $table.monthlyAverageFactor, builder: (column) => column);
 
   $$AccountsTableAnnotationComposer get sendingAccountId {
     final $$AccountsTableAnnotationComposer composer = $composerBuilder(
@@ -7139,6 +7256,7 @@ class $$PeriodicTransfersTableTableManager extends RootTableManager<
             Value<int> receivingAccountId = const Value.absent(),
             Value<String?> notes = const Value.absent(),
             Value<Cycles> cycle = const Value.absent(),
+            Value<double> monthlyAverageFactor = const Value.absent(),
           }) =>
               PeriodicTransfersCompanion(
             id: id,
@@ -7148,6 +7266,7 @@ class $$PeriodicTransfersTableTableManager extends RootTableManager<
             receivingAccountId: receivingAccountId,
             notes: notes,
             cycle: cycle,
+            monthlyAverageFactor: monthlyAverageFactor,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -7156,7 +7275,8 @@ class $$PeriodicTransfersTableTableManager extends RootTableManager<
             required int sendingAccountId,
             required int receivingAccountId,
             Value<String?> notes = const Value.absent(),
-            required Cycles cycle,
+            Value<Cycles> cycle = const Value.absent(),
+            Value<double> monthlyAverageFactor = const Value.absent(),
           }) =>
               PeriodicTransfersCompanion.insert(
             id: id,
@@ -7166,6 +7286,7 @@ class $$PeriodicTransfersTableTableManager extends RootTableManager<
             receivingAccountId: receivingAccountId,
             notes: notes,
             cycle: cycle,
+            monthlyAverageFactor: monthlyAverageFactor,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (
@@ -7240,11 +7361,11 @@ typedef $$AssetsOnAccountsTableCreateCompanionBuilder
     = AssetsOnAccountsCompanion Function({
   required int accountId,
   required int assetId,
-  required double value,
-  required double sharesOwned,
-  required double netCostBasis,
-  required double brokerCostBasis,
-  required double buyFeeTotal,
+  Value<double> value,
+  Value<double> sharesOwned,
+  Value<double> netCostBasis,
+  Value<double> brokerCostBasis,
+  Value<double> buyFeeTotal,
   Value<int> rowid,
 });
 typedef $$AssetsOnAccountsTableUpdateCompanionBuilder
@@ -7538,11 +7659,11 @@ class $$AssetsOnAccountsTableTableManager extends RootTableManager<
           createCompanionCallback: ({
             required int accountId,
             required int assetId,
-            required double value,
-            required double sharesOwned,
-            required double netCostBasis,
-            required double brokerCostBasis,
-            required double buyFeeTotal,
+            Value<double> value = const Value.absent(),
+            Value<double> sharesOwned = const Value.absent(),
+            Value<double> netCostBasis = const Value.absent(),
+            Value<double> brokerCostBasis = const Value.absent(),
+            Value<double> buyFeeTotal = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               AssetsOnAccountsCompanion.insert(

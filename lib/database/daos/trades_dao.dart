@@ -17,6 +17,8 @@ class TradeWithAsset {
 class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
   TradesDao(super.db);
 
+  Future<List<Trade>> getAllTrades() => select(trades).get();
+
   Stream<List<TradeWithAsset>> watchAllTrades() {
     return (select(trades)
           ..orderBy([(t) => OrderingTerm.desc(t.datetime)]))

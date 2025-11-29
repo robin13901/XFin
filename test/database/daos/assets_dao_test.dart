@@ -25,7 +25,8 @@ void main() {
       expect(assets, isEmpty);
     });
 
-    test('"insert" inserts a new asset and watchAllAssets reflects it', () async {
+    test('"insert" inserts a new asset and watchAllAssets reflects it',
+        () async {
       final newAsset = AssetsCompanion.insert(
         name: 'Test Asset',
         type: AssetTypes.stock,
@@ -146,37 +147,33 @@ void main() {
         name: 'Asset With Trades',
         type: AssetTypes.stock,
         tickerSymbol: 'AWT',
-        value: const Value(100.0), 
-        sharesOwned: const Value(10.0), 
-        netCostBasis: const Value(1000.0), 
-        brokerCostBasis: const Value(0.0), 
+        value: const Value(100.0),
+        sharesOwned: const Value(10.0),
+        netCostBasis: const Value(1000.0),
+        brokerCostBasis: const Value(0.0),
         buyFeeTotal: const Value(0.0),
       );
       final assetId = await assetsDao.insert(asset);
       final account = await db.into(db.accounts).insertReturning(
-        AccountsCompanion.insert(
-          name: 'Clearing Account',
-          balance: 10000.0,
-          initialBalance: 10000.0,
-          type: AccountTypes.cash,
-        ),
-      );
+            AccountsCompanion.insert(
+              name: 'Clearing Account',
+              balance: const Value(1000.0),
+              initialBalance: const Value(1000.0),
+              type: AccountTypes.cash,
+            ),
+          );
 
       await db.into(db.trades).insert(TradesCompanion.insert(
-        assetId: assetId,
-        datetime: 20240101,
-        type: TradeTypes.buy,
-        clearingAccountValueDelta: -1001.0,
-        portfolioAccountValueDelta: 1000.0,
-        shares: 10.0,
-        pricePerShare: 100.0,
-        profitAndLossAbs: 0.0,
-        profitAndLossRel: 0.0,
-        tradingFee: -1.0,
-        tax: 0.0,
-        clearingAccountId: account.id,
-        portfolioAccountId: account.id, // Using same for simplicity
-      ));
+            assetId: assetId,
+            datetime: 20240101,
+            type: TradeTypes.buy,
+            clearingAccountValueDelta: -1001.0,
+            portfolioAccountValueDelta: 1000.0,
+            shares: 10.0,
+            pricePerShare: 100.0,
+            clearingAccountId: account.id,
+            portfolioAccountId: account.id, // Using same for simplicity
+          ));
 
       expect(await assetsDao.hasTrades(assetId), isTrue);
     });
@@ -186,10 +183,10 @@ void main() {
         name: 'Asset Without Trades',
         type: AssetTypes.stock,
         tickerSymbol: 'AWO',
-        value: const Value(100.0), 
-        sharesOwned: const Value(10.0), 
-        netCostBasis: const Value(1000.0), 
-        brokerCostBasis: const Value(0.0), 
+        value: const Value(100.0),
+        sharesOwned: const Value(10.0),
+        netCostBasis: const Value(1000.0),
+        brokerCostBasis: const Value(0.0),
         buyFeeTotal: const Value(0.0),
       );
       final assetId = await assetsDao.insert(asset);
@@ -197,50 +194,44 @@ void main() {
       expect(await assetsDao.hasTrades(assetId), isFalse);
     });
 
-    test('hasAssetsOnAccounts returns true if asset is on an account', () async {
+    test('hasAssetsOnAccounts returns true if asset is on an account',
+        () async {
       final asset = AssetsCompanion.insert(
         name: 'Asset On Account',
         type: AssetTypes.stock,
         tickerSymbol: 'AOA',
-        value: const Value(100.0), 
-        sharesOwned: const Value(10.0), 
-        netCostBasis: const Value(1000.0), 
-        brokerCostBasis: const Value(0.0), 
+        value: const Value(100.0),
+        sharesOwned: const Value(10.0),
+        netCostBasis: const Value(1000.0),
+        brokerCostBasis: const Value(0.0),
         buyFeeTotal: const Value(0.0),
       );
       final assetId = await assetsDao.insert(asset);
-      
-      final account = await db.into(db.accounts).insertReturning(
-        AccountsCompanion.insert(
-          name: 'Portfolio Account',
-          balance: 0.0,
-          initialBalance: 0.0,
-          type: AccountTypes.portfolio,
-        ),
-      );
 
-      await db.into(db.assetsOnAccounts).insert(AssetsOnAccountsCompanion.insert(
-        assetId: assetId,
-        accountId: account.id,
-        value: 0.0,
-        sharesOwned: 5.0,
-        netCostBasis: 0.0,
-        brokerCostBasis: 0.0,
-        buyFeeTotal: 0.0,
-      ));
+      final account = await db.into(db.accounts).insertReturning(
+            AccountsCompanion.insert(
+              name: 'Portfolio Account',
+              type: AccountTypes.portfolio,
+            ),
+          );
+
+      await db.into(db.assetsOnAccounts).insert(
+          AssetsOnAccountsCompanion.insert(
+              assetId: assetId, accountId: account.id));
 
       expect(await assetsDao.hasAssetsOnAccounts(assetId), isTrue);
     });
 
-    test('hasAssetsOnAccounts returns false if asset is not on an account', () async {
+    test('hasAssetsOnAccounts returns false if asset is not on an account',
+        () async {
       final asset = AssetsCompanion.insert(
         name: 'Asset Not On Account',
         type: AssetTypes.stock,
         tickerSymbol: 'ANOA',
-        value: const Value(100.0), 
-        sharesOwned: const Value(10.0), 
-        netCostBasis: const Value(1000.0), 
-        brokerCostBasis: const Value(0.0), 
+        value: const Value(100.0),
+        sharesOwned: const Value(10.0),
+        netCostBasis: const Value(1000.0),
+        brokerCostBasis: const Value(0.0),
         buyFeeTotal: const Value(0.0),
       );
       final assetId = await assetsDao.insert(asset);

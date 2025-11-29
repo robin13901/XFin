@@ -26,6 +26,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   oktoast: ^3.4.0
   shared_preferences: ^2.2.3
+  fl_chart: ^0.68.0
 
 dev_dependencies:
   flutter_test:

@@ -40,8 +40,7 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
           tbl.accountId.equals(newBooking.accountId.value) &
           tbl.excludeFromAverage.equals(newBooking.excludeFromAverage.value) &
           tbl.notes.isNull() &
-          ((tbl.amount.isBiggerThanValue(0) & Constant(newAmount > 0)) |
-              (tbl.amount.isSmallerThanValue(0) & Constant(newAmount < 0))));
+          ((tbl.amount.isBiggerThanValue(0) & Constant(newAmount > 0)) | (tbl.amount.isSmallerThanValue(0) & Constant(newAmount < 0))));
     return await query.getSingleOrNull();
   }
 
@@ -64,15 +63,14 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
 
   Future<Booking> getBooking(int id) =>
       (select(bookings)..where((tbl) => tbl.id.equals(id))).getSingle();
+  
+  Future<List<Booking>> getAllBookings() => select(bookings).get();
 
   Future<void> createBooking(BookingsCompanion booking) {
     return transaction(() async {
       await _addBooking(booking);
-      await db.accountsDao
-          .updateBalance(booking.accountId.value, booking.amount.value);
-
-      await db.assetsOnAccountsDao.updateBaseCurrencyAssetOnAccount(
-          booking.accountId.value, booking.amount.value);
+      await db.accountsDao.updateBalance(booking.accountId.value, booking.amount.value);
+      await db.assetsOnAccountsDao.updateBaseCurrencyAssetOnAccount(booking.accountId.value, booking.amount.value);
       await db.assetsDao.updateBaseCurrencyAsset(booking.amount.value);
     });
   }
@@ -80,27 +78,21 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
   Future<void> updateBooking(Booking oldBooking, BookingsCompanion newBooking) {
     return transaction(() async {
       await _updateBooking(newBooking);
-
       final oldAmount = oldBooking.amount;
       final newAmount = newBooking.amount.value;
       final amountDelta = newAmount - oldAmount;
       final oldAccountId = oldBooking.accountId;
       final newAccountId = newBooking.accountId.value;
-
       await db.assetsDao.updateBaseCurrencyAsset(amountDelta);
-
       if (oldAccountId == newAccountId) {
         await db.accountsDao.updateBalance(oldAccountId, amountDelta);
-        await db.assetsOnAccountsDao
-            .updateBaseCurrencyAssetOnAccount(oldAccountId, amountDelta);
+        await db.assetsOnAccountsDao.updateBaseCurrencyAssetOnAccount(oldAccountId, amountDelta);
       } else {
         await db.accountsDao.updateBalance(oldAccountId, -oldAmount);
         await db.assetsOnAccountsDao
             .updateBaseCurrencyAssetOnAccount(oldAccountId, -oldAmount);
-
         await db.accountsDao.updateBalance(newAccountId, newAmount);
-        await db.assetsOnAccountsDao
-            .updateBaseCurrencyAssetOnAccount(newAccountId, newAmount);
+        await db.assetsOnAccountsDao.updateBaseCurrencyAssetOnAccount(newAccountId, newAmount);
       }
     });
   }
@@ -110,8 +102,7 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
       final booking = await getBooking(id);
       await _deleteBooking(id);
       await db.accountsDao.updateBalance(booking.accountId, -booking.amount);
-      await db.assetsOnAccountsDao
-          .updateBaseCurrencyAssetOnAccount(booking.accountId, -booking.amount);
+      await db.assetsOnAccountsDao.updateBaseCurrencyAssetOnAccount(booking.accountId, -booking.amount);
       await db.assetsDao.updateBaseCurrencyAsset(-booking.amount);
     });
   }
@@ -124,6 +115,6 @@ class BookingWithAccount {
 
   BookingWithAccount({
     required this.booking,
-    this.account,
+    this.account
   });
 }

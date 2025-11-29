@@ -111,14 +111,8 @@ void main() {
 
       await db.into(db.assets).insert(AssetsCompanion.insert(
           name: 'EUR', type: AssetTypes.currency, tickerSymbol: 'EUR'));
-      await db.into(db.assetsOnAccounts).insert(AssetsOnAccountsCompanion.insert(
-          accountId: account.id,
-          assetId: 1,
-          value: 0,
-          sharesOwned: 0,
-          netCostBasis: 0,
-          brokerCostBasis: 0,
-          buyFeeTotal: 0));
+      await db.into(db.assetsOnAccounts).insert(
+          AssetsOnAccountsCompanion.insert(accountId: account.id, assetId: 1));
 
       booking1 = Booking(
         id: 1,
@@ -180,7 +174,7 @@ void main() {
     testWidgets(
         'tapping a list item opens BookingForm for editing',
         (tester) => tester.runAsync(() async {
-                            await pumpWidget(tester);
+              await pumpWidget(tester);
               await tester.pumpAndSettle();
 
               await tester.tap(find.text('Income'));

@@ -8,6 +8,21 @@ part 'periodic_bookings_dao.g.dart';
 class PeriodicBookingsDao extends DatabaseAccessor<AppDatabase> with _$PeriodicBookingsDaoMixin {
   PeriodicBookingsDao(super.db);
 
+  // double _getCycleFactor(Cycles cycle) {
+  //   switch (cycle) {
+  //     case Cycles.daily:
+  //       return 30.436875;
+  //     case Cycles.weekly:
+  //       return 30.436875 / 7;
+  //     case Cycles.monthly:
+  //       return 1.0;
+  //     case Cycles.quarterly:
+  //       return 1.0 / 3.0;
+  //     case Cycles.yearly:
+  //       return 1.0 / 12.0;
+  //   }
+  // }
+
   void _validateDate(int dateInt) {
     final dateString = dateInt.toString();
     if (dateString.length != 8) {
