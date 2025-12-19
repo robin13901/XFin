@@ -92,34 +92,34 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
   Future<double> getPositivePnLForMonth(
       int startOfMonth, int endOfMonth) async {
     return (selectOnly(trades)
-          ..addColumns([trades.profitAndLossAbs.sum()])
+          ..addColumns([trades.profitAndLoss.sum()])
           ..where(
-            trades.profitAndLossAbs.isBiggerThanValue(0) &
+            trades.profitAndLoss.isBiggerThanValue(0) &
                 trades.datetime.isBetweenValues(
                     startOfMonth * 1000000, endOfMonth * 1000000),
           ))
-        .map((row) => row.read(trades.profitAndLossAbs.sum()) ?? 0.0)
+        .map((row) => row.read(trades.profitAndLoss.sum()) ?? 0.0)
         .getSingle();
   }
 
   Future<double> getNegativePnLForMonth(
       int startOfMonth, int endOfMonth) async {
     return (selectOnly(trades)
-          ..addColumns([trades.profitAndLossAbs.sum()])
-          ..where(trades.profitAndLossAbs.isSmallerThanValue(0) &
+          ..addColumns([trades.profitAndLoss.sum()])
+          ..where(trades.profitAndLoss.isSmallerThanValue(0) &
               trades.datetime.isBetweenValues(
                   startOfMonth * 1000000, endOfMonth * 1000000)))
-        .map((row) => row.read(trades.profitAndLossAbs.sum()) ?? 0.0)
+        .map((row) => row.read(trades.profitAndLoss.sum()) ?? 0.0)
         .getSingle();
   }
 
-  Future<double> getTradingFeesForMonth(
+  Future<double> getFeesForMonth(
       int startOfMonth, int endOfMonth) async {
     return (selectOnly(trades)
-          ..addColumns([trades.tradingFee.sum()])
+          ..addColumns([trades.fee.sum()])
           ..where(trades.datetime
               .isBetweenValues(startOfMonth * 1000000, endOfMonth * 1000000)))
-        .map((row) => row.read(trades.tradingFee.sum()) ?? 0.0)
+        .map((row) => row.read(trades.fee.sum()) ?? 0.0)
         .getSingle();
   }
 
@@ -134,23 +134,23 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
 
   Future<double> getTotalPositivePnL() async {
     return (selectOnly(trades)
-          ..addColumns([trades.profitAndLossAbs.sum()])
-          ..where(trades.profitAndLossAbs.isBiggerThanValue(0)))
-        .map((row) => row.read(trades.profitAndLossAbs.sum()) ?? 0.0)
+          ..addColumns([trades.profitAndLoss.sum()])
+          ..where(trades.profitAndLoss.isBiggerThanValue(0)))
+        .map((row) => row.read(trades.profitAndLoss.sum()) ?? 0.0)
         .getSingle();
   }
 
   Future<double> getTotalNegativePnL() async {
     return (selectOnly(trades)
-          ..addColumns([trades.profitAndLossAbs.sum()])
-          ..where(trades.profitAndLossAbs.isSmallerThanValue(0)))
-        .map((row) => row.read(trades.profitAndLossAbs.sum()) ?? 0.0)
+          ..addColumns([trades.profitAndLoss.sum()])
+          ..where(trades.profitAndLoss.isSmallerThanValue(0)))
+        .map((row) => row.read(trades.profitAndLoss.sum()) ?? 0.0)
         .getSingle();
   }
 
-  Future<double> getTotalTradingFees() async {
-    return (selectOnly(trades)..addColumns([trades.tradingFee.sum()]))
-        .map((row) => row.read(trades.tradingFee.sum()) ?? 0.0)
+  Future<double> getTotalFees() async {
+    return (selectOnly(trades)..addColumns([trades.fee.sum()]))
+        .map((row) => row.read(trades.fee.sum()) ?? 0.0)
         .getSingle();
   }
 
@@ -165,10 +165,10 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
     final (start, end) = _getMonthStartEnd(date);
 
     final bookingsFuture = (selectOnly(bookings)
-          ..addColumns([bookings.amount.sum()])
-          ..where(bookings.amount.isBiggerThanValue(0) &
+          ..addColumns([bookings.value.sum()])
+          ..where(bookings.value.isBiggerThanValue(0) &
               bookings.date.isBetweenValues(start, end)))
-        .map((row) => row.read(bookings.amount.sum()) ?? 0.0)
+        .map((row) => row.read(bookings.value.sum()) ?? 0.0)
         .getSingle();
 
     final positivePnLFuture = getPositivePnLForMonth(start, end);
@@ -183,14 +183,14 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
     final (start, end) = _getMonthStartEnd(date);
 
     final bookingsFuture = (selectOnly(bookings)
-          ..addColumns([bookings.amount.sum()])
-          ..where(bookings.amount.isSmallerThanValue(0) &
+          ..addColumns([bookings.value.sum()])
+          ..where(bookings.value.isSmallerThanValue(0) &
               bookings.date.isBetweenValues(start, end)))
-        .map((row) => row.read(bookings.amount.sum()) ?? 0.0)
+        .map((row) => row.read(bookings.value.sum()) ?? 0.0)
         .getSingle();
 
     final negativePnLFuture = getNegativePnLForMonth(start, end);
-    final tradingFeesFuture = getTradingFeesForMonth(start, end);
+    final tradingFeesFuture = getFeesForMonth(start, end);
     final taxFuture = getTaxForMonth(start, end);
 
     final bookingsTotal = await bookingsFuture;
@@ -205,13 +205,13 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
     final (start, end) = _getMonthStartEnd(date);
 
     final bookingsFuture = (selectOnly(bookings)
-          ..addColumns([bookings.amount.sum()])
+          ..addColumns([bookings.value.sum()])
           ..where(bookings.date.isBetweenValues(start, end)))
-        .map((row) => row.read(bookings.amount.sum()) ?? 0.0)
+        .map((row) => row.read(bookings.value.sum()) ?? 0.0)
         .getSingle();
 
-    final tradeResultExpression = trades.profitAndLossAbs.sum() -
-        trades.tradingFee.sum() -
+    final tradeResultExpression = trades.profitAndLoss.sum() -
+        trades.fee.sum() -
         trades.tax.sum();
 
     final tradeFuture = (selectOnly(trades)
@@ -231,15 +231,15 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
     final (start, end) = _getMonthStartEnd(date);
 
     final bookingsFuture = (selectOnly(bookings)
-          ..addColumns([bookings.category, bookings.amount.sum()])
+          ..addColumns([bookings.category, bookings.value.sum()])
           ..where(
-            bookings.amount.isBiggerThanValue(0) &
+            bookings.value.isBiggerThanValue(0) &
                 bookings.date.isBetweenValues(start, end),
           )
           ..groupBy([bookings.category]))
         .map((row) => {
               'category': row.read(bookings.category),
-              'amount': row.read(bookings.amount.sum()) ?? 0.0,
+              'amount': row.read(bookings.value.sum()) ?? 0.0,
             })
         .get();
 
@@ -265,20 +265,20 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
     final (start, end) = _getMonthStartEnd(date);
 
     final bookingsFuture = (selectOnly(bookings)
-          ..addColumns([bookings.category, bookings.amount.sum()])
+          ..addColumns([bookings.category, bookings.value.sum()])
           ..where(
-            bookings.amount.isSmallerThanValue(0) &
+            bookings.value.isSmallerThanValue(0) &
                 bookings.date.isBetweenValues(start, end),
           )
           ..groupBy([bookings.category]))
         .map((row) => {
               'category': row.read(bookings.category),
-              'amount': row.read(bookings.amount.sum()) ?? 0.0,
+              'amount': row.read(bookings.value.sum()) ?? 0.0,
             })
         .get();
 
     final negativePnLFuture = getNegativePnLForMonth(start, end);
-    final tradingFeesFuture = getTradingFeesForMonth(start, end);
+    final tradingFeesFuture = getFeesForMonth(start, end);
     final taxFuture = getTaxForMonth(start, end);
 
     final bookingsRows = await bookingsFuture;
@@ -304,18 +304,18 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
   // Monthly
   Future<double> getMonthlyInflows() async {
     final bookingsFuture = (selectOnly(bookings)
-          ..addColumns([bookings.amount.sum()])
-          ..where(bookings.amount.isBiggerThanValue(0) &
+          ..addColumns([bookings.value.sum()])
+          ..where(bookings.value.isBiggerThanValue(0) &
               bookings.isGenerated.equals(false) &
               bookings.excludeFromAverage.equals(false)))
-        .map((row) => row.read(bookings.amount.sum()) ?? 0.0)
+        .map((row) => row.read(bookings.value.sum()) ?? 0.0)
         .getSingle();
 
     final periodicBookingsFuture = (select(periodicBookings)
-          ..where((pb) => pb.amount.isBiggerThanValue(0)))
+          ..where((pb) => pb.shares.isBiggerThanValue(0)))
         .get()
         .then((rows) => rows.fold<double>(0.0,
-            (acc, row) => acc + (row.amount * row.monthlyAverageFactor)));
+            (acc, row) => acc + (row.value * row.monthlyAverageFactor)));
 
     final positivePnLFuture = getTotalPositivePnL();
 
@@ -332,21 +332,21 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
 
   Future<double> getMonthlyOutflows() async {
     final bookingsFuture = (selectOnly(bookings)
-          ..addColumns([bookings.amount.sum()])
-          ..where(bookings.amount.isSmallerThanValue(0) &
+          ..addColumns([bookings.value.sum()])
+          ..where(bookings.value.isSmallerThanValue(0) &
               bookings.isGenerated.equals(false) &
               bookings.excludeFromAverage.equals(false)))
-        .map((row) => row.read(bookings.amount.sum()) ?? 0.0)
+        .map((row) => row.read(bookings.value.sum()) ?? 0.0)
         .getSingle();
 
     final periodicBookingsFuture = (select(periodicBookings)
-          ..where((pb) => pb.amount.isSmallerThanValue(0)))
+          ..where((pb) => pb.shares.isSmallerThanValue(0)))
         .get()
         .then((rows) => rows.fold<double>(0.0,
-            (acc, row) => acc + (row.amount * row.monthlyAverageFactor)));
+            (acc, row) => acc + (row.value * row.monthlyAverageFactor)));
 
     final negativePnLFuture = getTotalNegativePnL();
-    final tradingFeesFuture = getTotalTradingFees();
+    final tradingFeesFuture = getTotalFees();
     final taxFuture = getTotalTax();
     final monthsInTimeFrameFuture = _getMonthsInTimeFrame();
 
@@ -364,18 +364,18 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
 
   Future<double> getMonthlyProfitAndLoss() async {
     final bookingsFuture = (selectOnly(bookings)
-          ..addColumns([bookings.amount.sum()])
+          ..addColumns([bookings.value.sum()])
           ..where(bookings.isGenerated.equals(false) &
               bookings.excludeFromAverage.equals(false)))
-        .map((row) => row.read(bookings.amount.sum()) ?? 0.0)
+        .map((row) => row.read(bookings.value.sum()) ?? 0.0)
         .getSingle();
 
     final periodicBookingsFuture = (select(periodicBookings)).get().then((rows) =>
         rows.fold<double>(0.0,
-            (acc, row) => acc + (row.amount * row.monthlyAverageFactor)));
+            (acc, row) => acc + (row.value * row.monthlyAverageFactor)));
 
-    final tradeResultExpression = trades.profitAndLossAbs.sum() -
-        trades.tradingFee.sum() -
+    final tradeResultExpression = trades.profitAndLoss.sum() -
+        trades.fee.sum() -
         trades.tax.sum();
 
     final tradesFuture = (selectOnly(trades)
@@ -395,26 +395,26 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
 
   Future<Map<String, double>> getMonthlyCategoryInflows() async {
     final bookingsFuture = (selectOnly(bookings)
-          ..addColumns([bookings.category, bookings.amount.sum()])
-          ..where(bookings.amount.isBiggerThanValue(0) &
+          ..addColumns([bookings.category, bookings.value.sum()])
+          ..where(bookings.value.isBiggerThanValue(0) &
               bookings.isGenerated.equals(false) &
               bookings.excludeFromAverage.equals(false))
           ..groupBy([bookings.category]))
         .map((row) => {
               'category': row.read(bookings.category),
-              'amount': row.read(bookings.amount.sum()) ?? 0.0,
+              'amount': row.read(bookings.value.sum()) ?? 0.0,
             })
         .get();
 
     final periodicBookingsFuture = (selectOnly(periodicBookings)
       ..addColumns([
         periodicBookings.category,
-        periodicBookings.amount * periodicBookings.monthlyAverageFactor,
+        periodicBookings.value * periodicBookings.monthlyAverageFactor,
       ])
-      ..where(periodicBookings.amount.isBiggerThanValue(0)))
+      ..where(periodicBookings.value.isBiggerThanValue(0)))
         .map((row) => {
       'category': row.read(bookings.category),
-      'amount': row.read(periodicBookings.amount *
+      'amount': row.read(periodicBookings.value *
           periodicBookings.monthlyAverageFactor) ??
           0.0,
     })
@@ -447,33 +447,33 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
 
   Future<Map<String, double>> getMonthlyCategoryOutflows() async {
     final bookingsFuture = (selectOnly(bookings)
-          ..addColumns([bookings.category, bookings.amount.sum()])
-          ..where(bookings.amount.isSmallerThanValue(0) &
+          ..addColumns([bookings.category, bookings.value.sum()])
+          ..where(bookings.value.isSmallerThanValue(0) &
               bookings.isGenerated.equals(false) &
               bookings.excludeFromAverage.equals(false))
           ..groupBy([bookings.category]))
         .map((row) => {
               'category': row.read(bookings.category),
-              'amount': row.read(bookings.amount.sum()) ?? 0.0,
+              'amount': row.read(bookings.value.sum()) ?? 0.0,
             })
         .get();
 
     final periodicBookingsFuture = (selectOnly(periodicBookings)
           ..addColumns([
             periodicBookings.category,
-            periodicBookings.amount * periodicBookings.monthlyAverageFactor,
+            periodicBookings.value * periodicBookings.monthlyAverageFactor,
           ])
-          ..where(periodicBookings.amount.isSmallerThanValue(0)))
+          ..where(periodicBookings.value.isSmallerThanValue(0)))
         .map((row) => {
               'category': row.read(bookings.category),
-              'amount': row.read(periodicBookings.amount *
+              'amount': row.read(periodicBookings.value *
                       periodicBookings.monthlyAverageFactor) ??
                   0.0,
             })
         .get();
 
     final negativePnLFuture = getTotalNegativePnL();
-    final tradingFeesFuture = getTotalTradingFees();
+    final tradingFeesFuture = getTotalFees();
     final taxFuture = getTotalTax();
     final monthsInTimeFrameFuture = _getMonthsInTimeFrame();
 
@@ -519,14 +519,14 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
 
     for (final booking in allBookings) {
       final date = _parseDate(booking.date);
-      dailyDeltas[date] = (dailyDeltas[date] ?? 0) + booking.amount;
+      dailyDeltas[date] = (dailyDeltas[date] ?? 0) + booking.value;
     }
 
     for (final trade in allTrades) {
       final date = _parseDate(trade.datetime);
       dailyDeltas[date] = (dailyDeltas[date] ?? 0) +
-          trade.clearingAccountValueDelta +
-          trade.portfolioAccountValueDelta;
+          trade.sourceAccountValueDelta +
+          trade.targetAccountValueDelta;
     }
 
     if (dailyDeltas.isEmpty) {

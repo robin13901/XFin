@@ -4,6 +4,7 @@ part of 'goals_dao.dart';
 
 // ignore_for_file: type=lint
 mixin _$GoalsDaoMixin on DatabaseAccessor<AppDatabase> {
+  $AssetsTable get assets => attachedDatabase.assets;
   $AccountsTable get accounts => attachedDatabase.accounts;
   $GoalsTable get goals => attachedDatabase.goals;
 }

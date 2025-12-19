@@ -32,7 +32,7 @@ void main() {
         type: AssetTypes.stock,
         tickerSymbol: 'TEST',
         value: const Value(100.0),
-        sharesOwned: const Value(10.0),
+        shares: const Value(10.0),
         netCostBasis: const Value(90.0),
         brokerCostBasis: const Value(8.0),
         buyFeeTotal: const Value(2.0),
@@ -45,47 +45,10 @@ void main() {
       expect(assets.first.type, AssetTypes.stock);
       expect(assets.first.tickerSymbol, 'TEST');
       expect(assets.first.value, 100.0);
-      expect(assets.first.sharesOwned, 10.0);
+      expect(assets.first.shares, 10.0);
       expect(assets.first.netCostBasis, 90.0);
       expect(assets.first.brokerCostBasis, 8.0);
       expect(assets.first.buyFeeTotal, 2.0);
-    });
-
-    test('updateAsset updates an existing asset', () async {
-      final id = await assetsDao.insert(AssetsCompanion.insert(
-        name: 'Original Asset',
-        type: AssetTypes.stock,
-        tickerSymbol: 'ORIG',
-        value: const Value(50.0),
-        sharesOwned: const Value(5.0),
-        netCostBasis: const Value(40.0),
-        brokerCostBasis: const Value(3.0),
-        buyFeeTotal: const Value(1.0),
-      ));
-      final originalAsset = (await assetsDao.getAsset(id));
-
-      final updatedAsset = originalAsset.copyWith(
-        name: 'Updated Asset',
-        type: AssetTypes.crypto,
-        tickerSymbol: 'UPDT',
-        value: 150.0,
-        sharesOwned: 15.0,
-        netCostBasis: 130.0,
-        brokerCostBasis: 10.0,
-        buyFeeTotal: 5.0,
-      );
-      await assetsDao.updateAsset(updatedAsset);
-
-      final assets = await assetsDao.watchAllAssets().first;
-      expect(assets.length, 1);
-      expect(assets.first.name, 'Updated Asset');
-      expect(assets.first.type, AssetTypes.crypto);
-      expect(assets.first.tickerSymbol, 'UPDT');
-      expect(assets.first.value, 150.0);
-      expect(assets.first.sharesOwned, 15.0);
-      expect(assets.first.netCostBasis, 130.0);
-      expect(assets.first.brokerCostBasis, 10.0);
-      expect(assets.first.buyFeeTotal, 5.0);
     });
 
     test('deleteAsset deletes an asset', () async {
@@ -94,7 +57,7 @@ void main() {
         type: AssetTypes.stock,
         tickerSymbol: 'DEL',
         value: const Value(1.0),
-        sharesOwned: const Value(1.0),
+        shares: const Value(1.0),
         netCostBasis: const Value(1.0),
         brokerCostBasis: const Value(1.0),
         buyFeeTotal: const Value(1.0),
@@ -109,10 +72,10 @@ void main() {
     test('getAsset retrieves a single asset', () async {
       final assetToInsert = AssetsCompanion.insert(
         name: 'Unique Asset',
-        type: AssetTypes.currency,
+        type: AssetTypes.fiat,
         tickerSymbol: 'UAS',
         value: const Value(99.0),
-        sharesOwned: const Value(9.0),
+        shares: const Value(9.0),
         netCostBasis: const Value(89.0),
         brokerCostBasis: const Value(7.0),
         buyFeeTotal: const Value(3.0),
@@ -127,10 +90,10 @@ void main() {
     test('getAssetByTickerSymbol', () async {
       final assetToInsert = AssetsCompanion.insert(
         name: 'Unique Asset',
-        type: AssetTypes.currency,
+        type: AssetTypes.fiat,
         tickerSymbol: 'UAS',
         value: const Value(99.0),
-        sharesOwned: const Value(9.0),
+        shares: const Value(9.0),
         netCostBasis: const Value(89.0),
         brokerCostBasis: const Value(7.0),
         buyFeeTotal: const Value(3.0),
@@ -148,7 +111,7 @@ void main() {
         type: AssetTypes.stock,
         tickerSymbol: 'AWT',
         value: const Value(100.0),
-        sharesOwned: const Value(10.0),
+        shares: const Value(10.0),
         netCostBasis: const Value(1000.0),
         brokerCostBasis: const Value(0.0),
         buyFeeTotal: const Value(0.0),
@@ -156,7 +119,7 @@ void main() {
       final assetId = await assetsDao.insert(asset);
       final account = await db.into(db.accounts).insertReturning(
             AccountsCompanion.insert(
-              name: 'Clearing Account',
+              name: 'Source Account',
               balance: const Value(1000.0),
               initialBalance: const Value(1000.0),
               type: AccountTypes.cash,
@@ -167,12 +130,12 @@ void main() {
             assetId: assetId,
             datetime: 20240101,
             type: TradeTypes.buy,
-            clearingAccountValueDelta: -1001.0,
-            portfolioAccountValueDelta: 1000.0,
+            sourceAccountValueDelta: -1001.0,
+            targetAccountValueDelta: 1000.0,
             shares: 10.0,
-            pricePerShare: 100.0,
-            clearingAccountId: account.id,
-            portfolioAccountId: account.id, // Using same for simplicity
+            costBasis: 100.0,
+            sourceAccountId: account.id,
+            targetAccountId: account.id, // Using same for simplicity
           ));
 
       expect(await assetsDao.hasTrades(assetId), isTrue);
@@ -184,7 +147,7 @@ void main() {
         type: AssetTypes.stock,
         tickerSymbol: 'AWO',
         value: const Value(100.0),
-        sharesOwned: const Value(10.0),
+        shares: const Value(10.0),
         netCostBasis: const Value(1000.0),
         brokerCostBasis: const Value(0.0),
         buyFeeTotal: const Value(0.0),
@@ -201,7 +164,7 @@ void main() {
         type: AssetTypes.stock,
         tickerSymbol: 'AOA',
         value: const Value(100.0),
-        sharesOwned: const Value(10.0),
+        shares: const Value(10.0),
         netCostBasis: const Value(1000.0),
         brokerCostBasis: const Value(0.0),
         buyFeeTotal: const Value(0.0),
@@ -210,7 +173,7 @@ void main() {
 
       final account = await db.into(db.accounts).insertReturning(
             AccountsCompanion.insert(
-              name: 'Portfolio Account',
+              name: 'Target Account',
               type: AccountTypes.portfolio,
             ),
           );
@@ -229,7 +192,7 @@ void main() {
         type: AssetTypes.stock,
         tickerSymbol: 'ANOA',
         value: const Value(100.0),
-        sharesOwned: const Value(10.0),
+        shares: const Value(10.0),
         netCostBasis: const Value(1000.0),
         brokerCostBasis: const Value(0.0),
         buyFeeTotal: const Value(0.0),

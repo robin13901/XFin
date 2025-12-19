@@ -20,13 +20,23 @@ dependencies:
   path: ^1.9.0
   sqflite: ^2.3.3+1
   drift_sqflite: ^2.0.1
-  
+
+  liquid_navbar: ^2.0.4
+  share_plus: ^12.0.1
+  file_saver: ^0.3.1
+  flutter_file_saver: ^0.9.0
+  file_selector: ^1.1.0
+  file_picker: ^10.3.7
+  permission_handler: ^12.0.1
+  open_filex: ^4.5.1
   provider: ^6.1.2
   intl: ^0.20.2
   cupertino_icons: ^1.0.8
   oktoast: ^3.4.0
   shared_preferences: ^2.2.3
   fl_chart: ^0.68.0
+  csv: ^5.0.0
+  liquid_glass_renderer: ^0.2.0-dev.4
 
 dev_dependencies:
   flutter_test:

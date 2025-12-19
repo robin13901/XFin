@@ -19,6 +19,7 @@ class CurrencySelectionScreen extends StatefulWidget {
 class _CurrencySelectionScreenState extends State<CurrencySelectionScreen> {
   String? _selectedCurrency;
   final List<String> _availableCurrencies = ['EUR', 'USD', 'GBP', 'JPY'];
+  final List<String> _currencySymbols = ['€', '\$', '£', '¥'];
 
   Future<void> _saveCurrency(String currency) async {
     final prefs = await SharedPreferences.getInstance();
@@ -37,12 +38,14 @@ class _CurrencySelectionScreenState extends State<CurrencySelectionScreen> {
       await _saveCurrency(_selectedCurrency!);
       if (mounted) {
         final db = Provider.of<AppDatabase>(context, listen: false);
+        final currencySymbol = _currencySymbols[_availableCurrencies.indexOf(_selectedCurrency!)];
         final asset = AssetsCompanion(
           name: drift.Value(_selectedCurrency!),
-          type: const drift.Value(AssetTypes.currency),
+          type: const drift.Value(AssetTypes.fiat),
           tickerSymbol: drift.Value(_selectedCurrency!),
+          currencySymbol: drift.Value(currencySymbol),
           value: const drift.Value(0.0),
-          sharesOwned: const drift.Value(0.0),
+          shares: const drift.Value(0.0),
           netCostBasis: const drift.Value(1.0),
           brokerCostBasis: const drift.Value(1.0),
           buyFeeTotal: const drift.Value(0.0),

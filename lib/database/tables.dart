@@ -1,9 +1,9 @@
 import 'package:drift/drift.dart';
 
 // Enums
-enum AssetTypes { stock, crypto, etf, bond, currency, commodity }
+enum AssetTypes { stock, crypto, etf, fund, fiat, derivative }
 
-enum AccountTypes { cash, portfolio }
+enum AccountTypes { cash, bankAccount, portfolio, cryptoWallet }
 
 enum TradeTypes { buy, sell }
 
@@ -92,35 +92,59 @@ class Assets extends Table {
 
   TextColumn get tickerSymbol => text().unique()();
 
+  TextColumn get currencySymbol => text().nullable().withDefault(const Constant(null))();
+
   RealColumn get value => real().withDefault(const Constant(0))();
 
-  RealColumn get sharesOwned => real().withDefault(const Constant(0))();
+  RealColumn get shares => real().withDefault(const Constant(0))();
 
   RealColumn get netCostBasis => real().withDefault(const Constant(1))();
 
   RealColumn get brokerCostBasis => real().withDefault(const Constant(1))();
 
   RealColumn get buyFeeTotal => real().withDefault(const Constant(0))();
+
+  BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
+}
+
+@DataClassName('AssetOnAccount')
+class AssetsOnAccounts extends Table {
+  IntColumn get accountId => integer().references(Accounts, #id)();
+
+  IntColumn get assetId => integer().references(Assets, #id)();
+
+  RealColumn get value => real().withDefault(const Constant(0))();
+
+  RealColumn get shares => real().withDefault(const Constant(0))();
+
+  RealColumn get netCostBasis => real().withDefault(const Constant(1))();
+
+  RealColumn get brokerCostBasis => real().withDefault(const Constant(1))();
+
+  RealColumn get buyFeeTotal => real().withDefault(const Constant(0))();
+
+  @override
+  Set<Column> get primaryKey => {accountId, assetId};
 }
 
 @TableIndex(name: 'bookings_account_id_date', columns: {#accountId, #date})
-@TableIndex(
-    name: 'bookings_category_date_amount', columns: {#category, #date, #amount})
-@TableIndex(
-  name: 'bookings_complex_query',
-  columns: {#date, #accountId, #amount, #excludeFromAverage, #isGenerated},
-)
 @DataClassName('Booking')
 class Bookings extends Table {
   IntColumn get id => integer().autoIncrement()();
 
   IntColumn get date => integer()();
 
-  RealColumn get amount => real()();
+  IntColumn get assetId => integer().references(Assets, #id).withDefault(const Constant(1))();
+
+  IntColumn get accountId => integer().references(Accounts, #id)();
 
   TextColumn get category => text()();
 
-  IntColumn get accountId => integer().references(Accounts, #id)();
+  RealColumn get shares => real()();
+
+  RealColumn get costBasis => real().withDefault(const Constant(1))();
+
+  RealColumn get value => real()();
 
   TextColumn get notes => text().nullable()();
 
@@ -136,23 +160,25 @@ class Bookings extends Table {
 @TableIndex(
     name: 'transfers_receiving_account_id_date',
     columns: {#receivingAccountId, #date})
-@TableIndex(
-  name: 'transfers_complex_query',
-  columns: {#date, #receivingAccountId, #amount, #isGenerated},
-)
 @DataClassName('Transfer')
 class Transfers extends Table {
   IntColumn get id => integer().autoIncrement()();
 
   IntColumn get date => integer()();
 
-  RealColumn get amount => real()();
-
   @ReferenceName('SendingTransfers')
   IntColumn get sendingAccountId => integer().references(Accounts, #id)();
 
   @ReferenceName('ReceivingTransfers')
   IntColumn get receivingAccountId => integer().references(Accounts, #id)();
+
+  IntColumn get assetId => integer().references(Assets, #id).withDefault(const Constant(1))();
+
+  RealColumn get shares => real()();
+
+  RealColumn get costBasis => real().withDefault(const Constant(1))();
+
+  RealColumn get value => real()();
 
   TextColumn get notes => text().nullable()();
 
@@ -161,45 +187,44 @@ class Transfers extends Table {
 
 @TableIndex(name: 'trades_asset_id_datetime', columns: {#assetId, #datetime})
 @TableIndex(
-    name: 'trades_clearing_account_id_datetime',
-    columns: {#clearingAccountId, #datetime})
+    name: 'trades_source_account_id_datetime',
+    columns: {#sourceAccountId, #datetime})
 @TableIndex(
-    name: 'trades_portfolio_account_id_datetime',
-    columns: {#portfolioAccountId, #datetime})
+    name: 'trades_target_account_id_datetime',
+    columns: {#targetAccountId, #datetime})
 @DataClassName('Trade')
 class Trades extends Table {
   IntColumn get id => integer().autoIncrement()();
 
   IntColumn get datetime => integer()();
 
-  IntColumn get assetId => integer().references(Assets, #id)();
-
   TextColumn get type => text().map(const TradeTypesConverter())();
 
-  RealColumn get clearingAccountValueDelta => real()();
+  @ReferenceName('SourceTrades')
+  IntColumn get sourceAccountId => integer().references(Accounts, #id)();
 
-  RealColumn get portfolioAccountValueDelta => real()();
+  @ReferenceName('TargetTrades')
+  IntColumn get targetAccountId => integer().references(Accounts, #id)();
+
+  IntColumn get assetId => integer().references(Assets, #id)();
 
   RealColumn get shares => real()();
 
-  RealColumn get pricePerShare => real()();
+  RealColumn get costBasis => real()();
 
-  RealColumn get profitAndLossAbs => real().withDefault(const Constant(0))();
-
-  RealColumn get profitAndLossRel => real().withDefault(const Constant(0))();
-
-  RealColumn get tradingFee => real().withDefault(const Constant(0))();
+  RealColumn get fee => real().withDefault(const Constant(0))();
 
   RealColumn get tax => real().withDefault(const Constant(0))();
 
-  @ReferenceName('ClearingTrades')
-  IntColumn get clearingAccountId => integer().references(Accounts, #id)();
+  RealColumn get sourceAccountValueDelta => real()();
 
-  @ReferenceName('PortfolioTrades')
-  IntColumn get portfolioAccountId => integer().references(Accounts, #id)();
+  RealColumn get targetAccountValueDelta => real()();
+
+  RealColumn get profitAndLoss => real().withDefault(const Constant(0))();
+
+  RealColumn get returnOnInvest => real().withDefault(const Constant(0))();
 }
 
-@TableIndex(name: 'periodic_bookings_account_id', columns: {#accountId})
 @TableIndex(
     name: 'periodic_bookings_next_execution_date',
     columns: {#nextExecutionDate})
@@ -209,9 +234,15 @@ class PeriodicBookings extends Table {
 
   IntColumn get nextExecutionDate => integer()();
 
-  RealColumn get amount => real()();
+  IntColumn get assetId => integer().references(Assets, #id).withDefault(const Constant(1))();
 
   IntColumn get accountId => integer().references(Accounts, #id)();
+
+  RealColumn get shares => real()();
+
+  RealColumn get costBasis => real().withDefault(const Constant(1))();
+
+  RealColumn get value => real()();
 
   TextColumn get category => text()();
 
@@ -226,11 +257,6 @@ class PeriodicBookings extends Table {
 }
 
 @TableIndex(
-    name: 'periodic_transfers_sending_account_id', columns: {#sendingAccountId})
-@TableIndex(
-    name: 'periodic_transfers_receiving_account_id',
-    columns: {#receivingAccountId})
-@TableIndex(
     name: 'periodic_transfers_next_execution_date',
     columns: {#nextExecutionDate})
 @DataClassName('PeriodicTransfer')
@@ -239,13 +265,19 @@ class PeriodicTransfers extends Table {
 
   IntColumn get nextExecutionDate => integer()();
 
-  RealColumn get amount => real()();
+  IntColumn get assetId => integer().references(Assets, #id).withDefault(const Constant(1))();
 
   @ReferenceName('SendingPeriodicTransfers')
   IntColumn get sendingAccountId => integer().references(Accounts, #id)();
 
   @ReferenceName('ReceivingPeriodicTransfers')
   IntColumn get receivingAccountId => integer().references(Accounts, #id)();
+
+  RealColumn get shares => real()();
+
+  RealColumn get costBasis => real().withDefault(const Constant(1))();
+
+  RealColumn get value => real()();
 
   TextColumn get notes => text().nullable()();
 
@@ -257,31 +289,12 @@ class PeriodicTransfers extends Table {
       real().withDefault(const Constant(1))();
 }
 
-@DataClassName('AssetOnAccount')
-class AssetsOnAccounts extends Table {
-  IntColumn get accountId => integer().references(Accounts, #id)();
-
-  IntColumn get assetId => integer().references(Assets, #id)();
-
-  RealColumn get value => real().withDefault(const Constant(0))();
-
-  RealColumn get sharesOwned => real().withDefault(const Constant(0))();
-
-  RealColumn get netCostBasis => real().withDefault(const Constant(1))();
-
-  RealColumn get brokerCostBasis => real().withDefault(const Constant(1))();
-
-  RealColumn get buyFeeTotal => real().withDefault(const Constant(0))();
-
-  @override
-  Set<Column> get primaryKey => {accountId, assetId};
-}
-
-@TableIndex(name: 'goals_account_id', columns: {#accountId})
 @TableIndex(name: 'goals_target_date', columns: {#targetDate})
 @DataClassName('Goal')
 class Goals extends Table {
   IntColumn get id => integer().autoIncrement()();
+
+  IntColumn get assetId => integer().nullable().references(Assets, #id).withDefault(const Constant(1))();
 
   IntColumn get accountId => integer().nullable().references(Accounts, #id)();
 
@@ -289,5 +302,7 @@ class Goals extends Table {
 
   IntColumn get targetDate => integer()();
 
-  RealColumn get targetAmount => real()();
+  RealColumn get targetShares => real()();
+
+  RealColumn get targetValue => real()();
 }

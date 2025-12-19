@@ -18,6 +18,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get accountAlreadyExists => 'An account with this name already exists';
 
   @override
+  String get valueAlreadyExists => 'Value already exists';
+
+  @override
   String get initialBalance => 'Initial Balance';
 
   @override
@@ -42,6 +45,42 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get portfolio => 'Portfolio';
+
+  @override
+  String get back => 'Zurück';
+
+  @override
+  String get next => 'Next';
+
+  @override
+  String get info => 'Info';
+
+  @override
+  String get addAsset => 'Add Asset';
+
+  @override
+  String get noAssetsAddedYet => 'No assets added yet';
+
+  @override
+  String get cashInfo => 'TODO...';
+
+  @override
+  String get bankAccountInfo => 'TODO...';
+
+  @override
+  String get portfolioInfo => 'TODO...';
+
+  @override
+  String get cryptoWalletInfo => 'TODO...';
+
+  @override
+  String get assetAlreadyAdded => 'Asset already added';
+
+  @override
+  String get bankAccount => 'Bank Account';
+
+  @override
+  String get cryptoWallet => 'Crypto Wallet';
 
   @override
   String get cancel => 'Cancel';
@@ -123,6 +162,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tooManyDecimalPlaces => 'Too many decimal places!';
 
   @override
+  String get tooManyCharacters => 'Too many characters';
+
+  @override
   String get category => 'Category';
 
   @override
@@ -180,6 +222,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get cannotDeleteOrArchiveAccount =>
+      'Löschen oder Archivieren nicht möglich';
+
+  @override
+  String get cannotDeleteOrArchiveAccountLong =>
+      'Accounts can only be deleted when they have no references. This account has references and cannot be deleted.\n\nAccounts with references can be archived but only if the balance is 0.';
+
+  @override
   String get noActiveAccounts => 'No active accounts yet';
 
   @override
@@ -189,6 +239,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String anErrorOccurred(String error) {
     return 'An error occurred: $error';
   }
+
+  @override
+  String get valueMustNotBeZero => 'Value can not be 0';
 
   @override
   String get noBookingsYet => 'No bookings yet';
@@ -235,6 +288,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tickerSymbol => 'Ticker Symbol';
 
   @override
+  String get currencySymbol => 'Currency Symbol';
+
+  @override
   String get pleaseEnterATickerSymbol => 'Please enter a ticker symbol';
 
   @override
@@ -248,7 +304,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get crypto => 'Crypto';
 
   @override
-  String get currency => 'Currency';
+  String get fiat => 'Fiat';
+
+  @override
+  String get fund => 'Fund';
+
+  @override
+  String get derivative => 'Derivative';
 
   @override
   String get etf => 'ETF';
@@ -266,7 +328,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sharesOwned => 'Shares';
 
   @override
+  String get costBasis => 'Cost Basis';
+
+  @override
   String get netCostBasis => 'Net Cost Basis';
+
+  @override
+  String get brokerCostBasis => 'Broker Cost Basis';
 
   @override
   String get update => 'Update';
@@ -284,13 +352,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pricePerShare => 'Price per Share';
 
   @override
-  String get tradingFee => 'Trading Fee';
+  String get fee => 'Fee';
 
   @override
   String get clearingAccount => 'Clearing Account';
 
   @override
-  String get portfolioAccount => 'Portfolio Account';
+  String get investmentAccount => 'Investment Account';
 
   @override
   String get pleaseSelectADate => 'Please select date and time!';
@@ -302,7 +370,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pleaseSelectAnAsset => 'Please select an asset!';
 
   @override
-  String get pleaseEnterAValue => 'Please enter a value!';
+  String get requiredField => '* Required field';
 
   @override
   String get pleaseEnterAValidNumber => 'Please enter a valid number!';
@@ -323,6 +391,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tax => 'Tax';
 
   @override
+  String get sendingAndReceivingMustDiffer =>
+      'Sending and receiving account must differ';
+
+  @override
+  String get sendingAccount => 'Sending Account';
+
+  @override
+  String get receivingAccount => 'Receiving Account';
+
+  @override
   String get pleaseSelectCurrency => 'Please select a currency!';
 
   @override
@@ -340,6 +418,18 @@ class AppLocalizationsEn extends AppLocalizations {
       'This action is not possible because it would lead to data inconsistency';
 
   @override
+  String get onlyCryptoCanBeBookedOnCryptoWallet =>
+      'Only crypto can be booked on a crypto wallet.';
+
+  @override
+  String get onlyBaseCurrencyCanBeBookedOnBankAccount =>
+      'Only the base currency can be booked on a bank account.';
+
+  @override
+  String get onlyCurrenciesCanBeBookedOnCashAccount =>
+      'Only currencies can be booked on a cash account.';
+
+  @override
   String get valueMustBeGreaterZero => 'Value must be > 0';
 
   @override
@@ -347,4 +437,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get valueCannotBeZero => 'Value must not be 0';
+
+  @override
+  String get deleteTransfer => 'Delete Transfer?';
+
+  @override
+  String get deleteTransferConfirmation =>
+      'Are you sure you want to delete this transfer?';
+
+  @override
+  String get noTransfersYet => 'No transfers yet';
+
+  @override
+  String get transfers => 'Transfers';
 }

@@ -7,9 +7,9 @@ import 'package:xfin/database/daos/bookings_dao.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 
 class DeleteBookingDialog extends StatefulWidget {
-  final BookingWithAccount bookingWithAccount;
+  final BookingWithAccountAndAsset bookingWithAccountAndAsset;
 
-  const DeleteBookingDialog({super.key, required this.bookingWithAccount});
+  const DeleteBookingDialog({super.key, required this.bookingWithAccountAndAsset});
 
   @override
   State<DeleteBookingDialog> createState() => _DeleteBookingDialogState();
@@ -20,7 +20,7 @@ class _DeleteBookingDialogState extends State<DeleteBookingDialog> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final db = Provider.of<AppDatabase>(context, listen: false);
-    final booking = widget.bookingWithAccount.booking;
+    final booking = widget.bookingWithAccountAndAsset.booking;
     final currencyFormat = NumberFormat.currency(locale: 'de_DE', symbol: '€');
 
     final dateString = booking.date.toString();
@@ -31,8 +31,8 @@ class _DeleteBookingDialogState extends State<DeleteBookingDialog> {
     final year = DateFormat('yyyy').format(date);
 
     String accountName =
-        widget.bookingWithAccount.account?.name ?? 'Unknown Account';
-    Color amountColor = booking.amount < 0 ? Colors.red : Colors.green;
+        widget.bookingWithAccountAndAsset.account.name;
+    Color amountColor = booking.shares < 0 ? Colors.red : Colors.green;
 
     return AlertDialog(
       title: Text(
@@ -69,7 +69,7 @@ class _DeleteBookingDialogState extends State<DeleteBookingDialog> {
               ),
               const SizedBox(width: 16),
               Text(
-                currencyFormat.format(booking.amount),
+                currencyFormat.format(booking.shares),
                 style:
                     TextStyle(color: amountColor, fontWeight: FontWeight.bold),
               ),

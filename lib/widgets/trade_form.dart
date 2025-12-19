@@ -8,7 +8,7 @@ import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 
 import '../providers/base_currency_provider.dart';
-import '../validators.dart';
+import '../utils/validators.dart';
 
 class TradeForm extends StatefulWidget {
   final Trade? trade;
@@ -25,8 +25,8 @@ class _TradeFormState extends State<TradeForm> {
   // Controllers
   late TextEditingController _dateController;
   late TextEditingController _sharesController;
-  late TextEditingController _pricePerShareController;
-  late TextEditingController _tradingFeeController;
+  late TextEditingController _costBasisController;
+  late TextEditingController _feeController;
   late TextEditingController _taxController;
 
   // Form Values
@@ -34,12 +34,12 @@ class _TradeFormState extends State<TradeForm> {
   Asset? _selectedAsset;
   TradeTypes? _tradeType;
   Account? _selectedClearingAccount;
-  Account? _selectedPortfolioAccount;
+  Account? _selectedInvestmentAccount;
 
   // Data from DB
   List<Asset> _assets = [];
-  List<Account> _cashAccounts = [];
-  List<Account> _portfolioAccounts = [];
+  List<Account> _clearingAccounts = [];
+  List<Account> _investmentAccounts = [];
   double _ownedShares = 0;
 
   bool get _isEditing => widget.trade != null;
@@ -49,8 +49,8 @@ class _TradeFormState extends State<TradeForm> {
     super.initState();
     _dateController = TextEditingController();
     _sharesController = TextEditingController();
-    _pricePerShareController = TextEditingController();
-    _tradingFeeController = TextEditingController();
+    _costBasisController = TextEditingController();
+    _feeController = TextEditingController();
     _taxController = TextEditingController();
 
     if (_isEditing) {
@@ -72,10 +72,9 @@ class _TradeFormState extends State<TradeForm> {
         _assets = allAssets
             .where((a) => a.tickerSymbol != currencyProvider.tickerSymbol)
             .toList();
-        _cashAccounts =
-            allAccounts.where((a) => a.type == AccountTypes.cash).toList();
-        _portfolioAccounts =
-            allAccounts.where((a) => a.type == AccountTypes.portfolio).toList();
+        _clearingAccounts = allAccounts;
+        _investmentAccounts =
+            allAccounts.where((a) => a.type != AccountTypes.bankAccount).toList();
       });
     }
   }
@@ -84,19 +83,19 @@ class _TradeFormState extends State<TradeForm> {
   void dispose() {
     _dateController.dispose();
     _sharesController.dispose();
-    _pricePerShareController.dispose();
-    _tradingFeeController.dispose();
+    _costBasisController.dispose();
+    _feeController.dispose();
     _taxController.dispose();
     super.dispose();
   }
 
   Future<void> _fetchOwnedShares() async {
-    if (_selectedAsset == null || _selectedPortfolioAccount == null) return;
+    if (_selectedAsset == null || _selectedInvestmentAccount == null) return;
     final db = Provider.of<AppDatabase>(context, listen: false);
     try {
       final assetOnAccount = await db.assetsOnAccountsDao
-          .getAssetOnAccount(_selectedPortfolioAccount!.id, _selectedAsset!.id);
-      if (mounted) setState(() => _ownedShares = assetOnAccount.sharesOwned);
+          .getAOA(_selectedInvestmentAccount!.id, _selectedAsset!.id);
+      if (mounted) setState(() => _ownedShares = assetOnAccount.shares);
     } catch (e) {
       // Asset not in account, so 0 shares owned.
       if (mounted) setState(() => _ownedShares = 0);
@@ -142,13 +141,13 @@ class _TradeFormState extends State<TradeForm> {
         assetId: drift.Value(_selectedAsset!.id),
         type: drift.Value(_tradeType!),
         shares: drift.Value(double.parse(_sharesController.text)),
-        pricePerShare: drift.Value(double.parse(_pricePerShareController.text)),
-        tradingFee: drift.Value(double.parse(_tradingFeeController.text)),
+        costBasis: drift.Value(double.parse(_costBasisController.text)),
+        fee: drift.Value(double.parse(_feeController.text)),
         tax: _tradeType == TradeTypes.sell
             ? drift.Value(double.parse(_taxController.text))
             : const drift.Value(0),
-        clearingAccountId: drift.Value(_selectedClearingAccount!.id),
-        portfolioAccountId: drift.Value(_selectedPortfolioAccount!.id));
+        sourceAccountId: drift.Value(_selectedClearingAccount!.id),
+        targetAccountId: drift.Value(_selectedInvestmentAccount!.id));
 
     try {
       if (await db.accountsDao.leadsToInconsistentBalanceHistory(
@@ -245,16 +244,16 @@ class _TradeFormState extends State<TradeForm> {
                     const SizedBox(width: 16),
                     Expanded(
                       child: TextFormField(
-                        controller: _tradingFeeController,
+                        controller: _feeController,
                         decoration: InputDecoration(
-                          labelText: l10n.tradingFee,
+                          labelText: l10n.fee,
                           border: const OutlineInputBorder(),
                           suffixText: currencyProvider.symbol,
                         ),
                         keyboardType: const TextInputType.numberWithOptions(
                             decimal: true, signed: true),
                         validator: (value) => validator
-                            .validateMaxTwoDecimalsGreaterEqualZero(value),
+                            .validateDecimalGreaterEqualZero(value),
                       ),
                     ),
                   ],
@@ -264,9 +263,9 @@ class _TradeFormState extends State<TradeForm> {
                   children: [
                     Expanded(
                       child: TextFormField(
-                        controller: _pricePerShareController,
+                        controller: _costBasisController,
                         decoration: InputDecoration(
-                          labelText: l10n.pricePerShare,
+                          labelText: l10n.costBasis,
                           border: const OutlineInputBorder(),
                           suffixText: currencyProvider.symbol,
                         ),
@@ -301,7 +300,7 @@ class _TradeFormState extends State<TradeForm> {
                     decoration: InputDecoration(
                         labelText: l10n.clearingAccount,
                         border: const OutlineInputBorder()),
-                    items: _cashAccounts
+                    items: _clearingAccounts
                         .map((account) => DropdownMenuItem(
                             value: account, child: Text(account.name)))
                         .toList(),
@@ -312,12 +311,12 @@ class _TradeFormState extends State<TradeForm> {
                       if (_tradeType == TradeTypes.buy) {
                         try {
                           double shares = double.parse(_sharesController.text);
-                          double pricePerShare =
-                          double.parse(_pricePerShareController.text);
-                          double tradingFee =
-                          double.parse(_tradingFeeController.text);
+                          double costBasis =
+                          double.parse(_costBasisController.text);
+                          double fee =
+                          double.parse(_feeController.text);
                           double clearingAccountValueDelta =
-                              shares * pricePerShare + tradingFee;
+                              shares * costBasis + fee;
                           if (value!.balance < clearingAccountValueDelta) {
                             error = l10n.insufficientBalance;
                           }
@@ -329,16 +328,16 @@ class _TradeFormState extends State<TradeForm> {
                     }),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<Account>(
-                  initialValue: _selectedPortfolioAccount,
+                  initialValue: _selectedInvestmentAccount,
                   decoration: InputDecoration(
-                      labelText: l10n.portfolioAccount,
+                      labelText: l10n.investmentAccount,
                       border: const OutlineInputBorder()),
-                  items: _portfolioAccounts
+                  items: _investmentAccounts
                       .map((account) => DropdownMenuItem(
                           value: account, child: Text(account.name)))
                       .toList(),
                   onChanged: (value) {
-                    setState(() => _selectedPortfolioAccount = value);
+                    setState(() => _selectedInvestmentAccount = value);
                     _fetchOwnedShares();
                   },
                   validator: (value) =>

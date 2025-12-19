@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -10,70 +11,53 @@ import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/providers/base_currency_provider.dart';
 import 'package:xfin/screens/accounts_screen.dart';
-import 'package:xfin/widgets/account_form.dart';
-import 'package:flutter/gestures.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   late AppDatabase db;
   late BaseCurrencyProvider currencyProvider;
-  late Account cashAccount, portfolioAccount, archivedAccount;
 
   setUpAll(() {
     TestWidgetsFlutterBinding.ensureInitialized();
     SharedPreferences.setMockInitialValues({});
   });
 
-  setUp(() async {
-    db = AppDatabase(NativeDatabase.memory());
-    const locale = Locale('en');
-    currencyProvider = BaseCurrencyProvider();
-    await currencyProvider.initialize(locale);
+  // Example account objects used for inserts
+  const cashAccount = Account(
+    id: 1,
+    name: 'Test Account',
+    balance: 1000,
+    initialBalance: 1000,
+    type: AccountTypes.cash,
+    isArchived: false,
+  );
 
-    await db.into(db.assets).insert(AssetsCompanion.insert(
-        name: 'EUR', type: AssetTypes.currency, tickerSymbol: 'EUR'));
+  const portfolioAccount = Account(
+    id: 2,
+    name: 'Portfolio Account',
+    balance: 0,
+    initialBalance: 0,
+    type: AccountTypes.portfolio,
+    isArchived: false,
+  );
 
-    cashAccount = const Account(
-      id: 1,
-      name: 'Test Account',
-      balance: 1000,
-      initialBalance: 1000,
-      type: AccountTypes.cash,
-      isArchived: false,
-    );
-
-    portfolioAccount = const Account(
-      id: 2,
-      name: 'Portfolio Account',
-      balance: 0,
-      initialBalance: 0,
-      type: AccountTypes.portfolio,
-      isArchived: false,
-    );
-
-    archivedAccount = const Account(
-      id: 2,
-      name: 'Archived Account',
-      balance: 500,
-      initialBalance: 500,
-      type: AccountTypes.cash,
-      isArchived: true,
-    );
-  });
-
-  tearDown(() async {
-    await db.close();
-  });
+  const archivedAccount = Account(
+    id: 3,
+    name: 'Archived Account',
+    balance: 500,
+    initialBalance: 500,
+    type: AccountTypes.cash,
+    isArchived: true,
+  );
 
   Future<AppLocalizations> pumpWidget(WidgetTester tester) async {
     await tester.pumpWidget(
       MultiProvider(
         providers: [
-          Provider<AppDatabase>.value(
-            value: db,
-          ),
+          Provider<AppDatabase>.value(value: db),
           ChangeNotifierProvider<BaseCurrencyProvider>.value(
-            value: currencyProvider,
-          ),
+              value: currencyProvider),
         ],
         child: const MaterialApp(
           localizationsDelegates: [
@@ -82,246 +66,251 @@ void main() {
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          supportedLocales: AppLocalizations.supportedLocales,
+          supportedLocales: [Locale('en'), Locale('de')],
           home: AccountsScreen(),
         ),
       ),
     );
+
+    // Return the localization instance so tests can access localized strings
     return AppLocalizations.of(tester.element(find.byType(AccountsScreen)))!;
   }
 
-  group('AccountsScreen', () {
+  setUp(() async {
+    db = AppDatabase(NativeDatabase.memory());
+    currencyProvider = BaseCurrencyProvider();
+    await currencyProvider.initialize(const Locale('en'));
+
+    // Ensure base currency (id=1) exists, as other DB logic may expect it
+    await db.into(db.assets).insert(AssetsCompanion.insert(
+          name: 'EUR',
+          type: AssetTypes.fiat,
+          tickerSymbol: 'EUR',
+        ));
+  });
+
+  tearDown(() async {
+    await db.close();
+  });
+
+  testWidgets(
+      'shows loading indicator then empty message when no accounts',
+      (tester) => tester.runAsync(() async {
+            final l10n = await pumpWidget(tester);
+
+            // Immediately after pumping, the StreamBuilder may still be waiting -> spinner present
+            expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+            await tester.pumpAndSettle();
+
+            // After streams settle, no active accounts -> localized empty message
+            expect(find.text(l10n.noActiveAccounts), findsOneWidget);
+            expect(find.byType(ListView), findsNothing);
+
+            // cleanup
+            await tester.pumpWidget(Container());
+          }));
+
+  group('with active accounts', () {
+    setUp(() async {
+      // insert a single active cash account
+      await db.into(db.accounts).insert(cashAccount.toCompanion(false));
+    });
+
     testWidgets(
-        'shows loading indicator and then empty message',
-        (tester) => tester.runAsync(() async {
-              final l10n = await pumpWidget(tester);
-              expect(find.byType(CircularProgressIndicator), findsOneWidget);
-
-              await tester.pumpAndSettle();
-
-              expect(find.text(l10n.noActiveAccounts), findsOneWidget);
-              expect(find.byType(ListView), findsNothing);
-
-              await tester.pumpWidget(Container());
-            }));
-
-    testWidgets(
-        'should display message when no active accounts exist',
-        (tester) => tester.runAsync(() async {
-              final l10n = await pumpWidget(tester);
-              await tester.pumpAndSettle();
-
-              expect(find.text(l10n.noActiveAccounts), findsOneWidget);
-
-              await tester.pumpWidget(Container());
-            }));
-
-    testWidgets(
-        'should open account form when FAB is tapped',
+        'displays active account in list',
         (tester) => tester.runAsync(() async {
               await pumpWidget(tester);
               await tester.pumpAndSettle();
 
-              await tester.tap(find.byType(FloatingActionButton));
-              await tester.pumpAndSettle();
-
-              expect(find.byType(AccountForm), findsOneWidget);
+              expect(find.text('Test Account'), findsOneWidget);
 
               await tester.pumpWidget(Container());
             }));
 
-    group('with active accounts', () {
-      setUp(() async {
-        await db.into(db.accounts).insert(cashAccount.toCompanion(true));
-      });
+    testWidgets(
+        'long press on account without references shows delete dialog (cancel + confirm)',
+        (tester) => tester.runAsync(() async {
+              final l10n = await pumpWidget(tester);
+              await tester.pumpAndSettle();
 
-      testWidgets(
-          'should display active accounts',
-          (tester) => tester.runAsync(() async {
-                await pumpWidget(tester);
-                await tester.pumpAndSettle();
+              // Ensure the tile exists
+              expect(find.text('Test Account'), findsOneWidget);
 
-                expect(find.text('Test Account'), findsOneWidget);
+              // Long press simulation (same technique used in other tests)
+              final center = tester.getCenter(find.text('Test Account'));
+              TestGesture gesture = await tester.startGesture(center);
+              await tester.pump();
+              // hold long press
+              await Future.delayed(kLongPressTimeout);
+              await gesture.up();
+              await tester.pumpAndSettle();
 
-                await tester.pumpWidget(Container());
-              }));
+              // Delete dialog should appear (no references => delete path)
+              expect(find.text(l10n.deleteAccount), findsOneWidget);
+              expect(find.text(l10n.confirmDeleteAccount), findsOneWidget);
 
-      testWidgets(
-          'test delete dialog for account without references on long press',
-          (tester) => tester.runAsync(() async {
-                final l10n = await pumpWidget(tester);
-                await tester.pumpAndSettle();
+              // Cancel first -> account still present
+              await tester.tap(find.text(l10n.cancel));
+              await tester.pumpAndSettle();
+              expect(find.text('Test Account'), findsOneWidget);
 
-                // Cancel deletion
-                Offset offset = tester.getCenter(find.text('Test Account'));
-                TestGesture gesture = await tester.startGesture(offset);
-                await tester.pump();
-                await Future.delayed(kLongPressTimeout);
-                await gesture.up();
-                await tester.pumpAndSettle();
+              // Trigger long press again and this time confirm deletion
+              gesture = await tester.startGesture(center);
+              await tester.pump();
+              await Future.delayed(kLongPressTimeout);
+              await gesture.up();
+              await tester.pumpAndSettle();
 
-                expect(find.text(l10n.deleteAccount), findsOneWidget);
-                expect(find.text(l10n.confirmDeleteAccount), findsOneWidget);
+              expect(find.text(l10n.deleteAccount), findsOneWidget);
+              await tester.tap(find.text(l10n.confirm));
+              await tester.pumpAndSettle();
 
-                await tester.tap(find.text(l10n.cancel));
-                await tester.pumpAndSettle();
+              // Account should be removed from active list
+              expect(find.text('Test Account'), findsNothing);
 
-                expect(find.text('Test Account'), findsOneWidget);
+              await tester.pumpWidget(Container());
+            }));
+  });
 
-                // Confirm deletion
-                offset = tester.getCenter(find.text('Test Account'));
-                gesture = await tester.startGesture(offset);
-                await tester.pump();
-                await Future.delayed(kLongPressTimeout);
-                await gesture.up();
-                await tester.pumpAndSettle();
+  group('accounts with references (affects deletion/archive)', () {
+    setUp(() async {
+      // Insert both accounts: one cash (with balance >0) and one portfolio (balance 0)
+      await db.into(db.accounts).insert(cashAccount.toCompanion(false));
+      await db.into(db.accounts).insert(portfolioAccount.toCompanion(false));
 
-                expect(find.text(l10n.deleteAccount), findsOneWidget);
-                expect(find.text(l10n.confirmDeleteAccount), findsOneWidget);
-
-                await tester.tap(find.text(l10n.confirm));
-                await tester.pumpAndSettle();
-
-                expect(find.text('Test Account'), findsNothing);
-
-                await tester.pumpWidget(Container());
-              }));
-    });
-
-    group('with accounts with references', () {
-      setUp(() async {
-        await db.into(db.accounts).insert(cashAccount.toCompanion(true));
-        await db.into(db.accounts).insert(portfolioAccount.toCompanion(true));
-        await db.into(db.bookings).insert(BookingsCompanion.insert(
+      // Add a booking referencing cashAccount (this will make hasBookings true)
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
             date: 20230101,
             category: 'Food',
-            amount: -50,
-            accountId: cashAccount.id));
-        await db.into(db.goals).insert(GoalsCompanion.insert(
+            shares: -50,
+            value: -50,
+            assetId: const Value(1),
+            accountId: cashAccount.id,
+          ));
+
+      // Add a goal referencing portfolioAccount (this will make hasGoals true)
+      await db.into(db.goals).insert(GoalsCompanion.insert(
             createdOn: 20250101,
             targetDate: 20260101,
-            targetAmount: 1000,
-            accountId: const Value(2)));
-      });
-
-      testWidgets(
-          'should show archive dialog for cash account with references on long press',
-          (tester) => tester.runAsync(() async {
-                final l10n = await pumpWidget(tester);
-                await tester.pumpAndSettle();
-
-                // Cancel archiving
-                Offset offset = tester.getCenter(find.text('Test Account'));
-                TestGesture gesture = await tester.startGesture(offset);
-                await tester.pump();
-                await Future.delayed(kLongPressTimeout);
-                await gesture.up();
-                await tester.pumpAndSettle();
-
-                expect(find.text(l10n.cannotDeleteAccount), findsOneWidget);
-                expect(find.text(l10n.accountHasReferencesArchiveInstead),
-                    findsOneWidget);
-
-                await tester.tap(find.text(l10n.cancel));
-                await tester.pumpAndSettle();
-
-                expect(find.text('Test Account'), findsOneWidget);
-
-                // Confirm archiving
-                offset = tester.getCenter(find.text('Test Account'));
-                gesture = await tester.startGesture(offset);
-                await tester.pump();
-                await Future.delayed(kLongPressTimeout);
-                await gesture.up();
-                await tester.pumpAndSettle();
-
-                expect(find.text(l10n.cannotDeleteAccount), findsOneWidget);
-                expect(find.text(l10n.accountHasReferencesArchiveInstead),
-                    findsOneWidget);
-
-                await tester.tap(find.text(l10n.archive));
-                await tester.pumpAndSettle();
-
-                expect(find.text('Test Account'), findsNothing);
-
-                await tester.pumpWidget(Container());
-              }));
-
-      testWidgets(
-          'should show archive dialog for portfolio account with references on long press',
-          (tester) => tester.runAsync(() async {
-                final l10n = await pumpWidget(tester);
-                await tester.pumpAndSettle();
-
-                // Cancel archiving
-                Offset offset =
-                    tester.getCenter(find.text('Portfolio Account'));
-                TestGesture gesture = await tester.startGesture(offset);
-                await tester.pump();
-                await Future.delayed(kLongPressTimeout);
-                await gesture.up();
-                await tester.pumpAndSettle();
-
-                expect(find.text(l10n.cannotDeleteAccount), findsOneWidget);
-                expect(find.text(l10n.accountHasReferencesArchiveInstead),
-                    findsOneWidget);
-
-                await tester.tap(find.text(l10n.cancel));
-                await tester.pumpAndSettle();
-
-                expect(find.text('Portfolio Account'), findsOneWidget);
-
-                offset = tester.getCenter(find.text('Portfolio Account'));
-                gesture = await tester.startGesture(offset);
-                await tester.pump();
-                await Future.delayed(kLongPressTimeout);
-                await gesture.up();
-                await tester.pumpAndSettle();
-
-                expect(find.text(l10n.cannotDeleteAccount), findsOneWidget);
-                expect(find.text(l10n.accountHasReferencesArchiveInstead),
-                    findsOneWidget);
-
-                await tester.tap(find.text(l10n.archive));
-                await tester.pumpAndSettle();
-
-                expect(find.text('Portfolio Account'), findsNothing);
-
-                await tester.pumpWidget(Container());
-              }));
+            targetShares: 1000,
+            targetValue: 1000,
+            accountId: Value(portfolioAccount.id),
+          ));
     });
 
-    group('with archived accounts', () {
-      setUp(() async {
-        await db.into(db.accounts).insert(archivedAccount.toCompanion(true));
-      });
+    testWidgets(
+        'long press on cash account with references shows cannot-delete-or-archive dialog (ok button)',
+        (tester) => tester.runAsync(() async {
+              final l10n = await pumpWidget(tester);
+              await tester.pumpAndSettle();
 
-      testWidgets(
-          'should show unarchive dialog on archived account tap',
-          (tester) => tester.runAsync(() async {
-                final l10n = await pumpWidget(tester);
-                await tester.pumpAndSettle();
+              // long press the cash account (balance > 0 and has references)
+              final center = tester.getCenter(find.text('Test Account'));
+              TestGesture gesture = await tester.startGesture(center);
+              await tester.pump();
+              await Future.delayed(kLongPressTimeout);
+              await gesture.up();
+              await tester.pumpAndSettle();
 
-                // Tap on the ExpansionTile to reveal archived accounts
-                await tester.tap(find.byType(ExpansionTile));
-                await tester.pumpAndSettle();
+              // It should show a dialog explaining we cannot delete/archive
+              expect(
+                  find.text(l10n.cannotDeleteOrArchiveAccount), findsOneWidget);
+              expect(find.text(l10n.cannotDeleteOrArchiveAccountLong),
+                  findsOneWidget);
 
-                expect(find.text('Archived Account'), findsOneWidget);
+              // Dismiss via OK
+              await tester.tap(find.text(l10n.ok));
+              await tester.pumpAndSettle();
 
-                await tester.tap(find.text('Archived Account'));
-                await tester.pumpAndSettle();
+              // The account still present
+              expect(find.text('Test Account'), findsOneWidget);
 
-                expect(find.text(l10n.unarchiveAccount), findsOneWidget);
-                expect(find.text(l10n.confirmUnarchiveAccount), findsOneWidget);
+              await tester.pumpWidget(Container());
+            }));
 
-                await tester.tap(find.text(l10n.confirm));
-                await tester.pumpAndSettle();
+    testWidgets(
+        'long press on portfolio account with references and zero balance shows archive dialog (archive button archives it)',
+        (tester) => tester.runAsync(() async {
+              final l10n = await pumpWidget(tester);
+              await tester.pumpAndSettle();
 
-                // After unarchiving, it should appear in the active accounts list
-                expect(find.text('Archived Account'), findsOneWidget);
+              // Ensure portfolio account is shown
+              expect(find.text('Portfolio Account'), findsOneWidget);
 
-                await tester.pumpWidget(Container());
-              }));
+              // Long press the portfolio account (has references; balance == 0)
+              final center = tester.getCenter(find.text('Portfolio Account'));
+              TestGesture gesture = await tester.startGesture(center);
+              await tester.pump();
+              await Future.delayed(kLongPressTimeout);
+              await gesture.up();
+              await tester.pumpAndSettle();
+
+              // Archive dialog should be shown (cannot delete, offer to archive)
+              expect(find.text(l10n.cannotDeleteAccount), findsOneWidget);
+              expect(find.text(l10n.accountHasReferencesArchiveInstead),
+                  findsOneWidget);
+
+              // Cancel first -> still present
+              await tester.tap(find.text(l10n.cancel));
+              await tester.pumpAndSettle();
+              expect(find.text('Portfolio Account'), findsOneWidget);
+
+              // Trigger long press again and pick Archive
+              final center2 = tester.getCenter(find.text('Portfolio Account'));
+              gesture = await tester.startGesture(center2);
+              await tester.pump();
+              await Future.delayed(kLongPressTimeout);
+              await gesture.up();
+              await tester.pumpAndSettle();
+
+              expect(find.text(l10n.cannotDeleteAccount), findsOneWidget);
+              await tester.tap(find.text(l10n.archive));
+              await tester.pumpAndSettle();
+
+              // After archiving the account should no longer be in the active list
+              expect(find.text('Portfolio Account'), findsNothing);
+
+              await tester.pumpWidget(Container());
+            }));
+  });
+
+  group('archived accounts behaviour', () {
+    setUp(() async {
+      // Insert an archived account
+      await db.into(db.accounts).insert(archivedAccount.toCompanion(false));
     });
+
+    testWidgets(
+        'expansion tile reveals archived account which can be unarchived',
+        (tester) => tester.runAsync(() async {
+              final l10n = await pumpWidget(tester);
+              await tester.pumpAndSettle();
+
+              // At this point active list is empty; expansion tile should be present
+              // Tap the ExpansionTile to expand archived accounts
+              expect(find.byType(ExpansionTile), findsOneWidget);
+              await tester.tap(find.byType(ExpansionTile));
+              await tester.pumpAndSettle();
+
+              // Archived account should be visible
+              expect(find.text('Archived Account'), findsOneWidget);
+
+              // Tap archived account to trigger unarchive dialog
+              await tester.tap(find.text('Archived Account'));
+              await tester.pumpAndSettle();
+
+              expect(find.text(l10n.unarchiveAccount), findsOneWidget);
+              expect(find.text(l10n.confirmUnarchiveAccount), findsOneWidget);
+
+              // Confirm unarchive
+              await tester.tap(find.text(l10n.confirm));
+              await tester.pumpAndSettle();
+
+              // After unarchiving it should appear in the active list
+              expect(find.text('Archived Account'), findsOneWidget);
+
+              await tester.pumpWidget(Container());
+            }));
   });
 }

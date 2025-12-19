@@ -5,6 +5,9 @@ import 'package:xfin/database/app_database.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/widgets/asset_form.dart';
 
+import '../utils/global_constants.dart';
+import '../widgets/liquid_glass_widgets.dart';
+
 class AssetsScreen extends StatelessWidget {
   const AssetsScreen({super.key});
 
@@ -22,14 +25,15 @@ class AssetsScreen extends StatelessWidget {
     Asset asset,
     AppLocalizations l10n,
   ) async {
-    bool hasReferences = false;
+    bool deletionProhibited = true;
     final hasTrades = await db.assetsDao.hasTrades(asset.id);
-    final hasAssetsOnAccounts = await db.assetsDao.hasAssetsOnAccounts(asset.id);
-    hasReferences = hasTrades || hasAssetsOnAccounts;
+    final hasAssetsOnAccounts =
+        await db.assetsDao.hasAssetsOnAccounts(asset.id);
+    deletionProhibited = hasTrades || hasAssetsOnAccounts || asset.id == 1;
 
     if (!context.mounted) return;
 
-    if (hasReferences) {
+    if (deletionProhibited) {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -77,54 +81,67 @@ class AssetsScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(l10n.assets),
       ),
-      body: Column(
+      body: Stack(
         children: [
-          Expanded(
-            child: StreamBuilder<List<Asset>>(
-              stream: db.assetsDao.watchAllAssets(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return Center(child: Text(l10n.error(snapshot.error.toString())));
-                }
-                final assets = snapshot.data ?? [];
-                if (assets.isEmpty) {
-                  return Center(
-                      child: Text(l10n.noAssets));
-                }
+          Column(
+            children: [
+              Expanded(
+                child: StreamBuilder<List<Asset>>(
+                  stream: db.assetsDao.watchAllAssets(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasError) {
+                      return Center(
+                          child: Text(l10n.error(snapshot.error.toString())));
+                    }
+                    final assets = snapshot.data ?? [];
+                    if (assets.isEmpty) {
+                      return Center(child: Text(l10n.noAssets));
+                    }
 
-                return ListView.builder(
-                  itemCount: assets.length,
-                  itemBuilder: (context, index) {
-                    final asset = assets[index];
-                    return ListTile(
-                      title: Text(asset.name),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('${l10n.value}: ${currencyFormat.format(asset.value)}'),
-                          Text('${l10n.sharesOwned}: ${asset.sharesOwned.toStringAsFixed(2)}'),
-                          Text('${l10n.netCostBasis}: ${currencyFormat.format(asset.netCostBasis)}'),
-                        ],
-                      ),
-                      trailing: Text(asset.type.name.toUpperCase()),
-                      // onTap: () {
-                      //   _showAssetForm(context, asset: asset);
-                      // },
-                      onLongPress: () => _handleLongPress(context, db, asset, l10n),
+                    return ListView.builder(
+                      itemCount: assets.length,
+                      itemBuilder: (context, index) {
+                        final asset = assets[index];
+                        return ListTile(
+                          title: Text(asset.name),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                  '${l10n.shares}: ${preciseDecimal(asset.shares)}'),
+                              if (asset.id != 1 && asset.shares > 0) ...[
+                                if ((asset.netCostBasis - asset.brokerCostBasis)
+                                        .abs() <
+                                    0.01) ...[
+                                  Text(
+                                      '${l10n.costBasis}: ${currencyFormat.format(asset.netCostBasis)}'),
+                                ] else ...[
+                                  Text(
+                                      '${l10n.netCostBasis}: ${currencyFormat.format(asset.netCostBasis)}'),
+                                  Text(
+                                      '${l10n.brokerCostBasis}: ${currencyFormat.format(asset.brokerCostBasis)}'),
+                                ],
+                              ],
+                              Text(
+                                  '${l10n.value}: ${currencyFormat.format(asset.value)}'),
+                            ],
+                          ),
+                          trailing: Text(asset.type.name.toUpperCase()),
+                          onLongPress: () =>
+                              _handleLongPress(context, db, asset, l10n),
+                        );
+                      },
                     );
                   },
-                );
-              },
-            ),
+                ),
+              ),
+            ],
           ),
+          buildFAB(context: context, onTap: () => _showAssetForm(context)),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAssetForm(context),
-        child: const Icon(Icons.add),
       ),
     );
   }

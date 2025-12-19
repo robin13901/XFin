@@ -14,7 +14,7 @@ void main() {
     accountsDao = db.accountsDao;
 
     await db.into(db.assets).insert(AssetsCompanion.insert(
-        name: 'EUR', type: AssetTypes.currency, tickerSymbol: 'EUR'));
+        name: 'EUR', type: AssetTypes.fiat, tickerSymbol: 'EUR'));
   });
 
   tearDown(() async {
@@ -30,8 +30,8 @@ void main() {
           .insert(AccountsCompanion.insert(name: 'A', type: AccountTypes.cash));
     });
 
-    test('createAccount', () async {
-      final id = await accountsDao.createAccount(
+    test('insert', () async {
+      final id = await accountsDao.insert(
           AccountsCompanion.insert(name: 'B', type: AccountTypes.cash));
 
       final act = await accountsDao.getAccount(id);
@@ -119,7 +119,10 @@ void main() {
         booking1 = Booking(
             id: 1,
             date: 20250105,
-            amount: 5,
+            shares: 5,
+            costBasis: 1,
+            value: 5,
+            assetId: 1,
             category: 'T',
             accountId: accountId,
             excludeFromAverage: false,
@@ -127,7 +130,10 @@ void main() {
         booking2 = Booking(
             id: 2,
             date: 20250109,
-            amount: -1,
+            shares: -1,
+            costBasis: 1,
+            assetId: 1,
+            value: -1,
             category: 'T',
             accountId: accountId,
             excludeFromAverage: false,
@@ -141,7 +147,8 @@ void main() {
             await accountsDao.leadsToInconsistentBalanceHistory(
               newBooking: BookingsCompanion.insert(
                   date: 20250104,
-                  amount: -1,
+                  shares: -1,
+                  value: -1,
                   category: 'Test',
                   accountId: accountId),
             ),
@@ -150,7 +157,8 @@ void main() {
             await accountsDao.leadsToInconsistentBalanceHistory(
               newBooking: BookingsCompanion.insert(
                   date: 20250105,
-                  amount: -1,
+                  shares: -1,
+                  value: -1,
                   category: 'Test',
                   accountId: accountId),
             ),
@@ -159,7 +167,8 @@ void main() {
             await accountsDao.leadsToInconsistentBalanceHistory(
               newBooking: BookingsCompanion.insert(
                   date: 20250106,
-                  amount: -1,
+                  shares: -1,
+                  value: -1,
                   category: 'Test',
                   accountId: accountId),
             ),
@@ -203,14 +212,14 @@ void main() {
             await accountsDao.leadsToInconsistentBalanceHistory(
                 originalBooking: booking2,
                 newBooking: booking2.toCompanion(false).copyWith(
-                    accountId: Value(accountId2), amount: const Value(1))),
+                    accountId: Value(accountId2), shares: const Value(1), value: const Value(1))),
             isFalse);
       });
     });
   });
 
   group('Has references tests', () {
-    late Account cashAccount1, cashAccount2, portfolioAccount;
+    late Account cashAccount1, cashAccount2, investmentAccount;
     late Asset asset;
 
     setUp(() async {
@@ -230,9 +239,9 @@ void main() {
           type: AccountTypes.cash,
           isArchived: false);
 
-      portfolioAccount = const Account(
+      investmentAccount = const Account(
           id: 3,
-          name: 'Portfolio Account',
+          name: 'Investment Account',
           balance: 10,
           initialBalance: 0,
           type: AccountTypes.portfolio,
@@ -243,15 +252,17 @@ void main() {
           name: 'Test Asset',
           type: AssetTypes.stock,
           tickerSymbol: 'TEST',
+          currencySymbol: '',
           value: 0,
-          sharesOwned: 0,
+          shares: 0,
           netCostBasis: 0,
           brokerCostBasis: 0,
-          buyFeeTotal: 0);
+          buyFeeTotal: 0, 
+          isArchived: false);
 
       await db.into(db.accounts).insert(cashAccount1.toCompanion(false));
       await db.into(db.accounts).insert(cashAccount2.toCompanion(false));
-      await db.into(db.accounts).insert(portfolioAccount.toCompanion(false));
+      await db.into(db.accounts).insert(investmentAccount.toCompanion(false));
       await db.into(db.assets).insert(asset.toCompanion(false));
     });
 
@@ -260,7 +271,8 @@ void main() {
 
       await db.into(db.bookings).insert(BookingsCompanion.insert(
           date: 20240101,
-          amount: 100.0,
+          shares: 100.0,
+          value: 100.0,
           category: 'Test',
           accountId: cashAccount1.id));
 
@@ -273,9 +285,10 @@ void main() {
       await db.into(db.periodicBookings).insert(
           PeriodicBookingsCompanion.insert(
               nextExecutionDate: 20251010,
-              amount: 5,
+              shares: 5, 
+              value: 5,
               accountId: 1,
-              category: 'Test'));
+              category: 'Test',));
 
       expect(await accountsDao.hasPeriodicBookings(cashAccount1.id), isTrue);
     });
@@ -286,9 +299,10 @@ void main() {
 
       await db.into(db.transfers).insert(TransfersCompanion.insert(
           date: 20240101,
-          amount: 100.0,
+          shares: 100.0,
           sendingAccountId: cashAccount1.id,
-          receivingAccountId: cashAccount2.id));
+          receivingAccountId: cashAccount2.id,
+          value: 100.0));
 
       expect(await accountsDao.hasTransfers(cashAccount1.id), isTrue);
       expect(await accountsDao.hasTransfers(cashAccount2.id), isTrue);
@@ -301,7 +315,8 @@ void main() {
       await db.into(db.periodicTransfers).insert(
           PeriodicTransfersCompanion.insert(
               nextExecutionDate: 20251010,
-              amount: 5,
+              shares: 5,
+              value: 5,
               sendingAccountId: 1,
               receivingAccountId: 2));
 
@@ -311,35 +326,35 @@ void main() {
 
     test('hasTrades', () async {
       expect(await accountsDao.hasTrades(cashAccount1.id), isFalse);
-      expect(await accountsDao.hasTrades(portfolioAccount.id), isFalse);
+      expect(await accountsDao.hasTrades(investmentAccount.id), isFalse);
 
       await db.into(db.assetsOnAccounts).insert(
           AssetsOnAccountsCompanion.insert(
-              accountId: portfolioAccount.id, assetId: asset.id));
+              accountId: investmentAccount.id, assetId: asset.id));
 
       await db.into(db.trades).insert(TradesCompanion.insert(
           datetime: 20240101,
           assetId: asset.id,
           type: TradeTypes.buy,
-          clearingAccountValueDelta: -1,
-          portfolioAccountValueDelta: 1,
+          sourceAccountValueDelta: -1,
+          targetAccountValueDelta: 1,
           shares: 1,
-          pricePerShare: 1,
-          clearingAccountId: cashAccount1.id,
-          portfolioAccountId: portfolioAccount.id));
+          costBasis: 1,
+          sourceAccountId: cashAccount1.id,
+          targetAccountId: investmentAccount.id));
 
       expect(await accountsDao.hasTrades(cashAccount1.id), isTrue);
-      expect(await accountsDao.hasTrades(portfolioAccount.id), isTrue);
+      expect(await accountsDao.hasTrades(investmentAccount.id), isTrue);
     });
 
     test('hasAssets', () async {
-      expect(await accountsDao.hasAssets(portfolioAccount.id), isFalse);
+      expect(await accountsDao.hasAssets(investmentAccount.id), isFalse);
 
       await db
           .into(db.assetsOnAccounts)
           .insert(AssetsOnAccountsCompanion.insert(accountId: 3, assetId: 2));
 
-      expect(await accountsDao.hasAssets(portfolioAccount.id), isTrue);
+      expect(await accountsDao.hasAssets(investmentAccount.id), isTrue);
     });
 
     test('hasGoals', () async {
@@ -349,7 +364,8 @@ void main() {
           accountId: Value(cashAccount1.id),
           createdOn: 20251010,
           targetDate: 20261010,
-          targetAmount: 15000));
+          targetShares: 15000,
+          targetValue: 15000));
 
       expect(await accountsDao.hasGoals(cashAccount1.id), isTrue);
     });

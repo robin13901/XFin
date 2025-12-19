@@ -2,30 +2,50 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
-import 'package:xfin/database/daos/bookings_dao.dart';
 import 'package:xfin/l10n/app_localizations.dart';
-import 'package:xfin/widgets/booking_form.dart';
-import 'package:xfin/widgets/delete_booking_dialog.dart';
+import 'package:xfin/widgets/transfer_form.dart';
 
+import '../database/daos/transfers_dao.dart';
+import '../widgets/liquid_glass_widgets.dart';
 
-class BookingsScreen extends StatelessWidget {
-  const BookingsScreen({super.key});
+class TransfersScreen extends StatelessWidget {
+  const TransfersScreen({super.key});
 
-  static void showBookingForm(BuildContext context, Booking? booking) {
-    showModalBottomSheet(
+  Future<void> _showTransferForm(
+      BuildContext context, Transfer? transfer) async {
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (_) => BookingForm(booking: booking),
+      builder: (_) => TransferForm(transfer: transfer),
     );
   }
 
-  Future<void> _showDeleteDialog(BuildContext context,
-      BookingWithAccountAndAsset bookingWithAccountAndAsset) async {
-    await showDialog(
+  Future<void> _showDeleteDialog(
+      BuildContext context, Transfer transfer) async {
+    final l10n = AppLocalizations.of(context)!;
+    final db = Provider.of<AppDatabase>(context, listen: false);
+
+    final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => DeleteBookingDialog(
-          bookingWithAccountAndAsset: bookingWithAccountAndAsset),
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.deleteTransfer),
+        content: Text(l10n.deleteTransferConfirmation),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.delete),
+          ),
+        ],
+      ),
     );
+
+    if (confirmed == true) {
+      await db.transfersDao.deleteTransfer(transfer.id);
+    }
   }
 
   @override
@@ -35,12 +55,12 @@ class BookingsScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.bookings),
+        title: Text(l10n.transfers),
       ),
       body: Stack(
         children: [
-          StreamBuilder<List<BookingWithAccountAndAsset>>(
-            stream: db.bookingsDao.watchBookingsWithAccountAndAsset(),
+          StreamBuilder<List<TransferWithAccountsAndAsset>>(
+            stream: db.transfersDao.watchTransfersWithAccountsAndAsset(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
@@ -50,9 +70,10 @@ class BookingsScreen extends StatelessWidget {
                     child:
                         Text(l10n.anErrorOccurred(snapshot.error.toString())));
               }
-              final bookingsWithAccounts = snapshot.data ?? [];
-              if (bookingsWithAccounts.isEmpty) {
-                return Center(child: Text(l10n.noBookingsYet));
+
+              final items = snapshot.data ?? [];
+              if (items.isEmpty) {
+                return Center(child: Text(l10n.noTransfersYet));
               }
 
               final currencyFormat =
@@ -60,32 +81,30 @@ class BookingsScreen extends StatelessWidget {
               final dateFormat = DateFormat('dd.MM.yyyy');
 
               return ListView.builder(
-                itemCount: bookingsWithAccounts.length,
+                itemCount: items.length,
                 itemBuilder: (context, index) {
-                  final item = bookingsWithAccounts[index];
-                  final booking = item.booking;
-                  final asset = item.asset;
+                  final it = items[index];
+                  final t = it.transfer;
+                  final asset = it.asset;
 
-                  Color amountColor =
-                      booking.shares < 0 ? Colors.red : Colors.green;
-
-                  final dateString = booking.date.toString();
+                  final dateString = t.date.toString();
                   final date = DateTime.parse(
                       '${dateString.substring(0, 4)}-${dateString.substring(4, 6)}-${dateString.substring(6, 8)}');
                   final dateText = dateFormat.format(date);
 
                   return ListTile(
-                    title: Text(booking.category),
-                    subtitle: Text(item.account.name),
+                    title: Text(
+                        '${it.sendingAccount.name} → ${it.receivingAccount.name}'),
+                    subtitle: Text(asset.name),
                     trailing: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         if (asset.id == 1) ...[
                           Text(
-                            currencyFormat.format(booking.value),
+                            currencyFormat.format(t.value),
                             style: TextStyle(
-                                color: amountColor,
+                                color: t.value < 0 ? Colors.red : Colors.black,
                                 fontWeight: FontWeight.bold),
                           ),
                         ] else ...[
@@ -94,12 +113,15 @@ class BookingsScreen extends StatelessWidget {
                               children: [
                                 TextSpan(
                                   text:
-                                      '${booking.shares} ${asset.currencySymbol ?? asset.tickerSymbol} ≈ ',
+                                      '${t.shares} ${asset.currencySymbol ?? asset.tickerSymbol} ≈ ',
                                   style: const TextStyle(color: Colors.grey),
                                 ),
                                 TextSpan(
-                                  text: currencyFormat.format(booking.value),
-                                  style: TextStyle(color: amountColor),
+                                  text: currencyFormat.format(t.value),
+                                  style: TextStyle(
+                                      color: t.value < 0
+                                          ? Colors.red
+                                          : Colors.black),
                                 ),
                               ],
                             ),
@@ -109,13 +131,15 @@ class BookingsScreen extends StatelessWidget {
                             style: Theme.of(context).textTheme.bodySmall),
                       ],
                     ),
-                    onTap: () => showBookingForm(context, booking),
-                    onLongPress: () => _showDeleteDialog(context, item),
+                    onTap: () => _showTransferForm(context, t),
+                    onLongPress: () => _showDeleteDialog(context, t),
                   );
                 },
               );
             },
           ),
+          buildFAB(
+              context: context, onTap: () => _showTransferForm(context, null)),
         ],
       ),
     );

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
-import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/widgets/account_form.dart';
 
@@ -10,7 +9,7 @@ import '../providers/base_currency_provider.dart';
 class AccountsScreen extends StatelessWidget {
   const AccountsScreen({super.key});
 
-  void _showAccountForm(BuildContext context) {
+  static void showAccountForm(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -24,53 +23,64 @@ class AccountsScreen extends StatelessWidget {
     Account account,
     AppLocalizations l10n,
   ) async {
-    bool hasReferences = false;
-    if (account.type == AccountTypes.cash) {
-      final hasBookings = await db.accountsDao.hasBookings(account.id);
-      final hasTransfers = await db.accountsDao.hasTransfers(account.id);
-      final hasTrades = await db.accountsDao.hasTrades(account.id);
-      final hasPeriodicBookings =
-          await db.accountsDao.hasPeriodicBookings(account.id);
-      final hasPeriodicTransfers =
-          await db.accountsDao.hasPeriodicTransfers(account.id);
-      final hasGoals = await db.accountsDao.hasGoals(account.id);
-      hasReferences = hasBookings ||
-          hasTransfers ||
-          hasTrades ||
-          hasPeriodicBookings ||
-          hasPeriodicTransfers ||
-          hasGoals;
-    } else if (account.type == AccountTypes.portfolio) {
-      final hasAssetsOnAccounts =
-          await db.accountsDao.hasAssets(account.id);
-      final hasTrades = await db.accountsDao.hasTrades(account.id);
-      final hasGoals = await db.accountsDao.hasGoals(account.id);
-      hasReferences = hasAssetsOnAccounts || hasTrades || hasGoals;
-    }
+    bool deletionProhibited = true;
+
+    final hasBookings = await db.accountsDao.hasBookings(account.id);
+    final hasTransfers = await db.accountsDao.hasTransfers(account.id);
+    final hasTrades = await db.accountsDao.hasTrades(account.id);
+    final hasPeriodicBookings =
+    await db.accountsDao.hasPeriodicBookings(account.id);
+    final hasPeriodicTransfers =
+    await db.accountsDao.hasPeriodicTransfers(account.id);
+    final hasGoals = await db.accountsDao.hasGoals(account.id);
+
+    deletionProhibited = hasBookings ||
+        hasTransfers ||
+        hasTrades ||
+        hasPeriodicBookings ||
+        hasPeriodicTransfers ||
+        hasGoals;
 
     if (!context.mounted) return;
 
-    if (hasReferences) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text(l10n.cannotDeleteAccount),
-          content: Text(l10n.accountHasReferencesArchiveInstead),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(l10n.cancel),
-            ),
-            TextButton(
-              onPressed: () {
-                db.accountsDao.setArchived(account.id, true);
-                Navigator.of(context).pop();
-              },
-              child: Text(l10n.archive),
-            ),
-          ],
-        ),
-      );
+    if (deletionProhibited) {
+      if (account.balance > 0) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(l10n.cannotDeleteOrArchiveAccount),
+            content: Text(l10n.cannotDeleteOrArchiveAccountLong),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(l10n.ok),
+              ),
+            ],
+          ),
+        );
+      } else {
+        showDialog(
+          context: context,
+          builder: (context) =>
+              AlertDialog(
+                title: Text(l10n.cannotDeleteAccount),
+                content: Text(l10n.accountHasReferencesArchiveInstead),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text(l10n.cancel),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      db.accountsDao.setArchived(account.id, true);
+                      Navigator.of(context).pop();
+                    },
+                    child: Text(l10n.archive),
+                  ),
+                ],
+              ),
+        );
+      }
     } else {
       showDialog(
         context: context,
@@ -210,10 +220,6 @@ class AccountsScreen extends StatelessWidget {
                 );
               }),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAccountForm(context),
-        child: const Icon(Icons.add),
       ),
     );
   }

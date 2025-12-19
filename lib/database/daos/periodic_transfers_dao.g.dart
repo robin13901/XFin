@@ -4,6 +4,7 @@ part of 'periodic_transfers_dao.dart';
 
 // ignore_for_file: type=lint
 mixin _$PeriodicTransfersDaoMixin on DatabaseAccessor<AppDatabase> {
+  $AssetsTable get assets => attachedDatabase.assets;
   $AccountsTable get accounts => attachedDatabase.accounts;
   $PeriodicTransfersTable get periodicTransfers =>
       attachedDatabase.periodicTransfers;

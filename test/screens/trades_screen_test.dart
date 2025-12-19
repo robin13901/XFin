@@ -115,7 +115,7 @@ void main() {
           }));
 
   group('with initial trades', () {
-    late Account clearingAccount, portfolioAccount;
+    late Account sourceAccount, targetAccount;
     late Asset asset;
     late NumberFormat pnlFormat;
     late NumberFormat formatter;
@@ -127,78 +127,78 @@ void main() {
       formatter.minimumFractionDigits = 2;
       formatter.maximumFractionDigits = 2;
 
-      clearingAccount = const Account(
+      sourceAccount = const Account(
         id: 1,
-        name: 'Clearing Account',
+        name: 'Source Account',
         balance: 10000,
         initialBalance: 10000,
         type: AccountTypes.cash,
         isArchived: false,
       );
-      portfolioAccount = const Account(
+      targetAccount = const Account(
         id: 2,
-        name: 'Portfolio Account',
+        name: 'Target Account',
         balance: 0,
         initialBalance: 0,
         type: AccountTypes.portfolio,
         isArchived: false,
       );
-      await db.into(db.accounts).insert(clearingAccount.toCompanion(false));
-      await db.into(db.accounts).insert(portfolioAccount.toCompanion(false));
+      await db.into(db.accounts).insert(sourceAccount.toCompanion(false));
+      await db.into(db.accounts).insert(targetAccount.toCompanion(false));
 
       asset = const Asset(
-        id: 1,
-        name: 'Test Stock',
-        type: AssetTypes.stock,
-        tickerSymbol: 'TSS',
-        value: 100,
-        sharesOwned: 10,
-        brokerCostBasis: 1000,
-        netCostBasis: 1000,
-        buyFeeTotal: 0,
-      );
+          id: 1,
+          name: 'Test Stock',
+          type: AssetTypes.stock,
+          tickerSymbol: 'TSS',
+          currencySymbol: '',
+          value: 100,
+          shares: 10,
+          brokerCostBasis: 1000,
+          netCostBasis: 1000,
+          buyFeeTotal: 0,
+          isArchived: false);
       await db.into(db.assets).insert(asset.toCompanion(false));
 
       await db
           .into(db.assetsOnAccounts)
           .insert(AssetsOnAccountsCompanion.insert(
-            accountId: portfolioAccount.id,
+            accountId: targetAccount.id,
             assetId: asset.id,
             value: const Value(1000),
-            sharesOwned: const Value(10),
+            shares: const Value(10),
             netCostBasis: const Value(1000),
             brokerCostBasis: const Value(1000),
             buyFeeTotal: const Value(10),
           ));
 
       final buyTrade = TradesCompanion.insert(
-        type: TradeTypes.buy,
-        datetime: 20230101090000,
-        assetId: asset.id,
-        shares: 5,
-        pricePerShare: 100,
-        tradingFee: const Value(5),
-        clearingAccountId: clearingAccount.id,
-        portfolioAccountId: portfolioAccount.id,
-        clearingAccountValueDelta: -505,
-        portfolioAccountValueDelta: 500
-      );
+          type: TradeTypes.buy,
+          datetime: 20230101090000,
+          assetId: asset.id,
+          shares: 5,
+          costBasis: 100,
+          fee: const Value(5),
+          sourceAccountId: sourceAccount.id,
+          targetAccountId: targetAccount.id,
+          sourceAccountValueDelta: -505,
+          targetAccountValueDelta: 500);
 
       final sellTradePositivePnl = TradesCompanion.insert(
         type: TradeTypes.sell,
         datetime: 20230102100000,
         assetId: asset.id,
         shares: 2,
-        pricePerShare: 120,
-        tradingFee: const Value(5),
+        costBasis: 120,
+        fee: const Value(5),
         tax: const Value(5),
-        clearingAccountId: clearingAccount.id,
-        portfolioAccountId: portfolioAccount.id,
-        clearingAccountValueDelta: 230,
-        portfolioAccountValueDelta: -240,
-        profitAndLossAbs: const Value(30),
+        sourceAccountId: sourceAccount.id,
+        targetAccountId: targetAccount.id,
+        sourceAccountValueDelta: 230,
+        targetAccountValueDelta: -240,
+        profitAndLoss: const Value(30),
         // (120 * 2) - (100 * 2) - 5 - 5 = 30
-        profitAndLossRel: const Value(0.15), // 30 / (2 * 100)
+        returnOnInvest: const Value(0.15), // 30 / (2 * 100)
       );
 
       final sellTradeNegativePnl = TradesCompanion.insert(
@@ -206,15 +206,15 @@ void main() {
         datetime: 20230103110000,
         assetId: asset.id,
         shares: 3,
-        pricePerShare: 90,
-        tradingFee: const Value(5),
-        clearingAccountId: clearingAccount.id,
-        portfolioAccountId: portfolioAccount.id,
-        clearingAccountValueDelta: 265,
-        portfolioAccountValueDelta: -270,
-        profitAndLossAbs: const Value(-35),
+        costBasis: 90,
+        fee: const Value(5),
+        sourceAccountId: sourceAccount.id,
+        targetAccountId: targetAccount.id,
+        sourceAccountValueDelta: 265,
+        targetAccountValueDelta: -270,
+        profitAndLoss: const Value(-35),
         // (90 * 3) - (100 * 3) - 5 = -35
-        profitAndLossRel: const Value(-0.1167),
+        returnOnInvest: const Value(-0.1167),
       );
 
       await db.into(db.trades).insert(buyTrade);
@@ -233,7 +233,7 @@ void main() {
 
               // Verify Buy Trade
               final buyTradeFinder = find.ancestor(
-                  of: find.textContaining('BUY 5.0 TSS @ 100,00'),
+                  of: find.textContaining('BUY 5 TSS @ 100,00'),
                   matching: find.byType(ListTile));
               expect(buyTradeFinder, findsOneWidget);
               expect(
@@ -244,24 +244,26 @@ void main() {
               expect(
                   find.descendant(
                       of: buyTradeFinder,
-                      matching: find.textContaining('${l10n.value}: ${pnlFormat.format(500)}')),
+                      matching: find.textContaining(
+                          '${l10n.value}: ${pnlFormat.format(500)}')),
                   findsOneWidget);
               expect(
                   find.descendant(
                       of: buyTradeFinder,
-                      matching:
-                          find.textContaining('${l10n.tradingFee}: ${pnlFormat.format(5)}')),
+                      matching: find.textContaining(
+                          '${l10n.fee}: ${pnlFormat.format(5)}')),
                   findsOneWidget);
               expect(
                   find.descendant(
                       of: buyTradeFinder,
-                      matching: find.textContaining('${l10n.tax}: ${pnlFormat.format(0)}')),
+                      matching: find.textContaining(
+                          '${l10n.tax}: ${pnlFormat.format(0)}')),
                   findsNothing);
               expect(
                   find.descendant(
                       of: buyTradeFinder,
-                      matching:
-                          find.textContaining('${l10n.profitAndLoss}: ${pnlFormat.format(0)}')),
+                      matching: find.textContaining(
+                          '${l10n.profitAndLoss}: ${pnlFormat.format(0)}')),
                   findsNothing);
               expect(
                   find.descendant(
@@ -283,7 +285,7 @@ void main() {
               expect(find.textContaining(l10n.noTrades), findsNothing);
 
               final sellPosFinder = find.ancestor(
-                  of: find.textContaining('SELL 2.0 TSS'),
+                  of: find.textContaining('SELL 2 TSS'),
                   matching: find.byType(ListTile));
               expect(sellPosFinder, findsOneWidget);
 
@@ -301,8 +303,8 @@ void main() {
               expect(
                   find.descendant(
                       of: sellPosFinder,
-                      matching: find
-                          .text('${l10n.tradingFee}: ${pnlFormat.format(5)}')),
+                      matching:
+                          find.text('${l10n.fee}: ${pnlFormat.format(5)}')),
                   findsOneWidget);
               expect(
                   find.descendant(
@@ -350,7 +352,7 @@ void main() {
               expect(find.textContaining(l10n.noTrades), findsNothing);
 
               final sellNegFinder = find.ancestor(
-                  of: find.textContaining('SELL 3.0 TSS'),
+                  of: find.textContaining('SELL 3 TSS'),
                   matching: find.byType(ListTile));
               expect(sellNegFinder, findsOneWidget);
               expect(
@@ -362,19 +364,19 @@ void main() {
                   find.descendant(
                       of: sellNegFinder,
                       matching:
-                      find.text('${l10n.value}: ${pnlFormat.format(270)}')),
-                  findsOneWidget);
-              expect(
-                  find.descendant(
-                      of: sellNegFinder,
-                      matching: find
-                          .text('${l10n.tradingFee}: ${pnlFormat.format(5)}')),
+                          find.text('${l10n.value}: ${pnlFormat.format(270)}')),
                   findsOneWidget);
               expect(
                   find.descendant(
                       of: sellNegFinder,
                       matching:
-                      find.text('${l10n.tax}: ${pnlFormat.format(0)}')),
+                          find.text('${l10n.fee}: ${pnlFormat.format(5)}')),
+                  findsOneWidget);
+              expect(
+                  find.descendant(
+                      of: sellNegFinder,
+                      matching:
+                          find.text('${l10n.tax}: ${pnlFormat.format(0)}')),
                   findsOneWidget);
               expect(
                   find.descendant(

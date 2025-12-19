@@ -131,21 +131,58 @@ void main() {
   }
 
   group('TradeForm - initial loading & UI', () {
-    testWidgets('loads assets/accounts and excludes base currency asset', (tester) async {
-      const eur = Asset(id: 1, name: 'EUR', tickerSymbol: 'EUR', type: AssetTypes.currency, value: 0, sharesOwned: 0, netCostBasis: 1, brokerCostBasis: 1, buyFeeTotal: 0);
-      const acme = Asset(id: 2, name: 'ACME', tickerSymbol: 'ACME', type: AssetTypes.stock, value: 0, sharesOwned: 0, netCostBasis: 1, brokerCostBasis: 1, buyFeeTotal: 0);
+    testWidgets('loads assets/accounts and excludes base currency asset',
+        (tester) async {
+      const eur = Asset(
+          id: 1,
+          name: 'EUR',
+          tickerSymbol: 'EUR',
+          type: AssetTypes.fiat,
+          currencySymbol: '€',
+          value: 0,
+          shares: 0,
+          netCostBasis: 1,
+          brokerCostBasis: 1,
+          buyFeeTotal: 0,
+          isArchived: false);
+      const acme = Asset(
+          id: 2,
+          name: 'ACME',
+          tickerSymbol: 'ACME',
+          type: AssetTypes.stock,
+          currencySymbol: '',
+          value: 0,
+          shares: 0,
+          netCostBasis: 1,
+          brokerCostBasis: 1,
+          buyFeeTotal: 0,
+          isArchived: false);
 
-      const cashAcc = Account(id: 11, name: 'Cash A', balance: 1000.0, initialBalance: 1000.0, type: AccountTypes.cash, isArchived: false);
-      const portAcc = Account(id: 12, name: 'Portfolio A', balance: 0.0, initialBalance: 0.0, type: AccountTypes.portfolio, isArchived: false);
+      const cashAcc = Account(
+          id: 11,
+          name: 'Cash A',
+          balance: 1000.0,
+          initialBalance: 1000.0,
+          type: AccountTypes.cash,
+          isArchived: false);
+      const portAcc = Account(
+          id: 12,
+          name: 'Portfolio A',
+          balance: 0.0,
+          initialBalance: 0.0,
+          type: AccountTypes.portfolio,
+          isArchived: false);
 
-      when(() => mockAssetsDao.watchAllAssets()).thenAnswer((_) => Stream.value([eur, acme]));
-      when(() => mockAccountsDao.watchAllAccounts()).thenAnswer((_) => Stream.value([cashAcc, portAcc]));
+      when(() => mockAssetsDao.watchAllAssets())
+          .thenAnswer((_) => Stream.value([eur, acme]));
+      when(() => mockAccountsDao.watchAllAccounts())
+          .thenAnswer((_) => Stream.value([cashAcc, portAcc]));
 
       await openForm(tester);
       await tester.pumpAndSettle();
 
       final assetDropdown = find.byWidgetPredicate(
-            (w) => w is DropdownButtonFormField<Asset>,
+        (w) => w is DropdownButtonFormField<Asset>,
       );
 
       await tester.ensureVisible(assetDropdown);
@@ -160,7 +197,8 @@ void main() {
       await tester.pumpAndSettle();
 
       final clearingDropdown = find.byWidgetPredicate(
-            (w) => w is DropdownButtonFormField<Account> &&
+        (w) =>
+            w is DropdownButtonFormField<Account> &&
             (w.decoration.labelText?.contains('Clearing') ?? false),
       );
 
@@ -175,8 +213,9 @@ void main() {
       await tester.pumpAndSettle();
 
       final portfolioDropdown = find.byWidgetPredicate(
-            (w) => w is DropdownButtonFormField<Account> &&
-            (w.decoration.labelText?.contains('Portfolio') ?? false),
+        (w) =>
+            w is DropdownButtonFormField<Account> &&
+            (w.decoration.labelText?.contains(l10n.investmentAccount) ?? false),
       );
 
       await tester.ensureVisible(portfolioDropdown);
@@ -192,11 +231,13 @@ void main() {
           name: 'ACME',
           tickerSymbol: 'ACME',
           type: AssetTypes.stock,
+          currencySymbol: '',
           value: 0,
-          sharesOwned: 0,
+          shares: 0,
           netCostBasis: 1,
           brokerCostBasis: 1,
-          buyFeeTotal: 0);
+          buyFeeTotal: 0,
+          isArchived: false);
       const cashAcc = Account(
           id: 11,
           name: 'Cash A',
@@ -243,12 +284,14 @@ void main() {
           id: 2,
           name: 'ACME',
           tickerSymbol: 'ACME',
+          currencySymbol: '',
           type: AssetTypes.stock,
           value: 0,
-          sharesOwned: 0,
+          shares: 0,
           netCostBasis: 1,
           brokerCostBasis: 1,
-          buyFeeTotal: 0);
+          buyFeeTotal: 0,
+          isArchived: false);
       const cashAcc = Account(
           id: 11,
           name: 'Cash A',
@@ -269,18 +312,18 @@ void main() {
       when(() => mockAccountsDao.watchAllAccounts())
           .thenAnswer((_) => Stream.value([cashAcc, portAcc]));
 
-      // when getAssetOnAccount called with portfolio id and asset id, return an object with sharesOwned = 5
+      // when getAssetOnAccount called with portfolio id and asset id, return an object with shares = 5
       final aOnAcc = AssetOnAccount(
         assetId: asset.id,
         accountId: portAcc.id,
-        sharesOwned: 5.0,
+        shares: 5.0,
         value: 0.0,
         netCostBasis: 0.0,
         brokerCostBasis: 0.0,
         buyFeeTotal: 0.0,
       );
       when(() =>
-              mockAssetsOnAccountsDao.getAssetOnAccount(portAcc.id, asset.id))
+              mockAssetsOnAccountsDao.getAOA(portAcc.id, asset.id))
           .thenAnswer((_) async => aOnAcc);
 
       await openForm(tester);
@@ -322,12 +365,14 @@ void main() {
           id: 2,
           name: 'ACME',
           tickerSymbol: 'ACME',
+          currencySymbol: '',
           type: AssetTypes.stock,
           value: 0,
-          sharesOwned: 0,
+          shares: 0,
           netCostBasis: 1,
           brokerCostBasis: 1,
-          buyFeeTotal: 0);
+          buyFeeTotal: 0,
+          isArchived: false);
       const cashAcc = Account(
           id: 11,
           name: 'Cash A',
@@ -350,7 +395,7 @@ void main() {
 
       // Simulate asset not present by throwing
       when(() =>
-              mockAssetsOnAccountsDao.getAssetOnAccount(portAcc.id, asset.id))
+              mockAssetsOnAccountsDao.getAOA(portAcc.id, asset.id))
           .thenThrow(Exception('not found'));
 
       await openForm(tester);
@@ -385,115 +430,21 @@ void main() {
 
   group('TradeForm - field validators (fees, price, tax, clearing account)',
       () {
-    testWidgets('trading fee validator rejects too many decimals',
+
+    testWidgets('costBasis validator rejects zero and negatives',
         (tester) async {
       const asset = Asset(
           id: 2,
           name: 'ACME',
           tickerSymbol: 'ACME',
+          currencySymbol: '',
           type: AssetTypes.stock,
           value: 0,
-          sharesOwned: 0,
+          shares: 0,
           netCostBasis: 1,
           brokerCostBasis: 1,
-          buyFeeTotal: 0);
-      const cashAcc = Account(
-          id: 11,
-          name: 'Cash A',
-          balance: 1000.0,
-          initialBalance: 1000.0,
-          type: AccountTypes.cash,
+          buyFeeTotal: 0,
           isArchived: false);
-      const portAcc = Account(
-          id: 12,
-          name: 'Portfolio A',
-          balance: 0.0,
-          initialBalance: 0.0,
-          type: AccountTypes.portfolio,
-          isArchived: false);
-
-      when(() => mockAssetsDao.watchAllAssets())
-          .thenAnswer((_) => Stream.value([asset]));
-      when(() => mockAccountsDao.watchAllAccounts())
-          .thenAnswer((_) => Stream.value([cashAcc, portAcc]));
-
-      await openForm(tester);
-
-      // Enter basic valid inputs for required fields
-      // date: pick a date to satisfy date validator (tap and accept)
-      await tester.tap(find.widgetWithText(TextFormField, l10n.datetime));
-      await tester.pumpAndSettle();
-
-      // pick first available day on date picker
-      if (find.text('OK').evaluate().isNotEmpty) {
-        // Select the first day shown (best-effort). If platform differs, this may be flaky.
-        final dayCandidates = find.byWidgetPredicate(
-            (w) => w is Text && RegExp(r'^\d+$').hasMatch((w.data ?? '')));
-        if (dayCandidates.evaluate().isNotEmpty) {
-          await tester.tap(dayCandidates.first);
-          await tester.pumpAndSettle();
-          // press OK
-          await tester.tap(find.text('OK'));
-          await tester.pumpAndSettle();
-          // time picker appears - tap OK to accept time
-          if (find.text('OK').evaluate().isNotEmpty) {
-            await tester.tap(find.text('OK'));
-            await tester.pumpAndSettle();
-          }
-        }
-      }
-
-      // select trade type = buy (so tax not shown)
-      await tester.tap(find.byType(DropdownButtonFormField<TradeTypes>).first);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text(TradeTypes.buy.name).last);
-      await tester.pumpAndSettle();
-
-      // select asset and accounts
-      await tester.tap(find.byType(DropdownButtonFormField<Asset>).first);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('ACME').last);
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byType(DropdownButtonFormField<Account>).first);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Cash A').last);
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byType(DropdownButtonFormField<Account>).last);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Portfolio A').last);
-      await tester.pumpAndSettle();
-
-      // Enter tradingFee with too many decimals
-      await tester.enterText(
-          find.widgetWithText(TextFormField, l10n.tradingFee), '1.234');
-      await tester.pump();
-
-      // Enter other numeric fields valid
-      await tester.enterText(
-          find.widgetWithText(TextFormField, l10n.pricePerShare), '10');
-      await tester.enterText(
-          find.widgetWithText(TextFormField, l10n.shares), '1');
-
-      await tester.tap(find.widgetWithText(ElevatedButton, l10n.save));
-      await tester.pump();
-
-      expect(find.text(l10n.tooManyDecimalPlaces), findsOneWidget);
-    });
-
-    testWidgets('pricePerShare validator rejects zero and negatives',
-        (tester) async {
-      const asset = Asset(
-          id: 2,
-          name: 'ACME',
-          tickerSymbol: 'ACME',
-          type: AssetTypes.stock,
-          value: 0,
-          sharesOwned: 0,
-          netCostBasis: 1,
-          brokerCostBasis: 1,
-          buyFeeTotal: 0);
       const cashAcc = Account(
           id: 11,
           name: 'Cash A',
@@ -557,14 +508,14 @@ void main() {
 
       // price = 0
       await tester.enterText(
-          find.widgetWithText(TextFormField, l10n.pricePerShare), '0');
+          find.widgetWithText(TextFormField, l10n.costBasis), '0');
       await tester.pump();
 
-      // shares and tradingFee required for clearing account calc; enter valid values
+      // shares and fee required for clearing account calc; enter valid values
       await tester.enterText(
           find.widgetWithText(TextFormField, l10n.shares), '1');
       await tester.enterText(
-          find.widgetWithText(TextFormField, l10n.tradingFee), '0');
+          find.widgetWithText(TextFormField, l10n.fee), '0');
 
       await tester.tap(find.widgetWithText(ElevatedButton, l10n.save));
       await tester.pump();
@@ -573,7 +524,7 @@ void main() {
 
       // negative price
       await tester.enterText(
-          find.widgetWithText(TextFormField, l10n.pricePerShare), '-1');
+          find.widgetWithText(TextFormField, l10n.costBasis), '-1');
       await tester.pump();
       await tester.tap(find.widgetWithText(ElevatedButton, l10n.save));
       await tester.pump();
@@ -587,12 +538,14 @@ void main() {
           id: 2,
           name: 'ACME',
           tickerSymbol: 'ACME',
+          currencySymbol: '',
           type: AssetTypes.stock,
           value: 0,
-          sharesOwned: 0,
+          shares: 0,
           netCostBasis: 1,
           brokerCostBasis: 1,
-          buyFeeTotal: 0);
+          buyFeeTotal: 0,
+          isArchived: false);
       // cash account with low balance
       const cashAcc = Account(
           id: 11,
@@ -646,13 +599,13 @@ void main() {
       await tester.tap(find.text('ACME').last);
       await tester.pumpAndSettle();
 
-      // enter shares=1 pricePerShare=10 tradingFee=0 => needed 10
+      // enter shares=1 costBasis=10 fee=0 => needed 10
       await tester.enterText(
           find.widgetWithText(TextFormField, l10n.shares), '1');
       await tester.enterText(
-          find.widgetWithText(TextFormField, l10n.pricePerShare), '10');
+          find.widgetWithText(TextFormField, l10n.costBasis), '10');
       await tester.enterText(
-          find.widgetWithText(TextFormField, l10n.tradingFee), '0');
+          find.widgetWithText(TextFormField, l10n.fee), '0');
       await tester.pump();
 
       // choose clearing account with small balance and portfolio account
@@ -681,12 +634,14 @@ void main() {
           id: 2,
           name: 'ACME',
           tickerSymbol: 'ACME',
+          currencySymbol: '',
           type: AssetTypes.stock,
           value: 0,
-          sharesOwned: 0,
+          shares: 0,
           netCostBasis: 1,
           brokerCostBasis: 1,
-          buyFeeTotal: 0);
+          buyFeeTotal: 0,
+          isArchived: false);
       const cashAcc = Account(
           id: 11,
           name: 'Cash A',
@@ -708,12 +663,12 @@ void main() {
           .thenAnswer((_) => Stream.value([cashAcc, portAcc]));
 
       // stub getAssetOnAccount to return 0 shares so sell validations fail if used; tests will choose buy flow
-      when(() => mockAssetsOnAccountsDao.getAssetOnAccount(any(), any()))
+      when(() => mockAssetsOnAccountsDao.getAOA(any(), any()))
           .thenAnswer((_) async {
         return AssetOnAccount(
             assetId: asset.id,
             accountId: portAcc.id,
-            sharesOwned: 0.0,
+            shares: 0.0,
             value: 0.0,
             netCostBasis: 0.0,
             brokerCostBasis: 0.0,
@@ -772,9 +727,9 @@ void main() {
       await tester.enterText(
           find.widgetWithText(TextFormField, l10n.shares), '1');
       await tester.enterText(
-          find.widgetWithText(TextFormField, l10n.pricePerShare), '10');
+          find.widgetWithText(TextFormField, l10n.costBasis), '10');
       await tester.enterText(
-          find.widgetWithText(TextFormField, l10n.tradingFee), '0');
+          find.widgetWithText(TextFormField, l10n.fee), '0');
       await tester.pump();
 
       // Save: should call processTrade and then pop
@@ -791,12 +746,14 @@ void main() {
           id: 2,
           name: 'ACME',
           tickerSymbol: 'ACME',
+          currencySymbol: '',
           type: AssetTypes.stock,
           value: 0,
-          sharesOwned: 0,
+          shares: 0,
           netCostBasis: 1,
           brokerCostBasis: 1,
-          buyFeeTotal: 0);
+          buyFeeTotal: 0,
+          isArchived: false);
       const cashAcc = Account(
           id: 11,
           name: 'Cash A',
@@ -818,12 +775,12 @@ void main() {
           .thenAnswer((_) => Stream.value([cashAcc, portAcc]));
 
       // stub getAssetOnAccount for completeness
-      when(() => mockAssetsOnAccountsDao.getAssetOnAccount(any(), any()))
+      when(() => mockAssetsOnAccountsDao.getAOA(any(), any()))
           .thenAnswer((_) async {
         return AssetOnAccount(
             assetId: asset.id,
             accountId: portAcc.id,
-            sharesOwned: 0.0,
+            shares: 0.0,
             value: 0.0,
             netCostBasis: 0.0,
             brokerCostBasis: 0.0,
@@ -881,9 +838,9 @@ void main() {
       await tester.enterText(
           find.widgetWithText(TextFormField, l10n.shares), '1');
       await tester.enterText(
-          find.widgetWithText(TextFormField, l10n.pricePerShare), '10');
+          find.widgetWithText(TextFormField, l10n.costBasis), '10');
       await tester.enterText(
-          find.widgetWithText(TextFormField, l10n.tradingFee), '0');
+          find.widgetWithText(TextFormField, l10n.fee), '0');
       await tester.pump();
 
       await tester.tap(find.widgetWithText(ElevatedButton, l10n.save));

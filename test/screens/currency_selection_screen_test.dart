@@ -52,10 +52,10 @@ void main() {
     registerFallbackValue(
       const AssetsCompanion(
         name: Value('EUR'),
-        type: Value(AssetTypes.currency),
+        type: Value(AssetTypes.fiat),
         tickerSymbol: Value('EUR'),
         value: Value(0.0),
-        sharesOwned: Value(0.0),
+        shares: Value(0.0),
         netCostBasis: Value(1.0),
         brokerCostBasis: Value(1.0),
         buyFeeTotal: Value(0.0),

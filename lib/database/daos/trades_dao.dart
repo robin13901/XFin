@@ -20,8 +20,7 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
   Future<List<Trade>> getAllTrades() => select(trades).get();
 
   Stream<List<TradeWithAsset>> watchAllTrades() {
-    return (select(trades)
-          ..orderBy([(t) => OrderingTerm.desc(t.datetime)]))
+    return (select(trades)..orderBy([(t) => OrderingTerm.desc(t.datetime), (t) => OrderingTerm.desc(t.id)]))
         .join([
           innerJoin(assets, assets.id.equalsExp(trades.assetId)),
         ])
@@ -39,160 +38,173 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
   Future<void> processTrade(TradesCompanion entry) {
     return db.transaction(() async {
       final assetId = entry.assetId.value;
-      final portfolioAccountId = entry.portfolioAccountId.value;
-      final clearingAccountId = entry.clearingAccountId.value;
+      final targetAccountId = entry.targetAccountId.value;
+      final sourceAccountId = entry.sourceAccountId.value;
       final shares = entry.shares.value;
-      final pricePerShare = entry.pricePerShare.value;
-      final tradingFee = entry.tradingFee.value;
+      final costBasis = entry.costBasis.value;
+      final fee = entry.fee.value;
       final tradeType = entry.type.value;
       final tax = tradeType == TradeTypes.sell ? entry.tax.value : 0;
 
-      // 1. Ensure AssetOnAccount exists
-      var assetOnAccount = await (select(assetsOnAccounts)
-            ..where((a) =>
-                a.assetId.equals(assetId) &
-                a.accountId.equals(portfolioAccountId)))
-          .getSingleOrNull();
-
-      if (assetOnAccount == null) {
-        final newAssetOnAccount = AssetsOnAccountsCompanion(
-          assetId: Value(assetId),
-          accountId: Value(portfolioAccountId),
-          value: const Value(0),
-          sharesOwned: const Value(0),
-          netCostBasis: const Value(0),
-          brokerCostBasis: const Value(0),
-          buyFeeTotal: const Value(0),
-        );
-        await into(assetsOnAccounts).insert(newAssetOnAccount);
-        assetOnAccount = await (select(assetsOnAccounts)
-              ..where((a) =>
-                  a.assetId.equals(assetId) &
-                  a.accountId.equals(portfolioAccountId)))
-            .getSingle();
-      }
-      final asset = await (select(assets)..where((a) => a.id.equals(assetId))).getSingle();
+      var assetOnAccount = await db.assetsOnAccountsDao
+          .ensureAssetOnAccountExists(assetId, targetAccountId);
+      final asset = await db.assetsDao.getAsset(assetId);
 
       // 2. Process Trade
-      double movedValue = shares * pricePerShare;
-      double clearingAccountValueDelta = 0;
-      double portfolioAccountValueDelta = 0;
-      double profitAndLossAbs = 0;
-      double profitAndLossRel = 0;
+      double movedValue = shares * costBasis;
+      double sourceAccountValueDelta = 0;
+      double targetAccountValueDelta = 0;
+      double profitAndLoss = 0;
+      double returnOnInvest = 0;
 
       double updatedAOAShares, updatedAOAValue, updatedAOABuyFeeTotal;
       double updatedAssetShares, updatedAssetValue, updatedAssetBuyFeeTotal;
 
       if (tradeType == TradeTypes.buy) {
-        clearingAccountValueDelta = -movedValue - tradingFee - tax;
-        portfolioAccountValueDelta = movedValue;
+        sourceAccountValueDelta = -movedValue - fee - tax;
+        targetAccountValueDelta = movedValue;
 
-        updatedAOAShares = assetOnAccount.sharesOwned + shares;
-        updatedAOABuyFeeTotal = assetOnAccount.buyFeeTotal + tradingFee;
+        updatedAOAShares = assetOnAccount.shares + shares;
+        updatedAOABuyFeeTotal = assetOnAccount.buyFeeTotal + fee;
 
-        updatedAssetShares = asset.sharesOwned + shares;
-        updatedAssetBuyFeeTotal = asset.buyFeeTotal + tradingFee;
-      } else { // Sell
-        final fifo = await _buildFiFoQueue(assetId, portfolioAccountId);
-        
+        updatedAssetShares = asset.shares + shares;
+        updatedAssetBuyFeeTotal = asset.buyFeeTotal + fee;
+      } else {
+        // Sell
+        final fifo = await _buildFiFoQueue(assetId, targetAccountId);
+
         var sharesToSell = shares;
-        clearingAccountValueDelta = movedValue - tradingFee - tax;
+        sourceAccountValueDelta = movedValue - fee - tax;
         double buyFeeTotalDelta = 0;
 
         // Consume FIFO queue
         while (sharesToSell > 0 && fifo.isNotEmpty) {
           var currentLot = fifo.first;
           if (currentLot['shares']! <= sharesToSell) {
-            portfolioAccountValueDelta -= currentLot['shares']! * currentLot['pricePerShare']!;
+            targetAccountValueDelta -=
+                currentLot['shares']! * currentLot['costBasis']!;
             sharesToSell -= currentLot['shares']!;
-            buyFeeTotalDelta -= currentLot['tradingFee']!;
+            buyFeeTotalDelta -= currentLot['fee']!;
             fifo.removeFirst();
           } else {
-            buyFeeTotalDelta -= (sharesToSell / currentLot['shares']!) * currentLot['tradingFee']!;
-            portfolioAccountValueDelta -= sharesToSell * currentLot['pricePerShare']!;
+            buyFeeTotalDelta -= (sharesToSell / currentLot['shares']!) *
+                currentLot['fee']!;
+            targetAccountValueDelta -=
+                sharesToSell * currentLot['costBasis']!;
             currentLot['shares'] = currentLot['shares']! - sharesToSell;
             sharesToSell = 0;
           }
         }
 
         // Calculate P&L
-        profitAndLossAbs = clearingAccountValueDelta + portfolioAccountValueDelta - tradingFee + tax;
-        profitAndLossRel = -profitAndLossAbs / portfolioAccountValueDelta;
+        profitAndLoss = sourceAccountValueDelta +
+            targetAccountValueDelta -
+            fee +
+            tax;
+        returnOnInvest = -profitAndLoss / targetAccountValueDelta;
 
         // Update AssetOnAccount
-        updatedAOAShares = assetOnAccount.sharesOwned - shares;
+        updatedAOAShares = assetOnAccount.shares - shares;
         updatedAOABuyFeeTotal = assetOnAccount.buyFeeTotal + buyFeeTotalDelta;
-        if(updatedAOAShares.abs() < 1e-9) {
+        if (updatedAOAShares.abs() < 1e-9) {
           updatedAOAShares = 0;
           updatedAOAValue = 0;
           updatedAOABuyFeeTotal = 0;
         }
 
         // Update Asset
-        updatedAssetShares = asset.sharesOwned - shares;
+        updatedAssetShares = asset.shares - shares;
         updatedAssetBuyFeeTotal = asset.buyFeeTotal + buyFeeTotalDelta;
       }
 
       // Update AssetOnAccount
-      updatedAOAValue = assetOnAccount.value + portfolioAccountValueDelta;
-      await (update(assetsOnAccounts)..where((a) => a.assetId.equals(assetId) & a.accountId.equals(portfolioAccountId))).write(
+      updatedAOAValue = assetOnAccount.value + targetAccountValueDelta;
+      await (update(assetsOnAccounts)
+            ..where((a) =>
+                a.assetId.equals(assetId) &
+                a.accountId.equals(targetAccountId)))
+          .write(
         AssetsOnAccountsCompanion(
-          sharesOwned: Value(updatedAOAShares),
+          shares: Value(updatedAOAShares),
           value: Value(updatedAOAValue),
           buyFeeTotal: Value(updatedAOABuyFeeTotal),
-          netCostBasis: Value(updatedAOAShares > 0 ? updatedAOAValue / updatedAOAShares : 0),
-          brokerCostBasis: Value(updatedAOAShares > 0 ? (updatedAOAValue + updatedAOABuyFeeTotal) / updatedAOAShares : 0),
+          netCostBasis: Value(
+              updatedAOAShares > 0 ? updatedAOAValue / updatedAOAShares : 0),
+          brokerCostBasis: Value(updatedAOAShares > 0
+              ? (updatedAOAValue + updatedAOABuyFeeTotal) / updatedAOAShares
+              : 0),
         ),
       );
 
       // Update Asset
-      updatedAssetValue = asset.value + portfolioAccountValueDelta;
-      await (update(assets)..where((a) => a.id.equals(assetId))).write(AssetsCompanion(
-        sharesOwned: Value(updatedAssetShares),
+      updatedAssetValue = asset.value + targetAccountValueDelta;
+      await (update(assets)..where((a) => a.id.equals(assetId)))
+          .write(AssetsCompanion(
+        shares: Value(updatedAssetShares),
         value: Value(updatedAssetValue),
         buyFeeTotal: Value(updatedAssetBuyFeeTotal),
-        netCostBasis: Value(updatedAssetShares > 0 ? updatedAssetValue / updatedAssetShares : 0),
-        brokerCostBasis: Value(updatedAssetShares > 0 ? (updatedAssetValue + updatedAssetBuyFeeTotal) / updatedAssetShares : 0),
+        netCostBasis: Value(updatedAssetShares > 0
+            ? updatedAssetValue / updatedAssetShares
+            : 0),
+        brokerCostBasis: Value(updatedAssetShares > 0
+            ? (updatedAssetValue + updatedAssetBuyFeeTotal) / updatedAssetShares
+            : 0),
       ));
 
       // Update Base Currency Asset
-      await db.assetsOnAccountsDao.updateBaseCurrencyAssetOnAccount(clearingAccountId, clearingAccountValueDelta);
-      await db.assetsDao.updateBaseCurrencyAsset(clearingAccountValueDelta);
+      await db.assetsOnAccountsDao.updateBaseCurrencyAssetOnAccount(
+          sourceAccountId, sourceAccountValueDelta);
+      await db.assetsDao
+          .updateAsset(1, sourceAccountValueDelta, sourceAccountValueDelta);
 
       // 3. Insert Trade
       final tradeWithCalculatedValues = entry.copyWith(
-        clearingAccountValueDelta: Value(clearingAccountValueDelta),
-        portfolioAccountValueDelta: Value(portfolioAccountValueDelta),
-        profitAndLossAbs: Value(profitAndLossAbs),
-        profitAndLossRel: Value(profitAndLossRel)
-      );
+          sourceAccountValueDelta: Value(sourceAccountValueDelta),
+          targetAccountValueDelta: Value(targetAccountValueDelta),
+          profitAndLoss: Value(profitAndLoss),
+          returnOnInvest: Value(returnOnInvest));
       await into(trades).insert(tradeWithCalculatedValues);
 
       // 5. Update Account Balances
-      final clearingAccount = await (select(accounts)..where((a) => a.id.equals(clearingAccountId))).getSingle();
-      await (update(accounts)..where((a) => a.id.equals(clearingAccountId))).write(
-        AccountsCompanion(balance: Value(clearingAccount.balance + clearingAccountValueDelta)),
+      final clearingAccount = await (select(accounts)
+            ..where((a) => a.id.equals(sourceAccountId)))
+          .getSingle();
+      await (update(accounts)..where((a) => a.id.equals(sourceAccountId)))
+          .write(
+        AccountsCompanion(
+            balance:
+                Value(clearingAccount.balance + sourceAccountValueDelta)),
       );
 
-      final portfolioAccount = await (select(accounts)..where((a) => a.id.equals(portfolioAccountId))).getSingle();
-      await (update(accounts)..where((a) => a.id.equals(portfolioAccountId))).write(
-        AccountsCompanion(balance: Value(portfolioAccount.balance + portfolioAccountValueDelta)),
+      final portfolioAccount = await (select(accounts)
+            ..where((a) => a.id.equals(targetAccountId)))
+          .getSingle();
+      await (update(accounts)..where((a) => a.id.equals(targetAccountId)))
+          .write(
+        AccountsCompanion(
+            balance:
+                Value(portfolioAccount.balance + targetAccountValueDelta)),
       );
     });
   }
 
-  Future<ListQueue<Map<String, double>>> _buildFiFoQueue(int assetId, int portfolioAccountId) async {
+  Future<ListQueue<Map<String, double>>> _buildFiFoQueue(
+      int assetId, int targetAccountId) async {
     final pastTrades = await (select(trades)
-      ..where((t) =>
-      t.assetId.equals(assetId) &
-      t.portfolioAccountId.equals(portfolioAccountId))
-      ..orderBy([(t) => OrderingTerm(expression: t.datetime)]))
+          ..where((t) =>
+              t.assetId.equals(assetId) &
+              t.targetAccountId.equals(targetAccountId))
+          ..orderBy([(t) => OrderingTerm(expression: t.datetime)]))
         .get();
 
     final fifo = ListQueue<Map<String, double>>();
     for (var pastTrade in pastTrades) {
       if (pastTrade.type == TradeTypes.buy) {
-        fifo.add({'shares': pastTrade.shares, 'pricePerShare': pastTrade.pricePerShare, 'tradingFee': pastTrade.tradingFee});
+        fifo.add({
+          'shares': pastTrade.shares,
+          'costBasis': pastTrade.costBasis,
+          'fee': pastTrade.fee
+        });
       } else {
         var sharesToConsume = pastTrade.shares;
         while (sharesToConsume > 0 && fifo.isNotEmpty) {

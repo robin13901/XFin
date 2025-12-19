@@ -116,6 +116,12 @@ abstract class AppLocalizations {
   /// **'An account with this name already exists'**
   String get accountAlreadyExists;
 
+  /// No description provided for @valueAlreadyExists.
+  ///
+  /// In en, this message translates to:
+  /// **'Value already exists'**
+  String get valueAlreadyExists;
+
   /// No description provided for @initialBalance.
   ///
   /// In en, this message translates to:
@@ -163,6 +169,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Portfolio'**
   String get portfolio;
+
+  /// No description provided for @back.
+  ///
+  /// In en, this message translates to:
+  /// **'Zurück'**
+  String get back;
+
+  /// No description provided for @next.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get next;
+
+  /// No description provided for @info.
+  ///
+  /// In en, this message translates to:
+  /// **'Info'**
+  String get info;
+
+  /// No description provided for @addAsset.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Asset'**
+  String get addAsset;
+
+  /// No description provided for @noAssetsAddedYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No assets added yet'**
+  String get noAssetsAddedYet;
+
+  /// No description provided for @cashInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'TODO...'**
+  String get cashInfo;
+
+  /// No description provided for @bankAccountInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'TODO...'**
+  String get bankAccountInfo;
+
+  /// No description provided for @portfolioInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'TODO...'**
+  String get portfolioInfo;
+
+  /// No description provided for @cryptoWalletInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'TODO...'**
+  String get cryptoWalletInfo;
+
+  /// No description provided for @assetAlreadyAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Asset already added'**
+  String get assetAlreadyAdded;
+
+  /// No description provided for @bankAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Bank Account'**
+  String get bankAccount;
+
+  /// No description provided for @cryptoWallet.
+  ///
+  /// In en, this message translates to:
+  /// **'Crypto Wallet'**
+  String get cryptoWallet;
 
   /// No description provided for @cancel.
   ///
@@ -320,6 +398,12 @@ abstract class AppLocalizations {
   /// **'Too many decimal places!'**
   String get tooManyDecimalPlaces;
 
+  /// No description provided for @tooManyCharacters.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many characters'**
+  String get tooManyCharacters;
+
   /// No description provided for @category.
   ///
   /// In en, this message translates to:
@@ -422,6 +506,18 @@ abstract class AppLocalizations {
   /// **'Error: {error}'**
   String error(String error);
 
+  /// No description provided for @cannotDeleteOrArchiveAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Löschen oder Archivieren nicht möglich'**
+  String get cannotDeleteOrArchiveAccount;
+
+  /// No description provided for @cannotDeleteOrArchiveAccountLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Accounts can only be deleted when they have no references. This account has references and cannot be deleted.\n\nAccounts with references can be archived but only if the balance is 0.'**
+  String get cannotDeleteOrArchiveAccountLong;
+
   /// No description provided for @noActiveAccounts.
   ///
   /// In en, this message translates to:
@@ -439,6 +535,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'An error occurred: {error}'**
   String anErrorOccurred(String error);
+
+  /// No description provided for @valueMustNotBeZero.
+  ///
+  /// In en, this message translates to:
+  /// **'Value can not be 0'**
+  String get valueMustNotBeZero;
 
   /// No description provided for @noBookingsYet.
   ///
@@ -524,6 +626,12 @@ abstract class AppLocalizations {
   /// **'Ticker Symbol'**
   String get tickerSymbol;
 
+  /// No description provided for @currencySymbol.
+  ///
+  /// In en, this message translates to:
+  /// **'Currency Symbol'**
+  String get currencySymbol;
+
   /// No description provided for @pleaseEnterATickerSymbol.
   ///
   /// In en, this message translates to:
@@ -548,11 +656,23 @@ abstract class AppLocalizations {
   /// **'Crypto'**
   String get crypto;
 
-  /// No description provided for @currency.
+  /// No description provided for @fiat.
   ///
   /// In en, this message translates to:
-  /// **'Currency'**
-  String get currency;
+  /// **'Fiat'**
+  String get fiat;
+
+  /// No description provided for @fund.
+  ///
+  /// In en, this message translates to:
+  /// **'Fund'**
+  String get fund;
+
+  /// No description provided for @derivative.
+  ///
+  /// In en, this message translates to:
+  /// **'Derivative'**
+  String get derivative;
 
   /// No description provided for @etf.
   ///
@@ -584,11 +704,23 @@ abstract class AppLocalizations {
   /// **'Shares'**
   String get sharesOwned;
 
+  /// No description provided for @costBasis.
+  ///
+  /// In en, this message translates to:
+  /// **'Cost Basis'**
+  String get costBasis;
+
   /// No description provided for @netCostBasis.
   ///
   /// In en, this message translates to:
   /// **'Net Cost Basis'**
   String get netCostBasis;
+
+  /// No description provided for @brokerCostBasis.
+  ///
+  /// In en, this message translates to:
+  /// **'Broker Cost Basis'**
+  String get brokerCostBasis;
 
   /// No description provided for @update.
   ///
@@ -620,11 +752,11 @@ abstract class AppLocalizations {
   /// **'Price per Share'**
   String get pricePerShare;
 
-  /// No description provided for @tradingFee.
+  /// No description provided for @fee.
   ///
   /// In en, this message translates to:
-  /// **'Trading Fee'**
-  String get tradingFee;
+  /// **'Fee'**
+  String get fee;
 
   /// No description provided for @clearingAccount.
   ///
@@ -632,11 +764,11 @@ abstract class AppLocalizations {
   /// **'Clearing Account'**
   String get clearingAccount;
 
-  /// No description provided for @portfolioAccount.
+  /// No description provided for @investmentAccount.
   ///
   /// In en, this message translates to:
-  /// **'Portfolio Account'**
-  String get portfolioAccount;
+  /// **'Investment Account'**
+  String get investmentAccount;
 
   /// No description provided for @pleaseSelectADate.
   ///
@@ -656,11 +788,11 @@ abstract class AppLocalizations {
   /// **'Please select an asset!'**
   String get pleaseSelectAnAsset;
 
-  /// No description provided for @pleaseEnterAValue.
+  /// No description provided for @requiredField.
   ///
   /// In en, this message translates to:
-  /// **'Please enter a value!'**
-  String get pleaseEnterAValue;
+  /// **'* Required field'**
+  String get requiredField;
 
   /// No description provided for @pleaseEnterAValidNumber.
   ///
@@ -698,6 +830,24 @@ abstract class AppLocalizations {
   /// **'Tax'**
   String get tax;
 
+  /// No description provided for @sendingAndReceivingMustDiffer.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending and receiving account must differ'**
+  String get sendingAndReceivingMustDiffer;
+
+  /// No description provided for @sendingAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending Account'**
+  String get sendingAccount;
+
+  /// No description provided for @receivingAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Receiving Account'**
+  String get receivingAccount;
+
   /// No description provided for @pleaseSelectCurrency.
   ///
   /// In en, this message translates to:
@@ -728,6 +878,24 @@ abstract class AppLocalizations {
   /// **'This action is not possible because it would lead to data inconsistency'**
   String get actionCancelledDueToDataInconsistency;
 
+  /// No description provided for @onlyCryptoCanBeBookedOnCryptoWallet.
+  ///
+  /// In en, this message translates to:
+  /// **'Only crypto can be booked on a crypto wallet.'**
+  String get onlyCryptoCanBeBookedOnCryptoWallet;
+
+  /// No description provided for @onlyBaseCurrencyCanBeBookedOnBankAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the base currency can be booked on a bank account.'**
+  String get onlyBaseCurrencyCanBeBookedOnBankAccount;
+
+  /// No description provided for @onlyCurrenciesCanBeBookedOnCashAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Only currencies can be booked on a cash account.'**
+  String get onlyCurrenciesCanBeBookedOnCashAccount;
+
   /// No description provided for @valueMustBeGreaterZero.
   ///
   /// In en, this message translates to:
@@ -745,6 +913,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Value must not be 0'**
   String get valueCannotBeZero;
+
+  /// No description provided for @deleteTransfer.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Transfer?'**
+  String get deleteTransfer;
+
+  /// No description provided for @deleteTransferConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this transfer?'**
+  String get deleteTransferConfirmation;
+
+  /// No description provided for @noTransfersYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No transfers yet'**
+  String get noTransfersYet;
+
+  /// No description provided for @transfers.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfers'**
+  String get transfers;
 }
 
 class _AppLocalizationsDelegate

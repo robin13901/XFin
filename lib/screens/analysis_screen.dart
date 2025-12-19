@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'dart:math';
 
+import '../app_theme.dart';
 import '../database/app_database.dart';
 import '../utils/indicator_calculator.dart';
 
@@ -218,7 +219,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           }
 
           final bool isProfit = profit >= 0;
-          final Color profitColor = isProfit ? Colors.green : Colors.red;
+          final Color profitColor = isProfit ? AppColors.green : AppColors.red;
 
           List<LineChartBarData> lineBarsData = [
             LineChartBarData(
@@ -285,259 +286,247 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
               padding: const EdgeInsets.fromLTRB(8, 56, 8, 16),
               child: Column(
                 children: [
-                  Card(
-                    elevation: 2,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Column(
-                        children: [
-                          // Total balance
-                          Text(
-                            currencyFormat.format(balanceToShow),
-                            style: const TextStyle(
-                                fontSize: 32, fontWeight: FontWeight.bold),
-                          ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                      isProfit
-                                          ? Icons.arrow_upward
-                                          : Icons.arrow_downward,
-                                      color: profitColor,
-                                      size: 16),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                      '${currencyFormat.format(profit)} (${NumberFormat.percentPattern().format(profitPercent)})',
-                                      style: TextStyle(
-                                          color: profitColor, fontSize: 16)),
-                                ],
-                              ),
-                              Text(dateText,
-                                  style: const TextStyle(fontSize: 16)),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Range selection
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: ['1W', '1M', '1J', 'MAX'].map((range) {
-                              return TextButton(
-                                onPressed: () => _onRangeSelected(range),
-                                child: Text(range,
+                  Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      children: [
+                        // Total balance
+                        Text(
+                          currencyFormat.format(balanceToShow),
+                          style: const TextStyle(
+                              fontSize: 32, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                    isProfit
+                                        ? Icons.arrow_upward
+                                        : Icons.arrow_downward,
+                                    color: profitColor,
+                                    size: 16),
+                                const SizedBox(width: 4),
+                                Text(
+                                    '${currencyFormat.format(profit)} (${NumberFormat.percentPattern().format(profitPercent)})',
                                     style: TextStyle(
-                                        color: _selectedRange == range
-                                            ? Theme.of(context)
-                                                .colorScheme
-                                                .secondary
-                                            : Theme.of(context)
-                                                .textTheme
-                                                .bodyLarge
-                                                ?.color)),
-                              );
-                            }).toList(),
-                          ),
-                          const SizedBox(height: 16),
+                                        color: profitColor, fontSize: 16)),
+                              ],
+                            ),
+                            Text(dateText,
+                                style: const TextStyle(fontSize: 16)),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
 
-                          // Chart
-                          SizedBox(
-                            height: 400,
-                            child: LineChart(
-                              LineChartData(
-                                minY: minY,
-                                maxY: maxY,
-                                lineBarsData: lineBarsData,
-                                titlesData: FlTitlesData(
-                                  leftTitles: AxisTitles(
-                                      sideTitles: SideTitles(
-                                          showTitles: true,
-                                          reservedSize: 38,
-                                          getTitlesWidget: (value, meta) {
-                                            // Hide first and last labels
+                        // Range selection
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: ['1W', '1M', '1J', 'MAX'].map((range) {
+                            return TextButton(
+                              onPressed: () => _onRangeSelected(range),
+                              child: Text(range,
+                                  style: TextStyle(
+                                      color: _selectedRange == range
+                                          ? Theme.of(context)
+                                              .colorScheme
+                                              .secondary
+                                          : Theme.of(context)
+                                              .textTheme
+                                              .bodyLarge
+                                              ?.color)),
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Chart
+                        SizedBox(
+                          height: 400,
+                          child: LineChart(
+                            LineChartData(
+                              minY: minY,
+                              maxY: maxY,
+                              lineBarsData: lineBarsData,
+                              titlesData: FlTitlesData(
+                                leftTitles: AxisTitles(
+                                    sideTitles: SideTitles(
+                                        showTitles: true,
+                                        reservedSize: 38,
+                                        getTitlesWidget: (value, meta) {
+                                          // Hide first and last labels
+                                          if ((value - meta.min).abs() <
+                                                  0.001 ||
+                                              (value - meta.max).abs() <
+                                                  0.001) {
+                                            return const SizedBox.shrink();
+                                          }
+                                          String text;
+                                          if (value >= 1000000) {
+                                            text =
+                                                '${(value / 1000000).toStringAsFixed(0)}m';
+                                          } else if (value >= 1000) {
+                                            text =
+                                                '${(value / 1000).toStringAsFixed(2)}k';
+                                          } else {
+                                            text = value.toStringAsFixed(0);
+                                          }
+                                          return SideTitleWidget(
+                                            axisSide: meta.axisSide,
+                                            space: 10,
+                                            child: Text(text,
+                                                style: const TextStyle(
+                                                    fontSize: 8)),
+                                          );
+                                        })),
+                                bottomTitles: AxisTitles(
+                                    sideTitles: SideTitles(
+                                        showTitles: true,
+                                        getTitlesWidget: (value, meta) {
+                                          // Hide first and last labels
+                                          if (_selectedRange == '1W') {
+                                            if ((value - meta.min).abs() <
+                                                0.001) {
+                                              return const SizedBox.shrink();
+                                            }
+                                          } else {
                                             if ((value - meta.min).abs() <
                                                     0.001 ||
                                                 (value - meta.max).abs() <
                                                     0.001) {
                                               return const SizedBox.shrink();
                                             }
-                                            String text;
-                                            if (value >= 1000000) {
-                                              text =
-                                                  '${(value / 1000000).toStringAsFixed(0)}m';
-                                            } else if (value >= 1000) {
-                                              text =
-                                                  '${(value / 1000).toStringAsFixed(2)}k';
-                                            } else {
-                                              text = value.toStringAsFixed(0);
-                                            }
-                                            return SideTitleWidget(
+                                          }
+                                          final date = DateTime
+                                              .fromMillisecondsSinceEpoch(
+                                                  value.toInt());
+                                          String text;
+                                          switch (_selectedRange) {
+                                            case '1W':
+                                              text = DateFormat.E('de_DE')
+                                                  .format(date);
+                                              break;
+                                            case '1M':
+                                              text = DateFormat.d('de_DE')
+                                                  .format(date);
+                                              break;
+                                            case '1J':
+                                              text = DateFormat.MMM('de_DE')
+                                                  .format(date);
+                                              break;
+                                            case 'MAX':
+                                              text = DateFormat.yMMM('de_DE')
+                                                  .format(date);
+                                              break;
+                                            default:
+                                              text = '';
+                                          }
+                                          return SideTitleWidget(
                                               axisSide: meta.axisSide,
-                                              space: 10,
                                               child: Text(text,
                                                   style: const TextStyle(
-                                                      fontSize: 10)),
-                                            );
-                                          })),
-                                  bottomTitles: AxisTitles(
-                                      sideTitles: SideTitles(
-                                          showTitles: true,
-                                          getTitlesWidget: (value, meta) {
-                                            // Hide first and last labels
-                                            if (_selectedRange == '1W') {
-                                              if ((value - meta.min).abs() <
-                                                  0.001) {
-                                                return const SizedBox.shrink();
-                                              }
-                                            } else {
-                                              if ((value - meta.min).abs() <
-                                                      0.001 ||
-                                                  (value - meta.max).abs() <
-                                                      0.001) {
-                                                return const SizedBox.shrink();
-                                              }
-                                            }
-                                            final date = DateTime
-                                                .fromMillisecondsSinceEpoch(
-                                                    value.toInt());
-                                            String text;
-                                            switch (_selectedRange) {
-                                              case '1W':
-                                                text = DateFormat.E('de_DE')
-                                                    .format(date);
-                                                break;
-                                              case '1M':
-                                                text = DateFormat.d('de_DE')
-                                                    .format(date);
-                                                break;
-                                              case '1J':
-                                                text = DateFormat.MMM('de_DE')
-                                                    .format(date);
-                                                break;
-                                              case 'MAX':
-                                                text = DateFormat.yMMM('de_DE')
-                                                    .format(date);
-                                                break;
-                                              default:
-                                                text = '';
-                                            }
-                                            return SideTitleWidget(
-                                                axisSide: meta.axisSide,
-                                                child: Text(text,
-                                                    style: const TextStyle(
-                                                        fontSize: 12)));
-                                          },
-                                          interval: _getBottomTitleInterval(
-                                              currentData))),
-                                  topTitles: const AxisTitles(
-                                      sideTitles:
-                                          SideTitles(showTitles: false)),
-                                  rightTitles: const AxisTitles(
-                                      sideTitles:
-                                          SideTitles(showTitles: false)),
-                                ),
-                                gridData: FlGridData(
-                                  show: true,
-                                  drawVerticalLine: false,
-                                  getDrawingHorizontalLine: (value) =>
-                                      const FlLine(
-                                          color: Colors.grey, strokeWidth: 0.5),
-                                  getDrawingVerticalLine: (value) =>
-                                      const FlLine(
-                                          color: Colors.grey, strokeWidth: 0.5),
-                                ),
-                                borderData: FlBorderData(
-                                    show: true,
-                                    border: Border.all(
-                                        color: Colors.grey, width: 1)),
-                                lineTouchData: LineTouchData(
-                                  touchCallback: (FlTouchEvent event,
-                                      LineTouchResponse? touchResponse) {
-                                    if (event is FlPanEndEvent ||
-                                        event is FlLongPressEnd ||
-                                        event is FlTapUpEvent) {
-                                      setState(() => _touchedSpot = null);
-                                    } else if (touchResponse != null &&
-                                        touchResponse.lineBarSpots != null &&
-                                        touchResponse
-                                            .lineBarSpots!.isNotEmpty) {
-                                      setState(() => _touchedSpot =
-                                          touchResponse.lineBarSpots![0]);
-                                    }
-                                  },
-                                  touchTooltipData: LineTouchTooltipData(
-                                    getTooltipItems: (touchedBarSpots) =>
-                                        touchedBarSpots
-                                            .map((barSpot) => LineTooltipItem(
-                                                currencyFormat
-                                                    .format(barSpot.y),
-                                                const TextStyle(
-                                                    color: Colors.white)))
-                                            .toList(),
-                                  ),
-                                  handleBuiltInTouches: true,
-                                ),
-                                clipData: const FlClipData.all(),
+                                                      fontSize: 12)));
+                                        },
+                                        interval: _getBottomTitleInterval(
+                                            currentData))),
+                                topTitles: const AxisTitles(
+                                    sideTitles: SideTitles(showTitles: false)),
+                                rightTitles: const AxisTitles(
+                                    sideTitles: SideTitles(showTitles: false)),
                               ),
+                              gridData: FlGridData(
+                                show: false,
+                                drawVerticalLine: false,
+                                getDrawingHorizontalLine: (value) =>
+                                    const FlLine(
+                                        color: Colors.grey, strokeWidth: 0.5),
+                                getDrawingVerticalLine: (value) => const FlLine(
+                                    color: Colors.grey, strokeWidth: 0.5),
+                              ),
+                              borderData: FlBorderData(
+                                  show: false,
+                                  border:
+                                      Border.all(color: Colors.grey, width: 1)),
+                              lineTouchData: LineTouchData(
+                                touchCallback: (FlTouchEvent event,
+                                    LineTouchResponse? touchResponse) {
+                                  if (event is FlPanEndEvent ||
+                                      event is FlLongPressEnd ||
+                                      event is FlTapUpEvent) {
+                                    setState(() => _touchedSpot = null);
+                                  } else if (touchResponse != null &&
+                                      touchResponse.lineBarSpots != null &&
+                                      touchResponse.lineBarSpots!.isNotEmpty) {
+                                    setState(() => _touchedSpot =
+                                        touchResponse.lineBarSpots![0]);
+                                  }
+                                },
+                                touchTooltipData: LineTouchTooltipData(
+                                  getTooltipItems: (touchedBarSpots) =>
+                                      touchedBarSpots
+                                          .map((barSpot) => LineTooltipItem(
+                                              currencyFormat.format(barSpot.y),
+                                              const TextStyle(
+                                                  color: Colors.white)))
+                                          .toList(),
+                                ),
+                                handleBuiltInTouches: true,
+                              ),
+                              clipData: const FlClipData.all(),
                             ),
                           ),
-                          const SizedBox(height: 16),
+                        ),
+                        const SizedBox(height: 16),
 
-                          // Indicators
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              Row(children: [
-                                Checkbox(
-                                    value: _showSma,
-                                    onChanged: (value) =>
-                                        setState(() => _showSma = value!)),
-                                const Text('30-SMA')
-                              ]),
-                              Row(children: [
-                                Checkbox(
-                                    value: _showEma,
-                                    onChanged: (value) =>
-                                        setState(() => _showEma = value!)),
-                                const Text('30-EMA')
-                              ]),
-                              Row(children: [
-                                Checkbox(
-                                    value: _showBb,
-                                    onChanged: (value) =>
-                                        setState(() => _showBb = value!)),
-                                const Text('20-BB')
-                              ]),
-                            ],
-                          ),
-                        ],
-                      ),
+                        // Indicators
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            Row(children: [
+                              Checkbox(
+                                  value: _showSma,
+                                  onChanged: (value) =>
+                                      setState(() => _showSma = value!)),
+                              const Text('30-SMA')
+                            ]),
+                            Row(children: [
+                              Checkbox(
+                                  value: _showEma,
+                                  onChanged: (value) =>
+                                      setState(() => _showEma = value!)),
+                              const Text('30-EMA')
+                            ]),
+                            Row(children: [
+                              Checkbox(
+                                  value: _showBb,
+                                  onChanged: (value) =>
+                                      setState(() => _showBb = value!)),
+                              const Text('20-BB')
+                            ]),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Card(
-                    elevation: 2,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: _buildMonthlySummary(analysisData, currencyFormat),
-                    ),
+                  Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: _buildMonthlySummary(analysisData, currencyFormat),
                   ),
                   const SizedBox(height: 8),
-                  Card(
-                    elevation: 2,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Column(
-                        children: [
-                          _buildInflowOutflowSwitch(),
-                          const SizedBox(height: 8),
-                          _buildCategoryList(analysisData, currencyFormat),
-                        ],
-                      ),
+                  Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      children: [
+                        _buildInflowOutflowSwitch(),
+                        const SizedBox(height: 8),
+                        _buildCategoryList(analysisData, currencyFormat),
+                      ],
                     ),
                   ),
+                  const SizedBox(height: 64),
                 ],
               ),
             ),
@@ -556,24 +545,24 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: 8),
         _buildSummaryRow('Einnahmen Aktueller Monat:',
-            analysisData.currentMonthInflows, currencyFormat, Colors.green),
+            analysisData.currentMonthInflows, currencyFormat, AppColors.green),
         _buildSummaryRow('Ausgaben Aktueller Monat:',
-            analysisData.currentMonthOutflows, currencyFormat, Colors.red),
+            analysisData.currentMonthOutflows, currencyFormat, AppColors.red),
         _buildSummaryRow(
             'Gewinn Aktueller Monat:',
             analysisData.currentMonthProfit,
             currencyFormat,
-            analysisData.currentMonthProfit >= 0 ? Colors.green : Colors.red),
+            analysisData.currentMonthProfit >= 0 ? AppColors.green : AppColors.red),
         const SizedBox(height: 8),
         _buildSummaryRow('Ø Monatliche Einnahmen:',
-            analysisData.averageMonthlyInflows, currencyFormat, Colors.green),
+            analysisData.averageMonthlyInflows, currencyFormat, AppColors.green),
         _buildSummaryRow('Ø Monatliche Ausgaben:',
-            analysisData.averageMonthlyOutflows, currencyFormat, Colors.red),
+            analysisData.averageMonthlyOutflows, currencyFormat, AppColors.red),
         _buildSummaryRow(
             'Ø Monatlicher Gewinn:',
             analysisData.averageMonthlyProfit,
             currencyFormat,
-            analysisData.averageMonthlyProfit >= 0 ? Colors.green : Colors.red),
+            analysisData.averageMonthlyProfit >= 0 ? AppColors.green : AppColors.red),
       ],
     );
   }
@@ -627,7 +616,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
                   color: _showInflows
-                      ? Colors.green.withValues(alpha: 0.2)
+                      ? AppColors.green.withValues(alpha: 0.2)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -636,7 +625,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                     'Einnahmen',
                     style: TextStyle(
                       color: _showInflows
-                          ? Colors.green
+                          ? AppColors.green
                           : Theme.of(context).textTheme.bodyLarge?.color,
                       fontWeight: FontWeight.bold,
                     ),
@@ -660,7 +649,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
                   color: !_showInflows
-                      ? Colors.red.withValues(alpha: 0.2)
+                      ? AppColors.red.withValues(alpha: 0.2)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -669,7 +658,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                     'Ausgaben',
                     style: TextStyle(
                       color: !_showInflows
-                          ? Colors.red
+                          ? AppColors.red
                           : Theme.of(context).textTheme.bodyLarge?.color,
                       fontWeight: FontWeight.bold,
                     ),

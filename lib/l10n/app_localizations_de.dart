@@ -19,6 +19,9 @@ class AppLocalizationsDe extends AppLocalizations {
       'Ein Konto mit diesem Namen existiert bereits';
 
   @override
+  String get valueAlreadyExists => 'Wert existiert bereits';
+
+  @override
   String get initialBalance => 'Anfangssaldo';
 
   @override
@@ -42,6 +45,42 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get portfolio => 'Portfolio';
+
+  @override
+  String get back => 'Zurück';
+
+  @override
+  String get next => 'Weiter';
+
+  @override
+  String get info => 'Info';
+
+  @override
+  String get addAsset => 'Asset hinzufügen';
+
+  @override
+  String get noAssetsAddedYet => 'Noch keine Assets hinzugefügt';
+
+  @override
+  String get cashInfo => 'TODO...';
+
+  @override
+  String get bankAccountInfo => 'TODO...';
+
+  @override
+  String get portfolioInfo => 'TODO...';
+
+  @override
+  String get cryptoWalletInfo => 'TODO...';
+
+  @override
+  String get assetAlreadyAdded => 'Asset bereits hinzugefügt';
+
+  @override
+  String get bankAccount => 'Bankkonto';
+
+  @override
+  String get cryptoWallet => 'Krypto Wallet';
 
   @override
   String get cancel => 'Abbrechen';
@@ -114,13 +153,16 @@ class AppLocalizationsDe extends AppLocalizations {
   String get amount => 'Betrag';
 
   @override
-  String get pleaseEnterAnAmount => 'Bitte gib einen Betrag an!';
+  String get pleaseEnterAnAmount => 'Bitte gib einen Betrag an';
 
   @override
-  String get invalidInput => 'Ungültige Eingabe!';
+  String get invalidInput => 'Ungültige Eingabe';
 
   @override
-  String get tooManyDecimalPlaces => 'Zu viele Nachkommastellen!';
+  String get tooManyDecimalPlaces => 'Zu viele Nachkommastellen';
+
+  @override
+  String get tooManyCharacters => 'Zu viele Zeichen';
 
   @override
   String get category => 'Kategorie';
@@ -181,6 +223,14 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get cannotDeleteOrArchiveAccount =>
+      'Löschen oder Archivieren nicht möglich';
+
+  @override
+  String get cannotDeleteOrArchiveAccountLong =>
+      'Konten können nur gelöscht werden, wenn sie keine Referenzen mehr haben. Dieses Konto hat Referenzen und kann nicht gelöscht werden.\n\nKonten mit Referenzen können archiviert werden, jedoch nur dann wenn der Saldo 0 beträgt.';
+
+  @override
   String get noActiveAccounts => 'Noch keine aktiven Konten vorhanden';
 
   @override
@@ -190,6 +240,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String anErrorOccurred(String error) {
     return 'Ein Fehler ist aufgetreten: $error';
   }
+
+  @override
+  String get valueMustNotBeZero => 'Wert darf nicht 0 sein';
 
   @override
   String get noBookingsYet => 'Noch keine Buchungen vorhanden';
@@ -237,6 +290,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get tickerSymbol => 'Tickersymbol';
 
   @override
+  String get currencySymbol => 'Währungssymbol';
+
+  @override
   String get pleaseEnterATickerSymbol => 'Bitte geben Sie ein Tickersymbol ein';
 
   @override
@@ -250,7 +306,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get crypto => 'Krypto';
 
   @override
-  String get currency => 'Währung';
+  String get fiat => 'Fiat';
+
+  @override
+  String get fund => 'Fonds';
+
+  @override
+  String get derivative => 'Derivat';
 
   @override
   String get etf => 'ETF';
@@ -268,7 +330,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get sharesOwned => 'Anteile';
 
   @override
+  String get costBasis => 'Kostenbasis';
+
+  @override
   String get netCostBasis => 'Netto-Kostenbasis';
+
+  @override
+  String get brokerCostBasis => 'Broker-Kostenbasis';
 
   @override
   String get update => 'Aktualisieren';
@@ -283,16 +351,16 @@ class AppLocalizationsDe extends AppLocalizations {
   String get noTrades => 'Noch keine Trades vorhanden';
 
   @override
-  String get pricePerShare => 'Preis pro Aktie';
+  String get pricePerShare => 'Kurs';
 
   @override
-  String get tradingFee => 'Handelsgebühr';
+  String get fee => 'Gebühr';
 
   @override
   String get clearingAccount => 'Verrechnungskonto';
 
   @override
-  String get portfolioAccount => 'Portfolio-Konto';
+  String get investmentAccount => 'Investment-Konto';
 
   @override
   String get pleaseSelectADate => 'Please select date and time!';
@@ -304,7 +372,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get pleaseSelectAnAsset => 'Bitte wählen Sie ein Asset!';
 
   @override
-  String get pleaseEnterAValue => 'Bitte geben Sie einen Wert ein!';
+  String get requiredField => '* Pflichtfeld';
 
   @override
   String get pleaseEnterAValidNumber =>
@@ -326,6 +394,16 @@ class AppLocalizationsDe extends AppLocalizations {
   String get tax => 'Steuer';
 
   @override
+  String get sendingAndReceivingMustDiffer =>
+      'Sender- und Empfängerkonto müssen unterschiedlich sein';
+
+  @override
+  String get sendingAccount => 'Senderkonto';
+
+  @override
+  String get receivingAccount => 'Empfängerkonto';
+
+  @override
   String get pleaseSelectCurrency => 'Bitte wählen Sie eine Währung!';
 
   @override
@@ -343,6 +421,18 @@ class AppLocalizationsDe extends AppLocalizations {
       'Diese Aktion is nicht möglich, da sie zu Dateninkonsistenz führen würde';
 
   @override
+  String get onlyCryptoCanBeBookedOnCryptoWallet =>
+      'Nur Krypto kann auf eine Krypto Wallet gebucht werden.';
+
+  @override
+  String get onlyBaseCurrencyCanBeBookedOnBankAccount =>
+      'Nur die Basiswährung kann auf einen Bank Account gebucht werden.';
+
+  @override
+  String get onlyCurrenciesCanBeBookedOnCashAccount =>
+      'Nur Währungen können auf einen Cash Account gebucht werden.';
+
+  @override
   String get valueMustBeGreaterZero => 'Wert muss > 0 sein';
 
   @override
@@ -350,4 +440,17 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get valueCannotBeZero => 'Wert darf nicht 0 sein';
+
+  @override
+  String get deleteTransfer => 'Überweisung löschen?';
+
+  @override
+  String get deleteTransferConfirmation =>
+      'Sind Sie sicher, dass Sie diese Überweisung löschen möchten?';
+
+  @override
+  String get noTransfersYet => 'Noch keine Überweisungen vorhanden';
+
+  @override
+  String get transfers => 'Überweisung';
 }

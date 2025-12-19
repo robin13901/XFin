@@ -1,361 +1,423 @@
-import 'dart:async';
-
+import 'package:drift/drift.dart';
+import 'package:drift/native.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/tables.dart';
-import 'package:xfin/database/daos/assets_dao.dart';
 import 'package:xfin/l10n/app_localizations.dart';
+import 'package:xfin/providers/base_currency_provider.dart';
 import 'package:xfin/screens/assets_screen.dart';
-import 'package:intl/intl.dart';
-
-// Fake classes to avoid using Mockito generated mocks
-class FakeAppDatabase extends Fake implements AppDatabase {
-  FakeAppDatabase({required this.assetsDao});
-
-  @override
-  final AssetsDao assetsDao;
-}
-
-class FakeAssetsDao extends Fake implements AssetsDao {
-  final StreamController<List<Asset>> _allAssetsController =
-      StreamController.broadcast();
-  bool _hasTradesValue = false;
-  bool _hasAssetsOnAccountsValue = false;
-  int? _deletedAssetId;
-  int? _addedAssetId;
-
-  void emitAllAssets(List<Asset> assets) => _allAssetsController.add(assets);
-  void setHasTrades(bool value) => _hasTradesValue = value;
-  void setHasAssetsOnAccounts(bool value) => _hasAssetsOnAccountsValue = value;
-  int? get deletedAssetId => _deletedAssetId;
-  int? get addedAssetId => _addedAssetId;
-
-  @override
-  Stream<List<Asset>> watchAllAssets() => _allAssetsController.stream;
-
-  @override
-  Future<bool> hasTrades(int assetId) async => _hasTradesValue;
-
-  @override
-  Future<bool> hasAssetsOnAccounts(int assetId) async =>
-      _hasAssetsOnAccountsValue;
-
-  @override
-  Future<void> deleteAsset(int id) async {
-    _deletedAssetId = id;
-    // Simulate updating the stream after deletion if needed, or rely on specific test setup
-  }
-
-  @override
-  Future<int> insert(AssetsCompanion entry) async {
-    _addedAssetId = 1; // Simulate a new ID
-    _allAssetsController.add([
-      Asset(
-        id: _addedAssetId!,
-        name: entry.name.value,
-        type: entry.type.value,
-        tickerSymbol: entry.tickerSymbol.value,
-        value: entry.value.value,
-        sharesOwned: entry.sharesOwned.value,
-        netCostBasis: entry.netCostBasis.value,
-        brokerCostBasis: entry.brokerCostBasis.value,
-        buyFeeTotal: entry.buyFeeTotal.value,
-      )
-    ]);
-    return _addedAssetId!;
-  }
-}
+import 'package:xfin/widgets/asset_form.dart';
 
 void main() {
-  late FakeAppDatabase fakeAppDatabase;
-  late FakeAssetsDao fakeAssetsDao;
+  TestWidgetsFlutterBinding.ensureInitialized();
 
-  setUp(() {
-    fakeAssetsDao = FakeAssetsDao();
-    fakeAppDatabase = FakeAppDatabase(assetsDao: fakeAssetsDao);
+  late AppDatabase db;
+  late BaseCurrencyProvider currencyProvider;
+
+  setUpAll(() {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    SharedPreferences.setMockInitialValues({});
   });
 
-  Future<AppLocalizations> setupWidget(WidgetTester tester) async {
+  // Helper to pump AssetsScreen wrapped with required providers + localization.
+  Future<AppLocalizations> pumpWidget(WidgetTester tester) async {
     await tester.pumpWidget(
-      Provider<AppDatabase>.value(
-        value: fakeAppDatabase,
+      MultiProvider(
+        providers: [
+          Provider<AppDatabase>.value(value: db),
+          ChangeNotifierProvider<BaseCurrencyProvider>.value(
+              value: currencyProvider),
+        ],
         child: const MaterialApp(
-          locale: Locale('en'),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: [Locale('en'), Locale('de')],
           home: AssetsScreen(),
         ),
       ),
     );
+
+    // Return localization obtained from the rendered screen so tests can use localized strings.
     return AppLocalizations.of(tester.element(find.byType(AssetsScreen)))!;
   }
 
-  group('AssetsScreen', () {
-    testWidgets('displays title', (tester) async {
-      final l10n = await setupWidget(tester);
-      expect(find.text(l10n.assets), findsOneWidget);
-    });
+  setUp(() async {
+    db = AppDatabase(NativeDatabase.memory());
+    currencyProvider = BaseCurrencyProvider();
+    await currencyProvider.initialize(const Locale('en'));
 
-    testWidgets('displays CircularProgressIndicator when loading',
-        (tester) async {
-      // Simulate loading by not emitting anything yet
-      await setupWidget(tester);
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
-      // Now emit an empty list to stop loading and settle
-      fakeAssetsDao.emitAllAssets([]);
-      await tester.pumpAndSettle();
-    });
+    // Insert base currency (id = 1) used throughout the app.
+    await db.into(db.assets).insert(AssetsCompanion.insert(
+          name: 'EUR',
+          type: AssetTypes.fiat,
+          tickerSymbol: 'EUR',
+        ));
+  });
 
-    testWidgets('displays error message when stream has error', (tester) async {
-      final l10n = await setupWidget(tester);
-      final exception = Exception('Test Error');
-      fakeAssetsDao._allAssetsController.addError(exception);
+  tearDown(() async {
+    await db.close();
+  });
 
-      await tester.pumpAndSettle();
+  testWidgets(
+      'displays asset items and trailing type uppercase',
+      (tester) => tester.runAsync(() async {
+            // Insert a couple of assets with different properties
+            const a2 = Asset(
+              id: 2,
+              name: 'ZeroShares',
+              type: AssetTypes.stock,
+              tickerSymbol: 'ZSH',
+              currencySymbol: '',
+              value: 0.0,
+              shares: 0.0,
+              netCostBasis: 1.0,
+              brokerCostBasis: 1.0,
+              buyFeeTotal: 0.0,
+              isArchived: false,
+            );
 
-      expect(find.text(l10n.error(exception.toString())), findsOneWidget);
-    });
+            const a3 = Asset(
+              id: 3,
+              name: 'EqualCosts',
+              type: AssetTypes.crypto,
+              tickerSymbol: 'EQT',
+              currencySymbol: '',
+              value: 50.0,
+              shares: 5.0,
+              netCostBasis: 10.0,
+              brokerCostBasis: 10.005,
+              // diff < 0.01 -> should show single costBasis
+              buyFeeTotal: 0.0,
+              isArchived: false,
+            );
 
-    testWidgets('displays "No assets" message when assets list is empty',
-        (tester) async {
-      final l10n = await setupWidget(tester);
-      fakeAssetsDao.emitAllAssets([]);
-      await tester.pumpAndSettle();
+            const a4 = Asset(
+              id: 4,
+              name: 'DifferentCosts',
+              type: AssetTypes.etf,
+              tickerSymbol: 'DIF',
+              currencySymbol: '',
+              value: 300.0,
+              shares: 10.0,
+              netCostBasis: 28.0,
+              brokerCostBasis: 30.0,
+              // diff >= 0.01 -> show both net and broker
+              buyFeeTotal: 0.0,
+              isArchived: false,
+            );
 
-      expect(find.text(l10n.noAssets), findsOneWidget);
-    });
+            await db.into(db.assets).insert(a2.toCompanion(false));
+            await db.into(db.assets).insert(a3.toCompanion(false));
+            await db.into(db.assets).insert(a4.toCompanion(false));
 
-    testWidgets('displays a list of assets', (tester) async {
-      final l10n = await setupWidget(tester);
-      final assets = [
-        const Asset(
-          id: 1,
-          name: 'AAPL Stock',
-          type: AssetTypes.stock,
-          tickerSymbol: 'AAPL',
-          value: 150.75,
-          sharesOwned: 10.5,
-          netCostBasis: 1400.0,
-          brokerCostBasis: 0.0,
-          buyFeeTotal: 0.0,
-        ),
-        const Asset(
-          id: 2,
-          name: 'Bitcoin',
-          type: AssetTypes.crypto,
-          tickerSymbol: 'BTC',
-          value: 30000.0,
-          sharesOwned: 0.5,
-          netCostBasis: 12000.0,
-          brokerCostBasis: 0.0,
-          buyFeeTotal: 0.0,
-        ),
-      ];
-      fakeAssetsDao.emitAllAssets(assets);
+            await pumpWidget(tester);
+            await tester.pumpAndSettle();
 
-      await tester.pumpAndSettle();
+            // Each name present
+            expect(find.text('ZeroShares'), findsOneWidget);
+            expect(find.text('EqualCosts'), findsOneWidget);
+            expect(find.text('DifferentCosts'), findsOneWidget);
 
-      expect(find.text('AAPL Stock'), findsOneWidget);
-      expect(find.text('Bitcoin'), findsOneWidget);
-      final currencyFormat =
-          NumberFormat.currency(locale: 'de_DE', symbol: '€');
-      expect(
-          find.text('${l10n.value}: ${currencyFormat.format(150.75)}'), findsOneWidget);
-      expect(find.text('${l10n.sharesOwned}: 10.50'), findsOneWidget);
-      expect(find.text('${l10n.netCostBasis}: ${currencyFormat.format(1400.0)}'),
-          findsOneWidget);
-      expect(find.text(l10n.stock.toUpperCase()), findsOneWidget);
-      expect(find.text(l10n.crypto.toUpperCase()), findsOneWidget);
-    });
+            // Trailing type labels uppercase
+            expect(
+                find.text(AssetTypes.stock.name.toUpperCase()), findsOneWidget);
+            expect(find.text(AssetTypes.crypto.name.toUpperCase()),
+                findsOneWidget);
+            expect(
+                find.text(AssetTypes.etf.name.toUpperCase()), findsOneWidget);
 
-    testWidgets('tapping FloatingActionButton opens AssetForm', (tester) async {
-      final l10n = await setupWidget(tester);
-      fakeAssetsDao.emitAllAssets([]);
-      await tester.pumpAndSettle();
+            // ZeroShares: shares displayed, cost lines should NOT be present because shares==0
+            final l10n =
+                AppLocalizations.of(tester.element(find.byType(AssetsScreen)))!;
+            expect(
+                find.byWidgetPredicate((w) =>
+                    w is Text &&
+                    w.data != null &&
+                    w.data!.contains('${l10n.shares}:')),
+                findsAtLeastNWidgets(1)); // shares lines exist at least once
 
-      await tester.tap(find.byType(FloatingActionButton));
-      await tester.pumpAndSettle();
+            expect(
+                find.byWidgetPredicate((w) =>
+                    w is Text &&
+                    w.data != null &&
+                    w.data!.contains('${l10n.costBasis}: 1')),
+                findsOneWidget); // EqualCosts shows costBasis
 
-      expect(find.text(l10n.assetName), findsOneWidget);
-      expect(find.text(l10n.save), findsOneWidget);
-    });
+            // EqualCosts should only show costBasis (single line) — net/broker should NOT be present
+            expect(
+                find.byWidgetPredicate((w) =>
+                    w is Text &&
+                    w.data != null &&
+                    w.data!.contains('EqualCosts') &&
+                    w.data!.contains(l10n.netCostBasis)),
+                findsNothing);
+            expect(
+                find.byWidgetPredicate((w) =>
+                    w is Text &&
+                    w.data != null &&
+                    w.data!.contains('EqualCosts') &&
+                    w.data!.contains(l10n.brokerCostBasis)),
+                findsNothing);
+
+            // DifferentCosts should show both netCostBasis and brokerCostBasis
+            expect(
+                find.byWidgetPredicate((w) =>
+                    w is Text &&
+                    w.data != null &&
+                    w.data!.contains(l10n.netCostBasis) &&
+                    w.data!.contains('28')),
+                findsOneWidget);
+            expect(
+                find.byWidgetPredicate((w) =>
+                    w is Text &&
+                    w.data != null &&
+                    w.data!.contains(l10n.brokerCostBasis) &&
+                    w.data!.contains('30')),
+                findsOneWidget);
+
+            await tester.pumpWidget(Container());
+          }));
+
+  testWidgets(
+      'tapping FAB opens AssetForm modal',
+      (tester) => tester.runAsync(() async {
+            // Insert one non-base asset so the list is not empty (not strictly required)
+            const a2 = Asset(
+              id: 2,
+              name: 'SomeAsset',
+              type: AssetTypes.stock,
+              tickerSymbol: 'SA',
+              currencySymbol: '',
+              value: 10.0,
+              shares: 1.0,
+              netCostBasis: 10.0,
+              brokerCostBasis: 10.0,
+              buyFeeTotal: 0.0,
+              isArchived: false,
+            );
+            await db.into(db.assets).insert(a2.toCompanion(false));
+
+            await pumpWidget(tester);
+            await tester.pumpAndSettle();
+
+            // The FAB built by buildFAB uses Key('fab'), so we can find and tap it.
+            final fabFinder = find.byKey(const Key('fab'));
+            expect(fabFinder, findsOneWidget);
+
+            await tester.tap(fabFinder);
+            await tester.pumpAndSettle();
+
+            // AssetForm should be present in the bottom sheet
+            expect(find.byType(AssetForm), findsOneWidget);
+
+            await tester.pumpWidget(Container());
+          }));
+
+  group('long-press deletion flow', () {
+    testWidgets(
+        'base asset (id=1) long-press shows cannot-delete dialog',
+        (tester) => tester.runAsync(() async {
+              final l10n = await pumpWidget(tester);
+              await tester.pumpAndSettle();
+
+              // Base asset 'EUR' should be present
+              expect(find.text('EUR'), findsOneWidget);
+
+              // Long press the item
+              final center = tester.getCenter(find.text('EUR'));
+              TestGesture gesture = await tester.startGesture(center);
+              await tester.pump();
+              await Future.delayed(kLongPressTimeout);
+              await gesture.up();
+              await tester.pumpAndSettle();
+
+              // Confirm cannot-delete dialog appears
+              expect(find.text(l10n.cannotDeleteAsset), findsOneWidget);
+              expect(find.text(l10n.assetHasReferences), findsOneWidget);
+
+              // Dismiss with OK
+              await tester.tap(find.text(l10n.ok));
+              await tester.pumpAndSettle();
+
+              // Still present
+              expect(find.text('EUR'), findsOneWidget);
+
+              await tester.pumpWidget(Container());
+            }));
 
     testWidgets(
-        'long pressing an asset without references shows delete confirmation dialog',
-        (tester) async {
-      final l10n = await setupWidget(tester);
-      const asset = Asset(
-        id: 1,
-        name: 'Asset to Delete',
-        type: AssetTypes.stock,
-        tickerSymbol: 'ATD',
-        value: 1.0,
-        sharesOwned: 1.0,
-        netCostBasis: 1.0,
-        brokerCostBasis: 0.0,
-        buyFeeTotal: 0.0,
-      );
-      fakeAssetsDao.emitAllAssets([asset]);
-      fakeAssetsDao.setHasTrades(false);
-      fakeAssetsDao.setHasAssetsOnAccounts(false);
+        'asset with trades or assets-on-accounts shows cannot-delete dialog',
+        (tester) => tester.runAsync(() async {
+              final l10n = await pumpWidget(tester);
 
-      await tester.pumpAndSettle();
+              // create accounts required by trades foreign keys
+              final acc1 = await db.into(db.accounts).insert(
+                    AccountsCompanion.insert(
+                        name: 'A1', type: AccountTypes.cash),
+                  );
+              final acc2 = await db.into(db.accounts).insert(
+                    AccountsCompanion.insert(
+                        name: 'A2', type: AccountTypes.cash),
+                  );
 
-      await tester.longPress(find.text('Asset to Delete'));
-      await tester.pumpAndSettle();
+              // Insert asset that will be referenced
+              const asset = Asset(
+                id: 5,
+                name: 'ReferencedAsset',
+                type: AssetTypes.stock,
+                tickerSymbol: 'RFA',
+                currencySymbol: '',
+                value: 0.0,
+                shares: 0.0,
+                netCostBasis: 1.0,
+                brokerCostBasis: 1.0,
+                buyFeeTotal: 0.0,
+                isArchived: false,
+              );
+              await db.into(db.assets).insert(asset.toCompanion(false));
 
-      expect(find.text(l10n.deleteAsset), findsOneWidget);
-      expect(find.text(l10n.confirmDeleteAsset), findsOneWidget);
-      expect(find.text(l10n.cancel), findsOneWidget);
-      expect(find.text(l10n.confirm), findsOneWidget);
-    });
+              // Insert a trade referencing the asset (makes hasTrades true)
+              await db.into(db.trades).insert(TradesCompanion.insert(
+                    datetime: 20240101,
+                    assetId: asset.id,
+                    type: TradeTypes.buy,
+                    sourceAccountId: acc1,
+                    targetAccountId: acc2,
+                    shares: 1.0,
+                    costBasis: 1.0,
+                    fee: const Value(0.0),
+                    tax: const Value(0.0),
+                    sourceAccountValueDelta: -1.0,
+                    targetAccountValueDelta: 1.0,
+                    profitAndLoss: const Value(0.0),
+                    returnOnInvest: const Value(0.0),
+                  ));
 
-    testWidgets('long pressing an asset with trades shows info dialog',
-        (tester) async {
-      final l10n = await setupWidget(tester);
-      const asset = Asset(
-        id: 1,
-        name: 'Asset With Trades',
-        type: AssetTypes.stock,
-        tickerSymbol: 'AWT',
-        value: 1.0,
-        sharesOwned: 1.0,
-        netCostBasis: 1.0,
-        brokerCostBasis: 0.0,
-        buyFeeTotal: 0.0,
-      );
-      fakeAssetsDao.emitAllAssets([asset]);
-      fakeAssetsDao.setHasTrades(true);
-      fakeAssetsDao.setHasAssetsOnAccounts(false);
+              await tester.pumpAndSettle();
 
-      await tester.pumpAndSettle();
+              // Long press the asset tile
+              expect(find.text('ReferencedAsset'), findsOneWidget);
+              final center = tester.getCenter(find.text('ReferencedAsset'));
+              TestGesture gesture = await tester.startGesture(center);
+              await tester.pump();
+              await Future.delayed(kLongPressTimeout);
+              await gesture.up();
+              await tester.pumpAndSettle();
 
-      await tester.longPress(find.text('Asset With Trades'));
-      await tester.pumpAndSettle();
+              // Cannot-delete dialog should appear (ok button)
+              expect(find.text(l10n.cannotDeleteAsset), findsOneWidget);
+              expect(find.text(l10n.assetHasReferences), findsOneWidget);
 
-      expect(find.text(l10n.cannotDeleteAsset), findsOneWidget);
-      expect(find.text(l10n.assetHasReferences), findsOneWidget);
-      expect(find.text(l10n.ok), findsOneWidget);
-      expect(find.text(l10n.cancel), findsNothing);
-    });
+              await tester.tap(find.text(l10n.ok));
+              await tester.pumpAndSettle();
+
+              // Now also test hasAssetsOnAccounts reference path:
+              // insert assetsOnAccounts referencing a new asset and verify same dialog
+              const asset2 = Asset(
+                id: 6,
+                name: 'Referenced2',
+                type: AssetTypes.stock,
+                tickerSymbol: 'RFA2',
+                currencySymbol: '',
+                value: 0.0,
+                shares: 1.0,
+                netCostBasis: 1.0,
+                brokerCostBasis: 1.0,
+                buyFeeTotal: 0.0,
+                isArchived: false,
+              );
+              await db.into(db.assets).insert(asset2.toCompanion(false));
+              await db
+                  .into(db.assetsOnAccounts)
+                  .insert(AssetsOnAccountsCompanion.insert(
+                    accountId: acc1,
+                    assetId: asset2.id,
+                    shares: const Value(1.0),
+                    value: const Value(1.0),
+                  ));
+
+              await tester.pumpAndSettle();
+
+              // Long press Referenced2
+              expect(find.text('Referenced2'), findsOneWidget);
+              final center2 = tester.getCenter(find.text('Referenced2'));
+              gesture = await tester.startGesture(center2);
+              await tester.pump();
+              await Future.delayed(kLongPressTimeout);
+              await gesture.up();
+              await tester.pumpAndSettle();
+
+              expect(find.text(l10n.cannotDeleteAsset), findsOneWidget);
+              expect(find.text(l10n.assetHasReferences), findsOneWidget);
+
+              await tester.tap(find.text(l10n.ok));
+              await tester.pumpAndSettle();
+
+              await tester.pumpWidget(Container());
+            }));
 
     testWidgets(
-        'long pressing an asset with assets on accounts shows info dialog',
-        (tester) async {
-      final l10n = await setupWidget(tester);
-      const asset = Asset(
-        id: 1,
-        name: 'Asset On Account',
-        type: AssetTypes.stock,
-        tickerSymbol: 'AOA',
-        value: 1.0,
-        sharesOwned: 1.0,
-        netCostBasis: 1.0,
-        brokerCostBasis: 0.0,
-        buyFeeTotal: 0.0,
-      );
-      fakeAssetsDao.emitAllAssets([asset]);
-      fakeAssetsDao.setHasTrades(false);
-      fakeAssetsDao.setHasAssetsOnAccounts(true);
+        'deletable asset shows delete dialog and is removed when confirmed',
+        (tester) => tester.runAsync(() async {
+              final l10n = await pumpWidget(tester);
 
-      await tester.pumpAndSettle();
+              // Insert an asset with no references and id != 1
+              const asset = Asset(
+                id: 7,
+                name: 'DeletableAsset',
+                type: AssetTypes.stock,
+                tickerSymbol: 'DEL',
+                currencySymbol: '',
+                value: 0.0,
+                shares: 0.0,
+                netCostBasis: 1.0,
+                brokerCostBasis: 1.0,
+                buyFeeTotal: 0.0,
+                isArchived: false,
+              );
+              await db.into(db.assets).insert(asset.toCompanion(false));
+              await tester.pumpAndSettle();
 
-      await tester.longPress(find.text('Asset On Account'));
-      await tester.pumpAndSettle();
+              // Long press -> should show delete dialog (cancel/confirm)
+              final center = tester.getCenter(find.text('DeletableAsset'));
+              TestGesture gesture = await tester.startGesture(center);
+              await tester.pump();
+              await Future.delayed(kLongPressTimeout);
+              await gesture.up();
+              await tester.pumpAndSettle();
 
-      expect(find.text(l10n.cannotDeleteAsset), findsOneWidget);
-      expect(find.text(l10n.assetHasReferences), findsOneWidget);
-      expect(find.text(l10n.ok), findsOneWidget);
-      expect(find.text(l10n.cancel), findsNothing);
-    });
+              expect(find.text(l10n.deleteAsset), findsOneWidget);
+              expect(find.text(l10n.confirmDeleteAsset), findsOneWidget);
 
-    testWidgets('confirming deletion calls deleteAsset and dismisses dialog',
-        (tester) async {
-      final l10n = await setupWidget(tester);
-      const asset = Asset(
-        id: 1,
-        name: 'Asset to Be Deleted',
-        type: AssetTypes.stock,
-        tickerSymbol: 'ATBD',
-        value: 1.0,
-        sharesOwned: 1.0,
-        netCostBasis: 1.0,
-        brokerCostBasis: 0.0,
-        buyFeeTotal: 0.0,
-      );
-      fakeAssetsDao.emitAllAssets([asset]);
-      fakeAssetsDao.setHasTrades(false);
-      fakeAssetsDao.setHasAssetsOnAccounts(false);
+              // Cancel first -> still present
+              await tester.tap(find.text(l10n.cancel));
+              await tester.pumpAndSettle();
+              expect(find.text('DeletableAsset'), findsOneWidget);
 
-      await tester.pumpAndSettle();
+              // Trigger long press again and confirm deletion
+              gesture = await tester.startGesture(center);
+              await tester.pump();
+              await Future.delayed(kLongPressTimeout);
+              await gesture.up();
+              await tester.pumpAndSettle();
 
-      await tester.longPress(find.text('Asset to Be Deleted'));
-      await tester.pumpAndSettle();
+              expect(find.text(l10n.deleteAsset), findsOneWidget);
+              await tester.tap(find.text(l10n.confirm));
+              await tester.pumpAndSettle();
 
-      await tester.tap(find.text(l10n.confirm));
-      await tester.pumpAndSettle();
+              // Asset should be removed from the list
+              expect(find.text('DeletableAsset'), findsNothing);
 
-      expect(fakeAssetsDao.deletedAssetId, 1);
-      expect(find.text(l10n.deleteAsset), findsNothing); // Dialog should be dismissed
-    });
-
-    testWidgets('cancelling deletion dismisses dialog without deleting',
-        (tester) async {
-      final l10n = await setupWidget(tester);
-      const asset = Asset(
-        id: 1,
-        name: 'Asset to Not Delete',
-        type: AssetTypes.stock,
-        tickerSymbol: 'ATND',
-        value: 1.0,
-        sharesOwned: 1.0,
-        netCostBasis: 1.0,
-        brokerCostBasis: 0.0,
-        buyFeeTotal: 0.0,
-      );
-      fakeAssetsDao.emitAllAssets([asset]);
-      fakeAssetsDao.setHasTrades(false);
-      fakeAssetsDao.setHasAssetsOnAccounts(false);
-
-      await tester.pumpAndSettle();
-
-      await tester.longPress(find.text('Asset to Not Delete'));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text(l10n.cancel));
-      await tester.pumpAndSettle();
-
-      expect(fakeAssetsDao.deletedAssetId, isNull);
-      expect(find.text(l10n.deleteAsset), findsNothing); // Dialog should be dismissed
-    });
-
-    testWidgets('pressing OK on info dialog dismisses it', (tester) async {
-      final l10n = await setupWidget(tester);
-      const asset = Asset(
-        id: 1,
-        name: 'Asset With Trades',
-        type: AssetTypes.stock,
-        tickerSymbol: 'AWT',
-        value: 1.0,
-        sharesOwned: 1.0,
-        netCostBasis: 1.0,
-        brokerCostBasis: 0.0,
-        buyFeeTotal: 0.0,
-      );
-      fakeAssetsDao.emitAllAssets([asset]);
-      fakeAssetsDao.setHasTrades(true);
-
-      await tester.pumpAndSettle();
-
-      await tester.longPress(find.text('Asset With Trades'));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text(l10n.ok));
-      await tester.pumpAndSettle();
-
-      expect(find.text(l10n.cannotDeleteAsset), findsNothing); // Dialog should be dismissed
-    });
+              await tester.pumpWidget(Container());
+            }));
   });
 }

@@ -379,6 +379,14 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, Asset> {
       type: DriftSqlType.string,
       requiredDuringInsert: true,
       defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'));
+  static const VerificationMeta _currencySymbolMeta =
+      const VerificationMeta('currencySymbol');
+  @override
+  late final GeneratedColumn<String> currencySymbol = GeneratedColumn<String>(
+      'currency_symbol', aliasedName, true,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(null));
   static const VerificationMeta _valueMeta = const VerificationMeta('value');
   @override
   late final GeneratedColumn<double> value = GeneratedColumn<double>(
@@ -386,11 +394,10 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, Asset> {
       type: DriftSqlType.double,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
-  static const VerificationMeta _sharesOwnedMeta =
-      const VerificationMeta('sharesOwned');
+  static const VerificationMeta _sharesMeta = const VerificationMeta('shares');
   @override
-  late final GeneratedColumn<double> sharesOwned = GeneratedColumn<double>(
-      'shares_owned', aliasedName, false,
+  late final GeneratedColumn<double> shares = GeneratedColumn<double>(
+      'shares', aliasedName, false,
       type: DriftSqlType.double,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
@@ -418,17 +425,29 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, Asset> {
       type: DriftSqlType.double,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
+  static const VerificationMeta _isArchivedMeta =
+      const VerificationMeta('isArchived');
+  @override
+  late final GeneratedColumn<bool> isArchived = GeneratedColumn<bool>(
+      'is_archived', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_archived" IN (0, 1))'),
+      defaultValue: const Constant(false));
   @override
   List<GeneratedColumn> get $columns => [
         id,
         name,
         type,
         tickerSymbol,
+        currencySymbol,
         value,
-        sharesOwned,
+        shares,
         netCostBasis,
         brokerCostBasis,
-        buyFeeTotal
+        buyFeeTotal,
+        isArchived
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -457,15 +476,19 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, Asset> {
     } else if (isInserting) {
       context.missing(_tickerSymbolMeta);
     }
+    if (data.containsKey('currency_symbol')) {
+      context.handle(
+          _currencySymbolMeta,
+          currencySymbol.isAcceptableOrUnknown(
+              data['currency_symbol']!, _currencySymbolMeta));
+    }
     if (data.containsKey('value')) {
       context.handle(
           _valueMeta, value.isAcceptableOrUnknown(data['value']!, _valueMeta));
     }
-    if (data.containsKey('shares_owned')) {
-      context.handle(
-          _sharesOwnedMeta,
-          sharesOwned.isAcceptableOrUnknown(
-              data['shares_owned']!, _sharesOwnedMeta));
+    if (data.containsKey('shares')) {
+      context.handle(_sharesMeta,
+          shares.isAcceptableOrUnknown(data['shares']!, _sharesMeta));
     }
     if (data.containsKey('net_cost_basis')) {
       context.handle(
@@ -485,6 +508,12 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, Asset> {
           buyFeeTotal.isAcceptableOrUnknown(
               data['buy_fee_total']!, _buyFeeTotalMeta));
     }
+    if (data.containsKey('is_archived')) {
+      context.handle(
+          _isArchivedMeta,
+          isArchived.isAcceptableOrUnknown(
+              data['is_archived']!, _isArchivedMeta));
+    }
     return context;
   }
 
@@ -502,16 +531,20 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, Asset> {
           .read(DriftSqlType.string, data['${effectivePrefix}type'])!),
       tickerSymbol: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}ticker_symbol'])!,
+      currencySymbol: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}currency_symbol']),
       value: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}value'])!,
-      sharesOwned: attachedDatabase.typeMapping
-          .read(DriftSqlType.double, data['${effectivePrefix}shares_owned'])!,
+      shares: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}shares'])!,
       netCostBasis: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}net_cost_basis'])!,
       brokerCostBasis: attachedDatabase.typeMapping.read(
           DriftSqlType.double, data['${effectivePrefix}broker_cost_basis'])!,
       buyFeeTotal: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}buy_fee_total'])!,
+      isArchived: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_archived'])!,
     );
   }
 
@@ -529,21 +562,25 @@ class Asset extends DataClass implements Insertable<Asset> {
   final String name;
   final AssetTypes type;
   final String tickerSymbol;
+  final String? currencySymbol;
   final double value;
-  final double sharesOwned;
+  final double shares;
   final double netCostBasis;
   final double brokerCostBasis;
   final double buyFeeTotal;
+  final bool isArchived;
   const Asset(
       {required this.id,
       required this.name,
       required this.type,
       required this.tickerSymbol,
+      this.currencySymbol,
       required this.value,
-      required this.sharesOwned,
+      required this.shares,
       required this.netCostBasis,
       required this.brokerCostBasis,
-      required this.buyFeeTotal});
+      required this.buyFeeTotal,
+      required this.isArchived});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -553,11 +590,15 @@ class Asset extends DataClass implements Insertable<Asset> {
       map['type'] = Variable<String>($AssetsTable.$convertertype.toSql(type));
     }
     map['ticker_symbol'] = Variable<String>(tickerSymbol);
+    if (!nullToAbsent || currencySymbol != null) {
+      map['currency_symbol'] = Variable<String>(currencySymbol);
+    }
     map['value'] = Variable<double>(value);
-    map['shares_owned'] = Variable<double>(sharesOwned);
+    map['shares'] = Variable<double>(shares);
     map['net_cost_basis'] = Variable<double>(netCostBasis);
     map['broker_cost_basis'] = Variable<double>(brokerCostBasis);
     map['buy_fee_total'] = Variable<double>(buyFeeTotal);
+    map['is_archived'] = Variable<bool>(isArchived);
     return map;
   }
 
@@ -567,11 +608,15 @@ class Asset extends DataClass implements Insertable<Asset> {
       name: Value(name),
       type: Value(type),
       tickerSymbol: Value(tickerSymbol),
+      currencySymbol: currencySymbol == null && nullToAbsent
+          ? const Value.absent()
+          : Value(currencySymbol),
       value: Value(value),
-      sharesOwned: Value(sharesOwned),
+      shares: Value(shares),
       netCostBasis: Value(netCostBasis),
       brokerCostBasis: Value(brokerCostBasis),
       buyFeeTotal: Value(buyFeeTotal),
+      isArchived: Value(isArchived),
     );
   }
 
@@ -583,11 +628,13 @@ class Asset extends DataClass implements Insertable<Asset> {
       name: serializer.fromJson<String>(json['name']),
       type: serializer.fromJson<AssetTypes>(json['type']),
       tickerSymbol: serializer.fromJson<String>(json['tickerSymbol']),
+      currencySymbol: serializer.fromJson<String?>(json['currencySymbol']),
       value: serializer.fromJson<double>(json['value']),
-      sharesOwned: serializer.fromJson<double>(json['sharesOwned']),
+      shares: serializer.fromJson<double>(json['shares']),
       netCostBasis: serializer.fromJson<double>(json['netCostBasis']),
       brokerCostBasis: serializer.fromJson<double>(json['brokerCostBasis']),
       buyFeeTotal: serializer.fromJson<double>(json['buyFeeTotal']),
+      isArchived: serializer.fromJson<bool>(json['isArchived']),
     );
   }
   @override
@@ -598,11 +645,13 @@ class Asset extends DataClass implements Insertable<Asset> {
       'name': serializer.toJson<String>(name),
       'type': serializer.toJson<AssetTypes>(type),
       'tickerSymbol': serializer.toJson<String>(tickerSymbol),
+      'currencySymbol': serializer.toJson<String?>(currencySymbol),
       'value': serializer.toJson<double>(value),
-      'sharesOwned': serializer.toJson<double>(sharesOwned),
+      'shares': serializer.toJson<double>(shares),
       'netCostBasis': serializer.toJson<double>(netCostBasis),
       'brokerCostBasis': serializer.toJson<double>(brokerCostBasis),
       'buyFeeTotal': serializer.toJson<double>(buyFeeTotal),
+      'isArchived': serializer.toJson<bool>(isArchived),
     };
   }
 
@@ -611,21 +660,26 @@ class Asset extends DataClass implements Insertable<Asset> {
           String? name,
           AssetTypes? type,
           String? tickerSymbol,
+          Value<String?> currencySymbol = const Value.absent(),
           double? value,
-          double? sharesOwned,
+          double? shares,
           double? netCostBasis,
           double? brokerCostBasis,
-          double? buyFeeTotal}) =>
+          double? buyFeeTotal,
+          bool? isArchived}) =>
       Asset(
         id: id ?? this.id,
         name: name ?? this.name,
         type: type ?? this.type,
         tickerSymbol: tickerSymbol ?? this.tickerSymbol,
+        currencySymbol:
+            currencySymbol.present ? currencySymbol.value : this.currencySymbol,
         value: value ?? this.value,
-        sharesOwned: sharesOwned ?? this.sharesOwned,
+        shares: shares ?? this.shares,
         netCostBasis: netCostBasis ?? this.netCostBasis,
         brokerCostBasis: brokerCostBasis ?? this.brokerCostBasis,
         buyFeeTotal: buyFeeTotal ?? this.buyFeeTotal,
+        isArchived: isArchived ?? this.isArchived,
       );
   Asset copyWithCompanion(AssetsCompanion data) {
     return Asset(
@@ -635,9 +689,11 @@ class Asset extends DataClass implements Insertable<Asset> {
       tickerSymbol: data.tickerSymbol.present
           ? data.tickerSymbol.value
           : this.tickerSymbol,
+      currencySymbol: data.currencySymbol.present
+          ? data.currencySymbol.value
+          : this.currencySymbol,
       value: data.value.present ? data.value.value : this.value,
-      sharesOwned:
-          data.sharesOwned.present ? data.sharesOwned.value : this.sharesOwned,
+      shares: data.shares.present ? data.shares.value : this.shares,
       netCostBasis: data.netCostBasis.present
           ? data.netCostBasis.value
           : this.netCostBasis,
@@ -646,6 +702,8 @@ class Asset extends DataClass implements Insertable<Asset> {
           : this.brokerCostBasis,
       buyFeeTotal:
           data.buyFeeTotal.present ? data.buyFeeTotal.value : this.buyFeeTotal,
+      isArchived:
+          data.isArchived.present ? data.isArchived.value : this.isArchived,
     );
   }
 
@@ -656,18 +714,20 @@ class Asset extends DataClass implements Insertable<Asset> {
           ..write('name: $name, ')
           ..write('type: $type, ')
           ..write('tickerSymbol: $tickerSymbol, ')
+          ..write('currencySymbol: $currencySymbol, ')
           ..write('value: $value, ')
-          ..write('sharesOwned: $sharesOwned, ')
+          ..write('shares: $shares, ')
           ..write('netCostBasis: $netCostBasis, ')
           ..write('brokerCostBasis: $brokerCostBasis, ')
-          ..write('buyFeeTotal: $buyFeeTotal')
+          ..write('buyFeeTotal: $buyFeeTotal, ')
+          ..write('isArchived: $isArchived')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, type, tickerSymbol, value,
-      sharesOwned, netCostBasis, brokerCostBasis, buyFeeTotal);
+  int get hashCode => Object.hash(id, name, type, tickerSymbol, currencySymbol,
+      value, shares, netCostBasis, brokerCostBasis, buyFeeTotal, isArchived);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -676,11 +736,13 @@ class Asset extends DataClass implements Insertable<Asset> {
           other.name == this.name &&
           other.type == this.type &&
           other.tickerSymbol == this.tickerSymbol &&
+          other.currencySymbol == this.currencySymbol &&
           other.value == this.value &&
-          other.sharesOwned == this.sharesOwned &&
+          other.shares == this.shares &&
           other.netCostBasis == this.netCostBasis &&
           other.brokerCostBasis == this.brokerCostBasis &&
-          other.buyFeeTotal == this.buyFeeTotal);
+          other.buyFeeTotal == this.buyFeeTotal &&
+          other.isArchived == this.isArchived);
 }
 
 class AssetsCompanion extends UpdateCompanion<Asset> {
@@ -688,32 +750,38 @@ class AssetsCompanion extends UpdateCompanion<Asset> {
   final Value<String> name;
   final Value<AssetTypes> type;
   final Value<String> tickerSymbol;
+  final Value<String?> currencySymbol;
   final Value<double> value;
-  final Value<double> sharesOwned;
+  final Value<double> shares;
   final Value<double> netCostBasis;
   final Value<double> brokerCostBasis;
   final Value<double> buyFeeTotal;
+  final Value<bool> isArchived;
   const AssetsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.type = const Value.absent(),
     this.tickerSymbol = const Value.absent(),
+    this.currencySymbol = const Value.absent(),
     this.value = const Value.absent(),
-    this.sharesOwned = const Value.absent(),
+    this.shares = const Value.absent(),
     this.netCostBasis = const Value.absent(),
     this.brokerCostBasis = const Value.absent(),
     this.buyFeeTotal = const Value.absent(),
+    this.isArchived = const Value.absent(),
   });
   AssetsCompanion.insert({
     this.id = const Value.absent(),
     required String name,
     required AssetTypes type,
     required String tickerSymbol,
+    this.currencySymbol = const Value.absent(),
     this.value = const Value.absent(),
-    this.sharesOwned = const Value.absent(),
+    this.shares = const Value.absent(),
     this.netCostBasis = const Value.absent(),
     this.brokerCostBasis = const Value.absent(),
     this.buyFeeTotal = const Value.absent(),
+    this.isArchived = const Value.absent(),
   })  : name = Value(name),
         type = Value(type),
         tickerSymbol = Value(tickerSymbol);
@@ -722,22 +790,26 @@ class AssetsCompanion extends UpdateCompanion<Asset> {
     Expression<String>? name,
     Expression<String>? type,
     Expression<String>? tickerSymbol,
+    Expression<String>? currencySymbol,
     Expression<double>? value,
-    Expression<double>? sharesOwned,
+    Expression<double>? shares,
     Expression<double>? netCostBasis,
     Expression<double>? brokerCostBasis,
     Expression<double>? buyFeeTotal,
+    Expression<bool>? isArchived,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (type != null) 'type': type,
       if (tickerSymbol != null) 'ticker_symbol': tickerSymbol,
+      if (currencySymbol != null) 'currency_symbol': currencySymbol,
       if (value != null) 'value': value,
-      if (sharesOwned != null) 'shares_owned': sharesOwned,
+      if (shares != null) 'shares': shares,
       if (netCostBasis != null) 'net_cost_basis': netCostBasis,
       if (brokerCostBasis != null) 'broker_cost_basis': brokerCostBasis,
       if (buyFeeTotal != null) 'buy_fee_total': buyFeeTotal,
+      if (isArchived != null) 'is_archived': isArchived,
     });
   }
 
@@ -746,21 +818,25 @@ class AssetsCompanion extends UpdateCompanion<Asset> {
       Value<String>? name,
       Value<AssetTypes>? type,
       Value<String>? tickerSymbol,
+      Value<String?>? currencySymbol,
       Value<double>? value,
-      Value<double>? sharesOwned,
+      Value<double>? shares,
       Value<double>? netCostBasis,
       Value<double>? brokerCostBasis,
-      Value<double>? buyFeeTotal}) {
+      Value<double>? buyFeeTotal,
+      Value<bool>? isArchived}) {
     return AssetsCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
       type: type ?? this.type,
       tickerSymbol: tickerSymbol ?? this.tickerSymbol,
+      currencySymbol: currencySymbol ?? this.currencySymbol,
       value: value ?? this.value,
-      sharesOwned: sharesOwned ?? this.sharesOwned,
+      shares: shares ?? this.shares,
       netCostBasis: netCostBasis ?? this.netCostBasis,
       brokerCostBasis: brokerCostBasis ?? this.brokerCostBasis,
       buyFeeTotal: buyFeeTotal ?? this.buyFeeTotal,
+      isArchived: isArchived ?? this.isArchived,
     );
   }
 
@@ -780,11 +856,14 @@ class AssetsCompanion extends UpdateCompanion<Asset> {
     if (tickerSymbol.present) {
       map['ticker_symbol'] = Variable<String>(tickerSymbol.value);
     }
+    if (currencySymbol.present) {
+      map['currency_symbol'] = Variable<String>(currencySymbol.value);
+    }
     if (value.present) {
       map['value'] = Variable<double>(value.value);
     }
-    if (sharesOwned.present) {
-      map['shares_owned'] = Variable<double>(sharesOwned.value);
+    if (shares.present) {
+      map['shares'] = Variable<double>(shares.value);
     }
     if (netCostBasis.present) {
       map['net_cost_basis'] = Variable<double>(netCostBasis.value);
@@ -794,6 +873,9 @@ class AssetsCompanion extends UpdateCompanion<Asset> {
     }
     if (buyFeeTotal.present) {
       map['buy_fee_total'] = Variable<double>(buyFeeTotal.value);
+    }
+    if (isArchived.present) {
+      map['is_archived'] = Variable<bool>(isArchived.value);
     }
     return map;
   }
@@ -805,11 +887,13 @@ class AssetsCompanion extends UpdateCompanion<Asset> {
           ..write('name: $name, ')
           ..write('type: $type, ')
           ..write('tickerSymbol: $tickerSymbol, ')
+          ..write('currencySymbol: $currencySymbol, ')
           ..write('value: $value, ')
-          ..write('sharesOwned: $sharesOwned, ')
+          ..write('shares: $shares, ')
           ..write('netCostBasis: $netCostBasis, ')
           ..write('brokerCostBasis: $brokerCostBasis, ')
-          ..write('buyFeeTotal: $buyFeeTotal')
+          ..write('buyFeeTotal: $buyFeeTotal, ')
+          ..write('isArchived: $isArchived')
           ..write(')'))
         .toString();
   }
@@ -834,17 +918,16 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
   late final GeneratedColumn<int> date = GeneratedColumn<int>(
       'date', aliasedName, false,
       type: DriftSqlType.int, requiredDuringInsert: true);
-  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
+  static const VerificationMeta _assetIdMeta =
+      const VerificationMeta('assetId');
   @override
-  late final GeneratedColumn<double> amount = GeneratedColumn<double>(
-      'amount', aliasedName, false,
-      type: DriftSqlType.double, requiredDuringInsert: true);
-  static const VerificationMeta _categoryMeta =
-      const VerificationMeta('category');
-  @override
-  late final GeneratedColumn<String> category = GeneratedColumn<String>(
-      'category', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+  late final GeneratedColumn<int> assetId = GeneratedColumn<int>(
+      'asset_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES assets (id)'),
+      defaultValue: const Constant(1));
   static const VerificationMeta _accountIdMeta =
       const VerificationMeta('accountId');
   @override
@@ -854,6 +937,30 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
       requiredDuringInsert: true,
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('REFERENCES accounts (id)'));
+  static const VerificationMeta _categoryMeta =
+      const VerificationMeta('category');
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+      'category', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _sharesMeta = const VerificationMeta('shares');
+  @override
+  late final GeneratedColumn<double> shares = GeneratedColumn<double>(
+      'shares', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _costBasisMeta =
+      const VerificationMeta('costBasis');
+  @override
+  late final GeneratedColumn<double> costBasis = GeneratedColumn<double>(
+      'cost_basis', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(1));
+  static const VerificationMeta _valueMeta = const VerificationMeta('value');
+  @override
+  late final GeneratedColumn<double> value = GeneratedColumn<double>(
+      'value', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
   static const VerificationMeta _notesMeta = const VerificationMeta('notes');
   @override
   late final GeneratedColumn<String> notes = GeneratedColumn<String>(
@@ -883,9 +990,12 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
   List<GeneratedColumn> get $columns => [
         id,
         date,
-        amount,
-        category,
+        assetId,
         accountId,
+        category,
+        shares,
+        costBasis,
+        value,
         notes,
         excludeFromAverage,
         isGenerated
@@ -909,11 +1019,15 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
     } else if (isInserting) {
       context.missing(_dateMeta);
     }
-    if (data.containsKey('amount')) {
-      context.handle(_amountMeta,
-          amount.isAcceptableOrUnknown(data['amount']!, _amountMeta));
+    if (data.containsKey('asset_id')) {
+      context.handle(_assetIdMeta,
+          assetId.isAcceptableOrUnknown(data['asset_id']!, _assetIdMeta));
+    }
+    if (data.containsKey('account_id')) {
+      context.handle(_accountIdMeta,
+          accountId.isAcceptableOrUnknown(data['account_id']!, _accountIdMeta));
     } else if (isInserting) {
-      context.missing(_amountMeta);
+      context.missing(_accountIdMeta);
     }
     if (data.containsKey('category')) {
       context.handle(_categoryMeta,
@@ -921,11 +1035,21 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
     } else if (isInserting) {
       context.missing(_categoryMeta);
     }
-    if (data.containsKey('account_id')) {
-      context.handle(_accountIdMeta,
-          accountId.isAcceptableOrUnknown(data['account_id']!, _accountIdMeta));
+    if (data.containsKey('shares')) {
+      context.handle(_sharesMeta,
+          shares.isAcceptableOrUnknown(data['shares']!, _sharesMeta));
     } else if (isInserting) {
-      context.missing(_accountIdMeta);
+      context.missing(_sharesMeta);
+    }
+    if (data.containsKey('cost_basis')) {
+      context.handle(_costBasisMeta,
+          costBasis.isAcceptableOrUnknown(data['cost_basis']!, _costBasisMeta));
+    }
+    if (data.containsKey('value')) {
+      context.handle(
+          _valueMeta, value.isAcceptableOrUnknown(data['value']!, _valueMeta));
+    } else if (isInserting) {
+      context.missing(_valueMeta);
     }
     if (data.containsKey('notes')) {
       context.handle(
@@ -956,12 +1080,18 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
           .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
       date: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}date'])!,
-      amount: attachedDatabase.typeMapping
-          .read(DriftSqlType.double, data['${effectivePrefix}amount'])!,
-      category: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}category'])!,
+      assetId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}asset_id'])!,
       accountId: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}account_id'])!,
+      category: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}category'])!,
+      shares: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}shares'])!,
+      costBasis: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}cost_basis'])!,
+      value: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}value'])!,
       notes: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}notes']),
       excludeFromAverage: attachedDatabase.typeMapping.read(
@@ -980,18 +1110,24 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
 class Booking extends DataClass implements Insertable<Booking> {
   final int id;
   final int date;
-  final double amount;
-  final String category;
+  final int assetId;
   final int accountId;
+  final String category;
+  final double shares;
+  final double costBasis;
+  final double value;
   final String? notes;
   final bool excludeFromAverage;
   final bool isGenerated;
   const Booking(
       {required this.id,
       required this.date,
-      required this.amount,
-      required this.category,
+      required this.assetId,
       required this.accountId,
+      required this.category,
+      required this.shares,
+      required this.costBasis,
+      required this.value,
       this.notes,
       required this.excludeFromAverage,
       required this.isGenerated});
@@ -1000,9 +1136,12 @@ class Booking extends DataClass implements Insertable<Booking> {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['date'] = Variable<int>(date);
-    map['amount'] = Variable<double>(amount);
-    map['category'] = Variable<String>(category);
+    map['asset_id'] = Variable<int>(assetId);
     map['account_id'] = Variable<int>(accountId);
+    map['category'] = Variable<String>(category);
+    map['shares'] = Variable<double>(shares);
+    map['cost_basis'] = Variable<double>(costBasis);
+    map['value'] = Variable<double>(value);
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
     }
@@ -1015,9 +1154,12 @@ class Booking extends DataClass implements Insertable<Booking> {
     return BookingsCompanion(
       id: Value(id),
       date: Value(date),
-      amount: Value(amount),
-      category: Value(category),
+      assetId: Value(assetId),
       accountId: Value(accountId),
+      category: Value(category),
+      shares: Value(shares),
+      costBasis: Value(costBasis),
+      value: Value(value),
       notes:
           notes == null && nullToAbsent ? const Value.absent() : Value(notes),
       excludeFromAverage: Value(excludeFromAverage),
@@ -1031,9 +1173,12 @@ class Booking extends DataClass implements Insertable<Booking> {
     return Booking(
       id: serializer.fromJson<int>(json['id']),
       date: serializer.fromJson<int>(json['date']),
-      amount: serializer.fromJson<double>(json['amount']),
-      category: serializer.fromJson<String>(json['category']),
+      assetId: serializer.fromJson<int>(json['assetId']),
       accountId: serializer.fromJson<int>(json['accountId']),
+      category: serializer.fromJson<String>(json['category']),
+      shares: serializer.fromJson<double>(json['shares']),
+      costBasis: serializer.fromJson<double>(json['costBasis']),
+      value: serializer.fromJson<double>(json['value']),
       notes: serializer.fromJson<String?>(json['notes']),
       excludeFromAverage: serializer.fromJson<bool>(json['excludeFromAverage']),
       isGenerated: serializer.fromJson<bool>(json['isGenerated']),
@@ -1045,9 +1190,12 @@ class Booking extends DataClass implements Insertable<Booking> {
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'date': serializer.toJson<int>(date),
-      'amount': serializer.toJson<double>(amount),
-      'category': serializer.toJson<String>(category),
+      'assetId': serializer.toJson<int>(assetId),
       'accountId': serializer.toJson<int>(accountId),
+      'category': serializer.toJson<String>(category),
+      'shares': serializer.toJson<double>(shares),
+      'costBasis': serializer.toJson<double>(costBasis),
+      'value': serializer.toJson<double>(value),
       'notes': serializer.toJson<String?>(notes),
       'excludeFromAverage': serializer.toJson<bool>(excludeFromAverage),
       'isGenerated': serializer.toJson<bool>(isGenerated),
@@ -1057,18 +1205,24 @@ class Booking extends DataClass implements Insertable<Booking> {
   Booking copyWith(
           {int? id,
           int? date,
-          double? amount,
-          String? category,
+          int? assetId,
           int? accountId,
+          String? category,
+          double? shares,
+          double? costBasis,
+          double? value,
           Value<String?> notes = const Value.absent(),
           bool? excludeFromAverage,
           bool? isGenerated}) =>
       Booking(
         id: id ?? this.id,
         date: date ?? this.date,
-        amount: amount ?? this.amount,
-        category: category ?? this.category,
+        assetId: assetId ?? this.assetId,
         accountId: accountId ?? this.accountId,
+        category: category ?? this.category,
+        shares: shares ?? this.shares,
+        costBasis: costBasis ?? this.costBasis,
+        value: value ?? this.value,
         notes: notes.present ? notes.value : this.notes,
         excludeFromAverage: excludeFromAverage ?? this.excludeFromAverage,
         isGenerated: isGenerated ?? this.isGenerated,
@@ -1077,9 +1231,12 @@ class Booking extends DataClass implements Insertable<Booking> {
     return Booking(
       id: data.id.present ? data.id.value : this.id,
       date: data.date.present ? data.date.value : this.date,
-      amount: data.amount.present ? data.amount.value : this.amount,
-      category: data.category.present ? data.category.value : this.category,
+      assetId: data.assetId.present ? data.assetId.value : this.assetId,
       accountId: data.accountId.present ? data.accountId.value : this.accountId,
+      category: data.category.present ? data.category.value : this.category,
+      shares: data.shares.present ? data.shares.value : this.shares,
+      costBasis: data.costBasis.present ? data.costBasis.value : this.costBasis,
+      value: data.value.present ? data.value.value : this.value,
       notes: data.notes.present ? data.notes.value : this.notes,
       excludeFromAverage: data.excludeFromAverage.present
           ? data.excludeFromAverage.value
@@ -1094,9 +1251,12 @@ class Booking extends DataClass implements Insertable<Booking> {
     return (StringBuffer('Booking(')
           ..write('id: $id, ')
           ..write('date: $date, ')
-          ..write('amount: $amount, ')
-          ..write('category: $category, ')
+          ..write('assetId: $assetId, ')
           ..write('accountId: $accountId, ')
+          ..write('category: $category, ')
+          ..write('shares: $shares, ')
+          ..write('costBasis: $costBasis, ')
+          ..write('value: $value, ')
           ..write('notes: $notes, ')
           ..write('excludeFromAverage: $excludeFromAverage, ')
           ..write('isGenerated: $isGenerated')
@@ -1105,17 +1265,20 @@ class Booking extends DataClass implements Insertable<Booking> {
   }
 
   @override
-  int get hashCode => Object.hash(id, date, amount, category, accountId, notes,
-      excludeFromAverage, isGenerated);
+  int get hashCode => Object.hash(id, date, assetId, accountId, category,
+      shares, costBasis, value, notes, excludeFromAverage, isGenerated);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Booking &&
           other.id == this.id &&
           other.date == this.date &&
-          other.amount == this.amount &&
-          other.category == this.category &&
+          other.assetId == this.assetId &&
           other.accountId == this.accountId &&
+          other.category == this.category &&
+          other.shares == this.shares &&
+          other.costBasis == this.costBasis &&
+          other.value == this.value &&
           other.notes == this.notes &&
           other.excludeFromAverage == this.excludeFromAverage &&
           other.isGenerated == this.isGenerated);
@@ -1124,18 +1287,24 @@ class Booking extends DataClass implements Insertable<Booking> {
 class BookingsCompanion extends UpdateCompanion<Booking> {
   final Value<int> id;
   final Value<int> date;
-  final Value<double> amount;
-  final Value<String> category;
+  final Value<int> assetId;
   final Value<int> accountId;
+  final Value<String> category;
+  final Value<double> shares;
+  final Value<double> costBasis;
+  final Value<double> value;
   final Value<String?> notes;
   final Value<bool> excludeFromAverage;
   final Value<bool> isGenerated;
   const BookingsCompanion({
     this.id = const Value.absent(),
     this.date = const Value.absent(),
-    this.amount = const Value.absent(),
-    this.category = const Value.absent(),
+    this.assetId = const Value.absent(),
     this.accountId = const Value.absent(),
+    this.category = const Value.absent(),
+    this.shares = const Value.absent(),
+    this.costBasis = const Value.absent(),
+    this.value = const Value.absent(),
     this.notes = const Value.absent(),
     this.excludeFromAverage = const Value.absent(),
     this.isGenerated = const Value.absent(),
@@ -1143,22 +1312,29 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
   BookingsCompanion.insert({
     this.id = const Value.absent(),
     required int date,
-    required double amount,
-    required String category,
+    this.assetId = const Value.absent(),
     required int accountId,
+    required String category,
+    required double shares,
+    this.costBasis = const Value.absent(),
+    required double value,
     this.notes = const Value.absent(),
     this.excludeFromAverage = const Value.absent(),
     this.isGenerated = const Value.absent(),
   })  : date = Value(date),
-        amount = Value(amount),
+        accountId = Value(accountId),
         category = Value(category),
-        accountId = Value(accountId);
+        shares = Value(shares),
+        value = Value(value);
   static Insertable<Booking> custom({
     Expression<int>? id,
     Expression<int>? date,
-    Expression<double>? amount,
-    Expression<String>? category,
+    Expression<int>? assetId,
     Expression<int>? accountId,
+    Expression<String>? category,
+    Expression<double>? shares,
+    Expression<double>? costBasis,
+    Expression<double>? value,
     Expression<String>? notes,
     Expression<bool>? excludeFromAverage,
     Expression<bool>? isGenerated,
@@ -1166,9 +1342,12 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (date != null) 'date': date,
-      if (amount != null) 'amount': amount,
-      if (category != null) 'category': category,
+      if (assetId != null) 'asset_id': assetId,
       if (accountId != null) 'account_id': accountId,
+      if (category != null) 'category': category,
+      if (shares != null) 'shares': shares,
+      if (costBasis != null) 'cost_basis': costBasis,
+      if (value != null) 'value': value,
       if (notes != null) 'notes': notes,
       if (excludeFromAverage != null)
         'exclude_from_average': excludeFromAverage,
@@ -1179,18 +1358,24 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
   BookingsCompanion copyWith(
       {Value<int>? id,
       Value<int>? date,
-      Value<double>? amount,
-      Value<String>? category,
+      Value<int>? assetId,
       Value<int>? accountId,
+      Value<String>? category,
+      Value<double>? shares,
+      Value<double>? costBasis,
+      Value<double>? value,
       Value<String?>? notes,
       Value<bool>? excludeFromAverage,
       Value<bool>? isGenerated}) {
     return BookingsCompanion(
       id: id ?? this.id,
       date: date ?? this.date,
-      amount: amount ?? this.amount,
-      category: category ?? this.category,
+      assetId: assetId ?? this.assetId,
       accountId: accountId ?? this.accountId,
+      category: category ?? this.category,
+      shares: shares ?? this.shares,
+      costBasis: costBasis ?? this.costBasis,
+      value: value ?? this.value,
       notes: notes ?? this.notes,
       excludeFromAverage: excludeFromAverage ?? this.excludeFromAverage,
       isGenerated: isGenerated ?? this.isGenerated,
@@ -1206,14 +1391,23 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
     if (date.present) {
       map['date'] = Variable<int>(date.value);
     }
-    if (amount.present) {
-      map['amount'] = Variable<double>(amount.value);
+    if (assetId.present) {
+      map['asset_id'] = Variable<int>(assetId.value);
+    }
+    if (accountId.present) {
+      map['account_id'] = Variable<int>(accountId.value);
     }
     if (category.present) {
       map['category'] = Variable<String>(category.value);
     }
-    if (accountId.present) {
-      map['account_id'] = Variable<int>(accountId.value);
+    if (shares.present) {
+      map['shares'] = Variable<double>(shares.value);
+    }
+    if (costBasis.present) {
+      map['cost_basis'] = Variable<double>(costBasis.value);
+    }
+    if (value.present) {
+      map['value'] = Variable<double>(value.value);
     }
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
@@ -1232,9 +1426,12 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
     return (StringBuffer('BookingsCompanion(')
           ..write('id: $id, ')
           ..write('date: $date, ')
-          ..write('amount: $amount, ')
-          ..write('category: $category, ')
+          ..write('assetId: $assetId, ')
           ..write('accountId: $accountId, ')
+          ..write('category: $category, ')
+          ..write('shares: $shares, ')
+          ..write('costBasis: $costBasis, ')
+          ..write('value: $value, ')
           ..write('notes: $notes, ')
           ..write('excludeFromAverage: $excludeFromAverage, ')
           ..write('isGenerated: $isGenerated')
@@ -1263,11 +1460,6 @@ class $TransfersTable extends Transfers
   late final GeneratedColumn<int> date = GeneratedColumn<int>(
       'date', aliasedName, false,
       type: DriftSqlType.int, requiredDuringInsert: true);
-  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
-  @override
-  late final GeneratedColumn<double> amount = GeneratedColumn<double>(
-      'amount', aliasedName, false,
-      type: DriftSqlType.double, requiredDuringInsert: true);
   static const VerificationMeta _sendingAccountIdMeta =
       const VerificationMeta('sendingAccountId');
   @override
@@ -1286,6 +1478,34 @@ class $TransfersTable extends Transfers
       requiredDuringInsert: true,
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('REFERENCES accounts (id)'));
+  static const VerificationMeta _assetIdMeta =
+      const VerificationMeta('assetId');
+  @override
+  late final GeneratedColumn<int> assetId = GeneratedColumn<int>(
+      'asset_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES assets (id)'),
+      defaultValue: const Constant(1));
+  static const VerificationMeta _sharesMeta = const VerificationMeta('shares');
+  @override
+  late final GeneratedColumn<double> shares = GeneratedColumn<double>(
+      'shares', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _costBasisMeta =
+      const VerificationMeta('costBasis');
+  @override
+  late final GeneratedColumn<double> costBasis = GeneratedColumn<double>(
+      'cost_basis', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(1));
+  static const VerificationMeta _valueMeta = const VerificationMeta('value');
+  @override
+  late final GeneratedColumn<double> value = GeneratedColumn<double>(
+      'value', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
   static const VerificationMeta _notesMeta = const VerificationMeta('notes');
   @override
   late final GeneratedColumn<String> notes = GeneratedColumn<String>(
@@ -1305,9 +1525,12 @@ class $TransfersTable extends Transfers
   List<GeneratedColumn> get $columns => [
         id,
         date,
-        amount,
         sendingAccountId,
         receivingAccountId,
+        assetId,
+        shares,
+        costBasis,
+        value,
         notes,
         isGenerated
       ];
@@ -1330,12 +1553,6 @@ class $TransfersTable extends Transfers
     } else if (isInserting) {
       context.missing(_dateMeta);
     }
-    if (data.containsKey('amount')) {
-      context.handle(_amountMeta,
-          amount.isAcceptableOrUnknown(data['amount']!, _amountMeta));
-    } else if (isInserting) {
-      context.missing(_amountMeta);
-    }
     if (data.containsKey('sending_account_id')) {
       context.handle(
           _sendingAccountIdMeta,
@@ -1351,6 +1568,26 @@ class $TransfersTable extends Transfers
               data['receiving_account_id']!, _receivingAccountIdMeta));
     } else if (isInserting) {
       context.missing(_receivingAccountIdMeta);
+    }
+    if (data.containsKey('asset_id')) {
+      context.handle(_assetIdMeta,
+          assetId.isAcceptableOrUnknown(data['asset_id']!, _assetIdMeta));
+    }
+    if (data.containsKey('shares')) {
+      context.handle(_sharesMeta,
+          shares.isAcceptableOrUnknown(data['shares']!, _sharesMeta));
+    } else if (isInserting) {
+      context.missing(_sharesMeta);
+    }
+    if (data.containsKey('cost_basis')) {
+      context.handle(_costBasisMeta,
+          costBasis.isAcceptableOrUnknown(data['cost_basis']!, _costBasisMeta));
+    }
+    if (data.containsKey('value')) {
+      context.handle(
+          _valueMeta, value.isAcceptableOrUnknown(data['value']!, _valueMeta));
+    } else if (isInserting) {
+      context.missing(_valueMeta);
     }
     if (data.containsKey('notes')) {
       context.handle(
@@ -1375,12 +1612,18 @@ class $TransfersTable extends Transfers
           .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
       date: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}date'])!,
-      amount: attachedDatabase.typeMapping
-          .read(DriftSqlType.double, data['${effectivePrefix}amount'])!,
       sendingAccountId: attachedDatabase.typeMapping.read(
           DriftSqlType.int, data['${effectivePrefix}sending_account_id'])!,
       receivingAccountId: attachedDatabase.typeMapping.read(
           DriftSqlType.int, data['${effectivePrefix}receiving_account_id'])!,
+      assetId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}asset_id'])!,
+      shares: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}shares'])!,
+      costBasis: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}cost_basis'])!,
+      value: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}value'])!,
       notes: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}notes']),
       isGenerated: attachedDatabase.typeMapping
@@ -1397,17 +1640,23 @@ class $TransfersTable extends Transfers
 class Transfer extends DataClass implements Insertable<Transfer> {
   final int id;
   final int date;
-  final double amount;
   final int sendingAccountId;
   final int receivingAccountId;
+  final int assetId;
+  final double shares;
+  final double costBasis;
+  final double value;
   final String? notes;
   final bool isGenerated;
   const Transfer(
       {required this.id,
       required this.date,
-      required this.amount,
       required this.sendingAccountId,
       required this.receivingAccountId,
+      required this.assetId,
+      required this.shares,
+      required this.costBasis,
+      required this.value,
       this.notes,
       required this.isGenerated});
   @override
@@ -1415,9 +1664,12 @@ class Transfer extends DataClass implements Insertable<Transfer> {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['date'] = Variable<int>(date);
-    map['amount'] = Variable<double>(amount);
     map['sending_account_id'] = Variable<int>(sendingAccountId);
     map['receiving_account_id'] = Variable<int>(receivingAccountId);
+    map['asset_id'] = Variable<int>(assetId);
+    map['shares'] = Variable<double>(shares);
+    map['cost_basis'] = Variable<double>(costBasis);
+    map['value'] = Variable<double>(value);
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
     }
@@ -1429,9 +1681,12 @@ class Transfer extends DataClass implements Insertable<Transfer> {
     return TransfersCompanion(
       id: Value(id),
       date: Value(date),
-      amount: Value(amount),
       sendingAccountId: Value(sendingAccountId),
       receivingAccountId: Value(receivingAccountId),
+      assetId: Value(assetId),
+      shares: Value(shares),
+      costBasis: Value(costBasis),
+      value: Value(value),
       notes:
           notes == null && nullToAbsent ? const Value.absent() : Value(notes),
       isGenerated: Value(isGenerated),
@@ -1444,9 +1699,12 @@ class Transfer extends DataClass implements Insertable<Transfer> {
     return Transfer(
       id: serializer.fromJson<int>(json['id']),
       date: serializer.fromJson<int>(json['date']),
-      amount: serializer.fromJson<double>(json['amount']),
       sendingAccountId: serializer.fromJson<int>(json['sendingAccountId']),
       receivingAccountId: serializer.fromJson<int>(json['receivingAccountId']),
+      assetId: serializer.fromJson<int>(json['assetId']),
+      shares: serializer.fromJson<double>(json['shares']),
+      costBasis: serializer.fromJson<double>(json['costBasis']),
+      value: serializer.fromJson<double>(json['value']),
       notes: serializer.fromJson<String?>(json['notes']),
       isGenerated: serializer.fromJson<bool>(json['isGenerated']),
     );
@@ -1457,9 +1715,12 @@ class Transfer extends DataClass implements Insertable<Transfer> {
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'date': serializer.toJson<int>(date),
-      'amount': serializer.toJson<double>(amount),
       'sendingAccountId': serializer.toJson<int>(sendingAccountId),
       'receivingAccountId': serializer.toJson<int>(receivingAccountId),
+      'assetId': serializer.toJson<int>(assetId),
+      'shares': serializer.toJson<double>(shares),
+      'costBasis': serializer.toJson<double>(costBasis),
+      'value': serializer.toJson<double>(value),
       'notes': serializer.toJson<String?>(notes),
       'isGenerated': serializer.toJson<bool>(isGenerated),
     };
@@ -1468,17 +1729,23 @@ class Transfer extends DataClass implements Insertable<Transfer> {
   Transfer copyWith(
           {int? id,
           int? date,
-          double? amount,
           int? sendingAccountId,
           int? receivingAccountId,
+          int? assetId,
+          double? shares,
+          double? costBasis,
+          double? value,
           Value<String?> notes = const Value.absent(),
           bool? isGenerated}) =>
       Transfer(
         id: id ?? this.id,
         date: date ?? this.date,
-        amount: amount ?? this.amount,
         sendingAccountId: sendingAccountId ?? this.sendingAccountId,
         receivingAccountId: receivingAccountId ?? this.receivingAccountId,
+        assetId: assetId ?? this.assetId,
+        shares: shares ?? this.shares,
+        costBasis: costBasis ?? this.costBasis,
+        value: value ?? this.value,
         notes: notes.present ? notes.value : this.notes,
         isGenerated: isGenerated ?? this.isGenerated,
       );
@@ -1486,13 +1753,16 @@ class Transfer extends DataClass implements Insertable<Transfer> {
     return Transfer(
       id: data.id.present ? data.id.value : this.id,
       date: data.date.present ? data.date.value : this.date,
-      amount: data.amount.present ? data.amount.value : this.amount,
       sendingAccountId: data.sendingAccountId.present
           ? data.sendingAccountId.value
           : this.sendingAccountId,
       receivingAccountId: data.receivingAccountId.present
           ? data.receivingAccountId.value
           : this.receivingAccountId,
+      assetId: data.assetId.present ? data.assetId.value : this.assetId,
+      shares: data.shares.present ? data.shares.value : this.shares,
+      costBasis: data.costBasis.present ? data.costBasis.value : this.costBasis,
+      value: data.value.present ? data.value.value : this.value,
       notes: data.notes.present ? data.notes.value : this.notes,
       isGenerated:
           data.isGenerated.present ? data.isGenerated.value : this.isGenerated,
@@ -1504,9 +1774,12 @@ class Transfer extends DataClass implements Insertable<Transfer> {
     return (StringBuffer('Transfer(')
           ..write('id: $id, ')
           ..write('date: $date, ')
-          ..write('amount: $amount, ')
           ..write('sendingAccountId: $sendingAccountId, ')
           ..write('receivingAccountId: $receivingAccountId, ')
+          ..write('assetId: $assetId, ')
+          ..write('shares: $shares, ')
+          ..write('costBasis: $costBasis, ')
+          ..write('value: $value, ')
           ..write('notes: $notes, ')
           ..write('isGenerated: $isGenerated')
           ..write(')'))
@@ -1514,17 +1787,29 @@ class Transfer extends DataClass implements Insertable<Transfer> {
   }
 
   @override
-  int get hashCode => Object.hash(id, date, amount, sendingAccountId,
-      receivingAccountId, notes, isGenerated);
+  int get hashCode => Object.hash(
+      id,
+      date,
+      sendingAccountId,
+      receivingAccountId,
+      assetId,
+      shares,
+      costBasis,
+      value,
+      notes,
+      isGenerated);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Transfer &&
           other.id == this.id &&
           other.date == this.date &&
-          other.amount == this.amount &&
           other.sendingAccountId == this.sendingAccountId &&
           other.receivingAccountId == this.receivingAccountId &&
+          other.assetId == this.assetId &&
+          other.shares == this.shares &&
+          other.costBasis == this.costBasis &&
+          other.value == this.value &&
           other.notes == this.notes &&
           other.isGenerated == this.isGenerated);
 }
@@ -1532,48 +1817,64 @@ class Transfer extends DataClass implements Insertable<Transfer> {
 class TransfersCompanion extends UpdateCompanion<Transfer> {
   final Value<int> id;
   final Value<int> date;
-  final Value<double> amount;
   final Value<int> sendingAccountId;
   final Value<int> receivingAccountId;
+  final Value<int> assetId;
+  final Value<double> shares;
+  final Value<double> costBasis;
+  final Value<double> value;
   final Value<String?> notes;
   final Value<bool> isGenerated;
   const TransfersCompanion({
     this.id = const Value.absent(),
     this.date = const Value.absent(),
-    this.amount = const Value.absent(),
     this.sendingAccountId = const Value.absent(),
     this.receivingAccountId = const Value.absent(),
+    this.assetId = const Value.absent(),
+    this.shares = const Value.absent(),
+    this.costBasis = const Value.absent(),
+    this.value = const Value.absent(),
     this.notes = const Value.absent(),
     this.isGenerated = const Value.absent(),
   });
   TransfersCompanion.insert({
     this.id = const Value.absent(),
     required int date,
-    required double amount,
     required int sendingAccountId,
     required int receivingAccountId,
+    this.assetId = const Value.absent(),
+    required double shares,
+    this.costBasis = const Value.absent(),
+    required double value,
     this.notes = const Value.absent(),
     this.isGenerated = const Value.absent(),
   })  : date = Value(date),
-        amount = Value(amount),
         sendingAccountId = Value(sendingAccountId),
-        receivingAccountId = Value(receivingAccountId);
+        receivingAccountId = Value(receivingAccountId),
+        shares = Value(shares),
+        value = Value(value);
   static Insertable<Transfer> custom({
     Expression<int>? id,
     Expression<int>? date,
-    Expression<double>? amount,
     Expression<int>? sendingAccountId,
     Expression<int>? receivingAccountId,
+    Expression<int>? assetId,
+    Expression<double>? shares,
+    Expression<double>? costBasis,
+    Expression<double>? value,
     Expression<String>? notes,
     Expression<bool>? isGenerated,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (date != null) 'date': date,
-      if (amount != null) 'amount': amount,
       if (sendingAccountId != null) 'sending_account_id': sendingAccountId,
       if (receivingAccountId != null)
         'receiving_account_id': receivingAccountId,
+      if (assetId != null) 'asset_id': assetId,
+      if (shares != null) 'shares': shares,
+      if (costBasis != null) 'cost_basis': costBasis,
+      if (value != null) 'value': value,
       if (notes != null) 'notes': notes,
       if (isGenerated != null) 'is_generated': isGenerated,
     });
@@ -1582,17 +1883,23 @@ class TransfersCompanion extends UpdateCompanion<Transfer> {
   TransfersCompanion copyWith(
       {Value<int>? id,
       Value<int>? date,
-      Value<double>? amount,
       Value<int>? sendingAccountId,
       Value<int>? receivingAccountId,
+      Value<int>? assetId,
+      Value<double>? shares,
+      Value<double>? costBasis,
+      Value<double>? value,
       Value<String?>? notes,
       Value<bool>? isGenerated}) {
     return TransfersCompanion(
       id: id ?? this.id,
       date: date ?? this.date,
-      amount: amount ?? this.amount,
       sendingAccountId: sendingAccountId ?? this.sendingAccountId,
       receivingAccountId: receivingAccountId ?? this.receivingAccountId,
+      assetId: assetId ?? this.assetId,
+      shares: shares ?? this.shares,
+      costBasis: costBasis ?? this.costBasis,
+      value: value ?? this.value,
       notes: notes ?? this.notes,
       isGenerated: isGenerated ?? this.isGenerated,
     );
@@ -1607,14 +1914,23 @@ class TransfersCompanion extends UpdateCompanion<Transfer> {
     if (date.present) {
       map['date'] = Variable<int>(date.value);
     }
-    if (amount.present) {
-      map['amount'] = Variable<double>(amount.value);
-    }
     if (sendingAccountId.present) {
       map['sending_account_id'] = Variable<int>(sendingAccountId.value);
     }
     if (receivingAccountId.present) {
       map['receiving_account_id'] = Variable<int>(receivingAccountId.value);
+    }
+    if (assetId.present) {
+      map['asset_id'] = Variable<int>(assetId.value);
+    }
+    if (shares.present) {
+      map['shares'] = Variable<double>(shares.value);
+    }
+    if (costBasis.present) {
+      map['cost_basis'] = Variable<double>(costBasis.value);
+    }
+    if (value.present) {
+      map['value'] = Variable<double>(value.value);
     }
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
@@ -1630,9 +1946,12 @@ class TransfersCompanion extends UpdateCompanion<Transfer> {
     return (StringBuffer('TransfersCompanion(')
           ..write('id: $id, ')
           ..write('date: $date, ')
-          ..write('amount: $amount, ')
           ..write('sendingAccountId: $sendingAccountId, ')
           ..write('receivingAccountId: $receivingAccountId, ')
+          ..write('assetId: $assetId, ')
+          ..write('shares: $shares, ')
+          ..write('costBasis: $costBasis, ')
+          ..write('value: $value, ')
           ..write('notes: $notes, ')
           ..write('isGenerated: $isGenerated')
           ..write(')'))
@@ -1660,6 +1979,29 @@ class $TradesTable extends Trades with TableInfo<$TradesTable, Trade> {
   late final GeneratedColumn<int> datetime = GeneratedColumn<int>(
       'datetime', aliasedName, false,
       type: DriftSqlType.int, requiredDuringInsert: true);
+  @override
+  late final GeneratedColumnWithTypeConverter<TradeTypes, String> type =
+      GeneratedColumn<String>('type', aliasedName, false,
+              type: DriftSqlType.string, requiredDuringInsert: true)
+          .withConverter<TradeTypes>($TradesTable.$convertertype);
+  static const VerificationMeta _sourceAccountIdMeta =
+      const VerificationMeta('sourceAccountId');
+  @override
+  late final GeneratedColumn<int> sourceAccountId = GeneratedColumn<int>(
+      'source_account_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES accounts (id)'));
+  static const VerificationMeta _targetAccountIdMeta =
+      const VerificationMeta('targetAccountId');
+  @override
+  late final GeneratedColumn<int> targetAccountId = GeneratedColumn<int>(
+      'target_account_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES accounts (id)'));
   static const VerificationMeta _assetIdMeta =
       const VerificationMeta('assetId');
   @override
@@ -1669,57 +2011,21 @@ class $TradesTable extends Trades with TableInfo<$TradesTable, Trade> {
       requiredDuringInsert: true,
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('REFERENCES assets (id)'));
-  @override
-  late final GeneratedColumnWithTypeConverter<TradeTypes, String> type =
-      GeneratedColumn<String>('type', aliasedName, false,
-              type: DriftSqlType.string, requiredDuringInsert: true)
-          .withConverter<TradeTypes>($TradesTable.$convertertype);
-  static const VerificationMeta _clearingAccountValueDeltaMeta =
-      const VerificationMeta('clearingAccountValueDelta');
-  @override
-  late final GeneratedColumn<double> clearingAccountValueDelta =
-      GeneratedColumn<double>(
-          'clearing_account_value_delta', aliasedName, false,
-          type: DriftSqlType.double, requiredDuringInsert: true);
-  static const VerificationMeta _portfolioAccountValueDeltaMeta =
-      const VerificationMeta('portfolioAccountValueDelta');
-  @override
-  late final GeneratedColumn<double> portfolioAccountValueDelta =
-      GeneratedColumn<double>(
-          'portfolio_account_value_delta', aliasedName, false,
-          type: DriftSqlType.double, requiredDuringInsert: true);
   static const VerificationMeta _sharesMeta = const VerificationMeta('shares');
   @override
   late final GeneratedColumn<double> shares = GeneratedColumn<double>(
       'shares', aliasedName, false,
       type: DriftSqlType.double, requiredDuringInsert: true);
-  static const VerificationMeta _pricePerShareMeta =
-      const VerificationMeta('pricePerShare');
+  static const VerificationMeta _costBasisMeta =
+      const VerificationMeta('costBasis');
   @override
-  late final GeneratedColumn<double> pricePerShare = GeneratedColumn<double>(
-      'price_per_share', aliasedName, false,
+  late final GeneratedColumn<double> costBasis = GeneratedColumn<double>(
+      'cost_basis', aliasedName, false,
       type: DriftSqlType.double, requiredDuringInsert: true);
-  static const VerificationMeta _profitAndLossAbsMeta =
-      const VerificationMeta('profitAndLossAbs');
+  static const VerificationMeta _feeMeta = const VerificationMeta('fee');
   @override
-  late final GeneratedColumn<double> profitAndLossAbs = GeneratedColumn<double>(
-      'profit_and_loss_abs', aliasedName, false,
-      type: DriftSqlType.double,
-      requiredDuringInsert: false,
-      defaultValue: const Constant(0));
-  static const VerificationMeta _profitAndLossRelMeta =
-      const VerificationMeta('profitAndLossRel');
-  @override
-  late final GeneratedColumn<double> profitAndLossRel = GeneratedColumn<double>(
-      'profit_and_loss_rel', aliasedName, false,
-      type: DriftSqlType.double,
-      requiredDuringInsert: false,
-      defaultValue: const Constant(0));
-  static const VerificationMeta _tradingFeeMeta =
-      const VerificationMeta('tradingFee');
-  @override
-  late final GeneratedColumn<double> tradingFee = GeneratedColumn<double>(
-      'trading_fee', aliasedName, false,
+  late final GeneratedColumn<double> fee = GeneratedColumn<double>(
+      'fee', aliasedName, false,
       type: DriftSqlType.double,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
@@ -1730,40 +2036,50 @@ class $TradesTable extends Trades with TableInfo<$TradesTable, Trade> {
       type: DriftSqlType.double,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
-  static const VerificationMeta _clearingAccountIdMeta =
-      const VerificationMeta('clearingAccountId');
+  static const VerificationMeta _sourceAccountValueDeltaMeta =
+      const VerificationMeta('sourceAccountValueDelta');
   @override
-  late final GeneratedColumn<int> clearingAccountId = GeneratedColumn<int>(
-      'clearing_account_id', aliasedName, false,
-      type: DriftSqlType.int,
-      requiredDuringInsert: true,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('REFERENCES accounts (id)'));
-  static const VerificationMeta _portfolioAccountIdMeta =
-      const VerificationMeta('portfolioAccountId');
+  late final GeneratedColumn<double> sourceAccountValueDelta =
+      GeneratedColumn<double>('source_account_value_delta', aliasedName, false,
+          type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _targetAccountValueDeltaMeta =
+      const VerificationMeta('targetAccountValueDelta');
   @override
-  late final GeneratedColumn<int> portfolioAccountId = GeneratedColumn<int>(
-      'portfolio_account_id', aliasedName, false,
-      type: DriftSqlType.int,
-      requiredDuringInsert: true,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('REFERENCES accounts (id)'));
+  late final GeneratedColumn<double> targetAccountValueDelta =
+      GeneratedColumn<double>('target_account_value_delta', aliasedName, false,
+          type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _profitAndLossMeta =
+      const VerificationMeta('profitAndLoss');
+  @override
+  late final GeneratedColumn<double> profitAndLoss = GeneratedColumn<double>(
+      'profit_and_loss', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _returnOnInvestMeta =
+      const VerificationMeta('returnOnInvest');
+  @override
+  late final GeneratedColumn<double> returnOnInvest = GeneratedColumn<double>(
+      'return_on_invest', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
   @override
   List<GeneratedColumn> get $columns => [
         id,
         datetime,
-        assetId,
         type,
-        clearingAccountValueDelta,
-        portfolioAccountValueDelta,
+        sourceAccountId,
+        targetAccountId,
+        assetId,
         shares,
-        pricePerShare,
-        profitAndLossAbs,
-        profitAndLossRel,
-        tradingFee,
+        costBasis,
+        fee,
         tax,
-        clearingAccountId,
-        portfolioAccountId
+        sourceAccountValueDelta,
+        targetAccountValueDelta,
+        profitAndLoss,
+        returnOnInvest
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1784,29 +2100,27 @@ class $TradesTable extends Trades with TableInfo<$TradesTable, Trade> {
     } else if (isInserting) {
       context.missing(_datetimeMeta);
     }
+    if (data.containsKey('source_account_id')) {
+      context.handle(
+          _sourceAccountIdMeta,
+          sourceAccountId.isAcceptableOrUnknown(
+              data['source_account_id']!, _sourceAccountIdMeta));
+    } else if (isInserting) {
+      context.missing(_sourceAccountIdMeta);
+    }
+    if (data.containsKey('target_account_id')) {
+      context.handle(
+          _targetAccountIdMeta,
+          targetAccountId.isAcceptableOrUnknown(
+              data['target_account_id']!, _targetAccountIdMeta));
+    } else if (isInserting) {
+      context.missing(_targetAccountIdMeta);
+    }
     if (data.containsKey('asset_id')) {
       context.handle(_assetIdMeta,
           assetId.isAcceptableOrUnknown(data['asset_id']!, _assetIdMeta));
     } else if (isInserting) {
       context.missing(_assetIdMeta);
-    }
-    if (data.containsKey('clearing_account_value_delta')) {
-      context.handle(
-          _clearingAccountValueDeltaMeta,
-          clearingAccountValueDelta.isAcceptableOrUnknown(
-              data['clearing_account_value_delta']!,
-              _clearingAccountValueDeltaMeta));
-    } else if (isInserting) {
-      context.missing(_clearingAccountValueDeltaMeta);
-    }
-    if (data.containsKey('portfolio_account_value_delta')) {
-      context.handle(
-          _portfolioAccountValueDeltaMeta,
-          portfolioAccountValueDelta.isAcceptableOrUnknown(
-              data['portfolio_account_value_delta']!,
-              _portfolioAccountValueDeltaMeta));
-    } else if (isInserting) {
-      context.missing(_portfolioAccountValueDeltaMeta);
     }
     if (data.containsKey('shares')) {
       context.handle(_sharesMeta,
@@ -1814,51 +2128,49 @@ class $TradesTable extends Trades with TableInfo<$TradesTable, Trade> {
     } else if (isInserting) {
       context.missing(_sharesMeta);
     }
-    if (data.containsKey('price_per_share')) {
-      context.handle(
-          _pricePerShareMeta,
-          pricePerShare.isAcceptableOrUnknown(
-              data['price_per_share']!, _pricePerShareMeta));
+    if (data.containsKey('cost_basis')) {
+      context.handle(_costBasisMeta,
+          costBasis.isAcceptableOrUnknown(data['cost_basis']!, _costBasisMeta));
     } else if (isInserting) {
-      context.missing(_pricePerShareMeta);
+      context.missing(_costBasisMeta);
     }
-    if (data.containsKey('profit_and_loss_abs')) {
+    if (data.containsKey('fee')) {
       context.handle(
-          _profitAndLossAbsMeta,
-          profitAndLossAbs.isAcceptableOrUnknown(
-              data['profit_and_loss_abs']!, _profitAndLossAbsMeta));
-    }
-    if (data.containsKey('profit_and_loss_rel')) {
-      context.handle(
-          _profitAndLossRelMeta,
-          profitAndLossRel.isAcceptableOrUnknown(
-              data['profit_and_loss_rel']!, _profitAndLossRelMeta));
-    }
-    if (data.containsKey('trading_fee')) {
-      context.handle(
-          _tradingFeeMeta,
-          tradingFee.isAcceptableOrUnknown(
-              data['trading_fee']!, _tradingFeeMeta));
+          _feeMeta, fee.isAcceptableOrUnknown(data['fee']!, _feeMeta));
     }
     if (data.containsKey('tax')) {
       context.handle(
           _taxMeta, tax.isAcceptableOrUnknown(data['tax']!, _taxMeta));
     }
-    if (data.containsKey('clearing_account_id')) {
+    if (data.containsKey('source_account_value_delta')) {
       context.handle(
-          _clearingAccountIdMeta,
-          clearingAccountId.isAcceptableOrUnknown(
-              data['clearing_account_id']!, _clearingAccountIdMeta));
+          _sourceAccountValueDeltaMeta,
+          sourceAccountValueDelta.isAcceptableOrUnknown(
+              data['source_account_value_delta']!,
+              _sourceAccountValueDeltaMeta));
     } else if (isInserting) {
-      context.missing(_clearingAccountIdMeta);
+      context.missing(_sourceAccountValueDeltaMeta);
     }
-    if (data.containsKey('portfolio_account_id')) {
+    if (data.containsKey('target_account_value_delta')) {
       context.handle(
-          _portfolioAccountIdMeta,
-          portfolioAccountId.isAcceptableOrUnknown(
-              data['portfolio_account_id']!, _portfolioAccountIdMeta));
+          _targetAccountValueDeltaMeta,
+          targetAccountValueDelta.isAcceptableOrUnknown(
+              data['target_account_value_delta']!,
+              _targetAccountValueDeltaMeta));
     } else if (isInserting) {
-      context.missing(_portfolioAccountIdMeta);
+      context.missing(_targetAccountValueDeltaMeta);
+    }
+    if (data.containsKey('profit_and_loss')) {
+      context.handle(
+          _profitAndLossMeta,
+          profitAndLoss.isAcceptableOrUnknown(
+              data['profit_and_loss']!, _profitAndLossMeta));
+    }
+    if (data.containsKey('return_on_invest')) {
+      context.handle(
+          _returnOnInvestMeta,
+          returnOnInvest.isAcceptableOrUnknown(
+              data['return_on_invest']!, _returnOnInvestMeta));
     }
     return context;
   }
@@ -1873,32 +2185,32 @@ class $TradesTable extends Trades with TableInfo<$TradesTable, Trade> {
           .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
       datetime: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}datetime'])!,
-      assetId: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}asset_id'])!,
       type: $TradesTable.$convertertype.fromSql(attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}type'])!),
-      clearingAccountValueDelta: attachedDatabase.typeMapping.read(
-          DriftSqlType.double,
-          data['${effectivePrefix}clearing_account_value_delta'])!,
-      portfolioAccountValueDelta: attachedDatabase.typeMapping.read(
-          DriftSqlType.double,
-          data['${effectivePrefix}portfolio_account_value_delta'])!,
+      sourceAccountId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}source_account_id'])!,
+      targetAccountId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}target_account_id'])!,
+      assetId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}asset_id'])!,
       shares: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}shares'])!,
-      pricePerShare: attachedDatabase.typeMapping.read(
-          DriftSqlType.double, data['${effectivePrefix}price_per_share'])!,
-      profitAndLossAbs: attachedDatabase.typeMapping.read(
-          DriftSqlType.double, data['${effectivePrefix}profit_and_loss_abs'])!,
-      profitAndLossRel: attachedDatabase.typeMapping.read(
-          DriftSqlType.double, data['${effectivePrefix}profit_and_loss_rel'])!,
-      tradingFee: attachedDatabase.typeMapping
-          .read(DriftSqlType.double, data['${effectivePrefix}trading_fee'])!,
+      costBasis: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}cost_basis'])!,
+      fee: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}fee'])!,
       tax: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}tax'])!,
-      clearingAccountId: attachedDatabase.typeMapping.read(
-          DriftSqlType.int, data['${effectivePrefix}clearing_account_id'])!,
-      portfolioAccountId: attachedDatabase.typeMapping.read(
-          DriftSqlType.int, data['${effectivePrefix}portfolio_account_id'])!,
+      sourceAccountValueDelta: attachedDatabase.typeMapping.read(
+          DriftSqlType.double,
+          data['${effectivePrefix}source_account_value_delta'])!,
+      targetAccountValueDelta: attachedDatabase.typeMapping.read(
+          DriftSqlType.double,
+          data['${effectivePrefix}target_account_value_delta'])!,
+      profitAndLoss: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}profit_and_loss'])!,
+      returnOnInvest: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}return_on_invest'])!,
     );
   }
 
@@ -1914,54 +2226,54 @@ class $TradesTable extends Trades with TableInfo<$TradesTable, Trade> {
 class Trade extends DataClass implements Insertable<Trade> {
   final int id;
   final int datetime;
-  final int assetId;
   final TradeTypes type;
-  final double clearingAccountValueDelta;
-  final double portfolioAccountValueDelta;
+  final int sourceAccountId;
+  final int targetAccountId;
+  final int assetId;
   final double shares;
-  final double pricePerShare;
-  final double profitAndLossAbs;
-  final double profitAndLossRel;
-  final double tradingFee;
+  final double costBasis;
+  final double fee;
   final double tax;
-  final int clearingAccountId;
-  final int portfolioAccountId;
+  final double sourceAccountValueDelta;
+  final double targetAccountValueDelta;
+  final double profitAndLoss;
+  final double returnOnInvest;
   const Trade(
       {required this.id,
       required this.datetime,
-      required this.assetId,
       required this.type,
-      required this.clearingAccountValueDelta,
-      required this.portfolioAccountValueDelta,
+      required this.sourceAccountId,
+      required this.targetAccountId,
+      required this.assetId,
       required this.shares,
-      required this.pricePerShare,
-      required this.profitAndLossAbs,
-      required this.profitAndLossRel,
-      required this.tradingFee,
+      required this.costBasis,
+      required this.fee,
       required this.tax,
-      required this.clearingAccountId,
-      required this.portfolioAccountId});
+      required this.sourceAccountValueDelta,
+      required this.targetAccountValueDelta,
+      required this.profitAndLoss,
+      required this.returnOnInvest});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['datetime'] = Variable<int>(datetime);
-    map['asset_id'] = Variable<int>(assetId);
     {
       map['type'] = Variable<String>($TradesTable.$convertertype.toSql(type));
     }
-    map['clearing_account_value_delta'] =
-        Variable<double>(clearingAccountValueDelta);
-    map['portfolio_account_value_delta'] =
-        Variable<double>(portfolioAccountValueDelta);
+    map['source_account_id'] = Variable<int>(sourceAccountId);
+    map['target_account_id'] = Variable<int>(targetAccountId);
+    map['asset_id'] = Variable<int>(assetId);
     map['shares'] = Variable<double>(shares);
-    map['price_per_share'] = Variable<double>(pricePerShare);
-    map['profit_and_loss_abs'] = Variable<double>(profitAndLossAbs);
-    map['profit_and_loss_rel'] = Variable<double>(profitAndLossRel);
-    map['trading_fee'] = Variable<double>(tradingFee);
+    map['cost_basis'] = Variable<double>(costBasis);
+    map['fee'] = Variable<double>(fee);
     map['tax'] = Variable<double>(tax);
-    map['clearing_account_id'] = Variable<int>(clearingAccountId);
-    map['portfolio_account_id'] = Variable<int>(portfolioAccountId);
+    map['source_account_value_delta'] =
+        Variable<double>(sourceAccountValueDelta);
+    map['target_account_value_delta'] =
+        Variable<double>(targetAccountValueDelta);
+    map['profit_and_loss'] = Variable<double>(profitAndLoss);
+    map['return_on_invest'] = Variable<double>(returnOnInvest);
     return map;
   }
 
@@ -1969,18 +2281,18 @@ class Trade extends DataClass implements Insertable<Trade> {
     return TradesCompanion(
       id: Value(id),
       datetime: Value(datetime),
-      assetId: Value(assetId),
       type: Value(type),
-      clearingAccountValueDelta: Value(clearingAccountValueDelta),
-      portfolioAccountValueDelta: Value(portfolioAccountValueDelta),
+      sourceAccountId: Value(sourceAccountId),
+      targetAccountId: Value(targetAccountId),
+      assetId: Value(assetId),
       shares: Value(shares),
-      pricePerShare: Value(pricePerShare),
-      profitAndLossAbs: Value(profitAndLossAbs),
-      profitAndLossRel: Value(profitAndLossRel),
-      tradingFee: Value(tradingFee),
+      costBasis: Value(costBasis),
+      fee: Value(fee),
       tax: Value(tax),
-      clearingAccountId: Value(clearingAccountId),
-      portfolioAccountId: Value(portfolioAccountId),
+      sourceAccountValueDelta: Value(sourceAccountValueDelta),
+      targetAccountValueDelta: Value(targetAccountValueDelta),
+      profitAndLoss: Value(profitAndLoss),
+      returnOnInvest: Value(returnOnInvest),
     );
   }
 
@@ -1990,20 +2302,20 @@ class Trade extends DataClass implements Insertable<Trade> {
     return Trade(
       id: serializer.fromJson<int>(json['id']),
       datetime: serializer.fromJson<int>(json['datetime']),
-      assetId: serializer.fromJson<int>(json['assetId']),
       type: serializer.fromJson<TradeTypes>(json['type']),
-      clearingAccountValueDelta:
-          serializer.fromJson<double>(json['clearingAccountValueDelta']),
-      portfolioAccountValueDelta:
-          serializer.fromJson<double>(json['portfolioAccountValueDelta']),
+      sourceAccountId: serializer.fromJson<int>(json['sourceAccountId']),
+      targetAccountId: serializer.fromJson<int>(json['targetAccountId']),
+      assetId: serializer.fromJson<int>(json['assetId']),
       shares: serializer.fromJson<double>(json['shares']),
-      pricePerShare: serializer.fromJson<double>(json['pricePerShare']),
-      profitAndLossAbs: serializer.fromJson<double>(json['profitAndLossAbs']),
-      profitAndLossRel: serializer.fromJson<double>(json['profitAndLossRel']),
-      tradingFee: serializer.fromJson<double>(json['tradingFee']),
+      costBasis: serializer.fromJson<double>(json['costBasis']),
+      fee: serializer.fromJson<double>(json['fee']),
       tax: serializer.fromJson<double>(json['tax']),
-      clearingAccountId: serializer.fromJson<int>(json['clearingAccountId']),
-      portfolioAccountId: serializer.fromJson<int>(json['portfolioAccountId']),
+      sourceAccountValueDelta:
+          serializer.fromJson<double>(json['sourceAccountValueDelta']),
+      targetAccountValueDelta:
+          serializer.fromJson<double>(json['targetAccountValueDelta']),
+      profitAndLoss: serializer.fromJson<double>(json['profitAndLoss']),
+      returnOnInvest: serializer.fromJson<double>(json['returnOnInvest']),
     );
   }
   @override
@@ -2012,87 +2324,84 @@ class Trade extends DataClass implements Insertable<Trade> {
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'datetime': serializer.toJson<int>(datetime),
-      'assetId': serializer.toJson<int>(assetId),
       'type': serializer.toJson<TradeTypes>(type),
-      'clearingAccountValueDelta':
-          serializer.toJson<double>(clearingAccountValueDelta),
-      'portfolioAccountValueDelta':
-          serializer.toJson<double>(portfolioAccountValueDelta),
+      'sourceAccountId': serializer.toJson<int>(sourceAccountId),
+      'targetAccountId': serializer.toJson<int>(targetAccountId),
+      'assetId': serializer.toJson<int>(assetId),
       'shares': serializer.toJson<double>(shares),
-      'pricePerShare': serializer.toJson<double>(pricePerShare),
-      'profitAndLossAbs': serializer.toJson<double>(profitAndLossAbs),
-      'profitAndLossRel': serializer.toJson<double>(profitAndLossRel),
-      'tradingFee': serializer.toJson<double>(tradingFee),
+      'costBasis': serializer.toJson<double>(costBasis),
+      'fee': serializer.toJson<double>(fee),
       'tax': serializer.toJson<double>(tax),
-      'clearingAccountId': serializer.toJson<int>(clearingAccountId),
-      'portfolioAccountId': serializer.toJson<int>(portfolioAccountId),
+      'sourceAccountValueDelta':
+          serializer.toJson<double>(sourceAccountValueDelta),
+      'targetAccountValueDelta':
+          serializer.toJson<double>(targetAccountValueDelta),
+      'profitAndLoss': serializer.toJson<double>(profitAndLoss),
+      'returnOnInvest': serializer.toJson<double>(returnOnInvest),
     };
   }
 
   Trade copyWith(
           {int? id,
           int? datetime,
-          int? assetId,
           TradeTypes? type,
-          double? clearingAccountValueDelta,
-          double? portfolioAccountValueDelta,
+          int? sourceAccountId,
+          int? targetAccountId,
+          int? assetId,
           double? shares,
-          double? pricePerShare,
-          double? profitAndLossAbs,
-          double? profitAndLossRel,
-          double? tradingFee,
+          double? costBasis,
+          double? fee,
           double? tax,
-          int? clearingAccountId,
-          int? portfolioAccountId}) =>
+          double? sourceAccountValueDelta,
+          double? targetAccountValueDelta,
+          double? profitAndLoss,
+          double? returnOnInvest}) =>
       Trade(
         id: id ?? this.id,
         datetime: datetime ?? this.datetime,
-        assetId: assetId ?? this.assetId,
         type: type ?? this.type,
-        clearingAccountValueDelta:
-            clearingAccountValueDelta ?? this.clearingAccountValueDelta,
-        portfolioAccountValueDelta:
-            portfolioAccountValueDelta ?? this.portfolioAccountValueDelta,
+        sourceAccountId: sourceAccountId ?? this.sourceAccountId,
+        targetAccountId: targetAccountId ?? this.targetAccountId,
+        assetId: assetId ?? this.assetId,
         shares: shares ?? this.shares,
-        pricePerShare: pricePerShare ?? this.pricePerShare,
-        profitAndLossAbs: profitAndLossAbs ?? this.profitAndLossAbs,
-        profitAndLossRel: profitAndLossRel ?? this.profitAndLossRel,
-        tradingFee: tradingFee ?? this.tradingFee,
+        costBasis: costBasis ?? this.costBasis,
+        fee: fee ?? this.fee,
         tax: tax ?? this.tax,
-        clearingAccountId: clearingAccountId ?? this.clearingAccountId,
-        portfolioAccountId: portfolioAccountId ?? this.portfolioAccountId,
+        sourceAccountValueDelta:
+            sourceAccountValueDelta ?? this.sourceAccountValueDelta,
+        targetAccountValueDelta:
+            targetAccountValueDelta ?? this.targetAccountValueDelta,
+        profitAndLoss: profitAndLoss ?? this.profitAndLoss,
+        returnOnInvest: returnOnInvest ?? this.returnOnInvest,
       );
   Trade copyWithCompanion(TradesCompanion data) {
     return Trade(
       id: data.id.present ? data.id.value : this.id,
       datetime: data.datetime.present ? data.datetime.value : this.datetime,
-      assetId: data.assetId.present ? data.assetId.value : this.assetId,
       type: data.type.present ? data.type.value : this.type,
-      clearingAccountValueDelta: data.clearingAccountValueDelta.present
-          ? data.clearingAccountValueDelta.value
-          : this.clearingAccountValueDelta,
-      portfolioAccountValueDelta: data.portfolioAccountValueDelta.present
-          ? data.portfolioAccountValueDelta.value
-          : this.portfolioAccountValueDelta,
+      sourceAccountId: data.sourceAccountId.present
+          ? data.sourceAccountId.value
+          : this.sourceAccountId,
+      targetAccountId: data.targetAccountId.present
+          ? data.targetAccountId.value
+          : this.targetAccountId,
+      assetId: data.assetId.present ? data.assetId.value : this.assetId,
       shares: data.shares.present ? data.shares.value : this.shares,
-      pricePerShare: data.pricePerShare.present
-          ? data.pricePerShare.value
-          : this.pricePerShare,
-      profitAndLossAbs: data.profitAndLossAbs.present
-          ? data.profitAndLossAbs.value
-          : this.profitAndLossAbs,
-      profitAndLossRel: data.profitAndLossRel.present
-          ? data.profitAndLossRel.value
-          : this.profitAndLossRel,
-      tradingFee:
-          data.tradingFee.present ? data.tradingFee.value : this.tradingFee,
+      costBasis: data.costBasis.present ? data.costBasis.value : this.costBasis,
+      fee: data.fee.present ? data.fee.value : this.fee,
       tax: data.tax.present ? data.tax.value : this.tax,
-      clearingAccountId: data.clearingAccountId.present
-          ? data.clearingAccountId.value
-          : this.clearingAccountId,
-      portfolioAccountId: data.portfolioAccountId.present
-          ? data.portfolioAccountId.value
-          : this.portfolioAccountId,
+      sourceAccountValueDelta: data.sourceAccountValueDelta.present
+          ? data.sourceAccountValueDelta.value
+          : this.sourceAccountValueDelta,
+      targetAccountValueDelta: data.targetAccountValueDelta.present
+          ? data.targetAccountValueDelta.value
+          : this.targetAccountValueDelta,
+      profitAndLoss: data.profitAndLoss.present
+          ? data.profitAndLoss.value
+          : this.profitAndLoss,
+      returnOnInvest: data.returnOnInvest.present
+          ? data.returnOnInvest.value
+          : this.returnOnInvest,
     );
   }
 
@@ -2101,18 +2410,18 @@ class Trade extends DataClass implements Insertable<Trade> {
     return (StringBuffer('Trade(')
           ..write('id: $id, ')
           ..write('datetime: $datetime, ')
-          ..write('assetId: $assetId, ')
           ..write('type: $type, ')
-          ..write('clearingAccountValueDelta: $clearingAccountValueDelta, ')
-          ..write('portfolioAccountValueDelta: $portfolioAccountValueDelta, ')
+          ..write('sourceAccountId: $sourceAccountId, ')
+          ..write('targetAccountId: $targetAccountId, ')
+          ..write('assetId: $assetId, ')
           ..write('shares: $shares, ')
-          ..write('pricePerShare: $pricePerShare, ')
-          ..write('profitAndLossAbs: $profitAndLossAbs, ')
-          ..write('profitAndLossRel: $profitAndLossRel, ')
-          ..write('tradingFee: $tradingFee, ')
+          ..write('costBasis: $costBasis, ')
+          ..write('fee: $fee, ')
           ..write('tax: $tax, ')
-          ..write('clearingAccountId: $clearingAccountId, ')
-          ..write('portfolioAccountId: $portfolioAccountId')
+          ..write('sourceAccountValueDelta: $sourceAccountValueDelta, ')
+          ..write('targetAccountValueDelta: $targetAccountValueDelta, ')
+          ..write('profitAndLoss: $profitAndLoss, ')
+          ..write('returnOnInvest: $returnOnInvest')
           ..write(')'))
         .toString();
   }
@@ -2121,162 +2430,161 @@ class Trade extends DataClass implements Insertable<Trade> {
   int get hashCode => Object.hash(
       id,
       datetime,
-      assetId,
       type,
-      clearingAccountValueDelta,
-      portfolioAccountValueDelta,
+      sourceAccountId,
+      targetAccountId,
+      assetId,
       shares,
-      pricePerShare,
-      profitAndLossAbs,
-      profitAndLossRel,
-      tradingFee,
+      costBasis,
+      fee,
       tax,
-      clearingAccountId,
-      portfolioAccountId);
+      sourceAccountValueDelta,
+      targetAccountValueDelta,
+      profitAndLoss,
+      returnOnInvest);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Trade &&
           other.id == this.id &&
           other.datetime == this.datetime &&
-          other.assetId == this.assetId &&
           other.type == this.type &&
-          other.clearingAccountValueDelta == this.clearingAccountValueDelta &&
-          other.portfolioAccountValueDelta == this.portfolioAccountValueDelta &&
+          other.sourceAccountId == this.sourceAccountId &&
+          other.targetAccountId == this.targetAccountId &&
+          other.assetId == this.assetId &&
           other.shares == this.shares &&
-          other.pricePerShare == this.pricePerShare &&
-          other.profitAndLossAbs == this.profitAndLossAbs &&
-          other.profitAndLossRel == this.profitAndLossRel &&
-          other.tradingFee == this.tradingFee &&
+          other.costBasis == this.costBasis &&
+          other.fee == this.fee &&
           other.tax == this.tax &&
-          other.clearingAccountId == this.clearingAccountId &&
-          other.portfolioAccountId == this.portfolioAccountId);
+          other.sourceAccountValueDelta == this.sourceAccountValueDelta &&
+          other.targetAccountValueDelta == this.targetAccountValueDelta &&
+          other.profitAndLoss == this.profitAndLoss &&
+          other.returnOnInvest == this.returnOnInvest);
 }
 
 class TradesCompanion extends UpdateCompanion<Trade> {
   final Value<int> id;
   final Value<int> datetime;
-  final Value<int> assetId;
   final Value<TradeTypes> type;
-  final Value<double> clearingAccountValueDelta;
-  final Value<double> portfolioAccountValueDelta;
+  final Value<int> sourceAccountId;
+  final Value<int> targetAccountId;
+  final Value<int> assetId;
   final Value<double> shares;
-  final Value<double> pricePerShare;
-  final Value<double> profitAndLossAbs;
-  final Value<double> profitAndLossRel;
-  final Value<double> tradingFee;
+  final Value<double> costBasis;
+  final Value<double> fee;
   final Value<double> tax;
-  final Value<int> clearingAccountId;
-  final Value<int> portfolioAccountId;
+  final Value<double> sourceAccountValueDelta;
+  final Value<double> targetAccountValueDelta;
+  final Value<double> profitAndLoss;
+  final Value<double> returnOnInvest;
   const TradesCompanion({
     this.id = const Value.absent(),
     this.datetime = const Value.absent(),
-    this.assetId = const Value.absent(),
     this.type = const Value.absent(),
-    this.clearingAccountValueDelta = const Value.absent(),
-    this.portfolioAccountValueDelta = const Value.absent(),
+    this.sourceAccountId = const Value.absent(),
+    this.targetAccountId = const Value.absent(),
+    this.assetId = const Value.absent(),
     this.shares = const Value.absent(),
-    this.pricePerShare = const Value.absent(),
-    this.profitAndLossAbs = const Value.absent(),
-    this.profitAndLossRel = const Value.absent(),
-    this.tradingFee = const Value.absent(),
+    this.costBasis = const Value.absent(),
+    this.fee = const Value.absent(),
     this.tax = const Value.absent(),
-    this.clearingAccountId = const Value.absent(),
-    this.portfolioAccountId = const Value.absent(),
+    this.sourceAccountValueDelta = const Value.absent(),
+    this.targetAccountValueDelta = const Value.absent(),
+    this.profitAndLoss = const Value.absent(),
+    this.returnOnInvest = const Value.absent(),
   });
   TradesCompanion.insert({
     this.id = const Value.absent(),
     required int datetime,
-    required int assetId,
     required TradeTypes type,
-    required double clearingAccountValueDelta,
-    required double portfolioAccountValueDelta,
+    required int sourceAccountId,
+    required int targetAccountId,
+    required int assetId,
     required double shares,
-    required double pricePerShare,
-    this.profitAndLossAbs = const Value.absent(),
-    this.profitAndLossRel = const Value.absent(),
-    this.tradingFee = const Value.absent(),
+    required double costBasis,
+    this.fee = const Value.absent(),
     this.tax = const Value.absent(),
-    required int clearingAccountId,
-    required int portfolioAccountId,
+    required double sourceAccountValueDelta,
+    required double targetAccountValueDelta,
+    this.profitAndLoss = const Value.absent(),
+    this.returnOnInvest = const Value.absent(),
   })  : datetime = Value(datetime),
-        assetId = Value(assetId),
         type = Value(type),
-        clearingAccountValueDelta = Value(clearingAccountValueDelta),
-        portfolioAccountValueDelta = Value(portfolioAccountValueDelta),
+        sourceAccountId = Value(sourceAccountId),
+        targetAccountId = Value(targetAccountId),
+        assetId = Value(assetId),
         shares = Value(shares),
-        pricePerShare = Value(pricePerShare),
-        clearingAccountId = Value(clearingAccountId),
-        portfolioAccountId = Value(portfolioAccountId);
+        costBasis = Value(costBasis),
+        sourceAccountValueDelta = Value(sourceAccountValueDelta),
+        targetAccountValueDelta = Value(targetAccountValueDelta);
   static Insertable<Trade> custom({
     Expression<int>? id,
     Expression<int>? datetime,
-    Expression<int>? assetId,
     Expression<String>? type,
-    Expression<double>? clearingAccountValueDelta,
-    Expression<double>? portfolioAccountValueDelta,
+    Expression<int>? sourceAccountId,
+    Expression<int>? targetAccountId,
+    Expression<int>? assetId,
     Expression<double>? shares,
-    Expression<double>? pricePerShare,
-    Expression<double>? profitAndLossAbs,
-    Expression<double>? profitAndLossRel,
-    Expression<double>? tradingFee,
+    Expression<double>? costBasis,
+    Expression<double>? fee,
     Expression<double>? tax,
-    Expression<int>? clearingAccountId,
-    Expression<int>? portfolioAccountId,
+    Expression<double>? sourceAccountValueDelta,
+    Expression<double>? targetAccountValueDelta,
+    Expression<double>? profitAndLoss,
+    Expression<double>? returnOnInvest,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (datetime != null) 'datetime': datetime,
-      if (assetId != null) 'asset_id': assetId,
       if (type != null) 'type': type,
-      if (clearingAccountValueDelta != null)
-        'clearing_account_value_delta': clearingAccountValueDelta,
-      if (portfolioAccountValueDelta != null)
-        'portfolio_account_value_delta': portfolioAccountValueDelta,
+      if (sourceAccountId != null) 'source_account_id': sourceAccountId,
+      if (targetAccountId != null) 'target_account_id': targetAccountId,
+      if (assetId != null) 'asset_id': assetId,
       if (shares != null) 'shares': shares,
-      if (pricePerShare != null) 'price_per_share': pricePerShare,
-      if (profitAndLossAbs != null) 'profit_and_loss_abs': profitAndLossAbs,
-      if (profitAndLossRel != null) 'profit_and_loss_rel': profitAndLossRel,
-      if (tradingFee != null) 'trading_fee': tradingFee,
+      if (costBasis != null) 'cost_basis': costBasis,
+      if (fee != null) 'fee': fee,
       if (tax != null) 'tax': tax,
-      if (clearingAccountId != null) 'clearing_account_id': clearingAccountId,
-      if (portfolioAccountId != null)
-        'portfolio_account_id': portfolioAccountId,
+      if (sourceAccountValueDelta != null)
+        'source_account_value_delta': sourceAccountValueDelta,
+      if (targetAccountValueDelta != null)
+        'target_account_value_delta': targetAccountValueDelta,
+      if (profitAndLoss != null) 'profit_and_loss': profitAndLoss,
+      if (returnOnInvest != null) 'return_on_invest': returnOnInvest,
     });
   }
 
   TradesCompanion copyWith(
       {Value<int>? id,
       Value<int>? datetime,
-      Value<int>? assetId,
       Value<TradeTypes>? type,
-      Value<double>? clearingAccountValueDelta,
-      Value<double>? portfolioAccountValueDelta,
+      Value<int>? sourceAccountId,
+      Value<int>? targetAccountId,
+      Value<int>? assetId,
       Value<double>? shares,
-      Value<double>? pricePerShare,
-      Value<double>? profitAndLossAbs,
-      Value<double>? profitAndLossRel,
-      Value<double>? tradingFee,
+      Value<double>? costBasis,
+      Value<double>? fee,
       Value<double>? tax,
-      Value<int>? clearingAccountId,
-      Value<int>? portfolioAccountId}) {
+      Value<double>? sourceAccountValueDelta,
+      Value<double>? targetAccountValueDelta,
+      Value<double>? profitAndLoss,
+      Value<double>? returnOnInvest}) {
     return TradesCompanion(
       id: id ?? this.id,
       datetime: datetime ?? this.datetime,
-      assetId: assetId ?? this.assetId,
       type: type ?? this.type,
-      clearingAccountValueDelta:
-          clearingAccountValueDelta ?? this.clearingAccountValueDelta,
-      portfolioAccountValueDelta:
-          portfolioAccountValueDelta ?? this.portfolioAccountValueDelta,
+      sourceAccountId: sourceAccountId ?? this.sourceAccountId,
+      targetAccountId: targetAccountId ?? this.targetAccountId,
+      assetId: assetId ?? this.assetId,
       shares: shares ?? this.shares,
-      pricePerShare: pricePerShare ?? this.pricePerShare,
-      profitAndLossAbs: profitAndLossAbs ?? this.profitAndLossAbs,
-      profitAndLossRel: profitAndLossRel ?? this.profitAndLossRel,
-      tradingFee: tradingFee ?? this.tradingFee,
+      costBasis: costBasis ?? this.costBasis,
+      fee: fee ?? this.fee,
       tax: tax ?? this.tax,
-      clearingAccountId: clearingAccountId ?? this.clearingAccountId,
-      portfolioAccountId: portfolioAccountId ?? this.portfolioAccountId,
+      sourceAccountValueDelta:
+          sourceAccountValueDelta ?? this.sourceAccountValueDelta,
+      targetAccountValueDelta:
+          targetAccountValueDelta ?? this.targetAccountValueDelta,
+      profitAndLoss: profitAndLoss ?? this.profitAndLoss,
+      returnOnInvest: returnOnInvest ?? this.returnOnInvest,
     );
   }
 
@@ -2289,44 +2597,44 @@ class TradesCompanion extends UpdateCompanion<Trade> {
     if (datetime.present) {
       map['datetime'] = Variable<int>(datetime.value);
     }
-    if (assetId.present) {
-      map['asset_id'] = Variable<int>(assetId.value);
-    }
     if (type.present) {
       map['type'] =
           Variable<String>($TradesTable.$convertertype.toSql(type.value));
     }
-    if (clearingAccountValueDelta.present) {
-      map['clearing_account_value_delta'] =
-          Variable<double>(clearingAccountValueDelta.value);
+    if (sourceAccountId.present) {
+      map['source_account_id'] = Variable<int>(sourceAccountId.value);
     }
-    if (portfolioAccountValueDelta.present) {
-      map['portfolio_account_value_delta'] =
-          Variable<double>(portfolioAccountValueDelta.value);
+    if (targetAccountId.present) {
+      map['target_account_id'] = Variable<int>(targetAccountId.value);
+    }
+    if (assetId.present) {
+      map['asset_id'] = Variable<int>(assetId.value);
     }
     if (shares.present) {
       map['shares'] = Variable<double>(shares.value);
     }
-    if (pricePerShare.present) {
-      map['price_per_share'] = Variable<double>(pricePerShare.value);
+    if (costBasis.present) {
+      map['cost_basis'] = Variable<double>(costBasis.value);
     }
-    if (profitAndLossAbs.present) {
-      map['profit_and_loss_abs'] = Variable<double>(profitAndLossAbs.value);
-    }
-    if (profitAndLossRel.present) {
-      map['profit_and_loss_rel'] = Variable<double>(profitAndLossRel.value);
-    }
-    if (tradingFee.present) {
-      map['trading_fee'] = Variable<double>(tradingFee.value);
+    if (fee.present) {
+      map['fee'] = Variable<double>(fee.value);
     }
     if (tax.present) {
       map['tax'] = Variable<double>(tax.value);
     }
-    if (clearingAccountId.present) {
-      map['clearing_account_id'] = Variable<int>(clearingAccountId.value);
+    if (sourceAccountValueDelta.present) {
+      map['source_account_value_delta'] =
+          Variable<double>(sourceAccountValueDelta.value);
     }
-    if (portfolioAccountId.present) {
-      map['portfolio_account_id'] = Variable<int>(portfolioAccountId.value);
+    if (targetAccountValueDelta.present) {
+      map['target_account_value_delta'] =
+          Variable<double>(targetAccountValueDelta.value);
+    }
+    if (profitAndLoss.present) {
+      map['profit_and_loss'] = Variable<double>(profitAndLoss.value);
+    }
+    if (returnOnInvest.present) {
+      map['return_on_invest'] = Variable<double>(returnOnInvest.value);
     }
     return map;
   }
@@ -2336,18 +2644,18 @@ class TradesCompanion extends UpdateCompanion<Trade> {
     return (StringBuffer('TradesCompanion(')
           ..write('id: $id, ')
           ..write('datetime: $datetime, ')
-          ..write('assetId: $assetId, ')
           ..write('type: $type, ')
-          ..write('clearingAccountValueDelta: $clearingAccountValueDelta, ')
-          ..write('portfolioAccountValueDelta: $portfolioAccountValueDelta, ')
+          ..write('sourceAccountId: $sourceAccountId, ')
+          ..write('targetAccountId: $targetAccountId, ')
+          ..write('assetId: $assetId, ')
           ..write('shares: $shares, ')
-          ..write('pricePerShare: $pricePerShare, ')
-          ..write('profitAndLossAbs: $profitAndLossAbs, ')
-          ..write('profitAndLossRel: $profitAndLossRel, ')
-          ..write('tradingFee: $tradingFee, ')
+          ..write('costBasis: $costBasis, ')
+          ..write('fee: $fee, ')
           ..write('tax: $tax, ')
-          ..write('clearingAccountId: $clearingAccountId, ')
-          ..write('portfolioAccountId: $portfolioAccountId')
+          ..write('sourceAccountValueDelta: $sourceAccountValueDelta, ')
+          ..write('targetAccountValueDelta: $targetAccountValueDelta, ')
+          ..write('profitAndLoss: $profitAndLoss, ')
+          ..write('returnOnInvest: $returnOnInvest')
           ..write(')'))
         .toString();
   }
@@ -2374,11 +2682,16 @@ class $PeriodicBookingsTable extends PeriodicBookings
   late final GeneratedColumn<int> nextExecutionDate = GeneratedColumn<int>(
       'next_execution_date', aliasedName, false,
       type: DriftSqlType.int, requiredDuringInsert: true);
-  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
+  static const VerificationMeta _assetIdMeta =
+      const VerificationMeta('assetId');
   @override
-  late final GeneratedColumn<double> amount = GeneratedColumn<double>(
-      'amount', aliasedName, false,
-      type: DriftSqlType.double, requiredDuringInsert: true);
+  late final GeneratedColumn<int> assetId = GeneratedColumn<int>(
+      'asset_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES assets (id)'),
+      defaultValue: const Constant(1));
   static const VerificationMeta _accountIdMeta =
       const VerificationMeta('accountId');
   @override
@@ -2388,6 +2701,24 @@ class $PeriodicBookingsTable extends PeriodicBookings
       requiredDuringInsert: true,
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('REFERENCES accounts (id)'));
+  static const VerificationMeta _sharesMeta = const VerificationMeta('shares');
+  @override
+  late final GeneratedColumn<double> shares = GeneratedColumn<double>(
+      'shares', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _costBasisMeta =
+      const VerificationMeta('costBasis');
+  @override
+  late final GeneratedColumn<double> costBasis = GeneratedColumn<double>(
+      'cost_basis', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(1));
+  static const VerificationMeta _valueMeta = const VerificationMeta('value');
+  @override
+  late final GeneratedColumn<double> value = GeneratedColumn<double>(
+      'value', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
   static const VerificationMeta _categoryMeta =
       const VerificationMeta('category');
   @override
@@ -2418,8 +2749,11 @@ class $PeriodicBookingsTable extends PeriodicBookings
   List<GeneratedColumn> get $columns => [
         id,
         nextExecutionDate,
-        amount,
+        assetId,
         accountId,
+        shares,
+        costBasis,
+        value,
         category,
         notes,
         cycle,
@@ -2446,17 +2780,31 @@ class $PeriodicBookingsTable extends PeriodicBookings
     } else if (isInserting) {
       context.missing(_nextExecutionDateMeta);
     }
-    if (data.containsKey('amount')) {
-      context.handle(_amountMeta,
-          amount.isAcceptableOrUnknown(data['amount']!, _amountMeta));
-    } else if (isInserting) {
-      context.missing(_amountMeta);
+    if (data.containsKey('asset_id')) {
+      context.handle(_assetIdMeta,
+          assetId.isAcceptableOrUnknown(data['asset_id']!, _assetIdMeta));
     }
     if (data.containsKey('account_id')) {
       context.handle(_accountIdMeta,
           accountId.isAcceptableOrUnknown(data['account_id']!, _accountIdMeta));
     } else if (isInserting) {
       context.missing(_accountIdMeta);
+    }
+    if (data.containsKey('shares')) {
+      context.handle(_sharesMeta,
+          shares.isAcceptableOrUnknown(data['shares']!, _sharesMeta));
+    } else if (isInserting) {
+      context.missing(_sharesMeta);
+    }
+    if (data.containsKey('cost_basis')) {
+      context.handle(_costBasisMeta,
+          costBasis.isAcceptableOrUnknown(data['cost_basis']!, _costBasisMeta));
+    }
+    if (data.containsKey('value')) {
+      context.handle(
+          _valueMeta, value.isAcceptableOrUnknown(data['value']!, _valueMeta));
+    } else if (isInserting) {
+      context.missing(_valueMeta);
     }
     if (data.containsKey('category')) {
       context.handle(_categoryMeta,
@@ -2487,10 +2835,16 @@ class $PeriodicBookingsTable extends PeriodicBookings
           .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
       nextExecutionDate: attachedDatabase.typeMapping.read(
           DriftSqlType.int, data['${effectivePrefix}next_execution_date'])!,
-      amount: attachedDatabase.typeMapping
-          .read(DriftSqlType.double, data['${effectivePrefix}amount'])!,
+      assetId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}asset_id'])!,
       accountId: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}account_id'])!,
+      shares: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}shares'])!,
+      costBasis: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}cost_basis'])!,
+      value: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}value'])!,
       category: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}category'])!,
       notes: attachedDatabase.typeMapping
@@ -2516,8 +2870,11 @@ class $PeriodicBookingsTable extends PeriodicBookings
 class PeriodicBooking extends DataClass implements Insertable<PeriodicBooking> {
   final int id;
   final int nextExecutionDate;
-  final double amount;
+  final int assetId;
   final int accountId;
+  final double shares;
+  final double costBasis;
+  final double value;
   final String category;
   final String? notes;
   final Cycles cycle;
@@ -2525,8 +2882,11 @@ class PeriodicBooking extends DataClass implements Insertable<PeriodicBooking> {
   const PeriodicBooking(
       {required this.id,
       required this.nextExecutionDate,
-      required this.amount,
+      required this.assetId,
       required this.accountId,
+      required this.shares,
+      required this.costBasis,
+      required this.value,
       required this.category,
       this.notes,
       required this.cycle,
@@ -2536,8 +2896,11 @@ class PeriodicBooking extends DataClass implements Insertable<PeriodicBooking> {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['next_execution_date'] = Variable<int>(nextExecutionDate);
-    map['amount'] = Variable<double>(amount);
+    map['asset_id'] = Variable<int>(assetId);
     map['account_id'] = Variable<int>(accountId);
+    map['shares'] = Variable<double>(shares);
+    map['cost_basis'] = Variable<double>(costBasis);
+    map['value'] = Variable<double>(value);
     map['category'] = Variable<String>(category);
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
@@ -2554,8 +2917,11 @@ class PeriodicBooking extends DataClass implements Insertable<PeriodicBooking> {
     return PeriodicBookingsCompanion(
       id: Value(id),
       nextExecutionDate: Value(nextExecutionDate),
-      amount: Value(amount),
+      assetId: Value(assetId),
       accountId: Value(accountId),
+      shares: Value(shares),
+      costBasis: Value(costBasis),
+      value: Value(value),
       category: Value(category),
       notes:
           notes == null && nullToAbsent ? const Value.absent() : Value(notes),
@@ -2570,8 +2936,11 @@ class PeriodicBooking extends DataClass implements Insertable<PeriodicBooking> {
     return PeriodicBooking(
       id: serializer.fromJson<int>(json['id']),
       nextExecutionDate: serializer.fromJson<int>(json['nextExecutionDate']),
-      amount: serializer.fromJson<double>(json['amount']),
+      assetId: serializer.fromJson<int>(json['assetId']),
       accountId: serializer.fromJson<int>(json['accountId']),
+      shares: serializer.fromJson<double>(json['shares']),
+      costBasis: serializer.fromJson<double>(json['costBasis']),
+      value: serializer.fromJson<double>(json['value']),
       category: serializer.fromJson<String>(json['category']),
       notes: serializer.fromJson<String?>(json['notes']),
       cycle: serializer.fromJson<Cycles>(json['cycle']),
@@ -2585,8 +2954,11 @@ class PeriodicBooking extends DataClass implements Insertable<PeriodicBooking> {
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'nextExecutionDate': serializer.toJson<int>(nextExecutionDate),
-      'amount': serializer.toJson<double>(amount),
+      'assetId': serializer.toJson<int>(assetId),
       'accountId': serializer.toJson<int>(accountId),
+      'shares': serializer.toJson<double>(shares),
+      'costBasis': serializer.toJson<double>(costBasis),
+      'value': serializer.toJson<double>(value),
       'category': serializer.toJson<String>(category),
       'notes': serializer.toJson<String?>(notes),
       'cycle': serializer.toJson<Cycles>(cycle),
@@ -2597,8 +2969,11 @@ class PeriodicBooking extends DataClass implements Insertable<PeriodicBooking> {
   PeriodicBooking copyWith(
           {int? id,
           int? nextExecutionDate,
-          double? amount,
+          int? assetId,
           int? accountId,
+          double? shares,
+          double? costBasis,
+          double? value,
           String? category,
           Value<String?> notes = const Value.absent(),
           Cycles? cycle,
@@ -2606,8 +2981,11 @@ class PeriodicBooking extends DataClass implements Insertable<PeriodicBooking> {
       PeriodicBooking(
         id: id ?? this.id,
         nextExecutionDate: nextExecutionDate ?? this.nextExecutionDate,
-        amount: amount ?? this.amount,
+        assetId: assetId ?? this.assetId,
         accountId: accountId ?? this.accountId,
+        shares: shares ?? this.shares,
+        costBasis: costBasis ?? this.costBasis,
+        value: value ?? this.value,
         category: category ?? this.category,
         notes: notes.present ? notes.value : this.notes,
         cycle: cycle ?? this.cycle,
@@ -2619,8 +2997,11 @@ class PeriodicBooking extends DataClass implements Insertable<PeriodicBooking> {
       nextExecutionDate: data.nextExecutionDate.present
           ? data.nextExecutionDate.value
           : this.nextExecutionDate,
-      amount: data.amount.present ? data.amount.value : this.amount,
+      assetId: data.assetId.present ? data.assetId.value : this.assetId,
       accountId: data.accountId.present ? data.accountId.value : this.accountId,
+      shares: data.shares.present ? data.shares.value : this.shares,
+      costBasis: data.costBasis.present ? data.costBasis.value : this.costBasis,
+      value: data.value.present ? data.value.value : this.value,
       category: data.category.present ? data.category.value : this.category,
       notes: data.notes.present ? data.notes.value : this.notes,
       cycle: data.cycle.present ? data.cycle.value : this.cycle,
@@ -2635,8 +3016,11 @@ class PeriodicBooking extends DataClass implements Insertable<PeriodicBooking> {
     return (StringBuffer('PeriodicBooking(')
           ..write('id: $id, ')
           ..write('nextExecutionDate: $nextExecutionDate, ')
-          ..write('amount: $amount, ')
+          ..write('assetId: $assetId, ')
           ..write('accountId: $accountId, ')
+          ..write('shares: $shares, ')
+          ..write('costBasis: $costBasis, ')
+          ..write('value: $value, ')
           ..write('category: $category, ')
           ..write('notes: $notes, ')
           ..write('cycle: $cycle, ')
@@ -2646,16 +3030,19 @@ class PeriodicBooking extends DataClass implements Insertable<PeriodicBooking> {
   }
 
   @override
-  int get hashCode => Object.hash(id, nextExecutionDate, amount, accountId,
-      category, notes, cycle, monthlyAverageFactor);
+  int get hashCode => Object.hash(id, nextExecutionDate, assetId, accountId,
+      shares, costBasis, value, category, notes, cycle, monthlyAverageFactor);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is PeriodicBooking &&
           other.id == this.id &&
           other.nextExecutionDate == this.nextExecutionDate &&
-          other.amount == this.amount &&
+          other.assetId == this.assetId &&
           other.accountId == this.accountId &&
+          other.shares == this.shares &&
+          other.costBasis == this.costBasis &&
+          other.value == this.value &&
           other.category == this.category &&
           other.notes == this.notes &&
           other.cycle == this.cycle &&
@@ -2665,8 +3052,11 @@ class PeriodicBooking extends DataClass implements Insertable<PeriodicBooking> {
 class PeriodicBookingsCompanion extends UpdateCompanion<PeriodicBooking> {
   final Value<int> id;
   final Value<int> nextExecutionDate;
-  final Value<double> amount;
+  final Value<int> assetId;
   final Value<int> accountId;
+  final Value<double> shares;
+  final Value<double> costBasis;
+  final Value<double> value;
   final Value<String> category;
   final Value<String?> notes;
   final Value<Cycles> cycle;
@@ -2674,8 +3064,11 @@ class PeriodicBookingsCompanion extends UpdateCompanion<PeriodicBooking> {
   const PeriodicBookingsCompanion({
     this.id = const Value.absent(),
     this.nextExecutionDate = const Value.absent(),
-    this.amount = const Value.absent(),
+    this.assetId = const Value.absent(),
     this.accountId = const Value.absent(),
+    this.shares = const Value.absent(),
+    this.costBasis = const Value.absent(),
+    this.value = const Value.absent(),
     this.category = const Value.absent(),
     this.notes = const Value.absent(),
     this.cycle = const Value.absent(),
@@ -2684,21 +3077,28 @@ class PeriodicBookingsCompanion extends UpdateCompanion<PeriodicBooking> {
   PeriodicBookingsCompanion.insert({
     this.id = const Value.absent(),
     required int nextExecutionDate,
-    required double amount,
+    this.assetId = const Value.absent(),
     required int accountId,
+    required double shares,
+    this.costBasis = const Value.absent(),
+    required double value,
     required String category,
     this.notes = const Value.absent(),
     this.cycle = const Value.absent(),
     this.monthlyAverageFactor = const Value.absent(),
   })  : nextExecutionDate = Value(nextExecutionDate),
-        amount = Value(amount),
         accountId = Value(accountId),
+        shares = Value(shares),
+        value = Value(value),
         category = Value(category);
   static Insertable<PeriodicBooking> custom({
     Expression<int>? id,
     Expression<int>? nextExecutionDate,
-    Expression<double>? amount,
+    Expression<int>? assetId,
     Expression<int>? accountId,
+    Expression<double>? shares,
+    Expression<double>? costBasis,
+    Expression<double>? value,
     Expression<String>? category,
     Expression<String>? notes,
     Expression<String>? cycle,
@@ -2707,8 +3107,11 @@ class PeriodicBookingsCompanion extends UpdateCompanion<PeriodicBooking> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (nextExecutionDate != null) 'next_execution_date': nextExecutionDate,
-      if (amount != null) 'amount': amount,
+      if (assetId != null) 'asset_id': assetId,
       if (accountId != null) 'account_id': accountId,
+      if (shares != null) 'shares': shares,
+      if (costBasis != null) 'cost_basis': costBasis,
+      if (value != null) 'value': value,
       if (category != null) 'category': category,
       if (notes != null) 'notes': notes,
       if (cycle != null) 'cycle': cycle,
@@ -2720,8 +3123,11 @@ class PeriodicBookingsCompanion extends UpdateCompanion<PeriodicBooking> {
   PeriodicBookingsCompanion copyWith(
       {Value<int>? id,
       Value<int>? nextExecutionDate,
-      Value<double>? amount,
+      Value<int>? assetId,
       Value<int>? accountId,
+      Value<double>? shares,
+      Value<double>? costBasis,
+      Value<double>? value,
       Value<String>? category,
       Value<String?>? notes,
       Value<Cycles>? cycle,
@@ -2729,8 +3135,11 @@ class PeriodicBookingsCompanion extends UpdateCompanion<PeriodicBooking> {
     return PeriodicBookingsCompanion(
       id: id ?? this.id,
       nextExecutionDate: nextExecutionDate ?? this.nextExecutionDate,
-      amount: amount ?? this.amount,
+      assetId: assetId ?? this.assetId,
       accountId: accountId ?? this.accountId,
+      shares: shares ?? this.shares,
+      costBasis: costBasis ?? this.costBasis,
+      value: value ?? this.value,
       category: category ?? this.category,
       notes: notes ?? this.notes,
       cycle: cycle ?? this.cycle,
@@ -2747,11 +3156,20 @@ class PeriodicBookingsCompanion extends UpdateCompanion<PeriodicBooking> {
     if (nextExecutionDate.present) {
       map['next_execution_date'] = Variable<int>(nextExecutionDate.value);
     }
-    if (amount.present) {
-      map['amount'] = Variable<double>(amount.value);
+    if (assetId.present) {
+      map['asset_id'] = Variable<int>(assetId.value);
     }
     if (accountId.present) {
       map['account_id'] = Variable<int>(accountId.value);
+    }
+    if (shares.present) {
+      map['shares'] = Variable<double>(shares.value);
+    }
+    if (costBasis.present) {
+      map['cost_basis'] = Variable<double>(costBasis.value);
+    }
+    if (value.present) {
+      map['value'] = Variable<double>(value.value);
     }
     if (category.present) {
       map['category'] = Variable<String>(category.value);
@@ -2775,8 +3193,11 @@ class PeriodicBookingsCompanion extends UpdateCompanion<PeriodicBooking> {
     return (StringBuffer('PeriodicBookingsCompanion(')
           ..write('id: $id, ')
           ..write('nextExecutionDate: $nextExecutionDate, ')
-          ..write('amount: $amount, ')
+          ..write('assetId: $assetId, ')
           ..write('accountId: $accountId, ')
+          ..write('shares: $shares, ')
+          ..write('costBasis: $costBasis, ')
+          ..write('value: $value, ')
           ..write('category: $category, ')
           ..write('notes: $notes, ')
           ..write('cycle: $cycle, ')
@@ -2807,11 +3228,16 @@ class $PeriodicTransfersTable extends PeriodicTransfers
   late final GeneratedColumn<int> nextExecutionDate = GeneratedColumn<int>(
       'next_execution_date', aliasedName, false,
       type: DriftSqlType.int, requiredDuringInsert: true);
-  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
+  static const VerificationMeta _assetIdMeta =
+      const VerificationMeta('assetId');
   @override
-  late final GeneratedColumn<double> amount = GeneratedColumn<double>(
-      'amount', aliasedName, false,
-      type: DriftSqlType.double, requiredDuringInsert: true);
+  late final GeneratedColumn<int> assetId = GeneratedColumn<int>(
+      'asset_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES assets (id)'),
+      defaultValue: const Constant(1));
   static const VerificationMeta _sendingAccountIdMeta =
       const VerificationMeta('sendingAccountId');
   @override
@@ -2830,6 +3256,24 @@ class $PeriodicTransfersTable extends PeriodicTransfers
       requiredDuringInsert: true,
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('REFERENCES accounts (id)'));
+  static const VerificationMeta _sharesMeta = const VerificationMeta('shares');
+  @override
+  late final GeneratedColumn<double> shares = GeneratedColumn<double>(
+      'shares', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _costBasisMeta =
+      const VerificationMeta('costBasis');
+  @override
+  late final GeneratedColumn<double> costBasis = GeneratedColumn<double>(
+      'cost_basis', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(1));
+  static const VerificationMeta _valueMeta = const VerificationMeta('value');
+  @override
+  late final GeneratedColumn<double> value = GeneratedColumn<double>(
+      'value', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
   static const VerificationMeta _notesMeta = const VerificationMeta('notes');
   @override
   late final GeneratedColumn<String> notes = GeneratedColumn<String>(
@@ -2854,9 +3298,12 @@ class $PeriodicTransfersTable extends PeriodicTransfers
   List<GeneratedColumn> get $columns => [
         id,
         nextExecutionDate,
-        amount,
+        assetId,
         sendingAccountId,
         receivingAccountId,
+        shares,
+        costBasis,
+        value,
         notes,
         cycle,
         monthlyAverageFactor
@@ -2882,11 +3329,9 @@ class $PeriodicTransfersTable extends PeriodicTransfers
     } else if (isInserting) {
       context.missing(_nextExecutionDateMeta);
     }
-    if (data.containsKey('amount')) {
-      context.handle(_amountMeta,
-          amount.isAcceptableOrUnknown(data['amount']!, _amountMeta));
-    } else if (isInserting) {
-      context.missing(_amountMeta);
+    if (data.containsKey('asset_id')) {
+      context.handle(_assetIdMeta,
+          assetId.isAcceptableOrUnknown(data['asset_id']!, _assetIdMeta));
     }
     if (data.containsKey('sending_account_id')) {
       context.handle(
@@ -2903,6 +3348,22 @@ class $PeriodicTransfersTable extends PeriodicTransfers
               data['receiving_account_id']!, _receivingAccountIdMeta));
     } else if (isInserting) {
       context.missing(_receivingAccountIdMeta);
+    }
+    if (data.containsKey('shares')) {
+      context.handle(_sharesMeta,
+          shares.isAcceptableOrUnknown(data['shares']!, _sharesMeta));
+    } else if (isInserting) {
+      context.missing(_sharesMeta);
+    }
+    if (data.containsKey('cost_basis')) {
+      context.handle(_costBasisMeta,
+          costBasis.isAcceptableOrUnknown(data['cost_basis']!, _costBasisMeta));
+    }
+    if (data.containsKey('value')) {
+      context.handle(
+          _valueMeta, value.isAcceptableOrUnknown(data['value']!, _valueMeta));
+    } else if (isInserting) {
+      context.missing(_valueMeta);
     }
     if (data.containsKey('notes')) {
       context.handle(
@@ -2927,12 +3388,18 @@ class $PeriodicTransfersTable extends PeriodicTransfers
           .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
       nextExecutionDate: attachedDatabase.typeMapping.read(
           DriftSqlType.int, data['${effectivePrefix}next_execution_date'])!,
-      amount: attachedDatabase.typeMapping
-          .read(DriftSqlType.double, data['${effectivePrefix}amount'])!,
+      assetId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}asset_id'])!,
       sendingAccountId: attachedDatabase.typeMapping.read(
           DriftSqlType.int, data['${effectivePrefix}sending_account_id'])!,
       receivingAccountId: attachedDatabase.typeMapping.read(
           DriftSqlType.int, data['${effectivePrefix}receiving_account_id'])!,
+      shares: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}shares'])!,
+      costBasis: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}cost_basis'])!,
+      value: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}value'])!,
       notes: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}notes']),
       cycle: $PeriodicTransfersTable.$convertercycle.fromSql(attachedDatabase
@@ -2957,18 +3424,24 @@ class PeriodicTransfer extends DataClass
     implements Insertable<PeriodicTransfer> {
   final int id;
   final int nextExecutionDate;
-  final double amount;
+  final int assetId;
   final int sendingAccountId;
   final int receivingAccountId;
+  final double shares;
+  final double costBasis;
+  final double value;
   final String? notes;
   final Cycles cycle;
   final double monthlyAverageFactor;
   const PeriodicTransfer(
       {required this.id,
       required this.nextExecutionDate,
-      required this.amount,
+      required this.assetId,
       required this.sendingAccountId,
       required this.receivingAccountId,
+      required this.shares,
+      required this.costBasis,
+      required this.value,
       this.notes,
       required this.cycle,
       required this.monthlyAverageFactor});
@@ -2977,9 +3450,12 @@ class PeriodicTransfer extends DataClass
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['next_execution_date'] = Variable<int>(nextExecutionDate);
-    map['amount'] = Variable<double>(amount);
+    map['asset_id'] = Variable<int>(assetId);
     map['sending_account_id'] = Variable<int>(sendingAccountId);
     map['receiving_account_id'] = Variable<int>(receivingAccountId);
+    map['shares'] = Variable<double>(shares);
+    map['cost_basis'] = Variable<double>(costBasis);
+    map['value'] = Variable<double>(value);
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
     }
@@ -2995,9 +3471,12 @@ class PeriodicTransfer extends DataClass
     return PeriodicTransfersCompanion(
       id: Value(id),
       nextExecutionDate: Value(nextExecutionDate),
-      amount: Value(amount),
+      assetId: Value(assetId),
       sendingAccountId: Value(sendingAccountId),
       receivingAccountId: Value(receivingAccountId),
+      shares: Value(shares),
+      costBasis: Value(costBasis),
+      value: Value(value),
       notes:
           notes == null && nullToAbsent ? const Value.absent() : Value(notes),
       cycle: Value(cycle),
@@ -3011,9 +3490,12 @@ class PeriodicTransfer extends DataClass
     return PeriodicTransfer(
       id: serializer.fromJson<int>(json['id']),
       nextExecutionDate: serializer.fromJson<int>(json['nextExecutionDate']),
-      amount: serializer.fromJson<double>(json['amount']),
+      assetId: serializer.fromJson<int>(json['assetId']),
       sendingAccountId: serializer.fromJson<int>(json['sendingAccountId']),
       receivingAccountId: serializer.fromJson<int>(json['receivingAccountId']),
+      shares: serializer.fromJson<double>(json['shares']),
+      costBasis: serializer.fromJson<double>(json['costBasis']),
+      value: serializer.fromJson<double>(json['value']),
       notes: serializer.fromJson<String?>(json['notes']),
       cycle: serializer.fromJson<Cycles>(json['cycle']),
       monthlyAverageFactor:
@@ -3026,9 +3508,12 @@ class PeriodicTransfer extends DataClass
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'nextExecutionDate': serializer.toJson<int>(nextExecutionDate),
-      'amount': serializer.toJson<double>(amount),
+      'assetId': serializer.toJson<int>(assetId),
       'sendingAccountId': serializer.toJson<int>(sendingAccountId),
       'receivingAccountId': serializer.toJson<int>(receivingAccountId),
+      'shares': serializer.toJson<double>(shares),
+      'costBasis': serializer.toJson<double>(costBasis),
+      'value': serializer.toJson<double>(value),
       'notes': serializer.toJson<String?>(notes),
       'cycle': serializer.toJson<Cycles>(cycle),
       'monthlyAverageFactor': serializer.toJson<double>(monthlyAverageFactor),
@@ -3038,18 +3523,24 @@ class PeriodicTransfer extends DataClass
   PeriodicTransfer copyWith(
           {int? id,
           int? nextExecutionDate,
-          double? amount,
+          int? assetId,
           int? sendingAccountId,
           int? receivingAccountId,
+          double? shares,
+          double? costBasis,
+          double? value,
           Value<String?> notes = const Value.absent(),
           Cycles? cycle,
           double? monthlyAverageFactor}) =>
       PeriodicTransfer(
         id: id ?? this.id,
         nextExecutionDate: nextExecutionDate ?? this.nextExecutionDate,
-        amount: amount ?? this.amount,
+        assetId: assetId ?? this.assetId,
         sendingAccountId: sendingAccountId ?? this.sendingAccountId,
         receivingAccountId: receivingAccountId ?? this.receivingAccountId,
+        shares: shares ?? this.shares,
+        costBasis: costBasis ?? this.costBasis,
+        value: value ?? this.value,
         notes: notes.present ? notes.value : this.notes,
         cycle: cycle ?? this.cycle,
         monthlyAverageFactor: monthlyAverageFactor ?? this.monthlyAverageFactor,
@@ -3060,13 +3551,16 @@ class PeriodicTransfer extends DataClass
       nextExecutionDate: data.nextExecutionDate.present
           ? data.nextExecutionDate.value
           : this.nextExecutionDate,
-      amount: data.amount.present ? data.amount.value : this.amount,
+      assetId: data.assetId.present ? data.assetId.value : this.assetId,
       sendingAccountId: data.sendingAccountId.present
           ? data.sendingAccountId.value
           : this.sendingAccountId,
       receivingAccountId: data.receivingAccountId.present
           ? data.receivingAccountId.value
           : this.receivingAccountId,
+      shares: data.shares.present ? data.shares.value : this.shares,
+      costBasis: data.costBasis.present ? data.costBasis.value : this.costBasis,
+      value: data.value.present ? data.value.value : this.value,
       notes: data.notes.present ? data.notes.value : this.notes,
       cycle: data.cycle.present ? data.cycle.value : this.cycle,
       monthlyAverageFactor: data.monthlyAverageFactor.present
@@ -3080,9 +3574,12 @@ class PeriodicTransfer extends DataClass
     return (StringBuffer('PeriodicTransfer(')
           ..write('id: $id, ')
           ..write('nextExecutionDate: $nextExecutionDate, ')
-          ..write('amount: $amount, ')
+          ..write('assetId: $assetId, ')
           ..write('sendingAccountId: $sendingAccountId, ')
           ..write('receivingAccountId: $receivingAccountId, ')
+          ..write('shares: $shares, ')
+          ..write('costBasis: $costBasis, ')
+          ..write('value: $value, ')
           ..write('notes: $notes, ')
           ..write('cycle: $cycle, ')
           ..write('monthlyAverageFactor: $monthlyAverageFactor')
@@ -3091,17 +3588,30 @@ class PeriodicTransfer extends DataClass
   }
 
   @override
-  int get hashCode => Object.hash(id, nextExecutionDate, amount,
-      sendingAccountId, receivingAccountId, notes, cycle, monthlyAverageFactor);
+  int get hashCode => Object.hash(
+      id,
+      nextExecutionDate,
+      assetId,
+      sendingAccountId,
+      receivingAccountId,
+      shares,
+      costBasis,
+      value,
+      notes,
+      cycle,
+      monthlyAverageFactor);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is PeriodicTransfer &&
           other.id == this.id &&
           other.nextExecutionDate == this.nextExecutionDate &&
-          other.amount == this.amount &&
+          other.assetId == this.assetId &&
           other.sendingAccountId == this.sendingAccountId &&
           other.receivingAccountId == this.receivingAccountId &&
+          other.shares == this.shares &&
+          other.costBasis == this.costBasis &&
+          other.value == this.value &&
           other.notes == this.notes &&
           other.cycle == this.cycle &&
           other.monthlyAverageFactor == this.monthlyAverageFactor);
@@ -3110,18 +3620,24 @@ class PeriodicTransfer extends DataClass
 class PeriodicTransfersCompanion extends UpdateCompanion<PeriodicTransfer> {
   final Value<int> id;
   final Value<int> nextExecutionDate;
-  final Value<double> amount;
+  final Value<int> assetId;
   final Value<int> sendingAccountId;
   final Value<int> receivingAccountId;
+  final Value<double> shares;
+  final Value<double> costBasis;
+  final Value<double> value;
   final Value<String?> notes;
   final Value<Cycles> cycle;
   final Value<double> monthlyAverageFactor;
   const PeriodicTransfersCompanion({
     this.id = const Value.absent(),
     this.nextExecutionDate = const Value.absent(),
-    this.amount = const Value.absent(),
+    this.assetId = const Value.absent(),
     this.sendingAccountId = const Value.absent(),
     this.receivingAccountId = const Value.absent(),
+    this.shares = const Value.absent(),
+    this.costBasis = const Value.absent(),
+    this.value = const Value.absent(),
     this.notes = const Value.absent(),
     this.cycle = const Value.absent(),
     this.monthlyAverageFactor = const Value.absent(),
@@ -3129,22 +3645,29 @@ class PeriodicTransfersCompanion extends UpdateCompanion<PeriodicTransfer> {
   PeriodicTransfersCompanion.insert({
     this.id = const Value.absent(),
     required int nextExecutionDate,
-    required double amount,
+    this.assetId = const Value.absent(),
     required int sendingAccountId,
     required int receivingAccountId,
+    required double shares,
+    this.costBasis = const Value.absent(),
+    required double value,
     this.notes = const Value.absent(),
     this.cycle = const Value.absent(),
     this.monthlyAverageFactor = const Value.absent(),
   })  : nextExecutionDate = Value(nextExecutionDate),
-        amount = Value(amount),
         sendingAccountId = Value(sendingAccountId),
-        receivingAccountId = Value(receivingAccountId);
+        receivingAccountId = Value(receivingAccountId),
+        shares = Value(shares),
+        value = Value(value);
   static Insertable<PeriodicTransfer> custom({
     Expression<int>? id,
     Expression<int>? nextExecutionDate,
-    Expression<double>? amount,
+    Expression<int>? assetId,
     Expression<int>? sendingAccountId,
     Expression<int>? receivingAccountId,
+    Expression<double>? shares,
+    Expression<double>? costBasis,
+    Expression<double>? value,
     Expression<String>? notes,
     Expression<String>? cycle,
     Expression<double>? monthlyAverageFactor,
@@ -3152,10 +3675,13 @@ class PeriodicTransfersCompanion extends UpdateCompanion<PeriodicTransfer> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (nextExecutionDate != null) 'next_execution_date': nextExecutionDate,
-      if (amount != null) 'amount': amount,
+      if (assetId != null) 'asset_id': assetId,
       if (sendingAccountId != null) 'sending_account_id': sendingAccountId,
       if (receivingAccountId != null)
         'receiving_account_id': receivingAccountId,
+      if (shares != null) 'shares': shares,
+      if (costBasis != null) 'cost_basis': costBasis,
+      if (value != null) 'value': value,
       if (notes != null) 'notes': notes,
       if (cycle != null) 'cycle': cycle,
       if (monthlyAverageFactor != null)
@@ -3166,18 +3692,24 @@ class PeriodicTransfersCompanion extends UpdateCompanion<PeriodicTransfer> {
   PeriodicTransfersCompanion copyWith(
       {Value<int>? id,
       Value<int>? nextExecutionDate,
-      Value<double>? amount,
+      Value<int>? assetId,
       Value<int>? sendingAccountId,
       Value<int>? receivingAccountId,
+      Value<double>? shares,
+      Value<double>? costBasis,
+      Value<double>? value,
       Value<String?>? notes,
       Value<Cycles>? cycle,
       Value<double>? monthlyAverageFactor}) {
     return PeriodicTransfersCompanion(
       id: id ?? this.id,
       nextExecutionDate: nextExecutionDate ?? this.nextExecutionDate,
-      amount: amount ?? this.amount,
+      assetId: assetId ?? this.assetId,
       sendingAccountId: sendingAccountId ?? this.sendingAccountId,
       receivingAccountId: receivingAccountId ?? this.receivingAccountId,
+      shares: shares ?? this.shares,
+      costBasis: costBasis ?? this.costBasis,
+      value: value ?? this.value,
       notes: notes ?? this.notes,
       cycle: cycle ?? this.cycle,
       monthlyAverageFactor: monthlyAverageFactor ?? this.monthlyAverageFactor,
@@ -3193,14 +3725,23 @@ class PeriodicTransfersCompanion extends UpdateCompanion<PeriodicTransfer> {
     if (nextExecutionDate.present) {
       map['next_execution_date'] = Variable<int>(nextExecutionDate.value);
     }
-    if (amount.present) {
-      map['amount'] = Variable<double>(amount.value);
+    if (assetId.present) {
+      map['asset_id'] = Variable<int>(assetId.value);
     }
     if (sendingAccountId.present) {
       map['sending_account_id'] = Variable<int>(sendingAccountId.value);
     }
     if (receivingAccountId.present) {
       map['receiving_account_id'] = Variable<int>(receivingAccountId.value);
+    }
+    if (shares.present) {
+      map['shares'] = Variable<double>(shares.value);
+    }
+    if (costBasis.present) {
+      map['cost_basis'] = Variable<double>(costBasis.value);
+    }
+    if (value.present) {
+      map['value'] = Variable<double>(value.value);
     }
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
@@ -3221,9 +3762,12 @@ class PeriodicTransfersCompanion extends UpdateCompanion<PeriodicTransfer> {
     return (StringBuffer('PeriodicTransfersCompanion(')
           ..write('id: $id, ')
           ..write('nextExecutionDate: $nextExecutionDate, ')
-          ..write('amount: $amount, ')
+          ..write('assetId: $assetId, ')
           ..write('sendingAccountId: $sendingAccountId, ')
           ..write('receivingAccountId: $receivingAccountId, ')
+          ..write('shares: $shares, ')
+          ..write('costBasis: $costBasis, ')
+          ..write('value: $value, ')
           ..write('notes: $notes, ')
           ..write('cycle: $cycle, ')
           ..write('monthlyAverageFactor: $monthlyAverageFactor')
@@ -3263,11 +3807,10 @@ class $AssetsOnAccountsTable extends AssetsOnAccounts
       type: DriftSqlType.double,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
-  static const VerificationMeta _sharesOwnedMeta =
-      const VerificationMeta('sharesOwned');
+  static const VerificationMeta _sharesMeta = const VerificationMeta('shares');
   @override
-  late final GeneratedColumn<double> sharesOwned = GeneratedColumn<double>(
-      'shares_owned', aliasedName, false,
+  late final GeneratedColumn<double> shares = GeneratedColumn<double>(
+      'shares', aliasedName, false,
       type: DriftSqlType.double,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
@@ -3300,7 +3843,7 @@ class $AssetsOnAccountsTable extends AssetsOnAccounts
         accountId,
         assetId,
         value,
-        sharesOwned,
+        shares,
         netCostBasis,
         brokerCostBasis,
         buyFeeTotal
@@ -3331,11 +3874,9 @@ class $AssetsOnAccountsTable extends AssetsOnAccounts
       context.handle(
           _valueMeta, value.isAcceptableOrUnknown(data['value']!, _valueMeta));
     }
-    if (data.containsKey('shares_owned')) {
-      context.handle(
-          _sharesOwnedMeta,
-          sharesOwned.isAcceptableOrUnknown(
-              data['shares_owned']!, _sharesOwnedMeta));
+    if (data.containsKey('shares')) {
+      context.handle(_sharesMeta,
+          shares.isAcceptableOrUnknown(data['shares']!, _sharesMeta));
     }
     if (data.containsKey('net_cost_basis')) {
       context.handle(
@@ -3370,8 +3911,8 @@ class $AssetsOnAccountsTable extends AssetsOnAccounts
           .read(DriftSqlType.int, data['${effectivePrefix}asset_id'])!,
       value: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}value'])!,
-      sharesOwned: attachedDatabase.typeMapping
-          .read(DriftSqlType.double, data['${effectivePrefix}shares_owned'])!,
+      shares: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}shares'])!,
       netCostBasis: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}net_cost_basis'])!,
       brokerCostBasis: attachedDatabase.typeMapping.read(
@@ -3391,7 +3932,7 @@ class AssetOnAccount extends DataClass implements Insertable<AssetOnAccount> {
   final int accountId;
   final int assetId;
   final double value;
-  final double sharesOwned;
+  final double shares;
   final double netCostBasis;
   final double brokerCostBasis;
   final double buyFeeTotal;
@@ -3399,7 +3940,7 @@ class AssetOnAccount extends DataClass implements Insertable<AssetOnAccount> {
       {required this.accountId,
       required this.assetId,
       required this.value,
-      required this.sharesOwned,
+      required this.shares,
       required this.netCostBasis,
       required this.brokerCostBasis,
       required this.buyFeeTotal});
@@ -3409,7 +3950,7 @@ class AssetOnAccount extends DataClass implements Insertable<AssetOnAccount> {
     map['account_id'] = Variable<int>(accountId);
     map['asset_id'] = Variable<int>(assetId);
     map['value'] = Variable<double>(value);
-    map['shares_owned'] = Variable<double>(sharesOwned);
+    map['shares'] = Variable<double>(shares);
     map['net_cost_basis'] = Variable<double>(netCostBasis);
     map['broker_cost_basis'] = Variable<double>(brokerCostBasis);
     map['buy_fee_total'] = Variable<double>(buyFeeTotal);
@@ -3421,7 +3962,7 @@ class AssetOnAccount extends DataClass implements Insertable<AssetOnAccount> {
       accountId: Value(accountId),
       assetId: Value(assetId),
       value: Value(value),
-      sharesOwned: Value(sharesOwned),
+      shares: Value(shares),
       netCostBasis: Value(netCostBasis),
       brokerCostBasis: Value(brokerCostBasis),
       buyFeeTotal: Value(buyFeeTotal),
@@ -3435,7 +3976,7 @@ class AssetOnAccount extends DataClass implements Insertable<AssetOnAccount> {
       accountId: serializer.fromJson<int>(json['accountId']),
       assetId: serializer.fromJson<int>(json['assetId']),
       value: serializer.fromJson<double>(json['value']),
-      sharesOwned: serializer.fromJson<double>(json['sharesOwned']),
+      shares: serializer.fromJson<double>(json['shares']),
       netCostBasis: serializer.fromJson<double>(json['netCostBasis']),
       brokerCostBasis: serializer.fromJson<double>(json['brokerCostBasis']),
       buyFeeTotal: serializer.fromJson<double>(json['buyFeeTotal']),
@@ -3448,7 +3989,7 @@ class AssetOnAccount extends DataClass implements Insertable<AssetOnAccount> {
       'accountId': serializer.toJson<int>(accountId),
       'assetId': serializer.toJson<int>(assetId),
       'value': serializer.toJson<double>(value),
-      'sharesOwned': serializer.toJson<double>(sharesOwned),
+      'shares': serializer.toJson<double>(shares),
       'netCostBasis': serializer.toJson<double>(netCostBasis),
       'brokerCostBasis': serializer.toJson<double>(brokerCostBasis),
       'buyFeeTotal': serializer.toJson<double>(buyFeeTotal),
@@ -3459,7 +4000,7 @@ class AssetOnAccount extends DataClass implements Insertable<AssetOnAccount> {
           {int? accountId,
           int? assetId,
           double? value,
-          double? sharesOwned,
+          double? shares,
           double? netCostBasis,
           double? brokerCostBasis,
           double? buyFeeTotal}) =>
@@ -3467,7 +4008,7 @@ class AssetOnAccount extends DataClass implements Insertable<AssetOnAccount> {
         accountId: accountId ?? this.accountId,
         assetId: assetId ?? this.assetId,
         value: value ?? this.value,
-        sharesOwned: sharesOwned ?? this.sharesOwned,
+        shares: shares ?? this.shares,
         netCostBasis: netCostBasis ?? this.netCostBasis,
         brokerCostBasis: brokerCostBasis ?? this.brokerCostBasis,
         buyFeeTotal: buyFeeTotal ?? this.buyFeeTotal,
@@ -3477,8 +4018,7 @@ class AssetOnAccount extends DataClass implements Insertable<AssetOnAccount> {
       accountId: data.accountId.present ? data.accountId.value : this.accountId,
       assetId: data.assetId.present ? data.assetId.value : this.assetId,
       value: data.value.present ? data.value.value : this.value,
-      sharesOwned:
-          data.sharesOwned.present ? data.sharesOwned.value : this.sharesOwned,
+      shares: data.shares.present ? data.shares.value : this.shares,
       netCostBasis: data.netCostBasis.present
           ? data.netCostBasis.value
           : this.netCostBasis,
@@ -3496,7 +4036,7 @@ class AssetOnAccount extends DataClass implements Insertable<AssetOnAccount> {
           ..write('accountId: $accountId, ')
           ..write('assetId: $assetId, ')
           ..write('value: $value, ')
-          ..write('sharesOwned: $sharesOwned, ')
+          ..write('shares: $shares, ')
           ..write('netCostBasis: $netCostBasis, ')
           ..write('brokerCostBasis: $brokerCostBasis, ')
           ..write('buyFeeTotal: $buyFeeTotal')
@@ -3505,7 +4045,7 @@ class AssetOnAccount extends DataClass implements Insertable<AssetOnAccount> {
   }
 
   @override
-  int get hashCode => Object.hash(accountId, assetId, value, sharesOwned,
+  int get hashCode => Object.hash(accountId, assetId, value, shares,
       netCostBasis, brokerCostBasis, buyFeeTotal);
   @override
   bool operator ==(Object other) =>
@@ -3514,7 +4054,7 @@ class AssetOnAccount extends DataClass implements Insertable<AssetOnAccount> {
           other.accountId == this.accountId &&
           other.assetId == this.assetId &&
           other.value == this.value &&
-          other.sharesOwned == this.sharesOwned &&
+          other.shares == this.shares &&
           other.netCostBasis == this.netCostBasis &&
           other.brokerCostBasis == this.brokerCostBasis &&
           other.buyFeeTotal == this.buyFeeTotal);
@@ -3524,7 +4064,7 @@ class AssetsOnAccountsCompanion extends UpdateCompanion<AssetOnAccount> {
   final Value<int> accountId;
   final Value<int> assetId;
   final Value<double> value;
-  final Value<double> sharesOwned;
+  final Value<double> shares;
   final Value<double> netCostBasis;
   final Value<double> brokerCostBasis;
   final Value<double> buyFeeTotal;
@@ -3533,7 +4073,7 @@ class AssetsOnAccountsCompanion extends UpdateCompanion<AssetOnAccount> {
     this.accountId = const Value.absent(),
     this.assetId = const Value.absent(),
     this.value = const Value.absent(),
-    this.sharesOwned = const Value.absent(),
+    this.shares = const Value.absent(),
     this.netCostBasis = const Value.absent(),
     this.brokerCostBasis = const Value.absent(),
     this.buyFeeTotal = const Value.absent(),
@@ -3543,7 +4083,7 @@ class AssetsOnAccountsCompanion extends UpdateCompanion<AssetOnAccount> {
     required int accountId,
     required int assetId,
     this.value = const Value.absent(),
-    this.sharesOwned = const Value.absent(),
+    this.shares = const Value.absent(),
     this.netCostBasis = const Value.absent(),
     this.brokerCostBasis = const Value.absent(),
     this.buyFeeTotal = const Value.absent(),
@@ -3554,7 +4094,7 @@ class AssetsOnAccountsCompanion extends UpdateCompanion<AssetOnAccount> {
     Expression<int>? accountId,
     Expression<int>? assetId,
     Expression<double>? value,
-    Expression<double>? sharesOwned,
+    Expression<double>? shares,
     Expression<double>? netCostBasis,
     Expression<double>? brokerCostBasis,
     Expression<double>? buyFeeTotal,
@@ -3564,7 +4104,7 @@ class AssetsOnAccountsCompanion extends UpdateCompanion<AssetOnAccount> {
       if (accountId != null) 'account_id': accountId,
       if (assetId != null) 'asset_id': assetId,
       if (value != null) 'value': value,
-      if (sharesOwned != null) 'shares_owned': sharesOwned,
+      if (shares != null) 'shares': shares,
       if (netCostBasis != null) 'net_cost_basis': netCostBasis,
       if (brokerCostBasis != null) 'broker_cost_basis': brokerCostBasis,
       if (buyFeeTotal != null) 'buy_fee_total': buyFeeTotal,
@@ -3576,7 +4116,7 @@ class AssetsOnAccountsCompanion extends UpdateCompanion<AssetOnAccount> {
       {Value<int>? accountId,
       Value<int>? assetId,
       Value<double>? value,
-      Value<double>? sharesOwned,
+      Value<double>? shares,
       Value<double>? netCostBasis,
       Value<double>? brokerCostBasis,
       Value<double>? buyFeeTotal,
@@ -3585,7 +4125,7 @@ class AssetsOnAccountsCompanion extends UpdateCompanion<AssetOnAccount> {
       accountId: accountId ?? this.accountId,
       assetId: assetId ?? this.assetId,
       value: value ?? this.value,
-      sharesOwned: sharesOwned ?? this.sharesOwned,
+      shares: shares ?? this.shares,
       netCostBasis: netCostBasis ?? this.netCostBasis,
       brokerCostBasis: brokerCostBasis ?? this.brokerCostBasis,
       buyFeeTotal: buyFeeTotal ?? this.buyFeeTotal,
@@ -3605,8 +4145,8 @@ class AssetsOnAccountsCompanion extends UpdateCompanion<AssetOnAccount> {
     if (value.present) {
       map['value'] = Variable<double>(value.value);
     }
-    if (sharesOwned.present) {
-      map['shares_owned'] = Variable<double>(sharesOwned.value);
+    if (shares.present) {
+      map['shares'] = Variable<double>(shares.value);
     }
     if (netCostBasis.present) {
       map['net_cost_basis'] = Variable<double>(netCostBasis.value);
@@ -3629,7 +4169,7 @@ class AssetsOnAccountsCompanion extends UpdateCompanion<AssetOnAccount> {
           ..write('accountId: $accountId, ')
           ..write('assetId: $assetId, ')
           ..write('value: $value, ')
-          ..write('sharesOwned: $sharesOwned, ')
+          ..write('shares: $shares, ')
           ..write('netCostBasis: $netCostBasis, ')
           ..write('brokerCostBasis: $brokerCostBasis, ')
           ..write('buyFeeTotal: $buyFeeTotal, ')
@@ -3653,6 +4193,16 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
       requiredDuringInsert: false,
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _assetIdMeta =
+      const VerificationMeta('assetId');
+  @override
+  late final GeneratedColumn<int> assetId = GeneratedColumn<int>(
+      'asset_id', aliasedName, true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES assets (id)'),
+      defaultValue: const Constant(1));
   static const VerificationMeta _accountIdMeta =
       const VerificationMeta('accountId');
   @override
@@ -3674,15 +4224,28 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
   late final GeneratedColumn<int> targetDate = GeneratedColumn<int>(
       'target_date', aliasedName, false,
       type: DriftSqlType.int, requiredDuringInsert: true);
-  static const VerificationMeta _targetAmountMeta =
-      const VerificationMeta('targetAmount');
+  static const VerificationMeta _targetSharesMeta =
+      const VerificationMeta('targetShares');
   @override
-  late final GeneratedColumn<double> targetAmount = GeneratedColumn<double>(
-      'target_amount', aliasedName, false,
+  late final GeneratedColumn<double> targetShares = GeneratedColumn<double>(
+      'target_shares', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _targetValueMeta =
+      const VerificationMeta('targetValue');
+  @override
+  late final GeneratedColumn<double> targetValue = GeneratedColumn<double>(
+      'target_value', aliasedName, false,
       type: DriftSqlType.double, requiredDuringInsert: true);
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, accountId, createdOn, targetDate, targetAmount];
+  List<GeneratedColumn> get $columns => [
+        id,
+        assetId,
+        accountId,
+        createdOn,
+        targetDate,
+        targetShares,
+        targetValue
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -3695,6 +4258,10 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('asset_id')) {
+      context.handle(_assetIdMeta,
+          assetId.isAcceptableOrUnknown(data['asset_id']!, _assetIdMeta));
     }
     if (data.containsKey('account_id')) {
       context.handle(_accountIdMeta,
@@ -3714,13 +4281,21 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
     } else if (isInserting) {
       context.missing(_targetDateMeta);
     }
-    if (data.containsKey('target_amount')) {
+    if (data.containsKey('target_shares')) {
       context.handle(
-          _targetAmountMeta,
-          targetAmount.isAcceptableOrUnknown(
-              data['target_amount']!, _targetAmountMeta));
+          _targetSharesMeta,
+          targetShares.isAcceptableOrUnknown(
+              data['target_shares']!, _targetSharesMeta));
     } else if (isInserting) {
-      context.missing(_targetAmountMeta);
+      context.missing(_targetSharesMeta);
+    }
+    if (data.containsKey('target_value')) {
+      context.handle(
+          _targetValueMeta,
+          targetValue.isAcceptableOrUnknown(
+              data['target_value']!, _targetValueMeta));
+    } else if (isInserting) {
+      context.missing(_targetValueMeta);
     }
     return context;
   }
@@ -3733,14 +4308,18 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
     return Goal(
       id: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      assetId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}asset_id']),
       accountId: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}account_id']),
       createdOn: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}created_on'])!,
       targetDate: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}target_date'])!,
-      targetAmount: attachedDatabase.typeMapping
-          .read(DriftSqlType.double, data['${effectivePrefix}target_amount'])!,
+      targetShares: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}target_shares'])!,
+      targetValue: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}target_value'])!,
     );
   }
 
@@ -3752,38 +4331,50 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
 
 class Goal extends DataClass implements Insertable<Goal> {
   final int id;
+  final int? assetId;
   final int? accountId;
   final int createdOn;
   final int targetDate;
-  final double targetAmount;
+  final double targetShares;
+  final double targetValue;
   const Goal(
       {required this.id,
+      this.assetId,
       this.accountId,
       required this.createdOn,
       required this.targetDate,
-      required this.targetAmount});
+      required this.targetShares,
+      required this.targetValue});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
+    if (!nullToAbsent || assetId != null) {
+      map['asset_id'] = Variable<int>(assetId);
+    }
     if (!nullToAbsent || accountId != null) {
       map['account_id'] = Variable<int>(accountId);
     }
     map['created_on'] = Variable<int>(createdOn);
     map['target_date'] = Variable<int>(targetDate);
-    map['target_amount'] = Variable<double>(targetAmount);
+    map['target_shares'] = Variable<double>(targetShares);
+    map['target_value'] = Variable<double>(targetValue);
     return map;
   }
 
   GoalsCompanion toCompanion(bool nullToAbsent) {
     return GoalsCompanion(
       id: Value(id),
+      assetId: assetId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(assetId),
       accountId: accountId == null && nullToAbsent
           ? const Value.absent()
           : Value(accountId),
       createdOn: Value(createdOn),
       targetDate: Value(targetDate),
-      targetAmount: Value(targetAmount),
+      targetShares: Value(targetShares),
+      targetValue: Value(targetValue),
     );
   }
 
@@ -3792,10 +4383,12 @@ class Goal extends DataClass implements Insertable<Goal> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Goal(
       id: serializer.fromJson<int>(json['id']),
+      assetId: serializer.fromJson<int?>(json['assetId']),
       accountId: serializer.fromJson<int?>(json['accountId']),
       createdOn: serializer.fromJson<int>(json['createdOn']),
       targetDate: serializer.fromJson<int>(json['targetDate']),
-      targetAmount: serializer.fromJson<double>(json['targetAmount']),
+      targetShares: serializer.fromJson<double>(json['targetShares']),
+      targetValue: serializer.fromJson<double>(json['targetValue']),
     );
   }
   @override
@@ -3803,36 +4396,45 @@ class Goal extends DataClass implements Insertable<Goal> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
+      'assetId': serializer.toJson<int?>(assetId),
       'accountId': serializer.toJson<int?>(accountId),
       'createdOn': serializer.toJson<int>(createdOn),
       'targetDate': serializer.toJson<int>(targetDate),
-      'targetAmount': serializer.toJson<double>(targetAmount),
+      'targetShares': serializer.toJson<double>(targetShares),
+      'targetValue': serializer.toJson<double>(targetValue),
     };
   }
 
   Goal copyWith(
           {int? id,
+          Value<int?> assetId = const Value.absent(),
           Value<int?> accountId = const Value.absent(),
           int? createdOn,
           int? targetDate,
-          double? targetAmount}) =>
+          double? targetShares,
+          double? targetValue}) =>
       Goal(
         id: id ?? this.id,
+        assetId: assetId.present ? assetId.value : this.assetId,
         accountId: accountId.present ? accountId.value : this.accountId,
         createdOn: createdOn ?? this.createdOn,
         targetDate: targetDate ?? this.targetDate,
-        targetAmount: targetAmount ?? this.targetAmount,
+        targetShares: targetShares ?? this.targetShares,
+        targetValue: targetValue ?? this.targetValue,
       );
   Goal copyWithCompanion(GoalsCompanion data) {
     return Goal(
       id: data.id.present ? data.id.value : this.id,
+      assetId: data.assetId.present ? data.assetId.value : this.assetId,
       accountId: data.accountId.present ? data.accountId.value : this.accountId,
       createdOn: data.createdOn.present ? data.createdOn.value : this.createdOn,
       targetDate:
           data.targetDate.present ? data.targetDate.value : this.targetDate,
-      targetAmount: data.targetAmount.present
-          ? data.targetAmount.value
-          : this.targetAmount,
+      targetShares: data.targetShares.present
+          ? data.targetShares.value
+          : this.targetShares,
+      targetValue:
+          data.targetValue.present ? data.targetValue.value : this.targetValue,
     );
   }
 
@@ -3840,78 +4442,97 @@ class Goal extends DataClass implements Insertable<Goal> {
   String toString() {
     return (StringBuffer('Goal(')
           ..write('id: $id, ')
+          ..write('assetId: $assetId, ')
           ..write('accountId: $accountId, ')
           ..write('createdOn: $createdOn, ')
           ..write('targetDate: $targetDate, ')
-          ..write('targetAmount: $targetAmount')
+          ..write('targetShares: $targetShares, ')
+          ..write('targetValue: $targetValue')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, accountId, createdOn, targetDate, targetAmount);
+  int get hashCode => Object.hash(
+      id, assetId, accountId, createdOn, targetDate, targetShares, targetValue);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Goal &&
           other.id == this.id &&
+          other.assetId == this.assetId &&
           other.accountId == this.accountId &&
           other.createdOn == this.createdOn &&
           other.targetDate == this.targetDate &&
-          other.targetAmount == this.targetAmount);
+          other.targetShares == this.targetShares &&
+          other.targetValue == this.targetValue);
 }
 
 class GoalsCompanion extends UpdateCompanion<Goal> {
   final Value<int> id;
+  final Value<int?> assetId;
   final Value<int?> accountId;
   final Value<int> createdOn;
   final Value<int> targetDate;
-  final Value<double> targetAmount;
+  final Value<double> targetShares;
+  final Value<double> targetValue;
   const GoalsCompanion({
     this.id = const Value.absent(),
+    this.assetId = const Value.absent(),
     this.accountId = const Value.absent(),
     this.createdOn = const Value.absent(),
     this.targetDate = const Value.absent(),
-    this.targetAmount = const Value.absent(),
+    this.targetShares = const Value.absent(),
+    this.targetValue = const Value.absent(),
   });
   GoalsCompanion.insert({
     this.id = const Value.absent(),
+    this.assetId = const Value.absent(),
     this.accountId = const Value.absent(),
     required int createdOn,
     required int targetDate,
-    required double targetAmount,
+    required double targetShares,
+    required double targetValue,
   })  : createdOn = Value(createdOn),
         targetDate = Value(targetDate),
-        targetAmount = Value(targetAmount);
+        targetShares = Value(targetShares),
+        targetValue = Value(targetValue);
   static Insertable<Goal> custom({
     Expression<int>? id,
+    Expression<int>? assetId,
     Expression<int>? accountId,
     Expression<int>? createdOn,
     Expression<int>? targetDate,
-    Expression<double>? targetAmount,
+    Expression<double>? targetShares,
+    Expression<double>? targetValue,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
+      if (assetId != null) 'asset_id': assetId,
       if (accountId != null) 'account_id': accountId,
       if (createdOn != null) 'created_on': createdOn,
       if (targetDate != null) 'target_date': targetDate,
-      if (targetAmount != null) 'target_amount': targetAmount,
+      if (targetShares != null) 'target_shares': targetShares,
+      if (targetValue != null) 'target_value': targetValue,
     });
   }
 
   GoalsCompanion copyWith(
       {Value<int>? id,
+      Value<int?>? assetId,
       Value<int?>? accountId,
       Value<int>? createdOn,
       Value<int>? targetDate,
-      Value<double>? targetAmount}) {
+      Value<double>? targetShares,
+      Value<double>? targetValue}) {
     return GoalsCompanion(
       id: id ?? this.id,
+      assetId: assetId ?? this.assetId,
       accountId: accountId ?? this.accountId,
       createdOn: createdOn ?? this.createdOn,
       targetDate: targetDate ?? this.targetDate,
-      targetAmount: targetAmount ?? this.targetAmount,
+      targetShares: targetShares ?? this.targetShares,
+      targetValue: targetValue ?? this.targetValue,
     );
   }
 
@@ -3920,6 +4541,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     final map = <String, Expression>{};
     if (id.present) {
       map['id'] = Variable<int>(id.value);
+    }
+    if (assetId.present) {
+      map['asset_id'] = Variable<int>(assetId.value);
     }
     if (accountId.present) {
       map['account_id'] = Variable<int>(accountId.value);
@@ -3930,8 +4554,11 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     if (targetDate.present) {
       map['target_date'] = Variable<int>(targetDate.value);
     }
-    if (targetAmount.present) {
-      map['target_amount'] = Variable<double>(targetAmount.value);
+    if (targetShares.present) {
+      map['target_shares'] = Variable<double>(targetShares.value);
+    }
+    if (targetValue.present) {
+      map['target_value'] = Variable<double>(targetValue.value);
     }
     return map;
   }
@@ -3940,10 +4567,12 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
   String toString() {
     return (StringBuffer('GoalsCompanion(')
           ..write('id: $id, ')
+          ..write('assetId: $assetId, ')
           ..write('accountId: $accountId, ')
           ..write('createdOn: $createdOn, ')
           ..write('targetDate: $targetDate, ')
-          ..write('targetAmount: $targetAmount')
+          ..write('targetShares: $targetShares, ')
+          ..write('targetValue: $targetValue')
           ..write(')'))
         .toString();
   }
@@ -3966,44 +4595,26 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $GoalsTable goals = $GoalsTable(this);
   late final Index bookingsAccountIdDate = Index('bookings_account_id_date',
       'CREATE INDEX bookings_account_id_date ON bookings (account_id, date)');
-  late final Index bookingsCategoryDateAmount = Index(
-      'bookings_category_date_amount',
-      'CREATE INDEX bookings_category_date_amount ON bookings (category, date, amount)');
-  late final Index bookingsComplexQuery = Index('bookings_complex_query',
-      'CREATE INDEX bookings_complex_query ON bookings (date, account_id, amount, exclude_from_average, is_generated)');
   late final Index transfersSendingAccountIdDate = Index(
       'transfers_sending_account_id_date',
       'CREATE INDEX transfers_sending_account_id_date ON transfers (sending_account_id, date)');
   late final Index transfersReceivingAccountIdDate = Index(
       'transfers_receiving_account_id_date',
       'CREATE INDEX transfers_receiving_account_id_date ON transfers (receiving_account_id, date)');
-  late final Index transfersComplexQuery = Index('transfers_complex_query',
-      'CREATE INDEX transfers_complex_query ON transfers (date, receiving_account_id, amount, is_generated)');
   late final Index tradesAssetIdDatetime = Index('trades_asset_id_datetime',
       'CREATE INDEX trades_asset_id_datetime ON trades (asset_id, datetime)');
-  late final Index tradesClearingAccountIdDatetime = Index(
-      'trades_clearing_account_id_datetime',
-      'CREATE INDEX trades_clearing_account_id_datetime ON trades (clearing_account_id, datetime)');
-  late final Index tradesPortfolioAccountIdDatetime = Index(
-      'trades_portfolio_account_id_datetime',
-      'CREATE INDEX trades_portfolio_account_id_datetime ON trades (portfolio_account_id, datetime)');
-  late final Index periodicBookingsAccountId = Index(
-      'periodic_bookings_account_id',
-      'CREATE INDEX periodic_bookings_account_id ON periodic_bookings (account_id)');
+  late final Index tradesSourceAccountIdDatetime = Index(
+      'trades_source_account_id_datetime',
+      'CREATE INDEX trades_source_account_id_datetime ON trades (source_account_id, datetime)');
+  late final Index tradesTargetAccountIdDatetime = Index(
+      'trades_target_account_id_datetime',
+      'CREATE INDEX trades_target_account_id_datetime ON trades (target_account_id, datetime)');
   late final Index periodicBookingsNextExecutionDate = Index(
       'periodic_bookings_next_execution_date',
       'CREATE INDEX periodic_bookings_next_execution_date ON periodic_bookings (next_execution_date)');
-  late final Index periodicTransfersSendingAccountId = Index(
-      'periodic_transfers_sending_account_id',
-      'CREATE INDEX periodic_transfers_sending_account_id ON periodic_transfers (sending_account_id)');
-  late final Index periodicTransfersReceivingAccountId = Index(
-      'periodic_transfers_receiving_account_id',
-      'CREATE INDEX periodic_transfers_receiving_account_id ON periodic_transfers (receiving_account_id)');
   late final Index periodicTransfersNextExecutionDate = Index(
       'periodic_transfers_next_execution_date',
       'CREATE INDEX periodic_transfers_next_execution_date ON periodic_transfers (next_execution_date)');
-  late final Index goalsAccountId = Index('goals_account_id',
-      'CREATE INDEX goals_account_id ON goals (account_id)');
   late final Index goalsTargetDate = Index('goals_target_date',
       'CREATE INDEX goals_target_date ON goals (target_date)');
   late final AccountsDao accountsDao = AccountsDao(this as AppDatabase);
@@ -4034,20 +4645,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         assetsOnAccounts,
         goals,
         bookingsAccountIdDate,
-        bookingsCategoryDateAmount,
-        bookingsComplexQuery,
         transfersSendingAccountIdDate,
         transfersReceivingAccountIdDate,
-        transfersComplexQuery,
         tradesAssetIdDatetime,
-        tradesClearingAccountIdDatetime,
-        tradesPortfolioAccountIdDatetime,
-        periodicBookingsAccountId,
+        tradesSourceAccountIdDatetime,
+        tradesTargetAccountIdDatetime,
         periodicBookingsNextExecutionDate,
-        periodicTransfersSendingAccountId,
-        periodicTransfersReceivingAccountId,
         periodicTransfersNextExecutionDate,
-        goalsAccountId,
         goalsTargetDate
       ];
 }
@@ -4118,32 +4722,32 @@ final class $$AccountsTableReferences
         manager.$state.copyWith(prefetchedData: cache));
   }
 
-  static MultiTypedResultKey<$TradesTable, List<Trade>> _ClearingTradesTable(
+  static MultiTypedResultKey<$TradesTable, List<Trade>> _SourceTradesTable(
           _$AppDatabase db) =>
       MultiTypedResultKey.fromTable(db.trades,
-          aliasName: $_aliasNameGenerator(
-              db.accounts.id, db.trades.clearingAccountId));
+          aliasName:
+              $_aliasNameGenerator(db.accounts.id, db.trades.sourceAccountId));
 
-  $$TradesTableProcessedTableManager get ClearingTrades {
+  $$TradesTableProcessedTableManager get SourceTrades {
     final manager = $$TradesTableTableManager($_db, $_db.trades).filter(
-        (f) => f.clearingAccountId.id.sqlEquals($_itemColumn<int>('id')!));
+        (f) => f.sourceAccountId.id.sqlEquals($_itemColumn<int>('id')!));
 
-    final cache = $_typedResult.readTableOrNull(_ClearingTradesTable($_db));
+    final cache = $_typedResult.readTableOrNull(_SourceTradesTable($_db));
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: cache));
   }
 
-  static MultiTypedResultKey<$TradesTable, List<Trade>> _PortfolioTradesTable(
+  static MultiTypedResultKey<$TradesTable, List<Trade>> _TargetTradesTable(
           _$AppDatabase db) =>
       MultiTypedResultKey.fromTable(db.trades,
-          aliasName: $_aliasNameGenerator(
-              db.accounts.id, db.trades.portfolioAccountId));
+          aliasName:
+              $_aliasNameGenerator(db.accounts.id, db.trades.targetAccountId));
 
-  $$TradesTableProcessedTableManager get PortfolioTrades {
+  $$TradesTableProcessedTableManager get TargetTrades {
     final manager = $$TradesTableTableManager($_db, $_db.trades).filter(
-        (f) => f.portfolioAccountId.id.sqlEquals($_itemColumn<int>('id')!));
+        (f) => f.targetAccountId.id.sqlEquals($_itemColumn<int>('id')!));
 
-    final cache = $_typedResult.readTableOrNull(_PortfolioTradesTable($_db));
+    final cache = $_typedResult.readTableOrNull(_TargetTradesTable($_db));
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: cache));
   }
@@ -4326,13 +4930,13 @@ class $$AccountsTableFilterComposer
     return f(composer);
   }
 
-  Expression<bool> ClearingTrades(
+  Expression<bool> SourceTrades(
       Expression<bool> Function($$TradesTableFilterComposer f) f) {
     final $$TradesTableFilterComposer composer = $composerBuilder(
         composer: this,
         getCurrentColumn: (t) => t.id,
         referencedTable: $db.trades,
-        getReferencedColumn: (t) => t.clearingAccountId,
+        getReferencedColumn: (t) => t.sourceAccountId,
         builder: (joinBuilder,
                 {$addJoinBuilderToRootComposer,
                 $removeJoinBuilderFromRootComposer}) =>
@@ -4347,13 +4951,13 @@ class $$AccountsTableFilterComposer
     return f(composer);
   }
 
-  Expression<bool> PortfolioTrades(
+  Expression<bool> TargetTrades(
       Expression<bool> Function($$TradesTableFilterComposer f) f) {
     final $$TradesTableFilterComposer composer = $composerBuilder(
         composer: this,
         getCurrentColumn: (t) => t.id,
         referencedTable: $db.trades,
-        getReferencedColumn: (t) => t.portfolioAccountId,
+        getReferencedColumn: (t) => t.targetAccountId,
         builder: (joinBuilder,
                 {$addJoinBuilderToRootComposer,
                 $removeJoinBuilderFromRootComposer}) =>
@@ -4593,13 +5197,13 @@ class $$AccountsTableAnnotationComposer
     return f(composer);
   }
 
-  Expression<T> ClearingTrades<T extends Object>(
+  Expression<T> SourceTrades<T extends Object>(
       Expression<T> Function($$TradesTableAnnotationComposer a) f) {
     final $$TradesTableAnnotationComposer composer = $composerBuilder(
         composer: this,
         getCurrentColumn: (t) => t.id,
         referencedTable: $db.trades,
-        getReferencedColumn: (t) => t.clearingAccountId,
+        getReferencedColumn: (t) => t.sourceAccountId,
         builder: (joinBuilder,
                 {$addJoinBuilderToRootComposer,
                 $removeJoinBuilderFromRootComposer}) =>
@@ -4614,13 +5218,13 @@ class $$AccountsTableAnnotationComposer
     return f(composer);
   }
 
-  Expression<T> PortfolioTrades<T extends Object>(
+  Expression<T> TargetTrades<T extends Object>(
       Expression<T> Function($$TradesTableAnnotationComposer a) f) {
     final $$TradesTableAnnotationComposer composer = $composerBuilder(
         composer: this,
         getCurrentColumn: (t) => t.id,
         referencedTable: $db.trades,
-        getReferencedColumn: (t) => t.portfolioAccountId,
+        getReferencedColumn: (t) => t.targetAccountId,
         builder: (joinBuilder,
                 {$addJoinBuilderToRootComposer,
                 $removeJoinBuilderFromRootComposer}) =>
@@ -4758,8 +5362,8 @@ class $$AccountsTableTableManager extends RootTableManager<
         {bool bookingsRefs,
         bool SendingTransfers,
         bool ReceivingTransfers,
-        bool ClearingTrades,
-        bool PortfolioTrades,
+        bool SourceTrades,
+        bool TargetTrades,
         bool periodicBookingsRefs,
         bool SendingPeriodicTransfers,
         bool ReceivingPeriodicTransfers,
@@ -4815,8 +5419,8 @@ class $$AccountsTableTableManager extends RootTableManager<
               {bookingsRefs = false,
               SendingTransfers = false,
               ReceivingTransfers = false,
-              ClearingTrades = false,
-              PortfolioTrades = false,
+              SourceTrades = false,
+              TargetTrades = false,
               periodicBookingsRefs = false,
               SendingPeriodicTransfers = false,
               ReceivingPeriodicTransfers = false,
@@ -4828,8 +5432,8 @@ class $$AccountsTableTableManager extends RootTableManager<
                 if (bookingsRefs) db.bookings,
                 if (SendingTransfers) db.transfers,
                 if (ReceivingTransfers) db.transfers,
-                if (ClearingTrades) db.trades,
-                if (PortfolioTrades) db.trades,
+                if (SourceTrades) db.trades,
+                if (TargetTrades) db.trades,
                 if (periodicBookingsRefs) db.periodicBookings,
                 if (SendingPeriodicTransfers) db.periodicTransfers,
                 if (ReceivingPeriodicTransfers) db.periodicTransfers,
@@ -4879,29 +5483,29 @@ class $$AccountsTableTableManager extends RootTableManager<
                             (item, referencedItems) => referencedItems
                                 .where((e) => e.receivingAccountId == item.id),
                         typedResults: items),
-                  if (ClearingTrades)
+                  if (SourceTrades)
                     await $_getPrefetchedData<Account, $AccountsTable, Trade>(
                         currentTable: table,
                         referencedTable:
-                            $$AccountsTableReferences._ClearingTradesTable(db),
+                            $$AccountsTableReferences._SourceTradesTable(db),
                         managerFromTypedResult: (p0) =>
                             $$AccountsTableReferences(db, table, p0)
-                                .ClearingTrades,
+                                .SourceTrades,
                         referencedItemsForCurrentItem:
                             (item, referencedItems) => referencedItems
-                                .where((e) => e.clearingAccountId == item.id),
+                                .where((e) => e.sourceAccountId == item.id),
                         typedResults: items),
-                  if (PortfolioTrades)
+                  if (TargetTrades)
                     await $_getPrefetchedData<Account, $AccountsTable, Trade>(
                         currentTable: table,
                         referencedTable:
-                            $$AccountsTableReferences._PortfolioTradesTable(db),
+                            $$AccountsTableReferences._TargetTradesTable(db),
                         managerFromTypedResult: (p0) =>
                             $$AccountsTableReferences(db, table, p0)
-                                .PortfolioTrades,
+                                .TargetTrades,
                         referencedItemsForCurrentItem:
                             (item, referencedItems) => referencedItems
-                                .where((e) => e.portfolioAccountId == item.id),
+                                .where((e) => e.targetAccountId == item.id),
                         typedResults: items),
                   if (periodicBookingsRefs)
                     await $_getPrefetchedData<Account, $AccountsTable,
@@ -4988,8 +5592,8 @@ typedef $$AccountsTableProcessedTableManager = ProcessedTableManager<
         {bool bookingsRefs,
         bool SendingTransfers,
         bool ReceivingTransfers,
-        bool ClearingTrades,
-        bool PortfolioTrades,
+        bool SourceTrades,
+        bool TargetTrades,
         bool periodicBookingsRefs,
         bool SendingPeriodicTransfers,
         bool ReceivingPeriodicTransfers,
@@ -5000,27 +5604,59 @@ typedef $$AssetsTableCreateCompanionBuilder = AssetsCompanion Function({
   required String name,
   required AssetTypes type,
   required String tickerSymbol,
+  Value<String?> currencySymbol,
   Value<double> value,
-  Value<double> sharesOwned,
+  Value<double> shares,
   Value<double> netCostBasis,
   Value<double> brokerCostBasis,
   Value<double> buyFeeTotal,
+  Value<bool> isArchived,
 });
 typedef $$AssetsTableUpdateCompanionBuilder = AssetsCompanion Function({
   Value<int> id,
   Value<String> name,
   Value<AssetTypes> type,
   Value<String> tickerSymbol,
+  Value<String?> currencySymbol,
   Value<double> value,
-  Value<double> sharesOwned,
+  Value<double> shares,
   Value<double> netCostBasis,
   Value<double> brokerCostBasis,
   Value<double> buyFeeTotal,
+  Value<bool> isArchived,
 });
 
 final class $$AssetsTableReferences
     extends BaseReferences<_$AppDatabase, $AssetsTable, Asset> {
   $$AssetsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$BookingsTable, List<Booking>> _bookingsRefsTable(
+          _$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(db.bookings,
+          aliasName: $_aliasNameGenerator(db.assets.id, db.bookings.assetId));
+
+  $$BookingsTableProcessedTableManager get bookingsRefs {
+    final manager = $$BookingsTableTableManager($_db, $_db.bookings)
+        .filter((f) => f.assetId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_bookingsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+
+  static MultiTypedResultKey<$TransfersTable, List<Transfer>>
+      _transfersRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+          db.transfers,
+          aliasName: $_aliasNameGenerator(db.assets.id, db.transfers.assetId));
+
+  $$TransfersTableProcessedTableManager get transfersRefs {
+    final manager = $$TransfersTableTableManager($_db, $_db.transfers)
+        .filter((f) => f.assetId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_transfersRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
 
   static MultiTypedResultKey<$TradesTable, List<Trade>> _tradesRefsTable(
           _$AppDatabase db) =>
@@ -5032,6 +5668,40 @@ final class $$AssetsTableReferences
         .filter((f) => f.assetId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_tradesRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+
+  static MultiTypedResultKey<$PeriodicBookingsTable, List<PeriodicBooking>>
+      _periodicBookingsRefsTable(_$AppDatabase db) =>
+          MultiTypedResultKey.fromTable(db.periodicBookings,
+              aliasName: $_aliasNameGenerator(
+                  db.assets.id, db.periodicBookings.assetId));
+
+  $$PeriodicBookingsTableProcessedTableManager get periodicBookingsRefs {
+    final manager =
+        $$PeriodicBookingsTableTableManager($_db, $_db.periodicBookings)
+            .filter((f) => f.assetId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache =
+        $_typedResult.readTableOrNull(_periodicBookingsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+
+  static MultiTypedResultKey<$PeriodicTransfersTable, List<PeriodicTransfer>>
+      _periodicTransfersRefsTable(_$AppDatabase db) =>
+          MultiTypedResultKey.fromTable(db.periodicTransfers,
+              aliasName: $_aliasNameGenerator(
+                  db.assets.id, db.periodicTransfers.assetId));
+
+  $$PeriodicTransfersTableProcessedTableManager get periodicTransfersRefs {
+    final manager =
+        $$PeriodicTransfersTableTableManager($_db, $_db.periodicTransfers)
+            .filter((f) => f.assetId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache =
+        $_typedResult.readTableOrNull(_periodicTransfersRefsTable($_db));
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: cache));
   }
@@ -5049,6 +5719,20 @@ final class $$AssetsTableReferences
 
     final cache =
         $_typedResult.readTableOrNull(_assetsOnAccountsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+
+  static MultiTypedResultKey<$GoalsTable, List<Goal>> _goalsRefsTable(
+          _$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(db.goals,
+          aliasName: $_aliasNameGenerator(db.assets.id, db.goals.assetId));
+
+  $$GoalsTableProcessedTableManager get goalsRefs {
+    final manager = $$GoalsTableTableManager($_db, $_db.goals)
+        .filter((f) => f.assetId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_goalsRefsTable($_db));
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: cache));
   }
@@ -5077,11 +5761,15 @@ class $$AssetsTableFilterComposer
   ColumnFilters<String> get tickerSymbol => $composableBuilder(
       column: $table.tickerSymbol, builder: (column) => ColumnFilters(column));
 
+  ColumnFilters<String> get currencySymbol => $composableBuilder(
+      column: $table.currencySymbol,
+      builder: (column) => ColumnFilters(column));
+
   ColumnFilters<double> get value => $composableBuilder(
       column: $table.value, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<double> get sharesOwned => $composableBuilder(
-      column: $table.sharesOwned, builder: (column) => ColumnFilters(column));
+  ColumnFilters<double> get shares => $composableBuilder(
+      column: $table.shares, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<double> get netCostBasis => $composableBuilder(
       column: $table.netCostBasis, builder: (column) => ColumnFilters(column));
@@ -5092,6 +5780,51 @@ class $$AssetsTableFilterComposer
 
   ColumnFilters<double> get buyFeeTotal => $composableBuilder(
       column: $table.buyFeeTotal, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isArchived => $composableBuilder(
+      column: $table.isArchived, builder: (column) => ColumnFilters(column));
+
+  Expression<bool> bookingsRefs(
+      Expression<bool> Function($$BookingsTableFilterComposer f) f) {
+    final $$BookingsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.bookings,
+        getReferencedColumn: (t) => t.assetId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$BookingsTableFilterComposer(
+              $db: $db,
+              $table: $db.bookings,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<bool> transfersRefs(
+      Expression<bool> Function($$TransfersTableFilterComposer f) f) {
+    final $$TransfersTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.transfers,
+        getReferencedColumn: (t) => t.assetId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$TransfersTableFilterComposer(
+              $db: $db,
+              $table: $db.transfers,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
 
   Expression<bool> tradesRefs(
       Expression<bool> Function($$TradesTableFilterComposer f) f) {
@@ -5114,6 +5847,48 @@ class $$AssetsTableFilterComposer
     return f(composer);
   }
 
+  Expression<bool> periodicBookingsRefs(
+      Expression<bool> Function($$PeriodicBookingsTableFilterComposer f) f) {
+    final $$PeriodicBookingsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.periodicBookings,
+        getReferencedColumn: (t) => t.assetId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$PeriodicBookingsTableFilterComposer(
+              $db: $db,
+              $table: $db.periodicBookings,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<bool> periodicTransfersRefs(
+      Expression<bool> Function($$PeriodicTransfersTableFilterComposer f) f) {
+    final $$PeriodicTransfersTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.periodicTransfers,
+        getReferencedColumn: (t) => t.assetId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$PeriodicTransfersTableFilterComposer(
+              $db: $db,
+              $table: $db.periodicTransfers,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
   Expression<bool> assetsOnAccountsRefs(
       Expression<bool> Function($$AssetsOnAccountsTableFilterComposer f) f) {
     final $$AssetsOnAccountsTableFilterComposer composer = $composerBuilder(
@@ -5127,6 +5902,27 @@ class $$AssetsTableFilterComposer
             $$AssetsOnAccountsTableFilterComposer(
               $db: $db,
               $table: $db.assetsOnAccounts,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<bool> goalsRefs(
+      Expression<bool> Function($$GoalsTableFilterComposer f) f) {
+    final $$GoalsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.goals,
+        getReferencedColumn: (t) => t.assetId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$GoalsTableFilterComposer(
+              $db: $db,
+              $table: $db.goals,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -5158,11 +5954,15 @@ class $$AssetsTableOrderingComposer
       column: $table.tickerSymbol,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get currencySymbol => $composableBuilder(
+      column: $table.currencySymbol,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<double> get value => $composableBuilder(
       column: $table.value, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<double> get sharesOwned => $composableBuilder(
-      column: $table.sharesOwned, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<double> get shares => $composableBuilder(
+      column: $table.shares, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<double> get netCostBasis => $composableBuilder(
       column: $table.netCostBasis,
@@ -5174,6 +5974,9 @@ class $$AssetsTableOrderingComposer
 
   ColumnOrderings<double> get buyFeeTotal => $composableBuilder(
       column: $table.buyFeeTotal, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isArchived => $composableBuilder(
+      column: $table.isArchived, builder: (column) => ColumnOrderings(column));
 }
 
 class $$AssetsTableAnnotationComposer
@@ -5197,11 +6000,14 @@ class $$AssetsTableAnnotationComposer
   GeneratedColumn<String> get tickerSymbol => $composableBuilder(
       column: $table.tickerSymbol, builder: (column) => column);
 
+  GeneratedColumn<String> get currencySymbol => $composableBuilder(
+      column: $table.currencySymbol, builder: (column) => column);
+
   GeneratedColumn<double> get value =>
       $composableBuilder(column: $table.value, builder: (column) => column);
 
-  GeneratedColumn<double> get sharesOwned => $composableBuilder(
-      column: $table.sharesOwned, builder: (column) => column);
+  GeneratedColumn<double> get shares =>
+      $composableBuilder(column: $table.shares, builder: (column) => column);
 
   GeneratedColumn<double> get netCostBasis => $composableBuilder(
       column: $table.netCostBasis, builder: (column) => column);
@@ -5211,6 +6017,51 @@ class $$AssetsTableAnnotationComposer
 
   GeneratedColumn<double> get buyFeeTotal => $composableBuilder(
       column: $table.buyFeeTotal, builder: (column) => column);
+
+  GeneratedColumn<bool> get isArchived => $composableBuilder(
+      column: $table.isArchived, builder: (column) => column);
+
+  Expression<T> bookingsRefs<T extends Object>(
+      Expression<T> Function($$BookingsTableAnnotationComposer a) f) {
+    final $$BookingsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.bookings,
+        getReferencedColumn: (t) => t.assetId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$BookingsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.bookings,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<T> transfersRefs<T extends Object>(
+      Expression<T> Function($$TransfersTableAnnotationComposer a) f) {
+    final $$TransfersTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.transfers,
+        getReferencedColumn: (t) => t.assetId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$TransfersTableAnnotationComposer(
+              $db: $db,
+              $table: $db.transfers,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
 
   Expression<T> tradesRefs<T extends Object>(
       Expression<T> Function($$TradesTableAnnotationComposer a) f) {
@@ -5230,6 +6081,49 @@ class $$AssetsTableAnnotationComposer
               $removeJoinBuilderFromRootComposer:
                   $removeJoinBuilderFromRootComposer,
             ));
+    return f(composer);
+  }
+
+  Expression<T> periodicBookingsRefs<T extends Object>(
+      Expression<T> Function($$PeriodicBookingsTableAnnotationComposer a) f) {
+    final $$PeriodicBookingsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.periodicBookings,
+        getReferencedColumn: (t) => t.assetId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$PeriodicBookingsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.periodicBookings,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<T> periodicTransfersRefs<T extends Object>(
+      Expression<T> Function($$PeriodicTransfersTableAnnotationComposer a) f) {
+    final $$PeriodicTransfersTableAnnotationComposer composer =
+        $composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $db.periodicTransfers,
+            getReferencedColumn: (t) => t.assetId,
+            builder: (joinBuilder,
+                    {$addJoinBuilderToRootComposer,
+                    $removeJoinBuilderFromRootComposer}) =>
+                $$PeriodicTransfersTableAnnotationComposer(
+                  $db: $db,
+                  $table: $db.periodicTransfers,
+                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                  joinBuilder: joinBuilder,
+                  $removeJoinBuilderFromRootComposer:
+                      $removeJoinBuilderFromRootComposer,
+                ));
     return f(composer);
   }
 
@@ -5253,6 +6147,27 @@ class $$AssetsTableAnnotationComposer
             ));
     return f(composer);
   }
+
+  Expression<T> goalsRefs<T extends Object>(
+      Expression<T> Function($$GoalsTableAnnotationComposer a) f) {
+    final $$GoalsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.goals,
+        getReferencedColumn: (t) => t.assetId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$GoalsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.goals,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
 }
 
 class $$AssetsTableTableManager extends RootTableManager<
@@ -5266,7 +6181,14 @@ class $$AssetsTableTableManager extends RootTableManager<
     $$AssetsTableUpdateCompanionBuilder,
     (Asset, $$AssetsTableReferences),
     Asset,
-    PrefetchHooks Function({bool tradesRefs, bool assetsOnAccountsRefs})> {
+    PrefetchHooks Function(
+        {bool bookingsRefs,
+        bool transfersRefs,
+        bool tradesRefs,
+        bool periodicBookingsRefs,
+        bool periodicTransfersRefs,
+        bool assetsOnAccountsRefs,
+        bool goalsRefs})> {
   $$AssetsTableTableManager(_$AppDatabase db, $AssetsTable table)
       : super(TableManagerState(
           db: db,
@@ -5282,60 +6204,102 @@ class $$AssetsTableTableManager extends RootTableManager<
             Value<String> name = const Value.absent(),
             Value<AssetTypes> type = const Value.absent(),
             Value<String> tickerSymbol = const Value.absent(),
+            Value<String?> currencySymbol = const Value.absent(),
             Value<double> value = const Value.absent(),
-            Value<double> sharesOwned = const Value.absent(),
+            Value<double> shares = const Value.absent(),
             Value<double> netCostBasis = const Value.absent(),
             Value<double> brokerCostBasis = const Value.absent(),
             Value<double> buyFeeTotal = const Value.absent(),
+            Value<bool> isArchived = const Value.absent(),
           }) =>
               AssetsCompanion(
             id: id,
             name: name,
             type: type,
             tickerSymbol: tickerSymbol,
+            currencySymbol: currencySymbol,
             value: value,
-            sharesOwned: sharesOwned,
+            shares: shares,
             netCostBasis: netCostBasis,
             brokerCostBasis: brokerCostBasis,
             buyFeeTotal: buyFeeTotal,
+            isArchived: isArchived,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
             required String name,
             required AssetTypes type,
             required String tickerSymbol,
+            Value<String?> currencySymbol = const Value.absent(),
             Value<double> value = const Value.absent(),
-            Value<double> sharesOwned = const Value.absent(),
+            Value<double> shares = const Value.absent(),
             Value<double> netCostBasis = const Value.absent(),
             Value<double> brokerCostBasis = const Value.absent(),
             Value<double> buyFeeTotal = const Value.absent(),
+            Value<bool> isArchived = const Value.absent(),
           }) =>
               AssetsCompanion.insert(
             id: id,
             name: name,
             type: type,
             tickerSymbol: tickerSymbol,
+            currencySymbol: currencySymbol,
             value: value,
-            sharesOwned: sharesOwned,
+            shares: shares,
             netCostBasis: netCostBasis,
             brokerCostBasis: brokerCostBasis,
             buyFeeTotal: buyFeeTotal,
+            isArchived: isArchived,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) =>
                   (e.readTable(table), $$AssetsTableReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: (
-              {tradesRefs = false, assetsOnAccountsRefs = false}) {
+              {bookingsRefs = false,
+              transfersRefs = false,
+              tradesRefs = false,
+              periodicBookingsRefs = false,
+              periodicTransfersRefs = false,
+              assetsOnAccountsRefs = false,
+              goalsRefs = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [
+                if (bookingsRefs) db.bookings,
+                if (transfersRefs) db.transfers,
                 if (tradesRefs) db.trades,
-                if (assetsOnAccountsRefs) db.assetsOnAccounts
+                if (periodicBookingsRefs) db.periodicBookings,
+                if (periodicTransfersRefs) db.periodicTransfers,
+                if (assetsOnAccountsRefs) db.assetsOnAccounts,
+                if (goalsRefs) db.goals
               ],
               addJoins: null,
               getPrefetchedDataCallback: (items) async {
                 return [
+                  if (bookingsRefs)
+                    await $_getPrefetchedData<Asset, $AssetsTable, Booking>(
+                        currentTable: table,
+                        referencedTable:
+                            $$AssetsTableReferences._bookingsRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$AssetsTableReferences(db, table, p0).bookingsRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.assetId == item.id),
+                        typedResults: items),
+                  if (transfersRefs)
+                    await $_getPrefetchedData<Asset, $AssetsTable, Transfer>(
+                        currentTable: table,
+                        referencedTable:
+                            $$AssetsTableReferences._transfersRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$AssetsTableReferences(db, table, p0)
+                                .transfersRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.assetId == item.id),
+                        typedResults: items),
                   if (tradesRefs)
                     await $_getPrefetchedData<Asset, $AssetsTable, Trade>(
                         currentTable: table,
@@ -5343,6 +6307,32 @@ class $$AssetsTableTableManager extends RootTableManager<
                             $$AssetsTableReferences._tradesRefsTable(db),
                         managerFromTypedResult: (p0) =>
                             $$AssetsTableReferences(db, table, p0).tradesRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.assetId == item.id),
+                        typedResults: items),
+                  if (periodicBookingsRefs)
+                    await $_getPrefetchedData<Asset, $AssetsTable,
+                            PeriodicBooking>(
+                        currentTable: table,
+                        referencedTable: $$AssetsTableReferences
+                            ._periodicBookingsRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$AssetsTableReferences(db, table, p0)
+                                .periodicBookingsRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.assetId == item.id),
+                        typedResults: items),
+                  if (periodicTransfersRefs)
+                    await $_getPrefetchedData<Asset, $AssetsTable,
+                            PeriodicTransfer>(
+                        currentTable: table,
+                        referencedTable: $$AssetsTableReferences
+                            ._periodicTransfersRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$AssetsTableReferences(db, table, p0)
+                                .periodicTransfersRefs,
                         referencedItemsForCurrentItem: (item,
                                 referencedItems) =>
                             referencedItems.where((e) => e.assetId == item.id),
@@ -5356,6 +6346,17 @@ class $$AssetsTableTableManager extends RootTableManager<
                         managerFromTypedResult: (p0) =>
                             $$AssetsTableReferences(db, table, p0)
                                 .assetsOnAccountsRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.assetId == item.id),
+                        typedResults: items),
+                  if (goalsRefs)
+                    await $_getPrefetchedData<Asset, $AssetsTable, Goal>(
+                        currentTable: table,
+                        referencedTable:
+                            $$AssetsTableReferences._goalsRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$AssetsTableReferences(db, table, p0).goalsRefs,
                         referencedItemsForCurrentItem: (item,
                                 referencedItems) =>
                             referencedItems.where((e) => e.assetId == item.id),
@@ -5378,13 +6379,23 @@ typedef $$AssetsTableProcessedTableManager = ProcessedTableManager<
     $$AssetsTableUpdateCompanionBuilder,
     (Asset, $$AssetsTableReferences),
     Asset,
-    PrefetchHooks Function({bool tradesRefs, bool assetsOnAccountsRefs})>;
+    PrefetchHooks Function(
+        {bool bookingsRefs,
+        bool transfersRefs,
+        bool tradesRefs,
+        bool periodicBookingsRefs,
+        bool periodicTransfersRefs,
+        bool assetsOnAccountsRefs,
+        bool goalsRefs})>;
 typedef $$BookingsTableCreateCompanionBuilder = BookingsCompanion Function({
   Value<int> id,
   required int date,
-  required double amount,
-  required String category,
+  Value<int> assetId,
   required int accountId,
+  required String category,
+  required double shares,
+  Value<double> costBasis,
+  required double value,
   Value<String?> notes,
   Value<bool> excludeFromAverage,
   Value<bool> isGenerated,
@@ -5392,9 +6403,12 @@ typedef $$BookingsTableCreateCompanionBuilder = BookingsCompanion Function({
 typedef $$BookingsTableUpdateCompanionBuilder = BookingsCompanion Function({
   Value<int> id,
   Value<int> date,
-  Value<double> amount,
-  Value<String> category,
+  Value<int> assetId,
   Value<int> accountId,
+  Value<String> category,
+  Value<double> shares,
+  Value<double> costBasis,
+  Value<double> value,
   Value<String?> notes,
   Value<bool> excludeFromAverage,
   Value<bool> isGenerated,
@@ -5403,6 +6417,20 @@ typedef $$BookingsTableUpdateCompanionBuilder = BookingsCompanion Function({
 final class $$BookingsTableReferences
     extends BaseReferences<_$AppDatabase, $BookingsTable, Booking> {
   $$BookingsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $AssetsTable _assetIdTable(_$AppDatabase db) => db.assets
+      .createAlias($_aliasNameGenerator(db.bookings.assetId, db.assets.id));
+
+  $$AssetsTableProcessedTableManager get assetId {
+    final $_column = $_itemColumn<int>('asset_id')!;
+
+    final manager = $$AssetsTableTableManager($_db, $_db.assets)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_assetIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
 
   static $AccountsTable _accountIdTable(_$AppDatabase db) => db.accounts
       .createAlias($_aliasNameGenerator(db.bookings.accountId, db.accounts.id));
@@ -5434,11 +6462,17 @@ class $$BookingsTableFilterComposer
   ColumnFilters<int> get date => $composableBuilder(
       column: $table.date, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<double> get amount => $composableBuilder(
-      column: $table.amount, builder: (column) => ColumnFilters(column));
-
   ColumnFilters<String> get category => $composableBuilder(
       column: $table.category, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get shares => $composableBuilder(
+      column: $table.shares, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get costBasis => $composableBuilder(
+      column: $table.costBasis, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get value => $composableBuilder(
+      column: $table.value, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get notes => $composableBuilder(
       column: $table.notes, builder: (column) => ColumnFilters(column));
@@ -5449,6 +6483,26 @@ class $$BookingsTableFilterComposer
 
   ColumnFilters<bool> get isGenerated => $composableBuilder(
       column: $table.isGenerated, builder: (column) => ColumnFilters(column));
+
+  $$AssetsTableFilterComposer get assetId {
+    final $$AssetsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.assetId,
+        referencedTable: $db.assets,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AssetsTableFilterComposer(
+              $db: $db,
+              $table: $db.assets,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 
   $$AccountsTableFilterComposer get accountId {
     final $$AccountsTableFilterComposer composer = $composerBuilder(
@@ -5486,11 +6540,17 @@ class $$BookingsTableOrderingComposer
   ColumnOrderings<int> get date => $composableBuilder(
       column: $table.date, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<double> get amount => $composableBuilder(
-      column: $table.amount, builder: (column) => ColumnOrderings(column));
-
   ColumnOrderings<String> get category => $composableBuilder(
       column: $table.category, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get shares => $composableBuilder(
+      column: $table.shares, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get costBasis => $composableBuilder(
+      column: $table.costBasis, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get value => $composableBuilder(
+      column: $table.value, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get notes => $composableBuilder(
       column: $table.notes, builder: (column) => ColumnOrderings(column));
@@ -5501,6 +6561,26 @@ class $$BookingsTableOrderingComposer
 
   ColumnOrderings<bool> get isGenerated => $composableBuilder(
       column: $table.isGenerated, builder: (column) => ColumnOrderings(column));
+
+  $$AssetsTableOrderingComposer get assetId {
+    final $$AssetsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.assetId,
+        referencedTable: $db.assets,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AssetsTableOrderingComposer(
+              $db: $db,
+              $table: $db.assets,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 
   $$AccountsTableOrderingComposer get accountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
@@ -5538,11 +6618,17 @@ class $$BookingsTableAnnotationComposer
   GeneratedColumn<int> get date =>
       $composableBuilder(column: $table.date, builder: (column) => column);
 
-  GeneratedColumn<double> get amount =>
-      $composableBuilder(column: $table.amount, builder: (column) => column);
-
   GeneratedColumn<String> get category =>
       $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumn<double> get shares =>
+      $composableBuilder(column: $table.shares, builder: (column) => column);
+
+  GeneratedColumn<double> get costBasis =>
+      $composableBuilder(column: $table.costBasis, builder: (column) => column);
+
+  GeneratedColumn<double> get value =>
+      $composableBuilder(column: $table.value, builder: (column) => column);
 
   GeneratedColumn<String> get notes =>
       $composableBuilder(column: $table.notes, builder: (column) => column);
@@ -5552,6 +6638,26 @@ class $$BookingsTableAnnotationComposer
 
   GeneratedColumn<bool> get isGenerated => $composableBuilder(
       column: $table.isGenerated, builder: (column) => column);
+
+  $$AssetsTableAnnotationComposer get assetId {
+    final $$AssetsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.assetId,
+        referencedTable: $db.assets,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AssetsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.assets,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 
   $$AccountsTableAnnotationComposer get accountId {
     final $$AccountsTableAnnotationComposer composer = $composerBuilder(
@@ -5585,7 +6691,7 @@ class $$BookingsTableTableManager extends RootTableManager<
     $$BookingsTableUpdateCompanionBuilder,
     (Booking, $$BookingsTableReferences),
     Booking,
-    PrefetchHooks Function({bool accountId})> {
+    PrefetchHooks Function({bool assetId, bool accountId})> {
   $$BookingsTableTableManager(_$AppDatabase db, $BookingsTable table)
       : super(TableManagerState(
           db: db,
@@ -5599,9 +6705,12 @@ class $$BookingsTableTableManager extends RootTableManager<
           updateCompanionCallback: ({
             Value<int> id = const Value.absent(),
             Value<int> date = const Value.absent(),
-            Value<double> amount = const Value.absent(),
-            Value<String> category = const Value.absent(),
+            Value<int> assetId = const Value.absent(),
             Value<int> accountId = const Value.absent(),
+            Value<String> category = const Value.absent(),
+            Value<double> shares = const Value.absent(),
+            Value<double> costBasis = const Value.absent(),
+            Value<double> value = const Value.absent(),
             Value<String?> notes = const Value.absent(),
             Value<bool> excludeFromAverage = const Value.absent(),
             Value<bool> isGenerated = const Value.absent(),
@@ -5609,9 +6718,12 @@ class $$BookingsTableTableManager extends RootTableManager<
               BookingsCompanion(
             id: id,
             date: date,
-            amount: amount,
-            category: category,
+            assetId: assetId,
             accountId: accountId,
+            category: category,
+            shares: shares,
+            costBasis: costBasis,
+            value: value,
             notes: notes,
             excludeFromAverage: excludeFromAverage,
             isGenerated: isGenerated,
@@ -5619,9 +6731,12 @@ class $$BookingsTableTableManager extends RootTableManager<
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
             required int date,
-            required double amount,
-            required String category,
+            Value<int> assetId = const Value.absent(),
             required int accountId,
+            required String category,
+            required double shares,
+            Value<double> costBasis = const Value.absent(),
+            required double value,
             Value<String?> notes = const Value.absent(),
             Value<bool> excludeFromAverage = const Value.absent(),
             Value<bool> isGenerated = const Value.absent(),
@@ -5629,9 +6744,12 @@ class $$BookingsTableTableManager extends RootTableManager<
               BookingsCompanion.insert(
             id: id,
             date: date,
-            amount: amount,
-            category: category,
+            assetId: assetId,
             accountId: accountId,
+            category: category,
+            shares: shares,
+            costBasis: costBasis,
+            value: value,
             notes: notes,
             excludeFromAverage: excludeFromAverage,
             isGenerated: isGenerated,
@@ -5640,7 +6758,7 @@ class $$BookingsTableTableManager extends RootTableManager<
               .map((e) =>
                   (e.readTable(table), $$BookingsTableReferences(db, table, e)))
               .toList(),
-          prefetchHooksCallback: ({accountId = false}) {
+          prefetchHooksCallback: ({assetId = false, accountId = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [],
@@ -5657,6 +6775,16 @@ class $$BookingsTableTableManager extends RootTableManager<
                       dynamic,
                       dynamic,
                       dynamic>>(state) {
+                if (assetId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.assetId,
+                    referencedTable:
+                        $$BookingsTableReferences._assetIdTable(db),
+                    referencedColumn:
+                        $$BookingsTableReferences._assetIdTable(db).id,
+                  ) as T;
+                }
                 if (accountId) {
                   state = state.withJoin(
                     currentTable: table,
@@ -5689,22 +6817,28 @@ typedef $$BookingsTableProcessedTableManager = ProcessedTableManager<
     $$BookingsTableUpdateCompanionBuilder,
     (Booking, $$BookingsTableReferences),
     Booking,
-    PrefetchHooks Function({bool accountId})>;
+    PrefetchHooks Function({bool assetId, bool accountId})>;
 typedef $$TransfersTableCreateCompanionBuilder = TransfersCompanion Function({
   Value<int> id,
   required int date,
-  required double amount,
   required int sendingAccountId,
   required int receivingAccountId,
+  Value<int> assetId,
+  required double shares,
+  Value<double> costBasis,
+  required double value,
   Value<String?> notes,
   Value<bool> isGenerated,
 });
 typedef $$TransfersTableUpdateCompanionBuilder = TransfersCompanion Function({
   Value<int> id,
   Value<int> date,
-  Value<double> amount,
   Value<int> sendingAccountId,
   Value<int> receivingAccountId,
+  Value<int> assetId,
+  Value<double> shares,
+  Value<double> costBasis,
+  Value<double> value,
   Value<String?> notes,
   Value<bool> isGenerated,
 });
@@ -5742,6 +6876,20 @@ final class $$TransfersTableReferences
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: [item]));
   }
+
+  static $AssetsTable _assetIdTable(_$AppDatabase db) => db.assets
+      .createAlias($_aliasNameGenerator(db.transfers.assetId, db.assets.id));
+
+  $$AssetsTableProcessedTableManager get assetId {
+    final $_column = $_itemColumn<int>('asset_id')!;
+
+    final manager = $$AssetsTableTableManager($_db, $_db.assets)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_assetIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
 }
 
 class $$TransfersTableFilterComposer
@@ -5759,8 +6907,14 @@ class $$TransfersTableFilterComposer
   ColumnFilters<int> get date => $composableBuilder(
       column: $table.date, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<double> get amount => $composableBuilder(
-      column: $table.amount, builder: (column) => ColumnFilters(column));
+  ColumnFilters<double> get shares => $composableBuilder(
+      column: $table.shares, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get costBasis => $composableBuilder(
+      column: $table.costBasis, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get value => $composableBuilder(
+      column: $table.value, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get notes => $composableBuilder(
       column: $table.notes, builder: (column) => ColumnFilters(column));
@@ -5807,6 +6961,26 @@ class $$TransfersTableFilterComposer
             ));
     return composer;
   }
+
+  $$AssetsTableFilterComposer get assetId {
+    final $$AssetsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.assetId,
+        referencedTable: $db.assets,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AssetsTableFilterComposer(
+              $db: $db,
+              $table: $db.assets,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 }
 
 class $$TransfersTableOrderingComposer
@@ -5824,8 +6998,14 @@ class $$TransfersTableOrderingComposer
   ColumnOrderings<int> get date => $composableBuilder(
       column: $table.date, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<double> get amount => $composableBuilder(
-      column: $table.amount, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<double> get shares => $composableBuilder(
+      column: $table.shares, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get costBasis => $composableBuilder(
+      column: $table.costBasis, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get value => $composableBuilder(
+      column: $table.value, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get notes => $composableBuilder(
       column: $table.notes, builder: (column) => ColumnOrderings(column));
@@ -5872,6 +7052,26 @@ class $$TransfersTableOrderingComposer
             ));
     return composer;
   }
+
+  $$AssetsTableOrderingComposer get assetId {
+    final $$AssetsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.assetId,
+        referencedTable: $db.assets,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AssetsTableOrderingComposer(
+              $db: $db,
+              $table: $db.assets,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 }
 
 class $$TransfersTableAnnotationComposer
@@ -5889,8 +7089,14 @@ class $$TransfersTableAnnotationComposer
   GeneratedColumn<int> get date =>
       $composableBuilder(column: $table.date, builder: (column) => column);
 
-  GeneratedColumn<double> get amount =>
-      $composableBuilder(column: $table.amount, builder: (column) => column);
+  GeneratedColumn<double> get shares =>
+      $composableBuilder(column: $table.shares, builder: (column) => column);
+
+  GeneratedColumn<double> get costBasis =>
+      $composableBuilder(column: $table.costBasis, builder: (column) => column);
+
+  GeneratedColumn<double> get value =>
+      $composableBuilder(column: $table.value, builder: (column) => column);
 
   GeneratedColumn<String> get notes =>
       $composableBuilder(column: $table.notes, builder: (column) => column);
@@ -5937,6 +7143,26 @@ class $$TransfersTableAnnotationComposer
             ));
     return composer;
   }
+
+  $$AssetsTableAnnotationComposer get assetId {
+    final $$AssetsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.assetId,
+        referencedTable: $db.assets,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AssetsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.assets,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 }
 
 class $$TransfersTableTableManager extends RootTableManager<
@@ -5950,7 +7176,8 @@ class $$TransfersTableTableManager extends RootTableManager<
     $$TransfersTableUpdateCompanionBuilder,
     (Transfer, $$TransfersTableReferences),
     Transfer,
-    PrefetchHooks Function({bool sendingAccountId, bool receivingAccountId})> {
+    PrefetchHooks Function(
+        {bool sendingAccountId, bool receivingAccountId, bool assetId})> {
   $$TransfersTableTableManager(_$AppDatabase db, $TransfersTable table)
       : super(TableManagerState(
           db: db,
@@ -5964,36 +7191,48 @@ class $$TransfersTableTableManager extends RootTableManager<
           updateCompanionCallback: ({
             Value<int> id = const Value.absent(),
             Value<int> date = const Value.absent(),
-            Value<double> amount = const Value.absent(),
             Value<int> sendingAccountId = const Value.absent(),
             Value<int> receivingAccountId = const Value.absent(),
+            Value<int> assetId = const Value.absent(),
+            Value<double> shares = const Value.absent(),
+            Value<double> costBasis = const Value.absent(),
+            Value<double> value = const Value.absent(),
             Value<String?> notes = const Value.absent(),
             Value<bool> isGenerated = const Value.absent(),
           }) =>
               TransfersCompanion(
             id: id,
             date: date,
-            amount: amount,
             sendingAccountId: sendingAccountId,
             receivingAccountId: receivingAccountId,
+            assetId: assetId,
+            shares: shares,
+            costBasis: costBasis,
+            value: value,
             notes: notes,
             isGenerated: isGenerated,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
             required int date,
-            required double amount,
             required int sendingAccountId,
             required int receivingAccountId,
+            Value<int> assetId = const Value.absent(),
+            required double shares,
+            Value<double> costBasis = const Value.absent(),
+            required double value,
             Value<String?> notes = const Value.absent(),
             Value<bool> isGenerated = const Value.absent(),
           }) =>
               TransfersCompanion.insert(
             id: id,
             date: date,
-            amount: amount,
             sendingAccountId: sendingAccountId,
             receivingAccountId: receivingAccountId,
+            assetId: assetId,
+            shares: shares,
+            costBasis: costBasis,
+            value: value,
             notes: notes,
             isGenerated: isGenerated,
           ),
@@ -6004,7 +7243,9 @@ class $$TransfersTableTableManager extends RootTableManager<
                   ))
               .toList(),
           prefetchHooksCallback: (
-              {sendingAccountId = false, receivingAccountId = false}) {
+              {sendingAccountId = false,
+              receivingAccountId = false,
+              assetId = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [],
@@ -6043,6 +7284,16 @@ class $$TransfersTableTableManager extends RootTableManager<
                         .id,
                   ) as T;
                 }
+                if (assetId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.assetId,
+                    referencedTable:
+                        $$TransfersTableReferences._assetIdTable(db),
+                    referencedColumn:
+                        $$TransfersTableReferences._assetIdTable(db).id,
+                  ) as T;
+                }
 
                 return state;
               },
@@ -6065,43 +7316,74 @@ typedef $$TransfersTableProcessedTableManager = ProcessedTableManager<
     $$TransfersTableUpdateCompanionBuilder,
     (Transfer, $$TransfersTableReferences),
     Transfer,
-    PrefetchHooks Function({bool sendingAccountId, bool receivingAccountId})>;
+    PrefetchHooks Function(
+        {bool sendingAccountId, bool receivingAccountId, bool assetId})>;
 typedef $$TradesTableCreateCompanionBuilder = TradesCompanion Function({
   Value<int> id,
   required int datetime,
-  required int assetId,
   required TradeTypes type,
-  required double clearingAccountValueDelta,
-  required double portfolioAccountValueDelta,
+  required int sourceAccountId,
+  required int targetAccountId,
+  required int assetId,
   required double shares,
-  required double pricePerShare,
-  Value<double> profitAndLossAbs,
-  Value<double> profitAndLossRel,
-  Value<double> tradingFee,
+  required double costBasis,
+  Value<double> fee,
   Value<double> tax,
-  required int clearingAccountId,
-  required int portfolioAccountId,
+  required double sourceAccountValueDelta,
+  required double targetAccountValueDelta,
+  Value<double> profitAndLoss,
+  Value<double> returnOnInvest,
 });
 typedef $$TradesTableUpdateCompanionBuilder = TradesCompanion Function({
   Value<int> id,
   Value<int> datetime,
-  Value<int> assetId,
   Value<TradeTypes> type,
-  Value<double> clearingAccountValueDelta,
-  Value<double> portfolioAccountValueDelta,
+  Value<int> sourceAccountId,
+  Value<int> targetAccountId,
+  Value<int> assetId,
   Value<double> shares,
-  Value<double> pricePerShare,
-  Value<double> profitAndLossAbs,
-  Value<double> profitAndLossRel,
-  Value<double> tradingFee,
+  Value<double> costBasis,
+  Value<double> fee,
   Value<double> tax,
-  Value<int> clearingAccountId,
-  Value<int> portfolioAccountId,
+  Value<double> sourceAccountValueDelta,
+  Value<double> targetAccountValueDelta,
+  Value<double> profitAndLoss,
+  Value<double> returnOnInvest,
 });
 
 final class $$TradesTableReferences
     extends BaseReferences<_$AppDatabase, $TradesTable, Trade> {
   $$TradesTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $AccountsTable _sourceAccountIdTable(_$AppDatabase db) =>
+      db.accounts.createAlias(
+          $_aliasNameGenerator(db.trades.sourceAccountId, db.accounts.id));
+
+  $$AccountsTableProcessedTableManager get sourceAccountId {
+    final $_column = $_itemColumn<int>('source_account_id')!;
+
+    final manager = $$AccountsTableTableManager($_db, $_db.accounts)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_sourceAccountIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+
+  static $AccountsTable _targetAccountIdTable(_$AppDatabase db) =>
+      db.accounts.createAlias(
+          $_aliasNameGenerator(db.trades.targetAccountId, db.accounts.id));
+
+  $$AccountsTableProcessedTableManager get targetAccountId {
+    final $_column = $_itemColumn<int>('target_account_id')!;
+
+    final manager = $$AccountsTableTableManager($_db, $_db.accounts)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_targetAccountIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
 
   static $AssetsTable _assetIdTable(_$AppDatabase db) => db.assets
       .createAlias($_aliasNameGenerator(db.trades.assetId, db.assets.id));
@@ -6112,36 +7394,6 @@ final class $$TradesTableReferences
     final manager = $$AssetsTableTableManager($_db, $_db.assets)
         .filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_assetIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: [item]));
-  }
-
-  static $AccountsTable _clearingAccountIdTable(_$AppDatabase db) =>
-      db.accounts.createAlias(
-          $_aliasNameGenerator(db.trades.clearingAccountId, db.accounts.id));
-
-  $$AccountsTableProcessedTableManager get clearingAccountId {
-    final $_column = $_itemColumn<int>('clearing_account_id')!;
-
-    final manager = $$AccountsTableTableManager($_db, $_db.accounts)
-        .filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_clearingAccountIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: [item]));
-  }
-
-  static $AccountsTable _portfolioAccountIdTable(_$AppDatabase db) =>
-      db.accounts.createAlias(
-          $_aliasNameGenerator(db.trades.portfolioAccountId, db.accounts.id));
-
-  $$AccountsTableProcessedTableManager get portfolioAccountId {
-    final $_column = $_itemColumn<int>('portfolio_account_id')!;
-
-    final manager = $$AccountsTableTableManager($_db, $_db.accounts)
-        .filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_portfolioAccountIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: [item]));
@@ -6168,33 +7420,72 @@ class $$TradesTableFilterComposer
           column: $table.type,
           builder: (column) => ColumnWithTypeConverterFilters(column));
 
-  ColumnFilters<double> get clearingAccountValueDelta => $composableBuilder(
-      column: $table.clearingAccountValueDelta,
-      builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<double> get portfolioAccountValueDelta => $composableBuilder(
-      column: $table.portfolioAccountValueDelta,
-      builder: (column) => ColumnFilters(column));
-
   ColumnFilters<double> get shares => $composableBuilder(
       column: $table.shares, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<double> get pricePerShare => $composableBuilder(
-      column: $table.pricePerShare, builder: (column) => ColumnFilters(column));
+  ColumnFilters<double> get costBasis => $composableBuilder(
+      column: $table.costBasis, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<double> get profitAndLossAbs => $composableBuilder(
-      column: $table.profitAndLossAbs,
-      builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<double> get profitAndLossRel => $composableBuilder(
-      column: $table.profitAndLossRel,
-      builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<double> get tradingFee => $composableBuilder(
-      column: $table.tradingFee, builder: (column) => ColumnFilters(column));
+  ColumnFilters<double> get fee => $composableBuilder(
+      column: $table.fee, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<double> get tax => $composableBuilder(
       column: $table.tax, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get sourceAccountValueDelta => $composableBuilder(
+      column: $table.sourceAccountValueDelta,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get targetAccountValueDelta => $composableBuilder(
+      column: $table.targetAccountValueDelta,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get profitAndLoss => $composableBuilder(
+      column: $table.profitAndLoss, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get returnOnInvest => $composableBuilder(
+      column: $table.returnOnInvest,
+      builder: (column) => ColumnFilters(column));
+
+  $$AccountsTableFilterComposer get sourceAccountId {
+    final $$AccountsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.sourceAccountId,
+        referencedTable: $db.accounts,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AccountsTableFilterComposer(
+              $db: $db,
+              $table: $db.accounts,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$AccountsTableFilterComposer get targetAccountId {
+    final $$AccountsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.targetAccountId,
+        referencedTable: $db.accounts,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AccountsTableFilterComposer(
+              $db: $db,
+              $table: $db.accounts,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 
   $$AssetsTableFilterComposer get assetId {
     final $$AssetsTableFilterComposer composer = $composerBuilder(
@@ -6208,46 +7499,6 @@ class $$TradesTableFilterComposer
             $$AssetsTableFilterComposer(
               $db: $db,
               $table: $db.assets,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  $$AccountsTableFilterComposer get clearingAccountId {
-    final $$AccountsTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.clearingAccountId,
-        referencedTable: $db.accounts,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$AccountsTableFilterComposer(
-              $db: $db,
-              $table: $db.accounts,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  $$AccountsTableFilterComposer get portfolioAccountId {
-    final $$AccountsTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.portfolioAccountId,
-        referencedTable: $db.accounts,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$AccountsTableFilterComposer(
-              $db: $db,
-              $table: $db.accounts,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -6275,34 +7526,73 @@ class $$TradesTableOrderingComposer
   ColumnOrderings<String> get type => $composableBuilder(
       column: $table.type, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<double> get clearingAccountValueDelta => $composableBuilder(
-      column: $table.clearingAccountValueDelta,
-      builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<double> get portfolioAccountValueDelta => $composableBuilder(
-      column: $table.portfolioAccountValueDelta,
-      builder: (column) => ColumnOrderings(column));
-
   ColumnOrderings<double> get shares => $composableBuilder(
       column: $table.shares, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<double> get pricePerShare => $composableBuilder(
-      column: $table.pricePerShare,
-      builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<double> get costBasis => $composableBuilder(
+      column: $table.costBasis, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<double> get profitAndLossAbs => $composableBuilder(
-      column: $table.profitAndLossAbs,
-      builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<double> get profitAndLossRel => $composableBuilder(
-      column: $table.profitAndLossRel,
-      builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<double> get tradingFee => $composableBuilder(
-      column: $table.tradingFee, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<double> get fee => $composableBuilder(
+      column: $table.fee, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<double> get tax => $composableBuilder(
       column: $table.tax, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get sourceAccountValueDelta => $composableBuilder(
+      column: $table.sourceAccountValueDelta,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get targetAccountValueDelta => $composableBuilder(
+      column: $table.targetAccountValueDelta,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get profitAndLoss => $composableBuilder(
+      column: $table.profitAndLoss,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get returnOnInvest => $composableBuilder(
+      column: $table.returnOnInvest,
+      builder: (column) => ColumnOrderings(column));
+
+  $$AccountsTableOrderingComposer get sourceAccountId {
+    final $$AccountsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.sourceAccountId,
+        referencedTable: $db.accounts,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AccountsTableOrderingComposer(
+              $db: $db,
+              $table: $db.accounts,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$AccountsTableOrderingComposer get targetAccountId {
+    final $$AccountsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.targetAccountId,
+        referencedTable: $db.accounts,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AccountsTableOrderingComposer(
+              $db: $db,
+              $table: $db.accounts,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 
   $$AssetsTableOrderingComposer get assetId {
     final $$AssetsTableOrderingComposer composer = $composerBuilder(
@@ -6316,46 +7606,6 @@ class $$TradesTableOrderingComposer
             $$AssetsTableOrderingComposer(
               $db: $db,
               $table: $db.assets,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  $$AccountsTableOrderingComposer get clearingAccountId {
-    final $$AccountsTableOrderingComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.clearingAccountId,
-        referencedTable: $db.accounts,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$AccountsTableOrderingComposer(
-              $db: $db,
-              $table: $db.accounts,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  $$AccountsTableOrderingComposer get portfolioAccountId {
-    final $$AccountsTableOrderingComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.portfolioAccountId,
-        referencedTable: $db.accounts,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$AccountsTableOrderingComposer(
-              $db: $db,
-              $table: $db.accounts,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -6383,29 +7633,69 @@ class $$TradesTableAnnotationComposer
   GeneratedColumnWithTypeConverter<TradeTypes, String> get type =>
       $composableBuilder(column: $table.type, builder: (column) => column);
 
-  GeneratedColumn<double> get clearingAccountValueDelta => $composableBuilder(
-      column: $table.clearingAccountValueDelta, builder: (column) => column);
-
-  GeneratedColumn<double> get portfolioAccountValueDelta => $composableBuilder(
-      column: $table.portfolioAccountValueDelta, builder: (column) => column);
-
   GeneratedColumn<double> get shares =>
       $composableBuilder(column: $table.shares, builder: (column) => column);
 
-  GeneratedColumn<double> get pricePerShare => $composableBuilder(
-      column: $table.pricePerShare, builder: (column) => column);
+  GeneratedColumn<double> get costBasis =>
+      $composableBuilder(column: $table.costBasis, builder: (column) => column);
 
-  GeneratedColumn<double> get profitAndLossAbs => $composableBuilder(
-      column: $table.profitAndLossAbs, builder: (column) => column);
-
-  GeneratedColumn<double> get profitAndLossRel => $composableBuilder(
-      column: $table.profitAndLossRel, builder: (column) => column);
-
-  GeneratedColumn<double> get tradingFee => $composableBuilder(
-      column: $table.tradingFee, builder: (column) => column);
+  GeneratedColumn<double> get fee =>
+      $composableBuilder(column: $table.fee, builder: (column) => column);
 
   GeneratedColumn<double> get tax =>
       $composableBuilder(column: $table.tax, builder: (column) => column);
+
+  GeneratedColumn<double> get sourceAccountValueDelta => $composableBuilder(
+      column: $table.sourceAccountValueDelta, builder: (column) => column);
+
+  GeneratedColumn<double> get targetAccountValueDelta => $composableBuilder(
+      column: $table.targetAccountValueDelta, builder: (column) => column);
+
+  GeneratedColumn<double> get profitAndLoss => $composableBuilder(
+      column: $table.profitAndLoss, builder: (column) => column);
+
+  GeneratedColumn<double> get returnOnInvest => $composableBuilder(
+      column: $table.returnOnInvest, builder: (column) => column);
+
+  $$AccountsTableAnnotationComposer get sourceAccountId {
+    final $$AccountsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.sourceAccountId,
+        referencedTable: $db.accounts,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AccountsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.accounts,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$AccountsTableAnnotationComposer get targetAccountId {
+    final $$AccountsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.targetAccountId,
+        referencedTable: $db.accounts,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AccountsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.accounts,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 
   $$AssetsTableAnnotationComposer get assetId {
     final $$AssetsTableAnnotationComposer composer = $composerBuilder(
@@ -6419,46 +7709,6 @@ class $$TradesTableAnnotationComposer
             $$AssetsTableAnnotationComposer(
               $db: $db,
               $table: $db.assets,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  $$AccountsTableAnnotationComposer get clearingAccountId {
-    final $$AccountsTableAnnotationComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.clearingAccountId,
-        referencedTable: $db.accounts,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$AccountsTableAnnotationComposer(
-              $db: $db,
-              $table: $db.accounts,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  $$AccountsTableAnnotationComposer get portfolioAccountId {
-    final $$AccountsTableAnnotationComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.portfolioAccountId,
-        referencedTable: $db.accounts,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$AccountsTableAnnotationComposer(
-              $db: $db,
-              $table: $db.accounts,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -6480,7 +7730,7 @@ class $$TradesTableTableManager extends RootTableManager<
     (Trade, $$TradesTableReferences),
     Trade,
     PrefetchHooks Function(
-        {bool assetId, bool clearingAccountId, bool portfolioAccountId})> {
+        {bool sourceAccountId, bool targetAccountId, bool assetId})> {
   $$TradesTableTableManager(_$AppDatabase db, $TradesTable table)
       : super(TableManagerState(
           db: db,
@@ -6494,75 +7744,75 @@ class $$TradesTableTableManager extends RootTableManager<
           updateCompanionCallback: ({
             Value<int> id = const Value.absent(),
             Value<int> datetime = const Value.absent(),
-            Value<int> assetId = const Value.absent(),
             Value<TradeTypes> type = const Value.absent(),
-            Value<double> clearingAccountValueDelta = const Value.absent(),
-            Value<double> portfolioAccountValueDelta = const Value.absent(),
+            Value<int> sourceAccountId = const Value.absent(),
+            Value<int> targetAccountId = const Value.absent(),
+            Value<int> assetId = const Value.absent(),
             Value<double> shares = const Value.absent(),
-            Value<double> pricePerShare = const Value.absent(),
-            Value<double> profitAndLossAbs = const Value.absent(),
-            Value<double> profitAndLossRel = const Value.absent(),
-            Value<double> tradingFee = const Value.absent(),
+            Value<double> costBasis = const Value.absent(),
+            Value<double> fee = const Value.absent(),
             Value<double> tax = const Value.absent(),
-            Value<int> clearingAccountId = const Value.absent(),
-            Value<int> portfolioAccountId = const Value.absent(),
+            Value<double> sourceAccountValueDelta = const Value.absent(),
+            Value<double> targetAccountValueDelta = const Value.absent(),
+            Value<double> profitAndLoss = const Value.absent(),
+            Value<double> returnOnInvest = const Value.absent(),
           }) =>
               TradesCompanion(
             id: id,
             datetime: datetime,
-            assetId: assetId,
             type: type,
-            clearingAccountValueDelta: clearingAccountValueDelta,
-            portfolioAccountValueDelta: portfolioAccountValueDelta,
+            sourceAccountId: sourceAccountId,
+            targetAccountId: targetAccountId,
+            assetId: assetId,
             shares: shares,
-            pricePerShare: pricePerShare,
-            profitAndLossAbs: profitAndLossAbs,
-            profitAndLossRel: profitAndLossRel,
-            tradingFee: tradingFee,
+            costBasis: costBasis,
+            fee: fee,
             tax: tax,
-            clearingAccountId: clearingAccountId,
-            portfolioAccountId: portfolioAccountId,
+            sourceAccountValueDelta: sourceAccountValueDelta,
+            targetAccountValueDelta: targetAccountValueDelta,
+            profitAndLoss: profitAndLoss,
+            returnOnInvest: returnOnInvest,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
             required int datetime,
-            required int assetId,
             required TradeTypes type,
-            required double clearingAccountValueDelta,
-            required double portfolioAccountValueDelta,
+            required int sourceAccountId,
+            required int targetAccountId,
+            required int assetId,
             required double shares,
-            required double pricePerShare,
-            Value<double> profitAndLossAbs = const Value.absent(),
-            Value<double> profitAndLossRel = const Value.absent(),
-            Value<double> tradingFee = const Value.absent(),
+            required double costBasis,
+            Value<double> fee = const Value.absent(),
             Value<double> tax = const Value.absent(),
-            required int clearingAccountId,
-            required int portfolioAccountId,
+            required double sourceAccountValueDelta,
+            required double targetAccountValueDelta,
+            Value<double> profitAndLoss = const Value.absent(),
+            Value<double> returnOnInvest = const Value.absent(),
           }) =>
               TradesCompanion.insert(
             id: id,
             datetime: datetime,
-            assetId: assetId,
             type: type,
-            clearingAccountValueDelta: clearingAccountValueDelta,
-            portfolioAccountValueDelta: portfolioAccountValueDelta,
+            sourceAccountId: sourceAccountId,
+            targetAccountId: targetAccountId,
+            assetId: assetId,
             shares: shares,
-            pricePerShare: pricePerShare,
-            profitAndLossAbs: profitAndLossAbs,
-            profitAndLossRel: profitAndLossRel,
-            tradingFee: tradingFee,
+            costBasis: costBasis,
+            fee: fee,
             tax: tax,
-            clearingAccountId: clearingAccountId,
-            portfolioAccountId: portfolioAccountId,
+            sourceAccountValueDelta: sourceAccountValueDelta,
+            targetAccountValueDelta: targetAccountValueDelta,
+            profitAndLoss: profitAndLoss,
+            returnOnInvest: returnOnInvest,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) =>
                   (e.readTable(table), $$TradesTableReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: (
-              {assetId = false,
-              clearingAccountId = false,
-              portfolioAccountId = false}) {
+              {sourceAccountId = false,
+              targetAccountId = false,
+              assetId = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [],
@@ -6579,6 +7829,26 @@ class $$TradesTableTableManager extends RootTableManager<
                       dynamic,
                       dynamic,
                       dynamic>>(state) {
+                if (sourceAccountId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.sourceAccountId,
+                    referencedTable:
+                        $$TradesTableReferences._sourceAccountIdTable(db),
+                    referencedColumn:
+                        $$TradesTableReferences._sourceAccountIdTable(db).id,
+                  ) as T;
+                }
+                if (targetAccountId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.targetAccountId,
+                    referencedTable:
+                        $$TradesTableReferences._targetAccountIdTable(db),
+                    referencedColumn:
+                        $$TradesTableReferences._targetAccountIdTable(db).id,
+                  ) as T;
+                }
                 if (assetId) {
                   state = state.withJoin(
                     currentTable: table,
@@ -6586,26 +7856,6 @@ class $$TradesTableTableManager extends RootTableManager<
                     referencedTable: $$TradesTableReferences._assetIdTable(db),
                     referencedColumn:
                         $$TradesTableReferences._assetIdTable(db).id,
-                  ) as T;
-                }
-                if (clearingAccountId) {
-                  state = state.withJoin(
-                    currentTable: table,
-                    currentColumn: table.clearingAccountId,
-                    referencedTable:
-                        $$TradesTableReferences._clearingAccountIdTable(db),
-                    referencedColumn:
-                        $$TradesTableReferences._clearingAccountIdTable(db).id,
-                  ) as T;
-                }
-                if (portfolioAccountId) {
-                  state = state.withJoin(
-                    currentTable: table,
-                    currentColumn: table.portfolioAccountId,
-                    referencedTable:
-                        $$TradesTableReferences._portfolioAccountIdTable(db),
-                    referencedColumn:
-                        $$TradesTableReferences._portfolioAccountIdTable(db).id,
                   ) as T;
                 }
 
@@ -6631,13 +7881,16 @@ typedef $$TradesTableProcessedTableManager = ProcessedTableManager<
     (Trade, $$TradesTableReferences),
     Trade,
     PrefetchHooks Function(
-        {bool assetId, bool clearingAccountId, bool portfolioAccountId})>;
+        {bool sourceAccountId, bool targetAccountId, bool assetId})>;
 typedef $$PeriodicBookingsTableCreateCompanionBuilder
     = PeriodicBookingsCompanion Function({
   Value<int> id,
   required int nextExecutionDate,
-  required double amount,
+  Value<int> assetId,
   required int accountId,
+  required double shares,
+  Value<double> costBasis,
+  required double value,
   required String category,
   Value<String?> notes,
   Value<Cycles> cycle,
@@ -6647,8 +7900,11 @@ typedef $$PeriodicBookingsTableUpdateCompanionBuilder
     = PeriodicBookingsCompanion Function({
   Value<int> id,
   Value<int> nextExecutionDate,
-  Value<double> amount,
+  Value<int> assetId,
   Value<int> accountId,
+  Value<double> shares,
+  Value<double> costBasis,
+  Value<double> value,
   Value<String> category,
   Value<String?> notes,
   Value<Cycles> cycle,
@@ -6659,6 +7915,20 @@ final class $$PeriodicBookingsTableReferences extends BaseReferences<
     _$AppDatabase, $PeriodicBookingsTable, PeriodicBooking> {
   $$PeriodicBookingsTableReferences(
       super.$_db, super.$_table, super.$_typedResult);
+
+  static $AssetsTable _assetIdTable(_$AppDatabase db) => db.assets.createAlias(
+      $_aliasNameGenerator(db.periodicBookings.assetId, db.assets.id));
+
+  $$AssetsTableProcessedTableManager get assetId {
+    final $_column = $_itemColumn<int>('asset_id')!;
+
+    final manager = $$AssetsTableTableManager($_db, $_db.assets)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_assetIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
 
   static $AccountsTable _accountIdTable(_$AppDatabase db) =>
       db.accounts.createAlias(
@@ -6692,8 +7962,14 @@ class $$PeriodicBookingsTableFilterComposer
       column: $table.nextExecutionDate,
       builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<double> get amount => $composableBuilder(
-      column: $table.amount, builder: (column) => ColumnFilters(column));
+  ColumnFilters<double> get shares => $composableBuilder(
+      column: $table.shares, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get costBasis => $composableBuilder(
+      column: $table.costBasis, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get value => $composableBuilder(
+      column: $table.value, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get category => $composableBuilder(
       column: $table.category, builder: (column) => ColumnFilters(column));
@@ -6709,6 +7985,26 @@ class $$PeriodicBookingsTableFilterComposer
   ColumnFilters<double> get monthlyAverageFactor => $composableBuilder(
       column: $table.monthlyAverageFactor,
       builder: (column) => ColumnFilters(column));
+
+  $$AssetsTableFilterComposer get assetId {
+    final $$AssetsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.assetId,
+        referencedTable: $db.assets,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AssetsTableFilterComposer(
+              $db: $db,
+              $table: $db.assets,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 
   $$AccountsTableFilterComposer get accountId {
     final $$AccountsTableFilterComposer composer = $composerBuilder(
@@ -6747,8 +8043,14 @@ class $$PeriodicBookingsTableOrderingComposer
       column: $table.nextExecutionDate,
       builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<double> get amount => $composableBuilder(
-      column: $table.amount, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<double> get shares => $composableBuilder(
+      column: $table.shares, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get costBasis => $composableBuilder(
+      column: $table.costBasis, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get value => $composableBuilder(
+      column: $table.value, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get category => $composableBuilder(
       column: $table.category, builder: (column) => ColumnOrderings(column));
@@ -6762,6 +8064,26 @@ class $$PeriodicBookingsTableOrderingComposer
   ColumnOrderings<double> get monthlyAverageFactor => $composableBuilder(
       column: $table.monthlyAverageFactor,
       builder: (column) => ColumnOrderings(column));
+
+  $$AssetsTableOrderingComposer get assetId {
+    final $$AssetsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.assetId,
+        referencedTable: $db.assets,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AssetsTableOrderingComposer(
+              $db: $db,
+              $table: $db.assets,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 
   $$AccountsTableOrderingComposer get accountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
@@ -6799,8 +8121,14 @@ class $$PeriodicBookingsTableAnnotationComposer
   GeneratedColumn<int> get nextExecutionDate => $composableBuilder(
       column: $table.nextExecutionDate, builder: (column) => column);
 
-  GeneratedColumn<double> get amount =>
-      $composableBuilder(column: $table.amount, builder: (column) => column);
+  GeneratedColumn<double> get shares =>
+      $composableBuilder(column: $table.shares, builder: (column) => column);
+
+  GeneratedColumn<double> get costBasis =>
+      $composableBuilder(column: $table.costBasis, builder: (column) => column);
+
+  GeneratedColumn<double> get value =>
+      $composableBuilder(column: $table.value, builder: (column) => column);
 
   GeneratedColumn<String> get category =>
       $composableBuilder(column: $table.category, builder: (column) => column);
@@ -6813,6 +8141,26 @@ class $$PeriodicBookingsTableAnnotationComposer
 
   GeneratedColumn<double> get monthlyAverageFactor => $composableBuilder(
       column: $table.monthlyAverageFactor, builder: (column) => column);
+
+  $$AssetsTableAnnotationComposer get assetId {
+    final $$AssetsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.assetId,
+        referencedTable: $db.assets,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AssetsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.assets,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 
   $$AccountsTableAnnotationComposer get accountId {
     final $$AccountsTableAnnotationComposer composer = $composerBuilder(
@@ -6846,7 +8194,7 @@ class $$PeriodicBookingsTableTableManager extends RootTableManager<
     $$PeriodicBookingsTableUpdateCompanionBuilder,
     (PeriodicBooking, $$PeriodicBookingsTableReferences),
     PeriodicBooking,
-    PrefetchHooks Function({bool accountId})> {
+    PrefetchHooks Function({bool assetId, bool accountId})> {
   $$PeriodicBookingsTableTableManager(
       _$AppDatabase db, $PeriodicBookingsTable table)
       : super(TableManagerState(
@@ -6861,8 +8209,11 @@ class $$PeriodicBookingsTableTableManager extends RootTableManager<
           updateCompanionCallback: ({
             Value<int> id = const Value.absent(),
             Value<int> nextExecutionDate = const Value.absent(),
-            Value<double> amount = const Value.absent(),
+            Value<int> assetId = const Value.absent(),
             Value<int> accountId = const Value.absent(),
+            Value<double> shares = const Value.absent(),
+            Value<double> costBasis = const Value.absent(),
+            Value<double> value = const Value.absent(),
             Value<String> category = const Value.absent(),
             Value<String?> notes = const Value.absent(),
             Value<Cycles> cycle = const Value.absent(),
@@ -6871,8 +8222,11 @@ class $$PeriodicBookingsTableTableManager extends RootTableManager<
               PeriodicBookingsCompanion(
             id: id,
             nextExecutionDate: nextExecutionDate,
-            amount: amount,
+            assetId: assetId,
             accountId: accountId,
+            shares: shares,
+            costBasis: costBasis,
+            value: value,
             category: category,
             notes: notes,
             cycle: cycle,
@@ -6881,8 +8235,11 @@ class $$PeriodicBookingsTableTableManager extends RootTableManager<
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
             required int nextExecutionDate,
-            required double amount,
+            Value<int> assetId = const Value.absent(),
             required int accountId,
+            required double shares,
+            Value<double> costBasis = const Value.absent(),
+            required double value,
             required String category,
             Value<String?> notes = const Value.absent(),
             Value<Cycles> cycle = const Value.absent(),
@@ -6891,8 +8248,11 @@ class $$PeriodicBookingsTableTableManager extends RootTableManager<
               PeriodicBookingsCompanion.insert(
             id: id,
             nextExecutionDate: nextExecutionDate,
-            amount: amount,
+            assetId: assetId,
             accountId: accountId,
+            shares: shares,
+            costBasis: costBasis,
+            value: value,
             category: category,
             notes: notes,
             cycle: cycle,
@@ -6904,7 +8264,7 @@ class $$PeriodicBookingsTableTableManager extends RootTableManager<
                     $$PeriodicBookingsTableReferences(db, table, e)
                   ))
               .toList(),
-          prefetchHooksCallback: ({accountId = false}) {
+          prefetchHooksCallback: ({assetId = false, accountId = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [],
@@ -6921,6 +8281,16 @@ class $$PeriodicBookingsTableTableManager extends RootTableManager<
                       dynamic,
                       dynamic,
                       dynamic>>(state) {
+                if (assetId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.assetId,
+                    referencedTable:
+                        $$PeriodicBookingsTableReferences._assetIdTable(db),
+                    referencedColumn:
+                        $$PeriodicBookingsTableReferences._assetIdTable(db).id,
+                  ) as T;
+                }
                 if (accountId) {
                   state = state.withJoin(
                     currentTable: table,
@@ -6954,14 +8324,17 @@ typedef $$PeriodicBookingsTableProcessedTableManager = ProcessedTableManager<
     $$PeriodicBookingsTableUpdateCompanionBuilder,
     (PeriodicBooking, $$PeriodicBookingsTableReferences),
     PeriodicBooking,
-    PrefetchHooks Function({bool accountId})>;
+    PrefetchHooks Function({bool assetId, bool accountId})>;
 typedef $$PeriodicTransfersTableCreateCompanionBuilder
     = PeriodicTransfersCompanion Function({
   Value<int> id,
   required int nextExecutionDate,
-  required double amount,
+  Value<int> assetId,
   required int sendingAccountId,
   required int receivingAccountId,
+  required double shares,
+  Value<double> costBasis,
+  required double value,
   Value<String?> notes,
   Value<Cycles> cycle,
   Value<double> monthlyAverageFactor,
@@ -6970,9 +8343,12 @@ typedef $$PeriodicTransfersTableUpdateCompanionBuilder
     = PeriodicTransfersCompanion Function({
   Value<int> id,
   Value<int> nextExecutionDate,
-  Value<double> amount,
+  Value<int> assetId,
   Value<int> sendingAccountId,
   Value<int> receivingAccountId,
+  Value<double> shares,
+  Value<double> costBasis,
+  Value<double> value,
   Value<String?> notes,
   Value<Cycles> cycle,
   Value<double> monthlyAverageFactor,
@@ -6982,6 +8358,20 @@ final class $$PeriodicTransfersTableReferences extends BaseReferences<
     _$AppDatabase, $PeriodicTransfersTable, PeriodicTransfer> {
   $$PeriodicTransfersTableReferences(
       super.$_db, super.$_table, super.$_typedResult);
+
+  static $AssetsTable _assetIdTable(_$AppDatabase db) => db.assets.createAlias(
+      $_aliasNameGenerator(db.periodicTransfers.assetId, db.assets.id));
+
+  $$AssetsTableProcessedTableManager get assetId {
+    final $_column = $_itemColumn<int>('asset_id')!;
+
+    final manager = $$AssetsTableTableManager($_db, $_db.assets)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_assetIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
 
   static $AccountsTable _sendingAccountIdTable(_$AppDatabase db) =>
       db.accounts.createAlias($_aliasNameGenerator(
@@ -7030,8 +8420,14 @@ class $$PeriodicTransfersTableFilterComposer
       column: $table.nextExecutionDate,
       builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<double> get amount => $composableBuilder(
-      column: $table.amount, builder: (column) => ColumnFilters(column));
+  ColumnFilters<double> get shares => $composableBuilder(
+      column: $table.shares, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get costBasis => $composableBuilder(
+      column: $table.costBasis, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get value => $composableBuilder(
+      column: $table.value, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get notes => $composableBuilder(
       column: $table.notes, builder: (column) => ColumnFilters(column));
@@ -7044,6 +8440,26 @@ class $$PeriodicTransfersTableFilterComposer
   ColumnFilters<double> get monthlyAverageFactor => $composableBuilder(
       column: $table.monthlyAverageFactor,
       builder: (column) => ColumnFilters(column));
+
+  $$AssetsTableFilterComposer get assetId {
+    final $$AssetsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.assetId,
+        referencedTable: $db.assets,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AssetsTableFilterComposer(
+              $db: $db,
+              $table: $db.assets,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 
   $$AccountsTableFilterComposer get sendingAccountId {
     final $$AccountsTableFilterComposer composer = $composerBuilder(
@@ -7102,8 +8518,14 @@ class $$PeriodicTransfersTableOrderingComposer
       column: $table.nextExecutionDate,
       builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<double> get amount => $composableBuilder(
-      column: $table.amount, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<double> get shares => $composableBuilder(
+      column: $table.shares, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get costBasis => $composableBuilder(
+      column: $table.costBasis, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get value => $composableBuilder(
+      column: $table.value, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get notes => $composableBuilder(
       column: $table.notes, builder: (column) => ColumnOrderings(column));
@@ -7114,6 +8536,26 @@ class $$PeriodicTransfersTableOrderingComposer
   ColumnOrderings<double> get monthlyAverageFactor => $composableBuilder(
       column: $table.monthlyAverageFactor,
       builder: (column) => ColumnOrderings(column));
+
+  $$AssetsTableOrderingComposer get assetId {
+    final $$AssetsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.assetId,
+        referencedTable: $db.assets,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AssetsTableOrderingComposer(
+              $db: $db,
+              $table: $db.assets,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 
   $$AccountsTableOrderingComposer get sendingAccountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
@@ -7171,8 +8613,14 @@ class $$PeriodicTransfersTableAnnotationComposer
   GeneratedColumn<int> get nextExecutionDate => $composableBuilder(
       column: $table.nextExecutionDate, builder: (column) => column);
 
-  GeneratedColumn<double> get amount =>
-      $composableBuilder(column: $table.amount, builder: (column) => column);
+  GeneratedColumn<double> get shares =>
+      $composableBuilder(column: $table.shares, builder: (column) => column);
+
+  GeneratedColumn<double> get costBasis =>
+      $composableBuilder(column: $table.costBasis, builder: (column) => column);
+
+  GeneratedColumn<double> get value =>
+      $composableBuilder(column: $table.value, builder: (column) => column);
 
   GeneratedColumn<String> get notes =>
       $composableBuilder(column: $table.notes, builder: (column) => column);
@@ -7182,6 +8630,26 @@ class $$PeriodicTransfersTableAnnotationComposer
 
   GeneratedColumn<double> get monthlyAverageFactor => $composableBuilder(
       column: $table.monthlyAverageFactor, builder: (column) => column);
+
+  $$AssetsTableAnnotationComposer get assetId {
+    final $$AssetsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.assetId,
+        referencedTable: $db.assets,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AssetsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.assets,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 
   $$AccountsTableAnnotationComposer get sendingAccountId {
     final $$AccountsTableAnnotationComposer composer = $composerBuilder(
@@ -7235,7 +8703,8 @@ class $$PeriodicTransfersTableTableManager extends RootTableManager<
     $$PeriodicTransfersTableUpdateCompanionBuilder,
     (PeriodicTransfer, $$PeriodicTransfersTableReferences),
     PeriodicTransfer,
-    PrefetchHooks Function({bool sendingAccountId, bool receivingAccountId})> {
+    PrefetchHooks Function(
+        {bool assetId, bool sendingAccountId, bool receivingAccountId})> {
   $$PeriodicTransfersTableTableManager(
       _$AppDatabase db, $PeriodicTransfersTable table)
       : super(TableManagerState(
@@ -7251,9 +8720,12 @@ class $$PeriodicTransfersTableTableManager extends RootTableManager<
           updateCompanionCallback: ({
             Value<int> id = const Value.absent(),
             Value<int> nextExecutionDate = const Value.absent(),
-            Value<double> amount = const Value.absent(),
+            Value<int> assetId = const Value.absent(),
             Value<int> sendingAccountId = const Value.absent(),
             Value<int> receivingAccountId = const Value.absent(),
+            Value<double> shares = const Value.absent(),
+            Value<double> costBasis = const Value.absent(),
+            Value<double> value = const Value.absent(),
             Value<String?> notes = const Value.absent(),
             Value<Cycles> cycle = const Value.absent(),
             Value<double> monthlyAverageFactor = const Value.absent(),
@@ -7261,9 +8733,12 @@ class $$PeriodicTransfersTableTableManager extends RootTableManager<
               PeriodicTransfersCompanion(
             id: id,
             nextExecutionDate: nextExecutionDate,
-            amount: amount,
+            assetId: assetId,
             sendingAccountId: sendingAccountId,
             receivingAccountId: receivingAccountId,
+            shares: shares,
+            costBasis: costBasis,
+            value: value,
             notes: notes,
             cycle: cycle,
             monthlyAverageFactor: monthlyAverageFactor,
@@ -7271,9 +8746,12 @@ class $$PeriodicTransfersTableTableManager extends RootTableManager<
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
             required int nextExecutionDate,
-            required double amount,
+            Value<int> assetId = const Value.absent(),
             required int sendingAccountId,
             required int receivingAccountId,
+            required double shares,
+            Value<double> costBasis = const Value.absent(),
+            required double value,
             Value<String?> notes = const Value.absent(),
             Value<Cycles> cycle = const Value.absent(),
             Value<double> monthlyAverageFactor = const Value.absent(),
@@ -7281,9 +8759,12 @@ class $$PeriodicTransfersTableTableManager extends RootTableManager<
               PeriodicTransfersCompanion.insert(
             id: id,
             nextExecutionDate: nextExecutionDate,
-            amount: amount,
+            assetId: assetId,
             sendingAccountId: sendingAccountId,
             receivingAccountId: receivingAccountId,
+            shares: shares,
+            costBasis: costBasis,
+            value: value,
             notes: notes,
             cycle: cycle,
             monthlyAverageFactor: monthlyAverageFactor,
@@ -7295,7 +8776,9 @@ class $$PeriodicTransfersTableTableManager extends RootTableManager<
                   ))
               .toList(),
           prefetchHooksCallback: (
-              {sendingAccountId = false, receivingAccountId = false}) {
+              {assetId = false,
+              sendingAccountId = false,
+              receivingAccountId = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [],
@@ -7312,6 +8795,16 @@ class $$PeriodicTransfersTableTableManager extends RootTableManager<
                       dynamic,
                       dynamic,
                       dynamic>>(state) {
+                if (assetId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.assetId,
+                    referencedTable:
+                        $$PeriodicTransfersTableReferences._assetIdTable(db),
+                    referencedColumn:
+                        $$PeriodicTransfersTableReferences._assetIdTable(db).id,
+                  ) as T;
+                }
                 if (sendingAccountId) {
                   state = state.withJoin(
                     currentTable: table,
@@ -7356,13 +8849,14 @@ typedef $$PeriodicTransfersTableProcessedTableManager = ProcessedTableManager<
     $$PeriodicTransfersTableUpdateCompanionBuilder,
     (PeriodicTransfer, $$PeriodicTransfersTableReferences),
     PeriodicTransfer,
-    PrefetchHooks Function({bool sendingAccountId, bool receivingAccountId})>;
+    PrefetchHooks Function(
+        {bool assetId, bool sendingAccountId, bool receivingAccountId})>;
 typedef $$AssetsOnAccountsTableCreateCompanionBuilder
     = AssetsOnAccountsCompanion Function({
   required int accountId,
   required int assetId,
   Value<double> value,
-  Value<double> sharesOwned,
+  Value<double> shares,
   Value<double> netCostBasis,
   Value<double> brokerCostBasis,
   Value<double> buyFeeTotal,
@@ -7373,7 +8867,7 @@ typedef $$AssetsOnAccountsTableUpdateCompanionBuilder
   Value<int> accountId,
   Value<int> assetId,
   Value<double> value,
-  Value<double> sharesOwned,
+  Value<double> shares,
   Value<double> netCostBasis,
   Value<double> brokerCostBasis,
   Value<double> buyFeeTotal,
@@ -7427,8 +8921,8 @@ class $$AssetsOnAccountsTableFilterComposer
   ColumnFilters<double> get value => $composableBuilder(
       column: $table.value, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<double> get sharesOwned => $composableBuilder(
-      column: $table.sharesOwned, builder: (column) => ColumnFilters(column));
+  ColumnFilters<double> get shares => $composableBuilder(
+      column: $table.shares, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<double> get netCostBasis => $composableBuilder(
       column: $table.netCostBasis, builder: (column) => ColumnFilters(column));
@@ -7493,8 +8987,8 @@ class $$AssetsOnAccountsTableOrderingComposer
   ColumnOrderings<double> get value => $composableBuilder(
       column: $table.value, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<double> get sharesOwned => $composableBuilder(
-      column: $table.sharesOwned, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<double> get shares => $composableBuilder(
+      column: $table.shares, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<double> get netCostBasis => $composableBuilder(
       column: $table.netCostBasis,
@@ -7560,8 +9054,8 @@ class $$AssetsOnAccountsTableAnnotationComposer
   GeneratedColumn<double> get value =>
       $composableBuilder(column: $table.value, builder: (column) => column);
 
-  GeneratedColumn<double> get sharesOwned => $composableBuilder(
-      column: $table.sharesOwned, builder: (column) => column);
+  GeneratedColumn<double> get shares =>
+      $composableBuilder(column: $table.shares, builder: (column) => column);
 
   GeneratedColumn<double> get netCostBasis => $composableBuilder(
       column: $table.netCostBasis, builder: (column) => column);
@@ -7640,7 +9134,7 @@ class $$AssetsOnAccountsTableTableManager extends RootTableManager<
             Value<int> accountId = const Value.absent(),
             Value<int> assetId = const Value.absent(),
             Value<double> value = const Value.absent(),
-            Value<double> sharesOwned = const Value.absent(),
+            Value<double> shares = const Value.absent(),
             Value<double> netCostBasis = const Value.absent(),
             Value<double> brokerCostBasis = const Value.absent(),
             Value<double> buyFeeTotal = const Value.absent(),
@@ -7650,7 +9144,7 @@ class $$AssetsOnAccountsTableTableManager extends RootTableManager<
             accountId: accountId,
             assetId: assetId,
             value: value,
-            sharesOwned: sharesOwned,
+            shares: shares,
             netCostBasis: netCostBasis,
             brokerCostBasis: brokerCostBasis,
             buyFeeTotal: buyFeeTotal,
@@ -7660,7 +9154,7 @@ class $$AssetsOnAccountsTableTableManager extends RootTableManager<
             required int accountId,
             required int assetId,
             Value<double> value = const Value.absent(),
-            Value<double> sharesOwned = const Value.absent(),
+            Value<double> shares = const Value.absent(),
             Value<double> netCostBasis = const Value.absent(),
             Value<double> brokerCostBasis = const Value.absent(),
             Value<double> buyFeeTotal = const Value.absent(),
@@ -7670,7 +9164,7 @@ class $$AssetsOnAccountsTableTableManager extends RootTableManager<
             accountId: accountId,
             assetId: assetId,
             value: value,
-            sharesOwned: sharesOwned,
+            shares: shares,
             netCostBasis: netCostBasis,
             brokerCostBasis: brokerCostBasis,
             buyFeeTotal: buyFeeTotal,
@@ -7745,22 +9239,40 @@ typedef $$AssetsOnAccountsTableProcessedTableManager = ProcessedTableManager<
     PrefetchHooks Function({bool accountId, bool assetId})>;
 typedef $$GoalsTableCreateCompanionBuilder = GoalsCompanion Function({
   Value<int> id,
+  Value<int?> assetId,
   Value<int?> accountId,
   required int createdOn,
   required int targetDate,
-  required double targetAmount,
+  required double targetShares,
+  required double targetValue,
 });
 typedef $$GoalsTableUpdateCompanionBuilder = GoalsCompanion Function({
   Value<int> id,
+  Value<int?> assetId,
   Value<int?> accountId,
   Value<int> createdOn,
   Value<int> targetDate,
-  Value<double> targetAmount,
+  Value<double> targetShares,
+  Value<double> targetValue,
 });
 
 final class $$GoalsTableReferences
     extends BaseReferences<_$AppDatabase, $GoalsTable, Goal> {
   $$GoalsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $AssetsTable _assetIdTable(_$AppDatabase db) => db.assets
+      .createAlias($_aliasNameGenerator(db.goals.assetId, db.assets.id));
+
+  $$AssetsTableProcessedTableManager? get assetId {
+    final $_column = $_itemColumn<int>('asset_id');
+    if ($_column == null) return null;
+    final manager = $$AssetsTableTableManager($_db, $_db.assets)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_assetIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
 
   static $AccountsTable _accountIdTable(_$AppDatabase db) => db.accounts
       .createAlias($_aliasNameGenerator(db.goals.accountId, db.accounts.id));
@@ -7794,8 +9306,31 @@ class $$GoalsTableFilterComposer extends Composer<_$AppDatabase, $GoalsTable> {
   ColumnFilters<int> get targetDate => $composableBuilder(
       column: $table.targetDate, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<double> get targetAmount => $composableBuilder(
-      column: $table.targetAmount, builder: (column) => ColumnFilters(column));
+  ColumnFilters<double> get targetShares => $composableBuilder(
+      column: $table.targetShares, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get targetValue => $composableBuilder(
+      column: $table.targetValue, builder: (column) => ColumnFilters(column));
+
+  $$AssetsTableFilterComposer get assetId {
+    final $$AssetsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.assetId,
+        referencedTable: $db.assets,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AssetsTableFilterComposer(
+              $db: $db,
+              $table: $db.assets,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 
   $$AccountsTableFilterComposer get accountId {
     final $$AccountsTableFilterComposer composer = $composerBuilder(
@@ -7836,9 +9371,32 @@ class $$GoalsTableOrderingComposer
   ColumnOrderings<int> get targetDate => $composableBuilder(
       column: $table.targetDate, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<double> get targetAmount => $composableBuilder(
-      column: $table.targetAmount,
+  ColumnOrderings<double> get targetShares => $composableBuilder(
+      column: $table.targetShares,
       builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get targetValue => $composableBuilder(
+      column: $table.targetValue, builder: (column) => ColumnOrderings(column));
+
+  $$AssetsTableOrderingComposer get assetId {
+    final $$AssetsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.assetId,
+        referencedTable: $db.assets,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AssetsTableOrderingComposer(
+              $db: $db,
+              $table: $db.assets,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 
   $$AccountsTableOrderingComposer get accountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
@@ -7879,8 +9437,31 @@ class $$GoalsTableAnnotationComposer
   GeneratedColumn<int> get targetDate => $composableBuilder(
       column: $table.targetDate, builder: (column) => column);
 
-  GeneratedColumn<double> get targetAmount => $composableBuilder(
-      column: $table.targetAmount, builder: (column) => column);
+  GeneratedColumn<double> get targetShares => $composableBuilder(
+      column: $table.targetShares, builder: (column) => column);
+
+  GeneratedColumn<double> get targetValue => $composableBuilder(
+      column: $table.targetValue, builder: (column) => column);
+
+  $$AssetsTableAnnotationComposer get assetId {
+    final $$AssetsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.assetId,
+        referencedTable: $db.assets,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AssetsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.assets,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 
   $$AccountsTableAnnotationComposer get accountId {
     final $$AccountsTableAnnotationComposer composer = $composerBuilder(
@@ -7914,7 +9495,7 @@ class $$GoalsTableTableManager extends RootTableManager<
     $$GoalsTableUpdateCompanionBuilder,
     (Goal, $$GoalsTableReferences),
     Goal,
-    PrefetchHooks Function({bool accountId})> {
+    PrefetchHooks Function({bool assetId, bool accountId})> {
   $$GoalsTableTableManager(_$AppDatabase db, $GoalsTable table)
       : super(TableManagerState(
           db: db,
@@ -7927,37 +9508,45 @@ class $$GoalsTableTableManager extends RootTableManager<
               $$GoalsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
             Value<int> id = const Value.absent(),
+            Value<int?> assetId = const Value.absent(),
             Value<int?> accountId = const Value.absent(),
             Value<int> createdOn = const Value.absent(),
             Value<int> targetDate = const Value.absent(),
-            Value<double> targetAmount = const Value.absent(),
+            Value<double> targetShares = const Value.absent(),
+            Value<double> targetValue = const Value.absent(),
           }) =>
               GoalsCompanion(
             id: id,
+            assetId: assetId,
             accountId: accountId,
             createdOn: createdOn,
             targetDate: targetDate,
-            targetAmount: targetAmount,
+            targetShares: targetShares,
+            targetValue: targetValue,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
+            Value<int?> assetId = const Value.absent(),
             Value<int?> accountId = const Value.absent(),
             required int createdOn,
             required int targetDate,
-            required double targetAmount,
+            required double targetShares,
+            required double targetValue,
           }) =>
               GoalsCompanion.insert(
             id: id,
+            assetId: assetId,
             accountId: accountId,
             createdOn: createdOn,
             targetDate: targetDate,
-            targetAmount: targetAmount,
+            targetShares: targetShares,
+            targetValue: targetValue,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) =>
                   (e.readTable(table), $$GoalsTableReferences(db, table, e)))
               .toList(),
-          prefetchHooksCallback: ({accountId = false}) {
+          prefetchHooksCallback: ({assetId = false, accountId = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [],
@@ -7974,6 +9563,15 @@ class $$GoalsTableTableManager extends RootTableManager<
                       dynamic,
                       dynamic,
                       dynamic>>(state) {
+                if (assetId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.assetId,
+                    referencedTable: $$GoalsTableReferences._assetIdTable(db),
+                    referencedColumn:
+                        $$GoalsTableReferences._assetIdTable(db).id,
+                  ) as T;
+                }
                 if (accountId) {
                   state = state.withJoin(
                     currentTable: table,
@@ -8005,7 +9603,7 @@ typedef $$GoalsTableProcessedTableManager = ProcessedTableManager<
     $$GoalsTableUpdateCompanionBuilder,
     (Goal, $$GoalsTableReferences),
     Goal,
-    PrefetchHooks Function({bool accountId})>;
+    PrefetchHooks Function({bool assetId, bool accountId})>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;

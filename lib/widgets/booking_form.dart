@@ -6,9 +6,9 @@ import 'package:oktoast/oktoast.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/l10n/app_localizations.dart';
-
-import '../providers/base_currency_provider.dart';
-import '../validators.dart';
+import 'package:xfin/widgets/reusables.dart';
+import '../database/tables.dart';
+import '../utils/validators.dart';
 
 class BookingForm extends StatefulWidget {
   final Booking? booking;
@@ -22,194 +22,220 @@ class BookingForm extends StatefulWidget {
 class _BookingFormState extends State<BookingForm> {
   final _formKey = GlobalKey<FormState>();
 
-  late DateTime _date;
-  late TextEditingController _amountController;
-  late TextEditingController _categoryController;
-  late TextEditingController _notesController;
-  late int? _accountId;
-  late bool _excludeFromAverage;
-  late bool _isGenerated;
+  // Helpers
+  AppDatabase get _db => Provider.of<AppDatabase>(context, listen: false);
 
-  late List<String> _distinctCategories;
-  StreamSubscription<List<String>>? _categorySubscription;
+  AppLocalizations get _l10n => AppLocalizations.of(context)!;
+
+  Validator get _validator => Validator(_l10n);
+
+  Reusables get _reusables => Reusables(context);
+
+  // Form State
+  late DateTime _date;
+  late TextEditingController _sharesCtrl;
+  late TextEditingController _priceCtrl;
+  late TextEditingController _catCtrl;
+  late TextEditingController _notesCtrl;
+
+  int? _accountId;
+  int? _assetId;
+  bool _excludeFromAverage = false;
+  bool _isGenerated = false;
+  bool _hideCostBasis = false;
+
+  // Data
+  List<Asset> _allAssets = [];
+  Map<int, Asset> _assetMap = {};
+  List<String> _distinctCategories = [];
+  StreamSubscription? _catSub;
 
   @override
   void initState() {
     super.initState();
-    final booking = widget.booking;
-    final db = Provider.of<AppDatabase>(context, listen: false);
+    final b = widget.booking;
 
-    _distinctCategories = [];
-    _categorySubscription =
-        db.bookingsDao.watchDistinctCategories().listen((categories) {
-      setState(() {
-        _distinctCategories = categories;
-      });
+    // 1. Data Fetching
+    _catSub = _db.bookingsDao.watchDistinctCategories().listen((c) {
+      if (mounted) setState(() => _distinctCategories = c);
     });
 
-    if (booking != null) {
-      // -> edit existing booking
-      final dateString = booking.date.toString();
+    _db.assetsDao.getAllAssets().then((assets) {
+      if (mounted) {
+        setState(() {
+          _allAssets = assets;
+          _assetMap = {for (var a in assets) a.id: a};
+        });
+      }
+    });
+
+    // 2. Controller Initialization (Edit vs Create handled via null-aware)
+    if (b != null) {
+      final ds = b.date.toString();
       _date = DateTime.parse(
-          '${dateString.substring(0, 4)}-${dateString.substring(4, 6)}-${dateString.substring(6, 8)}');
-      _amountController =
-          TextEditingController(text: booking.amount.toString());
-      _categoryController = TextEditingController(text: booking.category);
-      _notesController = TextEditingController(text: booking.notes);
-      _excludeFromAverage = booking.excludeFromAverage;
-      _isGenerated = booking.isGenerated;
-      _accountId = booking.accountId;
+          '${ds.substring(0, 4)}-${ds.substring(4, 6)}-${ds.substring(6, 8)}');
     } else {
-      // -> create new booking
       _date = DateTime.now();
-      _amountController = TextEditingController();
-      _categoryController = TextEditingController();
-      _notesController = TextEditingController();
-      _accountId = null;
-      _excludeFromAverage = false;
-      _isGenerated = false;
+    }
+
+    _sharesCtrl = TextEditingController(text: b?.shares.toString());
+    _priceCtrl = TextEditingController(text: b?.costBasis.toString());
+    _catCtrl = TextEditingController(text: b?.category);
+    _notesCtrl = TextEditingController(text: b?.notes);
+
+    _accountId = b?.accountId;
+    _assetId = b?.assetId ?? 1; // Default to 1 (usually base currency)
+    _excludeFromAverage = b?.excludeFromAverage ?? false;
+    _isGenerated = b?.isGenerated ?? false;
+
+    // 3. Listener Setup
+    _hideCostBasis = _sharesCtrl.text.trim().startsWith('-');
+    _sharesCtrl.addListener(_onSharesChanged);
+  }
+
+  void _onSharesChanged() {
+    final shouldHide = _sharesCtrl.text.trim().startsWith('-');
+    if (shouldHide != _hideCostBasis) {
+      setState(() => _hideCostBasis = shouldHide);
     }
   }
 
   @override
   void dispose() {
-    _amountController.dispose();
-    _categoryController.dispose();
-    _notesController.dispose();
-    _categorySubscription?.cancel();
+    _sharesCtrl.removeListener(_onSharesChanged);
+    _sharesCtrl.dispose();
+    _priceCtrl.dispose();
+    _catCtrl.dispose();
+    _notesCtrl.dispose();
+    _catSub?.cancel();
     super.dispose();
   }
 
-  Future<void> _performMerge(AppDatabase db, Booking existingBooking,
-      BookingsCompanion newBooking) async {
-    final mergedAmount = existingBooking.amount + newBooking.amount.value;
-    final updatedCompanion = existingBooking
-        .toCompanion(false)
-        .copyWith(amount: drift.Value(mergedAmount));
+  Future<void> _saveForm() async {
+    if (!_formKey.currentState!.validate()) return;
 
-    if (await db.accountsDao.leadsToInconsistentBalanceHistory(
-      originalBooking: existingBooking,
-      newBooking: updatedCompanion,
-    )) {
-      if (mounted) {
-        showToast(AppLocalizations.of(context)!
-            .actionCancelledDueToDataInconsistency);
+    // --- Parsing ---
+    final shares = double.parse(_sharesCtrl.text.replaceAll(',', '.'));
+    final price = _assetId == 1
+        ? 1.0
+        : double.parse(_priceCtrl.text.replaceAll(',', '.'));
+    final value = shares * price;
+
+    // --- Validation Checks ---
+    // 1. Balance Checks (New Bookings Only)
+    if (widget.booking == null && shares < 0) {
+      final aoa = await _db.assetsOnAccountsDao.getAOA(_accountId!, _assetId!);
+      if (aoa.shares + shares < 0) {
+        showToast(_assetId == 1
+            ? _l10n.insufficientBalance
+            : _l10n.insufficientShares);
+        return;
       }
-      return;
     }
 
-    await db.bookingsDao.updateBooking(existingBooking, updatedCompanion);
-  }
-
-  Future<void> _saveForm() async {
-    final l10n = AppLocalizations.of(context)!;
-    if (_formKey.currentState!.validate()) {
-      final db = Provider.of<AppDatabase>(context, listen: false);
-      final amount = double.parse(_amountController.text.replaceAll(',', '.'));
-
-      if (widget.booking == null) {
-        // Only for new bookings
-        if (_accountId != null && amount < 0) {
-          final receivingAccount = await db.accountsDao.getAccount(_accountId!);
-          if (receivingAccount.balance + amount < 0) {
-            showToast(l10n.insufficientBalance);
-            return;
-          }
-        }
+    // 2. Account Type Compatibility
+    final acc = await _db.accountsDao.getAccount(_accountId!);
+    if (acc.type == AccountTypes.cash) {
+      final asset = await _db.assetsDao.getAsset(_assetId!);
+      if (asset.type != AssetTypes.fiat) {
+        showToast(_l10n.onlyCurrenciesCanBeBookedOnCashAccount);
+        return;
       }
+    } else if (acc.type == AccountTypes.bankAccount && _assetId != 1) {
+      showToast(_l10n.onlyBaseCurrencyCanBeBookedOnBankAccount);
+      return;
+    } else if (acc.type == AccountTypes.cryptoWallet) {
+      final asset = await _db.assetsDao.getAsset(_assetId!);
+      if (asset.type != AssetTypes.crypto) {
+        showToast(_l10n.onlyCryptoCanBeBookedOnCryptoWallet);
+        return;
+      }
+    }
 
-      final dateAsInt = int.parse(DateFormat('yyyyMMdd').format(_date));
-      final companion = BookingsCompanion(
-        date: drift.Value(dateAsInt),
-        category: drift.Value(_categoryController.text.trim()),
-        notes: drift.Value(
-            _notesController.text.isEmpty ? null : _notesController.text),
-        excludeFromAverage: drift.Value(_excludeFromAverage),
-        isGenerated: drift.Value(_isGenerated),
-        amount: drift.Value(amount),
-        accountId: drift.Value(_accountId!),
-      );
+    // --- Companion Construction ---
+    final dateInt = int.parse(DateFormat('yyyyMMdd').format(_date));
+    var companion = BookingsCompanion(
+      date: drift.Value(dateInt),
+      category: drift.Value(_catCtrl.text.trim()),
+      notes: drift.Value(_notesCtrl.text.isEmpty ? null : _notesCtrl.text),
+      excludeFromAverage: drift.Value(_excludeFromAverage),
+      isGenerated: drift.Value(_isGenerated),
+      shares: drift.Value(shares),
+      costBasis: drift.Value(price),
+      value: drift.Value(value),
+      assetId: drift.Value(_assetId!),
+      accountId: drift.Value(_accountId!),
+    );
 
-      if (widget.booking == null && _notesController.text.isEmpty) {
-        // -> Create case, merge is an option
-        final mergeable = await db.bookingsDao.findMergeableBooking(companion);
+    Booking? original = widget.booking;
+    bool checkedSafe = false;
 
-        if (mergeable != null && mounted) {
-          // -> Perform merge
-          final confirmed = await showDialog<bool>(
+    // --- Merge Logic ---
+    if (original == null && _notesCtrl.text.isEmpty) {
+      final mergeCandidate =
+          await _db.bookingsDao.findMergeableBooking(companion);
+
+      if (mergeCandidate != null && mounted) {
+        final mergedComp = mergeCandidate.toCompanion(false).copyWith(
+              shares: drift.Value(mergeCandidate.shares + shares),
+              value:
+                  drift.Value(mergeCandidate.value + value),
+            );
+
+        final isMergeSafe =
+            !(await _db.accountsDao.leadsToInconsistentBalanceHistory(
+          originalBooking: mergeCandidate,
+          newBooking: mergedComp,
+        ));
+
+        if (isMergeSafe && mounted) {
+          final confirm = await showDialog<bool>(
             context: context,
-            builder: (context) => AlertDialog(
-              title: Text(l10n.mergeBookings),
-              content: Text(l10n.mergeBookingsQuestion),
+            builder: (ctx) => AlertDialog(
+              title: Text(_l10n.mergeBookings),
+              content: Text(_l10n.mergeBookingsQuestion),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: Text(l10n.createNew),
-                ),
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: Text(_l10n.createNew)),
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  child: Text(l10n.merge),
-                ),
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: Text(_l10n.merge)),
               ],
             ),
           );
 
-          if (confirmed == true) {
-            await _performMerge(db, mergeable, companion);
-            if (mounted) Navigator.of(context).pop();
-            return;
-          } else {
-            if (await db.accountsDao.leadsToInconsistentBalanceHistory(
-              newBooking: companion,
-            )) {
-              showToast(l10n.actionCancelledDueToDataInconsistency);
-              return;
-            }
-            await db.bookingsDao.createBooking(companion);
+          if (confirm == true) {
+            original = mergeCandidate;
+            companion = mergedComp;
+            checkedSafe = true;
           }
-        } else {
-          if (await db.accountsDao.leadsToInconsistentBalanceHistory(
-            newBooking: companion,
-          )) {
-            showToast(l10n.actionCancelledDueToDataInconsistency);
-            return;
-          }
-          await db.bookingsDao.createBooking(companion);
         }
-      } else if (widget.booking == null) {
-        // -> Create case, merge not an option
-        if (await db.accountsDao.leadsToInconsistentBalanceHistory(
-          newBooking: companion,
-        )) {
-          showToast(l10n.actionCancelledDueToDataInconsistency);
-          return;
-        }
-        await db.bookingsDao.createBooking(companion);
-      } else {
-        if (await db.accountsDao.leadsToInconsistentBalanceHistory(
-          originalBooking: widget.booking,
-          newBooking: companion,
-        )) {
-          showToast(l10n.actionCancelledDueToDataInconsistency);
-          return;
-        }
-        await db.bookingsDao.updateBooking(
-          widget.booking!,
-          companion.copyWith(id: drift.Value(widget.booking!.id)),
-        );
       }
-
-      if (mounted) Navigator.of(context).pop();
     }
+
+    if (original != null) {
+      companion = companion.copyWith(id: drift.Value(original.id));
+    }
+
+    // --- Final Save ---
+    if (!checkedSafe) {
+      if (await _db.accountsDao.leadsToInconsistentBalanceHistory(
+          originalBooking: original, newBooking: companion)) {
+        if (mounted) showToast(_l10n.actionCancelledDueToDataInconsistency);
+        return;
+      }
+    }
+
+    original != null
+        ? await _db.bookingsDao.updateBooking(original, companion)
+        : await _db.bookingsDao.createBooking(companion);
+
+    if (mounted) Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
-    final db = Provider.of<AppDatabase>(context, listen: false);
-    final currencyProvider = Provider.of<BaseCurrencyProvider>(context);
-    final l10n = AppLocalizations.of(context)!;
-    final validator = Validator(l10n);
-
     return Padding(
       padding: MediaQuery.of(context).viewInsets,
       child: SingleChildScrollView(
@@ -228,142 +254,96 @@ class _BookingFormState extends State<BookingForm> {
                       child: TextFormField(
                         key: const Key('date_field'),
                         readOnly: true,
+                        controller: TextEditingController(
+                            text: DateFormat('dd.MM.yyyy').format(_date)),
                         decoration: InputDecoration(
-                          labelText: l10n.date,
+                          labelText: _l10n.date,
                           border: const OutlineInputBorder(),
-                          errorMaxLines: 2,
                           suffixIcon: IconButton(
                             icon: const Icon(Icons.calendar_today),
-                            onPressed: () async {
-                              final pickedDate = await showDatePicker(
-                                context: context,
-                                initialDate: _date,
-                                firstDate: DateTime(2000),
-                                lastDate: DateTime(2101),
-                              );
-                              if (pickedDate != null && pickedDate != _date) {
-                                setState(() {
-                                  _date = pickedDate;
-                                });
-                              }
-                            },
+                            onPressed: _pickDate,
                           ),
                         ),
-                        controller: TextEditingController(
-                          text: DateFormat('dd.MM.yyyy').format(_date),
-                        ),
-                        validator: (_) => validator.validateDate(_date),
+                        validator: (_) => _validator.validateDate(_date),
                       ),
                     ),
                     const SizedBox(width: 16),
-                    Expanded(
-                      child: TextFormField(
-                        key: const Key('amount_field'),
-                        controller: _amountController,
-                        decoration: InputDecoration(
-                          labelText: l10n.amount,
-                          border: const OutlineInputBorder(),
-                          suffixText: currencyProvider.symbol,
-                          errorMaxLines: 2,
-                        ),
-                        keyboardType: const TextInputType.numberWithOptions(
-                            signed: true, decimal: true),
-                        validator: (value) =>
-                            validator.validateMaxTwoDecimalsNotZero(value),
-                      ),
+                    _reusables.buildAssetsDropdown(
+                      _assetId!,
+                      _allAssets,
+                      (val) => setState(() => _assetId = val),
+                      (val) => val == null ? _l10n.pleaseSelectAnAsset : null,
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
+                _reusables.buildSharesInputRow(
+                    _sharesCtrl, _priceCtrl, _assetMap[_assetId],
+                    hideCostBasis: _hideCostBasis),
+                const SizedBox(height: 16),
                 Autocomplete<String>(
                   key: const Key('category_field'),
-                  optionsBuilder: (TextEditingValue textEditingValue) {
-                    if (textEditingValue.text.isEmpty) {
-                      return const Iterable<String>.empty();
-                    }
-                    return _distinctCategories.where((category) {
-                      return category
-                          .toLowerCase()
-                          .contains(textEditingValue.text.toLowerCase());
-                    });
-                  },
-                  onSelected: (String selection) {
-                    setState(() {
-                      _categoryController.text = selection;
-                    });
-                  },
-                  fieldViewBuilder: (BuildContext context,
-                      TextEditingController textEditingController,
-                      FocusNode focusNode,
-                      void Function() onFieldSubmitted) {
-                    // For existing bookings, ensure the Autocomplete's internal controller
-                    // reflects the initial category from _categoryController.
+                  optionsBuilder: (v) => v.text.isEmpty
+                      ? const []
+                      : _distinctCategories.where((c) =>
+                          c.toLowerCase().contains(v.text.toLowerCase())),
+                  onSelected: (s) => setState(() => _catCtrl.text = s),
+                  fieldViewBuilder: (ctx, tCtrl, node, onSub) {
                     if (widget.booking != null &&
-                        _categoryController.text.isNotEmpty &&
-                        textEditingController.text !=
-                            _categoryController.text) {
-                      textEditingController.text = _categoryController.text;
+                        _catCtrl.text.isNotEmpty &&
+                        tCtrl.text != _catCtrl.text) {
+                      tCtrl.text = _catCtrl.text;
                     }
                     return TextFormField(
-                      controller: textEditingController,
-                      focusNode: focusNode,
+                      controller: tCtrl,
+                      focusNode: node,
                       textCapitalization: TextCapitalization.words,
                       decoration: InputDecoration(
-                        labelText: l10n.category,
-                        border: const OutlineInputBorder(),
-                        errorMaxLines: 2,
-                      ),
-                      validator: (value) => validator.validateNotInitial(value),
-                      onChanged: (value) {
-                        _categoryController.text =
-                            value; // Keep _categoryController in sync
-                      },
-                      onFieldSubmitted: (String value) {
-                        onFieldSubmitted();
-                        _categoryController.text =
-                            value; // Also update on submit
+                          labelText: _l10n.category,
+                          border: const OutlineInputBorder()),
+                      validator: _validator.validateNotInitial,
+                      onChanged: (val) => _catCtrl.text = val,
+                      onFieldSubmitted: (val) {
+                        onSub();
+                        _catCtrl.text = val;
                       },
                     );
                   },
                 ),
                 const SizedBox(height: 16),
                 StreamBuilder<List<Account>>(
-                  stream: db.accountsDao.watchCashAccounts(),
+                  stream: _db.accountsDao.watchAllAccounts(),
                   builder: (context, snapshot) {
-                    final accounts = snapshot.data ?? [];
                     return DropdownButtonFormField<int>(
                       key: const Key('account_dropdown'),
                       initialValue: _accountId,
                       decoration: InputDecoration(
-                        labelText: l10n.account,
-                        border: const OutlineInputBorder(),
-                        errorMaxLines: 2,
-                      ),
-                      items: accounts.map((account) {
-                        return DropdownMenuItem(
-                            value: account.id, child: Text(account.name));
-                      }).toList(),
-                      onChanged: (value) => setState(() => _accountId = value),
-                      validator: (value) =>
-                          validator.validateAccountSelected(value),
+                          labelText: _l10n.account,
+                          border: const OutlineInputBorder()),
+                      items: (snapshot.data ?? [])
+                          .map((a) => DropdownMenuItem(
+                              value: a.id, child: Text(a.name)))
+                          .toList(),
+                      onChanged: (val) => setState(() => _accountId = val),
+                      validator: _validator.validateAccountSelected,
                     );
                   },
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   key: const Key('notes_field'),
-                  controller: _notesController,
+                  controller: _notesCtrl,
                   textCapitalization: TextCapitalization.sentences,
                   decoration: InputDecoration(
-                      labelText: l10n.notes,
+                      labelText: _l10n.notes,
                       border: const OutlineInputBorder()),
                 ),
                 CheckboxListTile(
                   key: const Key('exclude_checkbox'),
-                  title: Text(l10n.excludeFromAverage),
+                  title: Text(_l10n.excludeFromAverage),
                   value: _excludeFromAverage,
-                  onChanged: (value) =>
-                      setState(() => _excludeFromAverage = value ?? false),
+                  onChanged: (val) =>
+                      setState(() => _excludeFromAverage = val ?? false),
                   controlAffinity: ListTileControlAffinity.leading,
                   contentPadding: EdgeInsets.zero,
                 ),
@@ -372,11 +352,12 @@ class _BookingFormState extends State<BookingForm> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: Text(l10n.cancel)),
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(_l10n.cancel),
+                    ),
                     const SizedBox(width: 8),
                     ElevatedButton(
-                        onPressed: _saveForm, child: Text(l10n.save)),
+                        onPressed: _saveForm, child: Text(_l10n.save)),
                   ],
                 ),
               ],
@@ -385,5 +366,15 @@ class _BookingFormState extends State<BookingForm> {
         ),
       ),
     );
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _date,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+    if (picked != null && picked != _date) setState(() => _date = picked);
   }
 }

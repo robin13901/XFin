@@ -3,6 +3,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:oktoast/oktoast.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:xfin/app_theme.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/connection/connection.dart' as connection;
 import 'package:xfin/providers/language_provider.dart';
@@ -15,6 +16,8 @@ import 'package:xfin/screens/currency_selection_screen.dart'; // Import the new 
 import 'package:xfin/screens/more_screen.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:xfin/widgets/liquid_glass_widgets.dart';
+import 'package:xfin/widgets/more_pane.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,15 +47,18 @@ void main() async {
         ),
         ChangeNotifierProvider.value(value: themeProvider),
         ChangeNotifierProvider.value(value: languageProvider),
-        ChangeNotifierProvider.value(value: currencyProvider), // Add CurrencyProvider
+        ChangeNotifierProvider.value(value: currencyProvider),
+        // Add CurrencyProvider
       ],
-      child: MyApp(initialRoute: currencySelected ? '/main' : '/currencySelection'),
+      child: MyApp(
+          initialRoute: currencySelected ? '/main' : '/currencySelection'),
     ),
   );
 }
 
 class MyApp extends StatelessWidget {
   final String initialRoute;
+
   const MyApp({super.key, required this.initialRoute});
 
   @override
@@ -61,14 +67,8 @@ class MyApp extends StatelessWidget {
       builder: (context, themeProvider, languageProvider, child) {
         return MaterialApp(
           title: 'XFin',
-          theme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(seedColor: Colors.green, brightness: Brightness.light),
-            useMaterial3: true,
-          ),
-          darkTheme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(seedColor: Colors.green, brightness: Brightness.dark),
-            useMaterial3: true,
-          ),
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
           themeMode: themeProvider.themeMode,
           locale: languageProvider.appLocale,
           localizationsDelegates: const [
@@ -81,7 +81,8 @@ class MyApp extends StatelessWidget {
             Locale('en', ''), // English, no country code
             Locale('de', ''), // German, no country code
           ],
-          initialRoute: initialRoute, // Set initial route dynamically
+          initialRoute: initialRoute,
+          // Set initial route dynamically
           routes: {
             '/currencySelection': (context) => const CurrencySelectionScreen(),
             '/main': (context) => const MainScreen(),
@@ -102,6 +103,8 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
+  final GlobalKey _navBarKey = GlobalKey();
+  final ValueNotifier<bool> _navBarVisible = ValueNotifier<bool>(true);
 
   static const List<Widget> _widgetOptions = <Widget>[
     AnalysisScreen(),
@@ -110,42 +113,72 @@ class _MainScreenState extends State<MainScreen> {
     MoreScreen(),
   ];
 
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      body: Center(
-        child: _widgetOptions.elementAt(_selectedIndex),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        items: <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.analytics),
-            label: l10n.analysis,
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.account_balance_wallet),
-            label: l10n.accounts,
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.book),
-            label: l10n.bookings,
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.more_horiz),
-            label: l10n.more,
+      body: Stack(
+        children: [
+          Center(child: _widgetOptions.elementAt(_selectedIndex)),
+          Positioned(
+            bottom: 16,
+            left: 8,
+            right: 8,
+            child: ValueListenableBuilder<bool>(
+              valueListenable: _navBarVisible,
+              builder: (context, visible, child) {
+                // slide down slightly and fade out when hidden
+                return AnimatedSlide(
+                  duration: const Duration(milliseconds: 100),
+                  offset: visible ? Offset.zero : const Offset(0, 0.15),
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 100),
+                    opacity: visible ? 1.0 : 0.0,
+                    child: IgnorePointer(
+                      ignoring: !visible,
+                      child: child,
+                    ),
+                  ),
+                );
+              },
+              child: LiquidGlassBottomNav(
+                key: _navBarKey,
+                icons: const [
+                  Icons.analytics,
+                  Icons.account_balance_wallet,
+                  Icons.book,
+                ],
+                labels: [
+                  l10n.analysis,
+                  l10n.accounts,
+                  l10n.bookings,
+                ],
+                keys: const [
+                  Key('nav_analytics'),
+                  Key('nav_accounts'),
+                  Key('nav_bookings'),
+                ],
+                currentIndex: _selectedIndex,
+                onTap: (i) => setState(() => _selectedIndex = i),
+                onLeftTap: () {
+                  if (_selectedIndex == 1) {
+                    AccountsScreen.showAccountForm(context);
+                  } else if (_selectedIndex == 2) {
+                    BookingsScreen.showBookingForm(context, null);
+                  }
+                },
+                leftVisibleForIndices: const {1, 2},
+                rightIcon: Icons.more_horiz,
+                onRightTap: () {
+                  showMorePane(
+                      context: context,
+                      navBarKey: _navBarKey,
+                      navBarVisible: _navBarVisible);
+                },
+              ),
+            ),
           ),
         ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: Colors.amber[800],
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed,
       ),
     );
   }

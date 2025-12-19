@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import '../../utils/global_constants.dart';
 import '../app_database.dart';
 import '../tables.dart';
 
@@ -18,31 +19,10 @@ class AccountsDao extends DatabaseAccessor<AppDatabase>
     with _$AccountsDaoMixin {
   AccountsDao(super.db);
 
-  Future<int> _insert(AccountsCompanion entry) => into(accounts).insert(entry);
+  Future<int> insert(AccountsCompanion entry) => into(accounts).insert(entry);
 
-  Future<int> createAccount(AccountsCompanion account) {
-    return transaction(() async {
-      int accountId = await _insert(account);
-      if (account.type.value == AccountTypes.cash) {
-        if (account.initialBalance.present) {
-          await db.assetsDao
-              .updateBaseCurrencyAsset(account.initialBalance.value);
-        }
-
-        final assetOnAccount = AssetsOnAccountsCompanion(
-          accountId: Value(accountId),
-          assetId: const Value(1),
-          value: account.initialBalance,
-          sharesOwned: account.initialBalance,
-          netCostBasis: const Value(1.0),
-          brokerCostBasis: const Value(1.0),
-          buyFeeTotal: const Value(0.0),
-        );
-        await db.assetsOnAccountsDao.addAssetOnAccount(assetOnAccount);
-      }
-      return accountId;
-    });
-  }
+  Future<bool> _updateAccount(AccountsCompanion entry) =>
+      update(accounts).replace(entry);
 
   Future<Account> getAccount(int id) =>
       (select(accounts)..where((a) => a.id.equals(id))).getSingle();
@@ -71,8 +51,8 @@ class AccountsDao extends DatabaseAccessor<AppDatabase>
   Future<bool> hasTrades(int accountId) async {
     final query = select(trades)
       ..where((t) =>
-          t.clearingAccountId.equals(accountId) |
-          t.portfolioAccountId.equals(accountId));
+          t.sourceAccountId.equals(accountId) |
+          t.targetAccountId.equals(accountId));
     return (await query.get()).isNotEmpty;
   }
 
@@ -112,12 +92,11 @@ class AccountsDao extends DatabaseAccessor<AppDatabase>
   Stream<List<Account>> watchArchivedAccounts() =>
       (select(accounts)..where((a) => a.isArchived.equals(true))).watch();
 
-  Future<void> updateBalance(int accountId, double delta) {
-    return customUpdate(
-      'UPDATE accounts SET balance = balance + ? WHERE id = ?',
-      variables: [Variable(delta), Variable(accountId)],
-      updates: {accounts},
-    );
+  Future<void> updateBalance(int accountId, double delta) async {
+    Account a = await getAccount(accountId);
+    double newBalance = a.balance + delta;
+    Account modifiedAccount = a.copyWith(balance: normalize(newBalance));
+    await _updateAccount(modifiedAccount.toCompanion(false));
   }
 
   Future<void> setArchived(int id, bool isArchived) {
@@ -125,39 +104,60 @@ class AccountsDao extends DatabaseAccessor<AppDatabase>
         .write(AccountsCompanion(isArchived: Value(isArchived)));
   }
 
-  Future<void> deleteAccount(int id) =>
+  Future<void> _deleteAccount(int id) =>
       (delete(accounts)..where((a) => a.id.equals(id))).go();
+
+  Future<void> deleteAccount(int id) {
+    return transaction(() async {
+      await _deleteAccount(id);
+
+      final List<AssetOnAccount> allAOAs =
+          await db.assetsOnAccountsDao.getAOAsForAccount(id);
+
+      for (var aoa in allAOAs) {
+        await db.assetsDao
+            .updateAsset(aoa.assetId, -aoa.shares, -aoa.value);
+        await db.assetsOnAccountsDao.deleteAOA(aoa);
+      }
+    });
+  }
 
   Future<bool> leadsToInconsistentBalanceHistory({
     Booking? originalBooking,
     BookingsCompanion? newBooking,
     TradesCompanion? newTrade,
+    Transfer? originalTransfer,
+    TransfersCompanion? newTransfer,
   }) async {
     Set<int> accountIds = {};
     if (originalBooking != null) accountIds.add(originalBooking.accountId);
     if (newBooking != null) accountIds.add(newBooking.accountId.value);
     if (newTrade != null) {
-      accountIds.add(newTrade.clearingAccountId.value);
-      accountIds.add(newTrade.portfolioAccountId.value);
+      accountIds.add(newTrade.sourceAccountId.value);
+      accountIds.add(newTrade.targetAccountId.value);
+    }
+    if (originalTransfer != null) {
+      accountIds.add(originalTransfer.sendingAccountId);
+      accountIds.add(originalTransfer.receivingAccountId);
+    }
+    if (newTransfer != null) {
+      accountIds.add(newTransfer.sendingAccountId.value);
+      accountIds.add(newTransfer.receivingAccountId.value);
     }
 
     for (var accountId in accountIds) {
       // Launch DB queries in parallel
       final accountFuture = getAccount(accountId);
       final bookingsFuture =
-          (select(bookings)..where((b) => b.accountId.equals(accountId))).get();
-      final sendingTransfersFuture = (select(transfers)
-            ..where((t) => t.sendingAccountId.equals(accountId)))
-          .get();
-      final receivingTransfersFuture = (select(transfers)
-            ..where((t) => t.receivingAccountId.equals(accountId)))
-          .get();
-      final clearingTradesFuture = (select(trades)
-            ..where((t) => t.clearingAccountId.equals(accountId)))
-          .get();
-      final portfolioTradesFuture = (select(trades)
-            ..where((t) => t.portfolioAccountId.equals(accountId)))
-          .get();
+      (select(bookings)..where((b) => b.accountId.equals(accountId))).get();
+      final sendingTransfersFuture =
+      (select(transfers)..where((t) => t.sendingAccountId.equals(accountId))).get();
+      final receivingTransfersFuture =
+      (select(transfers)..where((t) => t.receivingAccountId.equals(accountId))).get();
+      final clearingTradesFuture =
+      (select(trades)..where((t) => t.sourceAccountId.equals(accountId))).get();
+      final portfolioTradesFuture =
+      (select(trades)..where((t) => t.targetAccountId.equals(accountId))).get();
 
       final results = await Future.wait([
         accountFuture,
@@ -177,7 +177,7 @@ class AccountsDao extends DatabaseAccessor<AppDatabase>
 
       var runningBalance = account.initialBalance;
 
-      // Aggregation map
+      // Aggregation map keyed by date-int (yyyyMMdd for bookings/transfers, truncated for trades)
       final Map<int, double> sumsByDate = {};
 
       // Bookings
@@ -185,44 +185,53 @@ class AccountsDao extends DatabaseAccessor<AppDatabase>
         if (originalBooking != null && booking.id == originalBooking.id) {
           continue;
         }
-
         final date = booking.date;
-        sumsByDate[date] = (sumsByDate[date] ?? 0) + booking.amount;
+        sumsByDate[date] = (sumsByDate[date] ?? 0) + booking.value;
       }
 
-      // Transfers (sending)
+      // Transfers (sending) — subtract
       for (final t in sendingTransfers) {
+        if (originalTransfer != null && t.id == originalTransfer.id) continue;
         final date = t.date;
-        sumsByDate[date] = (sumsByDate[date] ?? 0) - t.amount;
+        sumsByDate[date] = (sumsByDate[date] ?? 0) - t.value;
       }
 
-      // Transfers (receiving)
+      // Transfers (receiving) — add
       for (final t in receivingTransfers) {
+        if (originalTransfer != null && t.id == originalTransfer.id) continue;
         final date = t.date;
-        sumsByDate[date] = (sumsByDate[date] ?? 0) + t.amount;
+        sumsByDate[date] = (sumsByDate[date] ?? 0) + t.value;
       }
 
       // Trades (regarding clearing account)
       for (final trade in clearingTrades) {
-        final date = trade.datetime ~/
-            1000000; // This effectively allows inconsistencies on sub-day levels but since the finest granularity we will display in visible elements is per-day, this is fine for now
-        sumsByDate[date] =
-            (sumsByDate[date] ?? 0) + trade.clearingAccountValueDelta;
+        final date = trade.datetime ~/ 1000000;
+        sumsByDate[date] = (sumsByDate[date] ?? 0) + trade.sourceAccountValueDelta;
       }
 
       // Trades (regarding portfolio account)
       for (final trade in portfolioTrades) {
-        final date = trade.datetime ~/
-            1000000; // This effectively allows inconsistencies on sub-day levels but since the finest granularity we will display in visible elements is per-day, this is fine for now
-        sumsByDate[date] =
-            (sumsByDate[date] ?? 0) + trade.portfolioAccountValueDelta;
+        final date = trade.datetime ~/ 1000000;
+        sumsByDate[date] = (sumsByDate[date] ?? 0) + trade.targetAccountValueDelta;
       }
 
       // New/updated booking
       if (newBooking != null && accountId == newBooking.accountId.value) {
         final newDate = newBooking.date.value;
         sumsByDate[newDate] =
-            (sumsByDate[newDate] ?? 0) + newBooking.amount.value;
+            (sumsByDate[newDate] ?? 0) + newBooking.value.value;
+      }
+
+      // New/updated transfer — apply to sending (subtract) and receiving (add)
+      if (newTransfer != null) {
+        final newDate = newTransfer.date.value;
+        final newBase = newTransfer.value.value;
+        if (accountId == newTransfer.sendingAccountId.value) {
+          sumsByDate[newDate] = (sumsByDate[newDate] ?? 0) - newBase;
+        }
+        if (accountId == newTransfer.receivingAccountId.value) {
+          sumsByDate[newDate] = (sumsByDate[newDate] ?? 0) + newBase;
+        }
       }
 
       // Process sorted dates
@@ -230,7 +239,7 @@ class AccountsDao extends DatabaseAccessor<AppDatabase>
 
       for (final date in sortedDates) {
         runningBalance += sumsByDate[date]!;
-        if (runningBalance < 0) return true;
+        if (runningBalance < -0.00001) return true;
       }
     }
 

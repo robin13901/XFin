@@ -5,9 +5,9 @@ part of 'accounts_dao.dart';
 // ignore_for_file: type=lint
 mixin _$AccountsDaoMixin on DatabaseAccessor<AppDatabase> {
   $AccountsTable get accounts => attachedDatabase.accounts;
+  $AssetsTable get assets => attachedDatabase.assets;
   $BookingsTable get bookings => attachedDatabase.bookings;
   $TransfersTable get transfers => attachedDatabase.transfers;
-  $AssetsTable get assets => attachedDatabase.assets;
   $TradesTable get trades => attachedDatabase.trades;
   $PeriodicBookingsTable get periodicBookings =>
       attachedDatabase.periodicBookings;

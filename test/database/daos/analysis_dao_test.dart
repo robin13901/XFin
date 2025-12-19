@@ -36,7 +36,7 @@ void main() {
     // Insert a currency asset (many DAOs expect at least one asset)
     await db.into(db.assets).insert(AssetsCompanion.insert(
       name: 'EUR',
-      type: AssetTypes.currency,
+      type: AssetTypes.fiat,
       tickerSymbol: 'EUR',
     ));
   });
@@ -50,7 +50,7 @@ void main() {
 
   group('AnalysisDao - small aggregation queries', () {
     setUp(() async {
-      // Insert an account to reference by trades (clearingAccountId / portfolioAccountId)
+      // Insert an account to reference by trades (sourceAccountId / targetAccountId)
       await db.into(db.accounts).insert(AccountsCompanion.insert(
           name: 'A', type: AccountTypes.cash, initialBalance: const Value(0)));
       // Insert an asset to reference by trades
@@ -72,37 +72,37 @@ void main() {
             datetime: positiveTradeDatetime,
             assetId: 2,
             type: TradeTypes.buy,
-            clearingAccountValueDelta: -10.0,
-            portfolioAccountValueDelta: 10.0,
+            sourceAccountValueDelta: -10.0,
+            targetAccountValueDelta: 10.0,
             shares: 1.0,
-            pricePerShare: 1.0,
-            profitAndLossAbs: const Value(100.0),
-            profitAndLossRel: const Value(0.0),
-            tradingFee: const Value(5.0),
+            costBasis: 1.0,
+            profitAndLoss: const Value(100.0),
+            returnOnInvest: const Value(0.0),
+            fee: const Value(5.0),
             tax: const Value(2.0),
-            clearingAccountId: 1,
-            portfolioAccountId: 1,
+            sourceAccountId: 1,
+            targetAccountId: 1,
           ));
 
           await db.into(db.trades).insert(TradesCompanion.insert(
             datetime: negativeTradeDatetime,
             assetId: 2,
             type: TradeTypes.sell,
-            clearingAccountValueDelta: -5.0,
-            portfolioAccountValueDelta: 5.0,
+            sourceAccountValueDelta: -5.0,
+            targetAccountValueDelta: 5.0,
             shares: 1.0,
-            pricePerShare: 1.0,
-            profitAndLossAbs: const Value(-30.0),
-            profitAndLossRel: const Value(0.0),
-            tradingFee: const Value(3.0),
+            costBasis: 1.0,
+            profitAndLoss: const Value(-30.0),
+            returnOnInvest: const Value(0.0),
+            fee: const Value(3.0),
             tax: const Value(1.0),
-            clearingAccountId: 1,
-            portfolioAccountId: 1,
+            sourceAccountId: 1,
+            targetAccountId: 1,
           ));
 
           final pos = await analysisDao.getPositivePnLForMonth(start, end);
           final neg = await analysisDao.getNegativePnLForMonth(start, end);
-          final fees = await analysisDao.getTradingFeesForMonth(start, end);
+          final fees = await analysisDao.getFeesForMonth(start, end);
           final tax = await analysisDao.getTaxForMonth(start, end);
 
           expect(pos, 100.0);
@@ -113,7 +113,7 @@ void main() {
           // Totals across DB
           final totalPos = await analysisDao.getTotalPositivePnL();
           final totalNeg = await analysisDao.getTotalNegativePnL();
-          final totalFees = await analysisDao.getTotalTradingFees();
+          final totalFees = await analysisDao.getTotalFees();
           final totalTax = await analysisDao.getTotalTax();
 
           expect(totalPos, 100.0);
@@ -136,7 +136,7 @@ void main() {
           type: AccountTypes.cash,
           initialBalance: const Value(1000.0)));
       await db.into(db.accounts).insert(AccountsCompanion.insert(
-          name: 'Portfolio',
+          name: 'Target',
           type: AccountTypes.portfolio,
           initialBalance: const Value(0.0)));
 
@@ -147,7 +147,8 @@ void main() {
       // Positive booking in January 2024
       await db.into(db.bookings).insert(BookingsCompanion.insert(
         date: 20240110,
-        amount: 300.0,
+        shares: 300.0,
+        value: 300.0,
         category: 'Salary',
         accountId: 1,
         notes: const Value.absent(),
@@ -156,7 +157,8 @@ void main() {
       // Negative booking in January 2024
       await db.into(db.bookings).insert(BookingsCompanion.insert(
         date: 20240115,
-        amount: -80.0,
+        shares: -80.0,
+        value: -80.0,
         category: 'Rent',
         accountId: 1,
         notes: const Value.absent(),
@@ -174,31 +176,31 @@ void main() {
         datetime: t1,
         assetId: 3,
         type: TradeTypes.buy,
-        clearingAccountValueDelta: -5.0,
-        portfolioAccountValueDelta: 5.0,
+        sourceAccountValueDelta: -5.0,
+        targetAccountValueDelta: 5.0,
         shares: 1.0,
-        pricePerShare: 1.0,
-        profitAndLossAbs: const Value(120.0),
-        profitAndLossRel: const Value(0.0),
-        tradingFee: const Value(4.0),
+        costBasis: 1.0,
+        profitAndLoss: const Value(120.0),
+        returnOnInvest: const Value(0.0),
+        fee: const Value(4.0),
         tax: const Value(1.0),
-        clearingAccountId: 1,
-        portfolioAccountId: 2,
+        sourceAccountId: 1,
+        targetAccountId: 2,
       ));
       await db.into(db.trades).insert(TradesCompanion.insert(
         datetime: t2,
         assetId: 3,
         type: TradeTypes.sell,
-        clearingAccountValueDelta: -2.0,
-        portfolioAccountValueDelta: 2.0,
+        sourceAccountValueDelta: -2.0,
+        targetAccountValueDelta: 2.0,
         shares: 1.0,
-        pricePerShare: 1.0,
-        profitAndLossAbs: const Value(-40.0),
-        profitAndLossRel: const Value(0.0),
-        tradingFee: const Value(2.0),
+        costBasis: 1.0,
+        profitAndLoss: const Value(-40.0),
+        returnOnInvest: const Value(0.0),
+        fee: const Value(2.0),
         tax: const Value(0.5),
-        clearingAccountId: 1,
-        portfolioAccountId: 2,
+        sourceAccountId: 1,
+        targetAccountId: 2,
       ));
     });
 
@@ -218,9 +220,9 @@ void main() {
 
           // bookings negative = -80.0
           // negativePnLTotal = -40.0
-          // tradingFeesTotal = 6.0 (4 + 2)
+          // feesTotal = 6.0 (4 + 2)
           // taxTotal = 1.5 (1 + 0.5)
-          // formula: bookingsTotal + negativePnLTotal - tradingFeesTotal - taxTotal
+          // formula: bookingsTotal + negativePnLTotal - feesTotal - taxTotal
           // => -80 + (-40) - 6 - 1.5 = -127.5
           expect(result, closeTo(-127.5, 0.0001));
         });
@@ -232,7 +234,7 @@ void main() {
           final result = await analysisDao.getProfitAndLossForMonth(date);
 
           // bookingsTotal = 300 + (-80) = 220
-          // tradeResultExpression = sum(profitAndLossAbs - tradingFee - tax)
+          // tradeResultExpression = sum(profitAndLoss - fee - tax)
           // trade1: 120 - 4 - 1 = 115
           // trade2: -40 - 2 - 0.5 = -42.5
           // tradeTotal = 115 + (-42.5) = 72.5
@@ -293,7 +295,8 @@ void main() {
       // Bookings that are counted in averages (isGenerated=false, excludeFromAverage=false)
       await db.into(db.bookings).insert(BookingsCompanion.insert(
         date: 20240105,
-        amount: 200.0,
+        shares: 200.0,
+        value: 200.0,
         category: 'Income',
         accountId: 1,
       ));
@@ -301,7 +304,8 @@ void main() {
       // Booking excluded from averages (excludeFromAverage = true)
       await db.into(db.bookings).insert(BookingsCompanion.insert(
         date: 20240106,
-        amount: 50.0,
+        shares: 50.0,
+        value: 50.0,
         category: 'Excluded',
         accountId: 1,
         excludeFromAverage: const Value(true),
@@ -317,29 +321,29 @@ void main() {
         datetime: start * 1000000 + 11,
         assetId: 4,
         type: TradeTypes.buy,
-        clearingAccountValueDelta: -10,
-        portfolioAccountValueDelta: 10,
+        sourceAccountValueDelta: -10,
+        targetAccountValueDelta: 10,
         shares: 1,
-        pricePerShare: 1,
-        profitAndLossAbs: const Value(120.0),
-        tradingFee: const Value(6.0),
+        costBasis: 1,
+        profitAndLoss: const Value(120.0),
+        fee: const Value(6.0),
         tax: const Value(1.5),
-        clearingAccountId: 1,
-        portfolioAccountId: 1,
+        sourceAccountId: 1,
+        targetAccountId: 1,
       ));
       await db.into(db.trades).insert(TradesCompanion.insert(
         datetime: start * 1000000 + 12,
         assetId: 4,
         type: TradeTypes.sell,
-        clearingAccountValueDelta: -5,
-        portfolioAccountValueDelta: 5,
+        sourceAccountValueDelta: -5,
+        targetAccountValueDelta: 5,
         shares: 1,
-        pricePerShare: 1,
-        profitAndLossAbs: const Value(-60.0),
-        tradingFee: const Value(2.0),
+        costBasis: 1,
+        profitAndLoss: const Value(-60.0),
+        fee: const Value(2.0),
         tax: const Value(0.5),
-        clearingAccountId: 1,
-        portfolioAccountId: 1,
+        sourceAccountId: 1,
+        targetAccountId: 1,
       ));
     });
 
@@ -359,10 +363,10 @@ void main() {
       // bookings negative sum is 0 (no negative bookings in this setup)
       const bookingsSum = 0.0;
       const negativePnL = -60.0;
-      const tradingFees = 8.0; // 6 + 2
+      const fees = 8.0; // 6 + 2
       const tax = 2.0; // 1.5 + 0.5
       final expected =
-          (bookingsSum + negativePnL - tradingFees - tax) / months;
+          (bookingsSum + negativePnL - fees - tax) / months;
 
       final result = await analysisDao.getMonthlyOutflows();
       expect(result, closeTo(expected, 1e-6));
@@ -409,37 +413,38 @@ void main() {
           name: 'Init2',
           type: AccountTypes.cash,
           initialBalance: const Value(50.0)));
-
-      // Insert booking on 20250101 amount +10
-      await db.into(db.bookings).insert(BookingsCompanion.insert(
-        date: 20250101,
-        amount: 10.0,
-        category: 'B',
-        accountId: 1,
-      ));
-
-      // Insert trade affecting clearing and portfolio values on 20250102
-      await db.into(db.assets).insert(AssetsCompanion.insert(
-          name: 'AST_BAL', type: AssetTypes.stock, tickerSymbol: 'ABAL'));
-      await db.into(db.trades).insert(TradesCompanion.insert(
-        datetime: 20250102,
-        assetId: 5,
-        type: TradeTypes.buy,
-        clearingAccountValueDelta: -5.0,
-        portfolioAccountValueDelta: 5.0,
-        shares: 1.0,
-        pricePerShare: 1.0,
-        profitAndLossAbs: const Value(0.0),
-        tradingFee: const Value(0.0),
-        tax: const Value(0.0),
-        clearingAccountId: 1,
-        portfolioAccountId: 2,
-      ));
     });
 
     test(
         'getBalanceHistory returns points for range from first booking/trade to today',
             () async {
+              // Insert booking on 20250101 amount +10
+              await db.into(db.bookings).insert(BookingsCompanion.insert(
+                date: 20250101,
+                shares: 10,
+                value: 10,
+                category: 'B',
+                accountId: 1,
+              ));
+
+              // Insert trade affecting source and target values on 20250102
+              await db.into(db.assets).insert(AssetsCompanion.insert(
+                  name: 'AST_BAL', type: AssetTypes.stock, tickerSymbol: 'ABAL'));
+              await db.into(db.trades).insert(TradesCompanion.insert(
+                datetime: 20250102,
+                assetId: 5,
+                type: TradeTypes.buy,
+                sourceAccountValueDelta: -5.0,
+                targetAccountValueDelta: 5.0,
+                shares: 1.0,
+                costBasis: 1.0,
+                profitAndLoss: const Value(0.0),
+                fee: const Value(0.0),
+                tax: const Value(0.0),
+                sourceAccountId: 1,
+                targetAccountId: 2,
+              ));
+
           final spots = await analysisDao.getBalanceHistory();
 
           // Should not be empty
@@ -466,21 +471,9 @@ void main() {
     test(
         'getBalanceHistory returns single spot with initial balance when no bookings/trades',
             () async {
-          // Create a fresh DB to isolate the case where no bookings/trades are present
-          final isolatedDb = AppDatabase(NativeDatabase.memory());
-          // insert an account so sumOfInitialBalances returns a value (100)
-          await isolatedDb.into(isolatedDb.accounts).insert(
-              AccountsCompanion.insert(
-                  name: 'Solo',
-                  type: AccountTypes.cash,
-                  initialBalance: const Value(100.0)));
-          final isolatedDao = isolatedDb.analysisDao;
-
-          final spots = await isolatedDao.getBalanceHistory();
+          final spots = await analysisDao.getBalanceHistory();
           expect(spots.length, 1);
-          expect(spots.first.y, 100.0);
-
-          await isolatedDb.close();
+          expect(spots.first.y, 150.0);
         });
   });
 }

@@ -4,75 +4,220 @@ import '../tables.dart';
 
 part 'transfers_dao.g.dart';
 
-@DriftAccessor(tables: [Transfers, Accounts])
+@DriftAccessor(tables: [Transfers, Accounts, Assets, AssetsOnAccounts])
 class TransfersDao extends DatabaseAccessor<AppDatabase> with _$TransfersDaoMixin {
   TransfersDao(super.db);
 
-  void _validateDate(int dateInt) {
-    final dateString = dateInt.toString();
-    if (dateString.length != 8) {
-      throw Exception('Date must be in yyyyMMdd format and a valid date.');
-    }
+  /// Watch transfers together with sending + receiving accounts and the asset.
+  Stream<List<TransferWithAccountsAndAsset>> watchTransfersWithAccountsAndAsset() {
+    final sending = alias(accounts, 'sending');
+    final receiving = alias(accounts, 'receiving');
 
-    final year = int.tryParse(dateString.substring(0, 4)) ?? 0;
-    final month = int.tryParse(dateString.substring(4, 6)) ?? 0;
-    final day = int.tryParse(dateString.substring(6, 8)) ?? 0;
+    final query = select(transfers).join([
+      leftOuterJoin(sending, sending.id.equalsExp(transfers.sendingAccountId)),
+      leftOuterJoin(receiving, receiving.id.equalsExp(transfers.receivingAccountId)),
+      leftOuterJoin(assets, assets.id.equalsExp(transfers.assetId)),
+    ]);
 
-    try {
-      final date = DateTime(year, month, day);
-      if (date.year != year || date.month != month || date.day != day) {
-        throw Exception('Date must be a valid date.');
-      }
-    } catch (e) {
-      throw Exception('Date must be a valid date.');
-    }
+    // Only show transfers where both accounts are not archived
+    query.where(sending.isArchived.equals(false) & receiving.isArchived.equals(false));
+
+    query.orderBy([
+      OrderingTerm.desc(transfers.date),
+      OrderingTerm.desc(transfers.shares),
+    ]);
+
+    return query.watch().map((rows) {
+      return rows.map((row) {
+        return TransferWithAccountsAndAsset(
+          transfer: row.readTable(transfers),
+          sendingAccount: row.readTable(sending),
+          receivingAccount: row.readTable(receiving),
+          asset: row.readTable(assets),
+        );
+      }).toList();
+    });
   }
 
-  Future<void> validate(Transfer transfer) async {
-    _validateDate(transfer.date);
-    if (transfer.amount <= 0) {
-      throw Exception('Amount must be greater than 0.');
-    }
+  // Simple helpers (non-transactional)
+  Future<int> _addTransfer(TransfersCompanion entry) => into(transfers).insert(entry);
 
-    if (transfer.sendingAccountId == transfer.receivingAccountId) {
-      throw Exception('Sending and receiving account cannot be the same.');
-    }
+  Future<bool> _updateTransfer(TransfersCompanion entry) => update(transfers).replace(entry);
 
-    final sendingAccount = await (select(accounts)..where((a) => a.id.equals(transfer.sendingAccountId))).getSingle();
-    if (sendingAccount.type != AccountTypes.cash) {
-      throw Exception('Sending account must be of type cash.');
-    }
+  Future<int> _deleteTransfer(int id) =>
+      (delete(transfers)..where((t) => t.id.equals(id))).go();
 
-    final receivingAccount = await (select(accounts)..where((a) => a.id.equals(transfer.receivingAccountId))).getSingle();
-    if (receivingAccount.type != AccountTypes.cash) {
-      throw Exception('Receiving account must be of type cash.');
-    }
-  }
+  Future<Transfer> getTransfer(int id) =>
+      (select(transfers)..where((t) => t.id.equals(id))).getSingle();
 
   Future<List<Transfer>> getAllTransfers() => select(transfers).get();
 
-  Future<int> _addTransfer(TransfersCompanion entry) => into(transfers).insert(entry);
-
-  Future<int> _deleteTransfer(int id) => (delete(transfers)..where((tbl) => tbl.id.equals(id))).go();
-
-  Future<Transfer> getTransfer(int id) => (select(transfers)..where((tbl) => tbl.id.equals(id))).getSingle();
-
-  Future<int> createTransferAndUpdateAccounts(TransfersCompanion entry) {
+  /// Create a transfer and apply its effects:
+  /// - subtract value from sending account balance
+  /// - add value to receiving account balance
+  /// - adjust AssetsOnAccounts: subtract shares/value from sending account, add shares/value to receiving account
+  Future<void> createTransfer(TransfersCompanion transfer) {
     return transaction(() async {
-      final transferId = await _addTransfer(entry);
-      final amount = entry.amount.value;
-      await db.accountsDao.updateBalance(entry.sendingAccountId.value, -amount);
-      await db.accountsDao.updateBalance(entry.receivingAccountId.value, amount);
-      return transferId;
+      await _addTransfer(transfer);
+
+      final sendingId = transfer.sendingAccountId.value;
+      final receivingId = transfer.receivingAccountId.value;
+      final assetId = transfer.assetId.value;
+      final shares = transfer.shares.value;
+      final value = transfer.value.value;
+
+      // Update balances
+      await db.accountsDao.updateBalance(sendingId, -value);
+      await db.accountsDao.updateBalance(receivingId, value);
+
+      // Update AssetsOnAccounts
+      await db.assetsOnAccountsDao.updateAOA(AssetOnAccount(
+        accountId: sendingId,
+        assetId: assetId,
+        value: -value,
+        shares: -shares,
+        netCostBasis: 0,
+        brokerCostBasis: 0,
+        buyFeeTotal: 0,
+      ));
+
+      await db.assetsOnAccountsDao.updateAOA(AssetOnAccount(
+        accountId: receivingId,
+        assetId: assetId,
+        value: value,
+        shares: shares,
+        netCostBasis: 0,
+        brokerCostBasis: 0,
+        buyFeeTotal: 0,
+      ));
+
+      // Note: global Assets (assets table) represent totals across accounts.
+      // A transfer between accounts does not change the global totals, so we do not update assets table here.
     });
   }
 
-  Future<void> deleteTransferAndUpdateAccounts(int id) {
+  /// Update a transfer. Implementation:
+  /// - replace the transfer row
+  /// - reverse the effects of the old transfer (restore sending account, remove from receiving)
+  /// - apply the effects of the new transfer
+  /// Doing it this way keeps logic simple and correct for all cases (changed accounts, changed asset, changed amount).
+  Future<void> updateTransfer(Transfer oldTransfer, TransfersCompanion newTransfer) {
+    return transaction(() async {
+      // Update the DB row first
+      await _updateTransfer(newTransfer);
+
+      // Reverse old effects
+      final oldSending = oldTransfer.sendingAccountId;
+      final oldReceiving = oldTransfer.receivingAccountId;
+      final oldAssetId = oldTransfer.assetId;
+      final oldShares = oldTransfer.shares;
+      final oldValue = oldTransfer.value;
+
+      // Restore balances: sending gets back its oldValue, receiving loses the oldValue
+      await db.accountsDao.updateBalance(oldSending, oldValue);
+      await db.accountsDao.updateBalance(oldReceiving, -oldValue);
+
+      // Restore AOAs for old transfer
+      await db.assetsOnAccountsDao.updateAOA(AssetOnAccount(
+        accountId: oldSending,
+        assetId: oldAssetId,
+        value: oldValue,
+        shares: oldShares,
+        netCostBasis: 0,
+        brokerCostBasis: 0,
+        buyFeeTotal: 0,
+      ));
+
+      await db.assetsOnAccountsDao.updateAOA(AssetOnAccount(
+        accountId: oldReceiving,
+        assetId: oldAssetId,
+        value: -oldValue,
+        shares: -oldShares,
+        netCostBasis: 0,
+        brokerCostBasis: 0,
+        buyFeeTotal: 0,
+      ));
+
+      // Apply new effects
+      final newSending = newTransfer.sendingAccountId.value;
+      final newReceiving = newTransfer.receivingAccountId.value;
+      final newAssetId = newTransfer.assetId.value;
+      final newShares = newTransfer.shares.value;
+      final newValue = newTransfer.value.value;
+
+      await db.accountsDao.updateBalance(newSending, -newValue);
+      await db.accountsDao.updateBalance(newReceiving, newValue);
+
+      await db.assetsOnAccountsDao.updateAOA(AssetOnAccount(
+        accountId: newSending,
+        assetId: newAssetId,
+        value: -newValue,
+        shares: -newShares,
+        netCostBasis: 0,
+        brokerCostBasis: 0,
+        buyFeeTotal: 0,
+      ));
+
+      await db.assetsOnAccountsDao.updateAOA(AssetOnAccount(
+        accountId: newReceiving,
+        assetId: newAssetId,
+        value: newValue,
+        shares: newShares,
+        netCostBasis: 0,
+        brokerCostBasis: 0,
+        buyFeeTotal: 0,
+      ));
+
+      // As with create, global Assets don't change for transfers between accounts.
+    });
+  }
+
+  /// Delete a transfer and reverse its effects.
+  Future<void> deleteTransfer(int id) {
     return transaction(() async {
       final transfer = await getTransfer(id);
+
+      // Reverse effects
+      await db.accountsDao.updateBalance(transfer.sendingAccountId, transfer.value);
+      await db.accountsDao.updateBalance(transfer.receivingAccountId, -transfer.value);
+
+      await db.assetsOnAccountsDao.updateAOA(AssetOnAccount(
+        accountId: transfer.sendingAccountId,
+        assetId: transfer.assetId,
+        value: transfer.value,
+        shares: transfer.shares,
+        netCostBasis: 0,
+        brokerCostBasis: 0,
+        buyFeeTotal: 0,
+      ));
+
+      await db.assetsOnAccountsDao.updateAOA(AssetOnAccount(
+        accountId: transfer.receivingAccountId,
+        assetId: transfer.assetId,
+        value: -transfer.value,
+        shares: -transfer.shares,
+        netCostBasis: 0,
+        brokerCostBasis: 0,
+        buyFeeTotal: 0,
+      ));
+
+      // Delete row
       await _deleteTransfer(id);
-      await db.accountsDao.updateBalance(transfer.sendingAccountId, transfer.amount);
-      await db.accountsDao.updateBalance(transfer.receivingAccountId, -transfer.amount);
     });
   }
+}
+
+/// Convenience data holder for a transfer with both accounts and the asset.
+class TransferWithAccountsAndAsset {
+  final Transfer transfer;
+  final Account sendingAccount;
+  final Account receivingAccount;
+  final Asset asset;
+
+  TransferWithAccountsAndAsset({
+    required this.transfer,
+    required this.sendingAccount,
+    required this.receivingAccount,
+    required this.asset,
+  });
 }

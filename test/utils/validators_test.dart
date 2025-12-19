@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/database/tables.dart';
-import 'package:xfin/validators.dart';
+import 'package:xfin/utils/validators.dart';
 
 void main() {
   late Validator validator;
@@ -17,12 +17,12 @@ void main() {
 
   group('validateNotInitial', () {
     test('returns error when value is null', () {
-      expect(validator.validateNotInitial(null), l10n.pleaseEnterAValue);
+      expect(validator.validateNotInitial(null), l10n.requiredField);
     });
 
     test('returns error when value is empty string or whitespace', () {
-      expect(validator.validateNotInitial(''), l10n.pleaseEnterAValue);
-      expect(validator.validateNotInitial(' '), l10n.pleaseEnterAValue);
+      expect(validator.validateNotInitial(''), l10n.requiredField);
+      expect(validator.validateNotInitial(' '), l10n.requiredField);
     });
 
     test('returns null when value is non-empty', () {
@@ -33,12 +33,12 @@ void main() {
 
   group('validateDecimal', () {
     test('propagates not-initial error (null)', () {
-      expect(validator.validateDecimal(null), l10n.pleaseEnterAValue);
+      expect(validator.validateDecimal(null), l10n.requiredField);
     });
 
     test('propagates not-initial error (empty or whitespace)', () {
-      expect(validator.validateDecimal(''), l10n.pleaseEnterAValue);
-      expect(validator.validateDecimal(' '), l10n.pleaseEnterAValue);
+      expect(validator.validateDecimal(''), l10n.requiredField);
+      expect(validator.validateDecimal(' '), l10n.requiredField);
     });
 
     test('returns invalidInput for non-numeric string', () {
@@ -61,7 +61,7 @@ void main() {
   group('validateDecimalGreaterZero', () {
     test('propagates decimal errors (null)', () {
       expect(
-          validator.validateDecimalGreaterZero(null), l10n.pleaseEnterAValue);
+          validator.validateDecimalGreaterZero(null), l10n.requiredField);
     });
 
     test('propagates decimal errors (non-numeric)', () {
@@ -87,7 +87,7 @@ void main() {
   group('validateDecimalGreaterEqualZero', () {
     test('propagates decimal errors', () {
       expect(validator.validateDecimalGreaterEqualZero(null),
-          l10n.pleaseEnterAValue);
+          l10n.requiredField);
       expect(
           validator.validateDecimalGreaterEqualZero('nope'), l10n.invalidInput);
     });
@@ -106,9 +106,38 @@ void main() {
     });
   });
 
+  group('validateDecimalNotZero', () {
+    test('propagates not-initial error (null/empty/whitespace)', () {
+      expect(validator.validateDecimalNotZero(null), l10n.requiredField);
+      expect(validator.validateDecimalNotZero(''), l10n.requiredField);
+      expect(validator.validateDecimalNotZero(' '), l10n.requiredField);
+    });
+
+    test('returns invalidInput for non-numeric strings', () {
+      expect(validator.validateDecimalNotZero('abc'), l10n.invalidInput);
+      expect(validator.validateDecimalNotZero('12a'), l10n.invalidInput);
+      expect(validator.validateDecimalNotZero('1,23'),
+          l10n.invalidInput); // comma not accepted by double.parse
+    });
+
+    test('returns error for zero (including -0 variants)', () {
+      expect(validator.validateDecimalNotZero('0'), l10n.valueMustNotBeZero);
+      expect(validator.validateDecimalNotZero('0.0'), l10n.valueMustNotBeZero);
+      expect(validator.validateDecimalNotZero('-0'), l10n.valueMustNotBeZero);
+      expect(validator.validateDecimalNotZero('-0.00'), l10n.valueMustNotBeZero);
+    });
+
+    test('accepts non-zero numbers (positive, negative, scientific)', () {
+      expect(validator.validateDecimalNotZero('0.0001'), isNull);
+      expect(validator.validateDecimalNotZero('1'), isNull);
+      expect(validator.validateDecimalNotZero('-1.2'), isNull);
+      expect(validator.validateDecimalNotZero('1e3'), isNull); // scientific notation
+    });
+  });
+
   group('validateMaxTwoDecimals', () {
     test('propagates decimal errors', () {
-      expect(validator.validateMaxTwoDecimals(null), l10n.pleaseEnterAValue);
+      expect(validator.validateMaxTwoDecimals(null), l10n.requiredField);
       expect(validator.validateMaxTwoDecimals('bad'), l10n.invalidInput);
     });
 
@@ -136,7 +165,7 @@ void main() {
 
   group('validateMaxTwoDecimalsNotZero', () {
     test('propagates decimal errors', () {
-      expect(validator.validateMaxTwoDecimalsNotZero(null), l10n.pleaseEnterAValue);
+      expect(validator.validateMaxTwoDecimalsNotZero(null), l10n.requiredField);
       expect(validator.validateMaxTwoDecimalsNotZero('bad'), l10n.invalidInput);
     });
 
@@ -164,7 +193,7 @@ void main() {
   group('validateMaxTwoDecimalsGreaterZero', () {
     test('propagates greater-zero errors', () {
       expect(validator.validateMaxTwoDecimalsGreaterZero(null),
-          l10n.pleaseEnterAValue);
+          l10n.requiredField);
       expect(validator.validateMaxTwoDecimalsGreaterZero('bad'),
           l10n.invalidInput);
       expect(validator.validateMaxTwoDecimalsGreaterZero('0'),
@@ -188,7 +217,7 @@ void main() {
   group('validateMaxTwoDecimalsGreaterEqualZero', () {
     test('propagates greater-equal-zero errors', () {
       expect(validator.validateMaxTwoDecimalsGreaterEqualZero(null),
-          l10n.pleaseEnterAValue);
+          l10n.requiredField);
       expect(validator.validateMaxTwoDecimalsGreaterEqualZero('bad'),
           l10n.invalidInput);
       expect(validator.validateMaxTwoDecimalsGreaterEqualZero('-1'),
@@ -214,7 +243,7 @@ void main() {
       // null and non-numeric should be caught by validateDecimalGreaterZero
       expect(
           validator.validateSufficientSharesToSell(null, 10.0, TradeTypes.sell),
-          l10n.pleaseEnterAValue);
+          l10n.requiredField);
       expect(
           validator.validateSufficientSharesToSell(
               'foo', 10.0, TradeTypes.sell),
@@ -257,46 +286,46 @@ void main() {
     });
   });
 
-  group('validateUniqueAccountName', () {
+  group('validateIsUnique', () {
     test('propagates not-initial error (null)', () {
-      expect(validator.validateUniqueAccountName(
+      expect(validator.validateIsUnique(
         null,
         ['Cash'],
-      ), l10n.pleaseEnterAValue);
+      ), l10n.requiredField);
     });
 
     test('propagates not-initial error (empty or whitespace)', () {
-      expect(validator.validateUniqueAccountName(
+      expect(validator.validateIsUnique(
         '',
         ['Cash'],
-      ), l10n.pleaseEnterAValue);
-      expect(validator.validateUniqueAccountName(
+      ), l10n.requiredField);
+      expect(validator.validateIsUnique(
         ' ',
         ['Cash'],
-      ), l10n.pleaseEnterAValue);
+      ), l10n.requiredField);
     });
 
     test('returns error when name already exists', () {
-      expect(validator.validateUniqueAccountName(
+      expect(validator.validateIsUnique(
         'Cash',
         ['Cash', 'Savings'],
-      ), l10n.accountAlreadyExists);
+      ), l10n.valueAlreadyExists);
     });
 
     test('trims whitespace before comparing', () {
-      expect(validator.validateUniqueAccountName(
+      expect(validator.validateIsUnique(
         '  Cash  ',
         ['Cash'],
-      ), l10n.accountAlreadyExists);
+      ), l10n.valueAlreadyExists);
     });
 
     test('returns null for a unique name', () {
-      expect(validator.validateUniqueAccountName(
+      expect(validator.validateIsUnique(
         'Investments',
         ['Cash', 'Savings'],
       ), isNull);
 
-      expect(validator.validateUniqueAccountName(
+      expect(validator.validateIsUnique(
         'Cash',
         [],
       ), isNull);
@@ -315,7 +344,7 @@ void main() {
 
   group('validateDate', () {
     test('date is null', () {
-      expect(validator.validateDate(null), l10n.pleaseEnterAValue);
+      expect(validator.validateDate(null), l10n.requiredField);
     });
 
     test('date is in the past', () {
@@ -330,4 +359,5 @@ void main() {
       expect(validator.validateDate(DateTime(2099)), l10n.dateCannotBeInTheFuture);
     });
   });
+
 }

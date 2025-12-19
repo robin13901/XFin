@@ -1,272 +1,541 @@
-import 'dart:ui';
-
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:xfin/database/app_database.dart';
-import 'package:xfin/database/daos/accounts_dao.dart';
 import 'package:xfin/database/daos/bookings_dao.dart';
 import 'package:xfin/database/tables.dart';
-import 'package:xfin/providers/base_currency_provider.dart';
 
 void main() {
   late AppDatabase db;
   late BookingsDao bookingsDao;
-  late AccountsDao accountsDao;
-  late BaseCurrencyProvider currencyProvider;
+  late int baseCurrencyAssetId;
+  late int accountId;
 
-  setUpAll(() {
-    TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() async {
+    // Make sure prefs are clean (some DAOs/tests rely on SharedPreferences)
     SharedPreferences.setMockInitialValues({});
-  });
 
-  setUp(() {
     db = AppDatabase(NativeDatabase.memory());
     bookingsDao = db.bookingsDao;
-    accountsDao = db.accountsDao;
+
+    // Insert base currency asset
+    baseCurrencyAssetId =
+        await db.into(db.assets).insert(AssetsCompanion.insert(
+              name: 'EUR',
+              type: AssetTypes.fiat,
+              tickerSymbol: 'EUR',
+            ));
+
+    accountId = await db.into(db.accounts).insert(AccountsCompanion.insert(
+          name: 'Test Account',
+          type: AccountTypes.cash,
+        ));
+
+    await db.into(db.assetsOnAccounts).insert(AssetsOnAccountsCompanion.insert(
+        accountId: accountId, assetId: baseCurrencyAssetId));
   });
 
   tearDown(() async {
     await db.close();
   });
 
-  group('BookingsDao Tests', () {
-    late int accountId1;
-    late int accountId2;
-    late int archivedAccountId;
+  group('BookingsDao basic CRUD and streams', () {
+    test('createBooking persists booking and updates account balance',
+        () async {
+      final booking = BookingsCompanion.insert(
+        date: 20250101,
+        shares: 50.0,
+        category: 'Salary',
+        accountId: accountId,
+        assetId: Value(baseCurrencyAssetId),
+        value: 50.0,
+      );
 
-    setUp(() async {
-      const locale = Locale('en');
-      currencyProvider = BaseCurrencyProvider();
-      await currencyProvider.initialize(locale);
+      await bookingsDao.createBooking(booking);
 
-      // Create base currency asset
-      await db.into(db.assets).insert(
-          const AssetsCompanion(
-              name: Value('EUR'),
-              type: Value(AssetTypes.currency),
-              tickerSymbol: Value('EUR'),
-              value: Value(0),
-              sharesOwned: Value(0),
-              brokerCostBasis: Value(1),
-              netCostBasis: Value(1),
-              buyFeeTotal: Value(0)));
+      // Booking should exist in DB
+      final all = await bookingsDao.getAllBookings();
+      expect(all.length, 1);
+      final stored = all.first;
+      expect(stored.shares, 50.0);
+      expect(stored.accountId, accountId);
+      expect(stored.assetId, baseCurrencyAssetId);
+      expect(stored.value, 50.0);
 
-      accountId1 = await accountsDao.createAccount(const AccountsCompanion(
-        name: Value('Account 1'),
-        balance: Value(1000),
-        initialBalance: Value(1000),
-        type: Value(AccountTypes.cash),
-      ));
-      accountId2 = await accountsDao.createAccount(const AccountsCompanion(
-        name: Value('Account 2'),
-        balance: Value(500),
-        initialBalance: Value(500),
-        type: Value(AccountTypes.cash),
-      ));
-      archivedAccountId = await accountsDao.createAccount(const AccountsCompanion(
-        name: Value('Archived Account'),
-        balance: Value(0),
-        initialBalance: Value(0),
-        type: Value(AccountTypes.cash),
-        isArchived: Value(true),
-      ));
+      // Account balance should have been incremented by value (+50)
+      final acc = await (db.select(db.accounts)
+            ..where((t) => t.id.equals(accountId)))
+          .getSingle();
+      expect(acc.balance, closeTo(50.0, 1e-9));
     });
 
-    test('watchBookingsWithAccount filters archived and orders correctly', () async {
-      // Arrange
-      await bookingsDao.createBooking(BookingsCompanion(
-          date: const Value(20230101),
-          category: const Value('Booking 1'),
-          amount: const Value(100),
-          isGenerated: const Value(false),
-          accountId: Value(accountId1)));
-      await bookingsDao.createBooking(BookingsCompanion(
-          date: const Value(20230102),
-          category: const Value('Booking 2'),
-          amount: const Value(200),
-          isGenerated: const Value(false),
-          accountId: Value(accountId1)));
-      await bookingsDao.createBooking(BookingsCompanion(
-          date: const Value(20230102),
-          category: const Value('Booking 3'),
-          amount: const Value(50),
-          isGenerated: const Value(false),
-          accountId: Value(accountId2)));
-      await bookingsDao.createBooking(BookingsCompanion(
-          date: const Value(20230103),
-          category: const Value('Archived Booking'),
-          amount: const Value(50),
-          isGenerated: const Value(false),
-          accountId: Value(archivedAccountId)));
+    test('getBooking returns correct booking; getAllBookings returns list',
+        () async {
+      final id = await db.into(db.bookings).insert(BookingsCompanion.insert(
+            date: 20240101,
+            shares: -20.0,
+            category: 'Food',
+            accountId: accountId,
+            assetId: Value(baseCurrencyAssetId),
+            value: -20.0,
+          ));
 
-      // Act
-      final stream = bookingsDao.watchBookingsWithAccount();
-      final result = await stream.first;
+      final fetched = await bookingsDao.getBooking(id);
+      expect(fetched.id, id);
+      expect(fetched.shares, -20.0);
 
-      // Assert
-      expect(result.length, 3);
-      expect(result.any((b) => b.booking.category == 'Archived Booking'), isFalse);
-      expect(result[0].booking.date, 20230102);
-      expect(result[0].booking.amount, 200); // Higher amount first for same date
-      expect(result[1].booking.date, 20230102);
-      expect(result[1].booking.amount, 50);
-      expect(result[2].booking.date, 20230101);
+      final all = await bookingsDao.getAllBookings();
+      expect(all.any((b) => b.id == id), isTrue);
     });
 
-    test('findMergeableBooking finds a suitable booking', () async {
-      // Arrange
-      final companion = BookingsCompanion(
-          date: const Value(20230501),
-          category: const Value('Groceries'),
-          amount: const Value(-50.0),
-          accountId: Value(accountId1),
-          excludeFromAverage: const Value(false),
-          isGenerated: const Value(false));
+    test('watchDistinctCategories returns unique categories', () async {
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+            date: 20240101,
+            shares: 10.0,
+            category: 'X',
+            accountId: accountId,
+            assetId: Value(baseCurrencyAssetId),
+            value: 10.0,
+          ));
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+            date: 20240102,
+            shares: 20.0,
+            category: 'Y',
+            accountId: accountId,
+            assetId: Value(baseCurrencyAssetId),
+            value: 20.0,
+          ));
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+            date: 20240103,
+            shares: 30.0,
+            category: 'X',
+            // duplicate category
+            accountId: accountId,
+            assetId: Value(baseCurrencyAssetId),
+            value: 30.0,
+          ));
 
-      await bookingsDao.createBooking(companion.copyWith(notes: const Value('some note'))); // Not mergeable
-      await bookingsDao.createBooking(companion.copyWith(amount: const Value(50.0))); // Not mergeable (different sign)
-      await bookingsDao.createBooking(companion); // This one is mergeable
-
-      // Act
-      final mergeable = await bookingsDao.findMergeableBooking(companion.copyWith(amount: const Value(-25.0)));
-
-      // Assert
-      expect(mergeable, isNotNull);
-      expect(mergeable!.amount, -50.0);
+      final categories = await bookingsDao.watchDistinctCategories().first;
+      // Should contain X and Y exactly once (ordering is not guaranteed)
+      expect(categories.toSet(), equals({'X', 'Y'}));
     });
-    
-    test('findMergeableBooking returns null when no suitable booking is found', () async {
-       // Arrange
-      final companion = BookingsCompanion(
-          date: const Value(20230501),
-          category: const Value('Groceries'),
-          amount: const Value(-50.0),
-          accountId: Value(accountId1),
-          excludeFromAverage: const Value(false),
-          isGenerated: const Value(false));
-          
-       // Act
-      final mergeable = await bookingsDao.findMergeableBooking(companion);
+  });
 
-      // Assert
-      expect(mergeable, isNull);
-    });
+  group('BookingsDao - findMergeableBooking', () {
+    test('finds mergeable booking when matching (same sign)', () async {
+      // existing booking: positive amount
+      final existingId =
+          await db.into(db.bookings).insert(BookingsCompanion.insert(
+                date: 20240202,
+                shares: 100.0,
+                category: 'Cat',
+                accountId: accountId,
+                assetId: Value(baseCurrencyAssetId),
+                value: 100.0,
+              ));
 
-    test('watchDistinctCategorys returns unique, sorted categorys', () async {
-      // Arrange
-      await bookingsDao.createBooking(BookingsCompanion(
-          date: const Value(20230101),
-          category: const Value('Groceries'),
-          amount: const Value(100),
-          isGenerated: const Value(false),
-          accountId: Value(accountId1)));
-      await bookingsDao.createBooking(BookingsCompanion(
-          date: const Value(20230102),
-          category: const Value('Salary'),
-          amount: const Value(200),
-          isGenerated: const Value(false),
-          accountId: Value(accountId1)));
-      await bookingsDao.createBooking(BookingsCompanion(
-          date: const Value(20230103),
-          category: const Value('Groceries'),
-          amount: const Value(50),
-          isGenerated: const Value(false),
-          accountId: Value(accountId2)));
+      final candidate = BookingsCompanion.insert(
+        date: 20240202,
+        shares: 50.0,
+        // same sign (positive)
+        category: 'Cat',
+        accountId: accountId,
+        assetId: Value(baseCurrencyAssetId),
+        value: 50.0,
+        excludeFromAverage: const Value(false),
+      );
 
-      // Act
-      final stream = bookingsDao.watchDistinctCategories();
-      final result = await stream.first;
-
-      // Assert
-      expect(result, hasLength(2));
-      expect(result, containsAllInOrder(['Groceries', 'Salary']));
+      final merged = await bookingsDao.findMergeableBooking(candidate);
+      expect(merged, isNotNull);
+      expect(merged!.id, existingId);
     });
 
-    test('createBookingAndUpdateAccount works correctly', () async {
-      // Arrange
-      final companion = BookingsCompanion(
-          date: const Value(20230101),
-          category: const Value('Salary'),
-          amount: const Value(500),
-          isGenerated: const Value(false),
-          accountId: Value(accountId1));
+    test('does not merge when sign differs or notes present', () async {
+      // existing booking positive
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+            date: 20240303,
+            shares: 40.0,
+            category: 'C2',
+            accountId: accountId,
+            assetId: Value(baseCurrencyAssetId),
+            value: 40.0,
+          ));
 
-      // Act
-      await bookingsDao.createBooking(companion);
+      // candidate is negative -> should not match
+      final candidateNeg = BookingsCompanion.insert(
+        date: 20240303,
+        shares: -5.0,
+        category: 'C2',
+        accountId: accountId,
+        assetId: Value(baseCurrencyAssetId),
+        value: -5.0,
+        excludeFromAverage: const Value(false),
+      );
 
-      // Assert
-      final booking = await bookingsDao.getBooking(1);
-      final account = await accountsDao.getAccount(accountId1);
-      expect(booking.category, 'Salary');
-      expect(account.balance, 1500); // 1000 + 500
+      final r1 = await bookingsDao.findMergeableBooking(candidateNeg);
+      expect(r1, isNull);
+
+      // candidate with notes (not null) should also not match existing
+      final candidateWithNotes = BookingsCompanion(
+        date: const Value(20240303),
+        shares: const Value(10.0),
+        category: const Value('C2'),
+        accountId: Value(accountId),
+        assetId: Value(baseCurrencyAssetId),
+        value: const Value(10.0),
+        notes: const Value('some note'),
+        excludeFromAverage: const Value(false),
+      );
+      final r2 = await bookingsDao.findMergeableBooking(candidateWithNotes);
+      expect(r2, isNull);
+    });
+  });
+
+  group('BookingsDao - watchBookingsWithAccountAndAsset', () {
+    test(
+        'emits bookings joined with account and asset for non-archived accounts',
+        () async {
+      // create two accounts, one archived
+      final acc1 = await db.into(db.accounts).insert(AccountsCompanion.insert(
+            name: 'Active',
+            type: AccountTypes.cash,
+            isArchived: const Value(false),
+          ));
+      final acc2 = await db.into(db.accounts).insert(AccountsCompanion.insert(
+            name: 'ArchivedAcc',
+            type: AccountTypes.cash,
+            isArchived: const Value(true),
+          ));
+
+      // booking for active account
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+            date: 20250101,
+            shares: 11.0,
+            category: 'J1',
+            accountId: acc1,
+            value: 11.0,
+            excludeFromAverage: const Value(false),
+          ));
+
+      // booking for archived account (should be excluded)
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+            date: 20250102,
+            shares: 22.0,
+            category: 'J2',
+            accountId: acc2,
+            value: 22.0,
+            excludeFromAverage: const Value(false),
+          ));
+
+      // Get first emission of the stream
+      final rows = await bookingsDao.watchBookingsWithAccountAndAsset().first;
+
+      // Should contain only the active booking
+      expect(rows.length, 1);
+      final row = rows.first;
+      expect(row.booking.accountId, acc1);
+      expect(row.account.id, acc1);
+      expect(row.asset.id, baseCurrencyAssetId);
+    });
+  });
+
+  group('BookingsDao - updateBooking (4 scenarios)', () {
+    test('same account & same asset updates booking and account by delta',
+        () async {
+      // original booking: amount=10, base=10
+      final id = await db.into(db.bookings).insert(BookingsCompanion.insert(
+            date: 20240101,
+            shares: 10.0,
+            category: 'Cat',
+            accountId: accountId,
+            assetId: Value(baseCurrencyAssetId),
+            value: 10.0,
+          ));
+
+      final old = await bookingsDao.getBooking(id);
+
+      // new booking: same account & same asset, amount=15 base=15
+      final updatedCompanion = BookingsCompanion(
+        id: Value(id),
+        date: const Value(20240101),
+        shares: const Value(15.0),
+        category: const Value('Cat'),
+        accountId: Value(accountId),
+        assetId: Value(baseCurrencyAssetId),
+        value: const Value(15.0),
+      );
+
+      await bookingsDao.updateBooking(old, updatedCompanion);
+
+      // booking updated in DB
+      final changed = await bookingsDao.getBooking(id);
+      expect(changed.shares, 15.0);
+      expect(changed.value, 15.0);
+
+      // account balance changed by delta (15 - 10) = +5
+      final acc = await (db.select(db.accounts)
+            ..where((t) => t.id.equals(accountId)))
+          .getSingle();
+      expect(acc.balance, closeTo(5.0, 1e-9));
     });
 
-    test('updateBookingAndUpdateAccount handles same account', () async {
-      // Arrange
-      await bookingsDao.createBooking(BookingsCompanion(
-          date: const Value(20230101),
-          category: const Value('Initial'),
-          amount: const Value(100),
-          isGenerated: const Value(false),
-          accountId: Value(accountId1)));
-      final oldBooking = await bookingsDao.getBooking(1);
-      final newCompanion = oldBooking.toCompanion(true).copyWith(amount: const Value(-50));
-      
-      // Act
-      await bookingsDao.updateBooking(oldBooking, newCompanion);
+    test(
+        'same account & different asset moves asset but account balance adjusted properly',
+        () async {
+      final assetOld = await db.into(db.assets).insert(AssetsCompanion.insert(
+            name: 'OLD',
+            type: AssetTypes.stock,
+            tickerSymbol: 'OLD',
+          ));
+      final assetNew = await db.into(db.assets).insert(AssetsCompanion.insert(
+            name: 'NEW',
+            type: AssetTypes.stock,
+            tickerSymbol: 'NEW',
+          ));
 
-      // Assert
-      final updatedBooking = await bookingsDao.getBooking(1);
-      final account = await accountsDao.getAccount(accountId1);
-      expect(updatedBooking.amount, -50);
-      // Initial: 1000 + 100 = 1100. Update: 1100 - 100 (old) + (-50) (new) = 950
-      // Or delta: -50 - 100 = -150. Balance: 1100 - 150 = 950.
-      expect(account.balance, 950);
+      await db.into(db.assetsOnAccounts).insert(
+          AssetsOnAccountsCompanion.insert(
+              accountId: accountId, assetId: assetOld));
+      await db.into(db.assetsOnAccounts).insert(
+          AssetsOnAccountsCompanion.insert(
+              accountId: accountId, assetId: assetNew));
+
+      // original booking uses OLD
+      final id = await db.into(db.bookings).insert(BookingsCompanion.insert(
+            date: 20240202,
+            shares: 5.0,
+            category: 'Swap',
+            accountId: accountId,
+            assetId: Value(assetOld),
+            value: 5.0,
+            excludeFromAverage: const Value(false),
+          ));
+
+      final old = await bookingsDao.getBooking(id);
+
+      // new booking keeps same account but uses NEW asset and amount 12 base 12
+      final updated = BookingsCompanion(
+        id: Value(id),
+        date: const Value(20240202),
+        shares: const Value(12.0),
+        category: const Value('Swap'),
+        accountId: Value(accountId),
+        assetId: Value(assetNew),
+        value: const Value(12.0),
+        excludeFromAverage: const Value(false),
+      );
+
+      await bookingsDao.updateBooking(old, updated);
+
+      final changed = await bookingsDao.getBooking(id);
+      expect(changed.assetId, assetNew);
+      expect(changed.shares, 12.0);
+
+      // account balance should have changed by base delta (12 - 5) = +7
+      final acc = await (db.select(db.accounts)
+            ..where((t) => t.id.equals(accountId)))
+          .getSingle();
+      expect(acc.balance, closeTo(7.0, 1e-9));
     });
-    
-    test('updateBookingAndUpdateAccount handles different accounts', () async {
-      // Arrange
-       await bookingsDao.createBooking(BookingsCompanion(
-          date: const Value(20230101),
-          category: const Value('Initial'),
-          amount: const Value(100),
-          isGenerated: const Value(false),
-          accountId: Value(accountId1)));
-      final oldBooking = await bookingsDao.getBooking(1);
-      final newCompanion = oldBooking.toCompanion(true).copyWith(accountId: Value(accountId2));
 
-      // Act
-      await bookingsDao.updateBooking(oldBooking, newCompanion);
+    test('different accounts & same asset moves amount between accounts',
+        () async {
+      final accOld = await db.into(db.accounts).insert(AccountsCompanion.insert(
+            name: 'From',
+            type: AccountTypes.cash,
+            balance: const Value(300.0),
+          ));
+      final accNew = await db.into(db.accounts).insert(AccountsCompanion.insert(
+            name: 'To',
+            type: AccountTypes.cash,
+            balance: const Value(400.0),
+          ));
 
-      // Assert
-      final account1 = await accountsDao.getAccount(accountId1);
-      final account2 = await accountsDao.getAccount(accountId2);
-      expect(account1.balance, 1000); // 1100 - 100
-      expect(account2.balance, 600); // 500 + 100
+      await db.into(db.assetsOnAccounts).insert(
+          AssetsOnAccountsCompanion.insert(
+              accountId: accOld,
+              assetId: baseCurrencyAssetId,
+              shares: const Value(300),
+              value: const Value(300)));
+      await db.into(db.assetsOnAccounts).insert(
+          AssetsOnAccountsCompanion.insert(
+              accountId: accNew,
+              assetId: baseCurrencyAssetId,
+              shares: const Value(400),
+              value: const Value(400)));
+
+      // booking originally on accOld
+      final id = await db.into(db.bookings).insert(BookingsCompanion.insert(
+            date: 20240303,
+            shares: 8.0,
+            category: 'Move',
+            accountId: accOld,
+            assetId: Value(baseCurrencyAssetId),
+            value: 8.0,
+          ));
+
+      final old = await bookingsDao.getBooking(id);
+
+      // move to accNew, same asset, amount -> 12 base 12
+      final updated = BookingsCompanion(
+        id: Value(id),
+        date: const Value(20240303),
+        shares: const Value(12.0),
+        category: const Value('Move'),
+        accountId: Value(accNew),
+        assetId: Value(baseCurrencyAssetId),
+        value: const Value(12.0),
+      );
+
+      await bookingsDao.updateBooking(old, updated);
+
+      // old account should have decreased by old base (-8) => 292
+      final oldAcc = await (db.select(db.accounts)
+            ..where((t) => t.id.equals(accOld)))
+          .getSingle();
+      expect(oldAcc.balance, closeTo(292.0, 1e-9));
+
+      // new account should have increased by new base (+12) => 412
+      final newAcc = await (db.select(db.accounts)
+            ..where((t) => t.id.equals(accNew)))
+          .getSingle();
+      expect(newAcc.balance, closeTo(412.0, 1e-9));
     });
 
-    test('deleteBookingAndUpdateAccount works correctly', () async {
-      // Arrange
-      await bookingsDao.createBooking(BookingsCompanion(
-          date: const Value(20230101),
-          category: const Value('Expense'),
-          amount: const Value(-200),
-          isGenerated: const Value(false),
-          accountId: Value(accountId1)));
-          
-      expect((await accountsDao.getAccount(accountId1)).balance, 800);
+    test(
+        'different accounts & different assets does full remove/add between accounts',
+        () async {
+      final accOld = await db.into(db.accounts).insert(AccountsCompanion.insert(
+            name: 'Aold',
+            type: AccountTypes.cash,
+            balance: const Value(50.0),
+          ));
+      final accNew = await db.into(db.accounts).insert(AccountsCompanion.insert(
+            name: 'Anew',
+            type: AccountTypes.cash,
+            balance: const Value(60.0),
+          ));
+      final assetOld = await db.into(db.assets).insert(AssetsCompanion.insert(
+            name: 'AO',
+            type: AssetTypes.stock,
+            tickerSymbol: 'AO',
+          ));
+      final assetNew = await db.into(db.assets).insert(AssetsCompanion.insert(
+            name: 'AN',
+            type: AssetTypes.stock,
+            tickerSymbol: 'AN',
+          ));
 
-      // Act
-      await bookingsDao.deleteBooking(1);
+      await db.into(db.assetsOnAccounts).insert(
+          AssetsOnAccountsCompanion.insert(
+              accountId: accOld,
+              assetId: assetNew,
+              shares: const Value(50),
+              value: const Value(50)));
+      await db.into(db.assetsOnAccounts).insert(
+          AssetsOnAccountsCompanion.insert(
+              accountId: accOld,
+              assetId: assetOld,
+              shares: const Value(0),
+              value: const Value(0)));
+      await db.into(db.assetsOnAccounts).insert(
+          AssetsOnAccountsCompanion.insert(
+              accountId: accNew,
+              assetId: assetNew,
+              shares: const Value(60),
+              value: const Value(60)));
+      await db.into(db.assetsOnAccounts).insert(
+          AssetsOnAccountsCompanion.insert(
+              accountId: accNew,
+              assetId: assetOld,
+              shares: const Value(0),
+              value: const Value(0)));
 
-      // Assert
-      final account = await accountsDao.getAccount(accountId1);
-      expect(account.balance, 1000); // 800 - (-200)
-      
-      final bookings = await (db.select(db.bookings)..where((b) => b.id.equals(1))).get();
-      expect(bookings, isEmpty);
+      final id = await db.into(db.bookings).insert(BookingsCompanion.insert(
+            date: 20240404,
+            shares: 3.0,
+            category: 'Xchg',
+            accountId: accOld,
+            assetId: Value(assetOld),
+            value: 3.0,
+          ));
+
+      final old = await bookingsDao.getBooking(id);
+
+      final updated = BookingsCompanion(
+        id: Value(id),
+        date: const Value(20240404),
+        shares: const Value(9.0),
+        category: const Value('Xchg'),
+        accountId: Value(accNew),
+        assetId: Value(assetNew),
+        value: const Value(9.0),
+      );
+
+      await bookingsDao.updateBooking(old, updated);
+
+      // old account decreased by 3 -> 47
+      final aOld = await (db.select(db.accounts)
+            ..where((t) => t.id.equals(accOld)))
+          .getSingle();
+      expect(aOld.balance, closeTo(47.0, 1e-9));
+
+      // new account increased by 9 -> 69
+      final aNew = await (db.select(db.accounts)
+            ..where((t) => t.id.equals(accNew)))
+          .getSingle();
+      expect(aNew.balance, closeTo(69.0, 1e-9));
+
+      // booking row should reflect the new account/asset/amount
+      final changed = await bookingsDao.getBooking(id);
+      expect(changed.accountId, accNew);
+      expect(changed.assetId, assetNew);
+      expect(changed.shares, 9.0);
+    });
+  });
+
+  group('BookingsDao - deleteBooking', () {
+    test('deletes booking and reverts account balance and assets', () async {
+      final accId = await db.into(db.accounts).insert(AccountsCompanion.insert(
+            name: 'DelAcc',
+            type: AccountTypes.cash,
+            balance: const Value(500.0),
+          ));
+
+      await db.into(db.assetsOnAccounts).insert(
+          AssetsOnAccountsCompanion.insert(
+              accountId: accId,
+              assetId: baseCurrencyAssetId,
+              shares: const Value(500.0),
+              value: const Value(500.0)));
+
+      final id = await db.into(db.bookings).insert(BookingsCompanion.insert(
+            date: 20250105,
+            shares: 25.0,
+            category: 'Del',
+            accountId: accId,
+            assetId: Value(baseCurrencyAssetId),
+            value: 25.0,
+          ));
+
+      // balance before delete should be unchanged (we didn't call createBooking)
+      var acc = await (db.select(db.accounts)..where((t) => t.id.equals(accId)))
+          .getSingle();
+      expect(acc.balance, closeTo(500.0, 1e-9));
+
+      // Now call deleteBooking, which will read booking and update account (-base)
+      await bookingsDao.deleteBooking(id);
+
+      // Booking removed
+      final all = await bookingsDao.getAllBookings();
+      expect(all.where((b) => b.id == id), isEmpty);
+
+      // Account should have been decreased by value (-25)
+      acc = await (db.select(db.accounts)..where((t) => t.id.equals(accId)))
+          .getSingle();
+      expect(acc.balance, closeTo(475.0, 1e-9));
     });
   });
 }
