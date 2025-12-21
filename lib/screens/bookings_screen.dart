@@ -7,15 +7,17 @@ import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/widgets/booking_form.dart';
 import 'package:xfin/widgets/delete_booking_dialog.dart';
 
+import '../widgets/liquid_glass_widgets.dart';
+
 
 class BookingsScreen extends StatelessWidget {
   const BookingsScreen({super.key});
 
-  static void showBookingForm(BuildContext context, Booking? booking) {
+  static void showBookingForm(BuildContext context, Booking? booking, Stopwatch stopwatch) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (_) => BookingForm(booking: booking),
+      builder: (_) => BookingForm(booking: booking, stopwatch: stopwatch,),
     );
   }
 
@@ -34,9 +36,6 @@ class BookingsScreen extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.bookings),
-      ),
       body: Stack(
         children: [
           StreamBuilder<List<BookingWithAccountAndAsset>>(
@@ -60,6 +59,11 @@ class BookingsScreen extends StatelessWidget {
               final dateFormat = DateFormat('dd.MM.yyyy');
 
               return ListView.builder(
+                padding: EdgeInsets.only(
+                  top:
+                  MediaQuery.of(context).padding.top + kToolbarHeight,
+                  bottom: 92,
+                ),
                 itemCount: bookingsWithAccounts.length,
                 itemBuilder: (context, index) {
                   final item = bookingsWithAccounts[index];
@@ -109,13 +113,14 @@ class BookingsScreen extends StatelessWidget {
                             style: Theme.of(context).textTheme.bodySmall),
                       ],
                     ),
-                    onTap: () => showBookingForm(context, booking),
+                    onTap: () => showBookingForm(context, booking, Stopwatch()),
                     onLongPress: () => _showDeleteDialog(context, item),
                   );
                 },
               );
             },
           ),
+          buildLiquidGlassAppBar(context, title: Text(l10n.bookings)),
         ],
       ),
     );

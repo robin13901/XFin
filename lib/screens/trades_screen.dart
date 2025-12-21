@@ -34,9 +34,6 @@ class TradesScreen extends StatelessWidget {
     formatter.maximumFractionDigits = 2;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.trades),
-      ),
       body: Stack(
         children: [
           StreamBuilder<List<TradeWithAsset>>(
@@ -55,6 +52,11 @@ class TradesScreen extends StatelessWidget {
               }
 
               return ListView.builder(
+                padding: EdgeInsets.only(
+                  top:
+                  MediaQuery.of(context).padding.top + kToolbarHeight,
+                  bottom: 92,
+                ),
                 itemCount: tradesWithAssets.length,
                 itemBuilder: (context, index) {
                   final tradeWithAsset = tradesWithAssets[index];
@@ -124,6 +126,7 @@ class TradesScreen extends StatelessWidget {
               );
             },
           ),
+          buildLiquidGlassAppBar(context, title: Text(l10n.trades)),
           buildFAB(context: context, onTap: () => _showTradeForm(context)), //DevTestScreen().parseAndInsertCsv(context)),
         ],
       ),

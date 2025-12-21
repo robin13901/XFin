@@ -9,6 +9,8 @@ import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/connection/connection.dart' as connection;
 import 'package:xfin/utils/db_backup.dart';
 
+import '../widgets/liquid_glass_widgets.dart';
+
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
@@ -22,7 +24,6 @@ class SettingsScreen extends StatelessWidget {
       );
     }
   }
-
 
   Future<void> _importDb(BuildContext context) async {
     final confirmed = await showDialog<bool>(
@@ -76,7 +77,6 @@ class SettingsScreen extends StatelessWidget {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
@@ -84,73 +84,79 @@ class SettingsScreen extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.settings),
-      ),
-      body: ListView(
+      body: Stack(
         children: [
-          ListTile(
-            title: Text(l10n.theme),
-            trailing: DropdownButton<ThemeMode>(
-              value: themeProvider.themeMode,
-              onChanged: (ThemeMode? newValue) {
-                if (newValue != null) {
-                  themeProvider.setThemeMode(newValue);
-                }
-              },
-              items: [
-                DropdownMenuItem(
-                  value: ThemeMode.system,
-                  child: Text(l10n.system),
-                ),
-                DropdownMenuItem(
-                  value: ThemeMode.light,
-                  child: Text(l10n.light),
-                ),
-                DropdownMenuItem(
-                  value: ThemeMode.dark,
-                  child: Text(l10n.dark),
-                ),
-              ],
+          ListView(
+            padding: EdgeInsets.only(
+              top:
+              MediaQuery.of(context).padding.top + kToolbarHeight,
             ),
-          ),
-          ListTile(
-            title: Text(l10n.language),
-            trailing: DropdownButton<Locale>(
-              value: languageProvider.appLocale,
-              onChanged: (Locale? newValue) {
-                if (newValue != null) {
-                  languageProvider.setLocale(newValue);
-                }
-              },
-              items: [
-                DropdownMenuItem(
-                  value: const Locale('en'),
-                  child: Text(l10n.english),
+            children: [
+              ListTile(
+                title: Text(l10n.theme),
+                trailing: DropdownButton<ThemeMode>(
+                  value: themeProvider.themeMode,
+                  onChanged: (ThemeMode? newValue) {
+                    if (newValue != null) {
+                      themeProvider.setThemeMode(newValue);
+                    }
+                  },
+                  items: [
+                    DropdownMenuItem(
+                      value: ThemeMode.system,
+                      child: Text(l10n.system),
+                    ),
+                    DropdownMenuItem(
+                      value: ThemeMode.light,
+                      child: Text(l10n.light),
+                    ),
+                    DropdownMenuItem(
+                      value: ThemeMode.dark,
+                      child: Text(l10n.dark),
+                    ),
+                  ],
                 ),
-                DropdownMenuItem(
-                  value: const Locale('de'),
-                  child: Text(l10n.german),
+              ),
+              ListTile(
+                title: Text(l10n.language),
+                trailing: DropdownButton<Locale>(
+                  value: languageProvider.appLocale,
+                  onChanged: (Locale? newValue) {
+                    if (newValue != null) {
+                      languageProvider.setLocale(newValue);
+                    }
+                  },
+                  items: [
+                    DropdownMenuItem(
+                      value: const Locale('en'),
+                      child: Text(l10n.english),
+                    ),
+                    DropdownMenuItem(
+                      value: const Locale('de'),
+                      child: Text(l10n.german),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
 
-          const Divider(),
+              const Divider(),
 
-          // Export DB
-          ListTile(
-            leading: const Icon(Icons.upload_file),
-            title: const Text('Export database'),
-            onTap: () => _exportDb(context),
-          ),
+              // Export DB
+              ListTile(
+                leading: const Icon(Icons.upload_file),
+                title: const Text('Export database'),
+                onTap: () => _exportDb(context),
+              ),
 
-          // Import DB (with confirmation)
-          ListTile(
-            leading: const Icon(Icons.download_rounded),
-            title: const Text('Import database'),
-            onTap: () => _importDb(context),
+              // Import DB (with confirmation)
+              ListTile(
+                leading: const Icon(Icons.download_rounded),
+                title: const Text('Import database'),
+                onTap: () => _importDb(context),
+              ),
+            ],
           ),
+          buildLiquidGlassAppBar(context, title: Text(l10n.settings)),
         ],
       ),
     );

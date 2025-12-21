@@ -187,7 +187,7 @@ class LiquidGlassBottomNav extends StatelessWidget {
     required bool isSelected,
     required ThemeData theme,
   }) {
-    final Color selectedColor = theme.colorScheme.primary;
+    const Color selectedColor = Colors.indigoAccent;
     final Color unselectedColor =
         theme.iconTheme.color?.withValues(alpha: 0.85) ?? Colors.white70;
 
@@ -250,15 +250,76 @@ Widget buildFAB({
     bottom: 24,
     right: 24,
     child: buildCircleButton(
-      child: Icon(Icons.add,
-          size: 26, color: Theme.of(context).iconTheme.color),
-      size: 56,
+      child:
+          Icon(Icons.add, size: 26, color: Theme.of(context).iconTheme.color),
+      size: 64,
       onTap: onTap,
       settings: liquidGlassSettings,
       key: const Key('fab'),
     ),
   );
 }
+
+Widget buildLiquidGlassAppBar(
+    BuildContext context, {
+      required Widget title,
+    }) {
+  final double statusBar = MediaQuery.of(context).padding.top;
+  final double height = statusBar + kToolbarHeight;
+
+  const double overscan = 40.0;
+
+  return Positioned(
+    top: -overscan,
+    left: -overscan,
+    right: -overscan,
+    height: height + overscan,
+    child: LiquidGlassLayer(
+      settings: liquidGlassSettings,
+      child: LiquidGlass.grouped(
+        shape: const LiquidRoundedSuperellipse(borderRadius: 0),
+        child: Stack(
+          children: [
+            // Oversized glass background
+            Positioned(
+              top: -overscan,
+              left: 0,
+              right: 0,
+              height: height + overscan * 2,
+              child: Container(),
+            ),
+
+            // Foreground content (interactive)
+            Positioned(
+              left: overscan,
+              right: overscan,
+              top: statusBar + overscan,
+              height: kToolbarHeight,
+              child: Row(
+                children: [
+                  const BackButton(),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: DefaultTextStyle(
+                      style: Theme.of(context)
+                          .appBarTheme
+                          .titleTextStyle ??
+                          Theme.of(context).textTheme.titleLarge!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      child: title,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 
 /// A simple model for menu items shown in the panel
 class GlassMenuItem {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -28,15 +29,30 @@ class _AccountFormState extends State<AccountForm> {
   late TextEditingController _pricePerShareController;
   int? _selectedAssetId;
   final List<AssetOnAccount> _pendingAssets = [];
-  late List<Asset> _allAssets = [];
-  late Map<int, Asset> _assetMap = {};
+  List<Asset> _allAssets = [];
+  Map<int, Asset> _assetMap = {};
 
   // Navigation state
   int _currentStep = 0;
 
+  // Cached collaborators
+  late AppDatabase _db;
+  late Reusables _reusables;
+
+  // Progressive rendering: show cheap UI immediately, heavy UI after first frame + data load
+  bool _renderHeavy = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _db = Provider.of<AppDatabase>(context, listen: false);
+    _reusables = Reusables(context);
+  }
+
   @override
   void initState() {
     super.initState();
+
     // Step 1 init
     _nameController = TextEditingController();
     _type = AccountTypes.cash;
@@ -46,21 +62,22 @@ class _AccountFormState extends State<AccountForm> {
     _sharesController = TextEditingController();
     _pricePerShareController = TextEditingController();
 
-    // Fetch existing names for validation and all assets for mapping
-    final db = Provider.of<AppDatabase>(context, listen: false);
-
-    db.assetsDao.getAllAssets().then((assets) {
-      setState(() {
-        _allAssets = assets;
-        _assetMap = {for (var a in assets) a.id: a};
+    // Defer loading static DB data until after first frame to guarantee immediate first paint.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // start stopwatch or logging if needed elsewhere
+      _loadStaticData().then((_) {
+        if (mounted) setState(() => _renderHeavy = true);
       });
     });
+  }
 
-    db.accountsDao.getAllAccounts().then((accounts) {
-      if (!mounted) return;
-      setState(() {
-        _existingAccountNames = accounts.map((a) => a.name).toList();
-      });
+  Future<void> _loadStaticData() async {
+    final assets = await _db.assetsDao.getAllAssets();
+
+    setState(() {
+      _allAssets = assets;
+      _assetMap = { for (final a in assets) a.id: a };
+      _renderHeavy = true;
     });
   }
 
@@ -94,7 +111,7 @@ class _AccountFormState extends State<AccountForm> {
 
       // Check uniqueness
       final isAlreadyAdded =
-          _pendingAssets.any((pa) => pa.assetId == _selectedAssetId);
+      _pendingAssets.any((pa) => pa.assetId == _selectedAssetId);
       if (isAlreadyAdded) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(l10n.assetAlreadyAdded)),
@@ -111,13 +128,14 @@ class _AccountFormState extends State<AccountForm> {
 
       setState(() {
         _pendingAssets.add(AssetOnAccount(
-            accountId: 0,
-            assetId: _selectedAssetId!,
-            value: value,
-            shares: shares,
-            netCostBasis: pricePerShare,
-            brokerCostBasis: pricePerShare,
-            buyFeeTotal: 0));
+          accountId: 0,
+          assetId: _selectedAssetId!,
+          value: value,
+          shares: shares,
+          netCostBasis: pricePerShare,
+          brokerCostBasis: pricePerShare,
+          buyFeeTotal: 0,
+        ));
 
         // Reset asset input fields
         _selectedAssetId = null;
@@ -134,17 +152,18 @@ class _AccountFormState extends State<AccountForm> {
   }
 
   Future<void> _saveForm() async {
-    final db = Provider.of<AppDatabase>(context, listen: false);
+    final db = _db;
     final name = _nameController.text.trim();
 
     await db.transaction(() async {
       final initialBalance =
-          _pendingAssets.fold<double>(0.0, (sum, pa) => sum + pa.value);
+      _pendingAssets.fold<double>(0.0, (sum, pa) => sum + pa.value);
       final accountId = await db.accountsDao.insert(AccountsCompanion.insert(
-          name: name,
-          type: _type,
-          balance: drift.Value(initialBalance),
-          initialBalance: drift.Value(initialBalance)));
+        name: name,
+        type: _type,
+        balance: drift.Value(initialBalance),
+        initialBalance: drift.Value(initialBalance),
+      ));
 
       for (var pa in _pendingAssets) {
         AssetOnAccount aoa = pa.copyWith(accountId: accountId);
@@ -223,15 +242,16 @@ class _AccountFormState extends State<AccountForm> {
       padding: MediaQuery.of(context).viewInsets,
       child: SingleChildScrollView(
         child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: AnimatedCrossFade(
-              duration: const Duration(milliseconds: 50),
-              crossFadeState: _currentStep == 0
-                  ? CrossFadeState.showFirst
-                  : CrossFadeState.showSecond,
-              firstChild: _buildStep1(context, l10n),
-              secondChild: _buildStep2(context, l10n),
-            )),
+          padding: const EdgeInsets.all(16.0),
+          child: AnimatedCrossFade(
+            duration: const Duration(milliseconds: 50),
+            crossFadeState: _currentStep == 0
+                ? CrossFadeState.showFirst
+                : CrossFadeState.showSecond,
+            firstChild: _buildStep1(context, l10n),
+            secondChild: _buildStep2(context, l10n),
+          ),
+        ),
       ),
     );
   }
@@ -272,7 +292,7 @@ class _AccountFormState extends State<AccountForm> {
               );
             }).toList(),
             onChanged: (value) {
-              if (value != null) {
+              if (value != null && value != _type) {
                 setState(() {
                   _type = value;
                   _selectedAssetId = null;
@@ -302,10 +322,55 @@ class _AccountFormState extends State<AccountForm> {
   }
 
   Widget _buildStep2(BuildContext context, AppLocalizations l10n) {
-    final db = Provider.of<AppDatabase>(context, listen: false);
     final currencyProvider = Provider.of<BaseCurrencyProvider>(context);
-    final reusables = Reusables(context);
+    final reusables = _reusables;
 
+    // If heavy UI not ready yet, show a lightweight placeholder that paints instantly.
+    if (!_renderHeavy) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${_nameController.text} (${_getAccountTypeName(l10n, _type)})',
+                  style: Theme.of(context).textTheme.titleLarge,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.info_outline, size: 20),
+                onPressed: () => _showTypeInfoDialog(l10n),
+                tooltip: l10n.info,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const SizedBox(
+            height: 56,
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          ),
+          const SizedBox(height: 16),
+          // Footer buttons (allow navigation/back even while loading)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(onPressed: _onBack, child: Text(l10n.back)),
+              const SizedBox(width: 8),
+              ElevatedButton(onPressed: _saveForm, child: Text(l10n.save)),
+            ],
+          ),
+        ],
+      );
+    }
+
+    // Heavy UI path: static data is loaded and we can build full controls.
+    final allAssets = _allAssets;
+    final filteredAssets = _filterAssetsForType(allAssets);
     final Asset? selectedAsset = _assetMap[_selectedAssetId];
 
     return Column(
@@ -330,6 +395,7 @@ class _AccountFormState extends State<AccountForm> {
             ),
           ],
         ),
+
         // List of added assets (one-liners)
         if (_pendingAssets.isNotEmpty)
           ListView.builder(
@@ -340,7 +406,7 @@ class _AccountFormState extends State<AccountForm> {
               final item = _pendingAssets[index];
               final asset = _assetMap[item.assetId];
               final oneLine =
-                  '${item.shares} ${asset?.tickerSymbol} @ ${item.netCostBasis} ${currencyProvider.symbol} ≈ ${currencyProvider.format.format(item.value)}';
+                  '${item.shares} ${asset?.tickerSymbol ?? ''} @ ${item.netCostBasis} ${currencyProvider.symbol} ≈ ${currencyProvider.format.format(item.value)}';
 
               return ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -367,57 +433,56 @@ class _AccountFormState extends State<AccountForm> {
                   fontStyle: FontStyle.italic, color: Colors.grey),
             ),
           ),
+
         const SizedBox(height: 16),
+
+        // Asset add form (uses preloaded asset list)
         Form(
           key: _assetFormKey,
-          child: StreamBuilder<List<Asset>>(
-            stream: db.assetsDao.watchAllAssets(),
-            builder: (context, snapshot) {
-              final allAssets = snapshot.data ?? _allAssets;
-              final filteredAssets = _filterAssetsForType(allAssets);
-
-              return Column(
-                children: [
-                  DropdownButtonFormField<int>(
-                      key: const Key('assets_dropdown'),
-                      initialValue: _selectedAssetId,
-                      // Must match a value in items
-                      decoration: InputDecoration(
-                        labelText: l10n.asset,
-                        border: const OutlineInputBorder(),
-                        errorMaxLines: 2,
-                      ),
-                      items: filteredAssets.map((asset) {
-                        return DropdownMenuItem(
-                          value: asset.id,
-                          child: Text(asset.name),
-                        );
-                      }).toList(),
-                      onChanged: (value) => setState(() {
-                            _selectedAssetId = value;
-                          }),
-                      validator: (value) {
-                        if (value == null) return l10n.requiredField;
-                        final isAlreadyAdded = _pendingAssets
-                            .any((pa) => pa.assetId == _selectedAssetId);
-                        if (isAlreadyAdded) return l10n.assetAlreadyAdded;
-                        return null;
-                      }),
-                  const SizedBox(height: 16),
-                  reusables.buildSharesInputRow(_sharesController,
-                      _pricePerShareController, selectedAsset),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () => _addAssetToBuffer(l10n, filteredAssets),
-                      icon: const Icon(Icons.add),
-                      label: Text(l10n.addAsset),
-                    ),
-                  ),
-                ],
-              );
-            },
+          child: Column(
+            children: [
+              DropdownButtonFormField<int>(
+                key: const Key('assets_dropdown'),
+                initialValue: _selectedAssetId,
+                decoration: InputDecoration(
+                  labelText: l10n.asset,
+                  border: const OutlineInputBorder(),
+                  errorMaxLines: 2,
+                ),
+                items: filteredAssets.map((asset) {
+                  return DropdownMenuItem(
+                    value: asset.id,
+                    child: Text(asset.name),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  if (value != _selectedAssetId) {
+                    setState(() {
+                      _selectedAssetId = value;
+                    });
+                  }
+                },
+                validator: (value) {
+                  if (value == null) return l10n.requiredField;
+                  final isAlreadyAdded =
+                  _pendingAssets.any((pa) => pa.assetId == value);
+                  if (isAlreadyAdded) return l10n.assetAlreadyAdded;
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              reusables.buildSharesInputRow(
+                  _sharesController, _pricePerShareController, selectedAsset),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _addAssetToBuffer(l10n, filteredAssets),
+                  icon: const Icon(Icons.add),
+                  label: Text(l10n.addAsset),
+                ),
+              ),
+            ],
           ),
         ),
 

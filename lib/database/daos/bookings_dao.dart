@@ -57,6 +57,17 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
             (rows) => rows.map((row) => row.read(bookings.category)!).toList());
   }
 
+  Future<List<String>> getDistinctCategories() async {
+    final query = selectOnly(bookings, distinct: true)
+      ..addColumns([bookings.category]);
+
+    final rows = await query.get();
+    return rows
+        .map((row) => row.read(bookings.category)!)
+        .toList();
+  }
+
+
   // Methods that are not transactional
   Future<int> _addBooking(BookingsCompanion entry) =>
       into(bookings).insert(entry);

@@ -12,8 +12,13 @@ import '../utils/validators.dart';
 
 class BookingForm extends StatefulWidget {
   final Booking? booking;
+  final Stopwatch stopwatch;
 
-  const BookingForm({super.key, this.booking});
+  const BookingForm({
+    super.key,
+    this.booking,
+    required this.stopwatch,
+  });
 
   @override
   State<BookingForm> createState() => _BookingFormState();
@@ -22,17 +27,14 @@ class BookingForm extends StatefulWidget {
 class _BookingFormState extends State<BookingForm> {
   final _formKey = GlobalKey<FormState>();
 
-  // Helpers
-  AppDatabase get _db => Provider.of<AppDatabase>(context, listen: false);
+  late AppDatabase _db;
+  late AppLocalizations _l10n;
+  late Validator _validator;
+  late Reusables _reusables;
 
-  AppLocalizations get _l10n => AppLocalizations.of(context)!;
-
-  Validator get _validator => Validator(_l10n);
-
-  Reusables get _reusables => Reusables(context);
-
-  // Form State
+  // Controllers
   late DateTime _date;
+  late TextEditingController _dateCtrl;
   late TextEditingController _sharesCtrl;
   late TextEditingController _priceCtrl;
   late TextEditingController _catCtrl;
@@ -40,57 +42,85 @@ class _BookingFormState extends State<BookingForm> {
 
   int? _accountId;
   int? _assetId;
+
   bool _excludeFromAverage = false;
   bool _isGenerated = false;
   bool _hideCostBasis = false;
 
-  // Data
+  // Static DB data (loaded once)
   List<Asset> _allAssets = [];
-  Map<int, Asset> _assetMap = {};
+  List<Account> _allAccounts = [];
   List<String> _distinctCategories = [];
-  StreamSubscription? _catSub;
+  Map<int, Asset> _assetMap = {};
+
+  /// 🔥 Controls progressive rendering
+  bool _renderHeavy = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _db = Provider.of<AppDatabase>(context, listen: false);
+    _l10n = AppLocalizations.of(context)!;
+    _validator = Validator(_l10n);
+    _reusables = Reusables(context);
+  }
 
   @override
   void initState() {
     super.initState();
     final b = widget.booking;
 
-    // 1. Data Fetching
-    _catSub = _db.bookingsDao.watchDistinctCategories().listen((c) {
-      if (mounted) setState(() => _distinctCategories = c);
-    });
-
-    _db.assetsDao.getAllAssets().then((assets) {
-      if (mounted) {
-        setState(() {
-          _allAssets = assets;
-          _assetMap = {for (var a in assets) a.id: a};
-        });
-      }
-    });
-
-    // 2. Controller Initialization (Edit vs Create handled via null-aware)
+    // --- Date ---
     if (b != null) {
       final ds = b.date.toString();
       _date = DateTime.parse(
-          '${ds.substring(0, 4)}-${ds.substring(4, 6)}-${ds.substring(6, 8)}');
+        '${ds.substring(0, 4)}-${ds.substring(4, 6)}-${ds.substring(6, 8)}',
+      );
     } else {
       _date = DateTime.now();
     }
 
+    // --- Controllers (ONCE) ---
+    _dateCtrl =
+        TextEditingController(text: DateFormat('dd.MM.yyyy').format(_date));
     _sharesCtrl = TextEditingController(text: b?.shares.toString());
     _priceCtrl = TextEditingController(text: b?.costBasis.toString());
     _catCtrl = TextEditingController(text: b?.category);
     _notesCtrl = TextEditingController(text: b?.notes);
 
     _accountId = b?.accountId;
-    _assetId = b?.assetId ?? 1; // Default to 1 (usually base currency)
+    _assetId = b?.assetId ?? 1;
     _excludeFromAverage = b?.excludeFromAverage ?? false;
     _isGenerated = b?.isGenerated ?? false;
 
-    // 3. Listener Setup
     _hideCostBasis = _sharesCtrl.text.trim().startsWith('-');
     _sharesCtrl.addListener(_onSharesChanged);
+
+    // --- Measure first paint ---
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.stopwatch.stop();
+      debugPrint(
+        'BookingForm first frame: ${widget.stopwatch.elapsedMilliseconds} ms',
+      );
+
+      // 🔥 Defer ALL heavy widgets until AFTER first paint
+      _loadStaticData().then((_) {
+        if (mounted) setState(() => _renderHeavy = true);
+      });
+    });
+  }
+
+  Future<void> _loadStaticData() async {
+    final results = await Future.wait([
+      _db.assetsDao.getAllAssets(),
+      _db.accountsDao.getAllAccounts(),
+      _db.bookingsDao.getDistinctCategories(),
+    ]);
+
+    _allAssets = results[0] as List<Asset>;
+    _allAccounts = results[1] as List<Account>;
+    _distinctCategories = results[2] as List<String>;
+    _assetMap = {for (final a in _allAssets) a.id: a};
   }
 
   void _onSharesChanged() {
@@ -103,12 +133,197 @@ class _BookingFormState extends State<BookingForm> {
   @override
   void dispose() {
     _sharesCtrl.removeListener(_onSharesChanged);
+    _dateCtrl.dispose();
     _sharesCtrl.dispose();
     _priceCtrl.dispose();
     _catCtrl.dispose();
     _notesCtrl.dispose();
-    _catSub?.cancel();
     super.dispose();
+  }
+
+  // ───────────────────────── UI ─────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: MediaQuery.of(context).viewInsets,
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _dateAndAssetRow(),
+
+                if (_renderHeavy) ...[
+                  const SizedBox(height: 16),
+                  _sharesRow(),
+                  const SizedBox(height: 16),
+                  _categoryField(),
+                  const SizedBox(height: 16),
+                  _accountDropdown(),
+                ],
+
+                const SizedBox(height: 16),
+                _notesField(),
+                _excludeCheckbox(),
+                const SizedBox(height: 16),
+                _footerButtons(),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _dateAndAssetRow() {
+    return Row(
+      children: [
+        Expanded(
+          child: TextFormField(
+            readOnly: true,
+            controller: _dateCtrl,
+            decoration: InputDecoration(
+              labelText: _l10n.date,
+              border: const OutlineInputBorder(),
+              suffixIcon: IconButton(
+                icon: const Icon(Icons.calendar_today),
+                onPressed: _pickDate,
+              ),
+            ),
+            validator: (_) => _validator.validateDate(_date),
+          ),
+        ),
+        const SizedBox(width: 16),
+        if (_renderHeavy)
+          _reusables.buildAssetsDropdown(
+            _assetId!,
+            _allAssets,
+                (v) => v != _assetId ? setState(() => _assetId = v) : null,
+                (v) => v == null ? _l10n.pleaseSelectAnAsset : null,
+          )
+        else
+          const SizedBox(width: 140),
+      ],
+    );
+  }
+
+  Widget _sharesRow() {
+    return _reusables.buildSharesInputRow(
+      _sharesCtrl,
+      _priceCtrl,
+      _assetMap[_assetId],
+      hideCostBasis: _hideCostBasis,
+    );
+  }
+
+  Widget _categoryField() {
+    return Autocomplete<String>(
+      optionsBuilder: (v) => v.text.isEmpty
+          ? const []
+          : _distinctCategories.where(
+            (c) => c.toLowerCase().contains(v.text.toLowerCase()),
+      ),
+      key: const Key('category_field'),
+      onSelected: (s) => _catCtrl.text = s,
+      fieldViewBuilder: (_, tCtrl, node, onSubmit) {
+        if (tCtrl.text != _catCtrl.text) {
+          tCtrl.text = _catCtrl.text;
+        }
+        return TextFormField(
+          controller: tCtrl,
+          focusNode: node,
+          decoration: InputDecoration(
+            labelText: _l10n.category,
+            border: const OutlineInputBorder(),
+          ),
+          validator: _validator.validateNotInitial,
+          onChanged: (v) => _catCtrl.text = v,
+          onFieldSubmitted: (v) {
+            onSubmit();
+            _catCtrl.text = v;
+          },
+        );
+      },
+    );
+  }
+
+  Widget _accountDropdown() {
+    return DropdownButtonFormField<int>(
+      initialValue: _accountId,
+      decoration: InputDecoration(
+        labelText: _l10n.account,
+        border: const OutlineInputBorder(),
+      ),
+      items: _allAccounts
+          .map(
+            (a) => DropdownMenuItem(
+          value: a.id,
+          child: Text(a.name),
+        ),
+      )
+          .toList(),
+      onChanged: (v) =>
+      v != _accountId ? setState(() => _accountId = v) : null,
+      validator: _validator.validateAccountSelected,
+    );
+  }
+
+  Widget _notesField() {
+    return TextFormField(
+      controller: _notesCtrl,
+      decoration: InputDecoration(
+        labelText: _l10n.notes,
+        border: const OutlineInputBorder(),
+      ),
+    );
+  }
+
+  Widget _excludeCheckbox() {
+    return CheckboxListTile(
+      title: Text(_l10n.excludeFromAverage),
+      value: _excludeFromAverage,
+      onChanged: (v) => setState(() => _excludeFromAverage = v ?? false),
+      controlAffinity: ListTileControlAffinity.leading,
+      contentPadding: EdgeInsets.zero,
+    );
+  }
+
+  Widget _footerButtons() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(_l10n.cancel),
+        ),
+        const SizedBox(width: 8),
+        ElevatedButton(
+          onPressed: _saveForm,
+          child: Text(_l10n.save),
+        ),
+      ],
+    );
+  }
+
+  // ───────────────────────── Actions ─────────────────────────
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _date,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+    if (picked != null && picked != _date) {
+      setState(() {
+        _date = picked;
+        _dateCtrl.text = DateFormat('dd.MM.yyyy').format(picked);
+      });
+    }
   }
 
   Future<void> _saveForm() async {
@@ -173,17 +388,17 @@ class _BookingFormState extends State<BookingForm> {
     // --- Merge Logic ---
     if (original == null && _notesCtrl.text.isEmpty) {
       final mergeCandidate =
-          await _db.bookingsDao.findMergeableBooking(companion);
+      await _db.bookingsDao.findMergeableBooking(companion);
 
       if (mergeCandidate != null && mounted) {
         final mergedComp = mergeCandidate.toCompanion(false).copyWith(
-              shares: drift.Value(mergeCandidate.shares + shares),
-              value:
-                  drift.Value(mergeCandidate.value + value),
-            );
+          shares: drift.Value(mergeCandidate.shares + shares),
+          value:
+          drift.Value(mergeCandidate.value + value),
+        );
 
         final isMergeSafe =
-            !(await _db.accountsDao.leadsToInconsistentBalanceHistory(
+        !(await _db.accountsDao.leadsToInconsistentBalanceHistory(
           originalBooking: mergeCandidate,
           newBooking: mergedComp,
         ));
@@ -232,149 +447,5 @@ class _BookingFormState extends State<BookingForm> {
         : await _db.bookingsDao.createBooking(companion);
 
     if (mounted) Navigator.of(context).pop();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: MediaQuery.of(context).viewInsets,
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        key: const Key('date_field'),
-                        readOnly: true,
-                        controller: TextEditingController(
-                            text: DateFormat('dd.MM.yyyy').format(_date)),
-                        decoration: InputDecoration(
-                          labelText: _l10n.date,
-                          border: const OutlineInputBorder(),
-                          suffixIcon: IconButton(
-                            icon: const Icon(Icons.calendar_today),
-                            onPressed: _pickDate,
-                          ),
-                        ),
-                        validator: (_) => _validator.validateDate(_date),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    _reusables.buildAssetsDropdown(
-                      _assetId!,
-                      _allAssets,
-                      (val) => setState(() => _assetId = val),
-                      (val) => val == null ? _l10n.pleaseSelectAnAsset : null,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                _reusables.buildSharesInputRow(
-                    _sharesCtrl, _priceCtrl, _assetMap[_assetId],
-                    hideCostBasis: _hideCostBasis),
-                const SizedBox(height: 16),
-                Autocomplete<String>(
-                  key: const Key('category_field'),
-                  optionsBuilder: (v) => v.text.isEmpty
-                      ? const []
-                      : _distinctCategories.where((c) =>
-                          c.toLowerCase().contains(v.text.toLowerCase())),
-                  onSelected: (s) => setState(() => _catCtrl.text = s),
-                  fieldViewBuilder: (ctx, tCtrl, node, onSub) {
-                    if (widget.booking != null &&
-                        _catCtrl.text.isNotEmpty &&
-                        tCtrl.text != _catCtrl.text) {
-                      tCtrl.text = _catCtrl.text;
-                    }
-                    return TextFormField(
-                      controller: tCtrl,
-                      focusNode: node,
-                      textCapitalization: TextCapitalization.words,
-                      decoration: InputDecoration(
-                          labelText: _l10n.category,
-                          border: const OutlineInputBorder()),
-                      validator: _validator.validateNotInitial,
-                      onChanged: (val) => _catCtrl.text = val,
-                      onFieldSubmitted: (val) {
-                        onSub();
-                        _catCtrl.text = val;
-                      },
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                StreamBuilder<List<Account>>(
-                  stream: _db.accountsDao.watchAllAccounts(),
-                  builder: (context, snapshot) {
-                    return DropdownButtonFormField<int>(
-                      key: const Key('account_dropdown'),
-                      initialValue: _accountId,
-                      decoration: InputDecoration(
-                          labelText: _l10n.account,
-                          border: const OutlineInputBorder()),
-                      items: (snapshot.data ?? [])
-                          .map((a) => DropdownMenuItem(
-                              value: a.id, child: Text(a.name)))
-                          .toList(),
-                      onChanged: (val) => setState(() => _accountId = val),
-                      validator: _validator.validateAccountSelected,
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  key: const Key('notes_field'),
-                  controller: _notesCtrl,
-                  textCapitalization: TextCapitalization.sentences,
-                  decoration: InputDecoration(
-                      labelText: _l10n.notes,
-                      border: const OutlineInputBorder()),
-                ),
-                CheckboxListTile(
-                  key: const Key('exclude_checkbox'),
-                  title: Text(_l10n.excludeFromAverage),
-                  value: _excludeFromAverage,
-                  onChanged: (val) =>
-                      setState(() => _excludeFromAverage = val ?? false),
-                  controlAffinity: ListTileControlAffinity.leading,
-                  contentPadding: EdgeInsets.zero,
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text(_l10n.cancel),
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                        onPressed: _saveForm, child: Text(_l10n.save)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _date,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2101),
-    );
-    if (picked != null && picked != _date) setState(() => _date = picked);
   }
 }

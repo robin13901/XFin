@@ -54,9 +54,6 @@ class TransfersScreen extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.transfers),
-      ),
       body: Stack(
         children: [
           StreamBuilder<List<TransferWithAccountsAndAsset>>(
@@ -81,6 +78,11 @@ class TransfersScreen extends StatelessWidget {
               final dateFormat = DateFormat('dd.MM.yyyy');
 
               return ListView.builder(
+                padding: EdgeInsets.only(
+                  top:
+                  MediaQuery.of(context).padding.top + kToolbarHeight,
+                  bottom: 92,
+                ),
                 itemCount: items.length,
                 itemBuilder: (context, index) {
                   final it = items[index];
@@ -103,8 +105,8 @@ class TransfersScreen extends StatelessWidget {
                         if (asset.id == 1) ...[
                           Text(
                             currencyFormat.format(t.value),
-                            style: TextStyle(
-                                color: t.value < 0 ? Colors.red : Colors.black,
+                            style: const TextStyle(
+                                color: Colors.indigoAccent,
                                 fontWeight: FontWeight.bold),
                           ),
                         ] else ...[
@@ -138,6 +140,7 @@ class TransfersScreen extends StatelessWidget {
               );
             },
           ),
+          buildLiquidGlassAppBar(context, title: Text(l10n.transfers)),
           buildFAB(
               context: context, onTap: () => _showTransferForm(context, null)),
         ],

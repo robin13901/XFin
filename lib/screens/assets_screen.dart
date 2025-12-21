@@ -78,9 +78,9 @@ class AssetsScreen extends StatelessWidget {
     final currencyFormat = NumberFormat.currency(locale: 'de_DE', symbol: '€');
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.assets),
-      ),
+      // appBar: AppBar(
+      //   title: Text(l10n.assets),
+      // ),
       body: Stack(
         children: [
           Column(
@@ -102,6 +102,11 @@ class AssetsScreen extends StatelessWidget {
                     }
 
                     return ListView.builder(
+                      padding: EdgeInsets.only(
+                        top:
+                            MediaQuery.of(context).padding.top + kToolbarHeight,
+                        bottom: 92,
+                      ),
                       itemCount: assets.length,
                       itemBuilder: (context, index) {
                         final asset = assets[index];
@@ -140,6 +145,7 @@ class AssetsScreen extends StatelessWidget {
               ),
             ],
           ),
+          buildLiquidGlassAppBar(context, title: Text(l10n.assets)),
           buildFAB(context: context, onTap: () => _showAssetForm(context)),
         ],
       ),

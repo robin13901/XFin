@@ -47,6 +47,38 @@ void main() {
     await db.close();
   });
 
+  // Find DropdownButtonFormField by its InputDecoration.labelText
+  Finder dropdownByLabel(String label) {
+    return find.byWidgetPredicate((w) {
+      if (w is DropdownButtonFormField) {
+        try {
+          final dec = (w as dynamic).decoration as InputDecoration?;
+          return dec != null && dec.labelText == label;
+        } catch (_) {
+          return false;
+        }
+      }
+      return false;
+    }, description: 'DropdownButtonFormField with label "$label"');
+  }
+
+  /// Wait for heavy widgets (assets dropdown, account dropdown, autocomplete)
+  /// to appear after the BookingForm defers loading them.
+  Future<void> waitForHeavyRender(WidgetTester tester,
+      {int timeoutMs = 3000, int intervalMs = 50}) async {
+    final tries = (timeoutMs / intervalMs).ceil();
+    for (var i = 0; i < tries; i++) {
+      await tester.pump(Duration(milliseconds: intervalMs));
+      final hasAssets = find.byKey(const Key('assets_dropdown')).evaluate().isNotEmpty;
+      final hasAccount = dropdownByLabel(l10n.account).evaluate().isNotEmpty;
+      final hasCategory = find.byType(Autocomplete).evaluate().isNotEmpty;
+      if (hasAssets && hasAccount && hasCategory) return;
+    }
+    // final settle to produce useful failure logs if something went wrong
+    await tester.pumpAndSettle();
+  }
+
+  /// Pump the app and show the booking form inside a modal bottom sheet.
   Future<void> pumpWidget(WidgetTester tester, {Booking? booking}) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -59,12 +91,9 @@ void main() {
         supportedLocales: AppLocalizations.supportedLocales,
         home: MultiProvider(
           providers: [
-            Provider<AppDatabase>(
-              create: (_) => db,
-            ),
+            Provider<AppDatabase>(create: (_) => db),
             ChangeNotifierProvider<BaseCurrencyProvider>(
-              create: (_) => currencyProvider,
-            ),
+                create: (_) => currencyProvider),
           ],
           child: Builder(builder: (context) {
             return Scaffold(
@@ -77,14 +106,12 @@ void main() {
                       isScrollControlled: true,
                       builder: (_) => MultiProvider(
                         providers: [
-                          Provider<AppDatabase>.value(
-                            value: db,
-                          ),
+                          Provider<AppDatabase>.value(value: db),
                           ChangeNotifierProvider<BaseCurrencyProvider>.value(
-                            value: currencyProvider,
-                          ),
+                              value: currencyProvider),
                         ],
-                        child: BookingForm(booking: booking),
+                        child:
+                        BookingForm(booking: booking, stopwatch: Stopwatch()),
                       ),
                     );
                   },
@@ -96,8 +123,12 @@ void main() {
       ),
     );
 
+    // open the sheet and let animations finish
     await tester.tap(find.text('Show Form'));
     await tester.pumpAndSettle();
+
+    // wait for deferred heavy widgets to finish loading
+    await waitForHeavyRender(tester);
   }
 
   Future<void> pumpWidgetWithToast(WidgetTester tester,
@@ -105,12 +136,9 @@ void main() {
     await tester.pumpWidget(
       MultiProvider(
         providers: [
-          Provider<AppDatabase>.value(
-            value: db,
-          ),
+          Provider<AppDatabase>.value(value: db),
           ChangeNotifierProvider<BaseCurrencyProvider>.value(
-            value: currencyProvider,
-          ),
+              value: currencyProvider),
         ],
         child: OKToast(
           child: MaterialApp(
@@ -122,16 +150,18 @@ void main() {
             ],
             supportedLocales: AppLocalizations.supportedLocales,
             home: Scaffold(
-              body: BookingForm(booking: booking),
+              body: BookingForm(booking: booking, stopwatch: Stopwatch()),
             ),
           ),
         ),
       ),
     );
-    await tester.pumpAndSettle();
+
+    // booking form loads in-place; wait for heavy widgets
+    await waitForHeavyRender(tester);
   }
 
-  group('BookingForm Tests', () {
+  group('BookingForm Tests (new form)', () {
     late int accountId1;
 
     setUp(() async {
@@ -144,322 +174,330 @@ void main() {
         ),
       );
 
-      await db.into(db.assetsOnAccounts).insert(
-          AssetsOnAccountsCompanion.insert(
-              accountId: 1,
-              assetId: 1,
-              shares: const Value(100),
-              value: const Value(100)));
+      await db.into(db.assetsOnAccounts).insert(AssetsOnAccountsCompanion.insert(
+          accountId: 1, assetId: 1, shares: const Value(100), value: const Value(100)));
     });
 
-    testWidgets(
-        'form initializes empty for new booking',
-        (tester) => tester.runAsync(() async {
-              await pumpWidget(tester);
+    testWidgets('form initializes empty for new booking',
+            (tester) => tester.runAsync(() async {
+          await pumpWidget(tester);
 
-              expect(find.byType(BookingForm), findsOneWidget);
-              expect(find.text(l10n.save), findsOneWidget);
-              expect(
-                  tester
-                      .widget<TextFormField>(
-                          find.byKey(const Key('date_field')))
-                      .controller!
-                      .text,
-                  DateFormat('dd.MM.yyyy').format(DateTime.now()));
-              expect(
-                  tester
-                      .widget<DropdownButtonFormField>(
-                          find.byKey(const Key('assets_dropdown')))
-                      .initialValue,
-                  1);
-              expect(
-                  tester
-                      .widget<TextFormField>(
-                          find.byKey(const Key('shares_field')))
-                      .controller!
-                      .text,
-                  '');
-              expect(
-                  tester
-                      .widget<TextFormField>(find.descendant(
-                          of: find.byKey(const Key('category_field')),
-                          matching: find.byType(TextFormField)))
-                      .controller!
-                      .text,
-                  '');
-              expect(
-                  tester
-                      .widget<DropdownButtonFormField>(
-                          find.byKey(const Key('account_dropdown')))
-                      .initialValue,
-                  null);
-              expect(
-                  tester
-                      .widget<CheckboxListTile>(
-                          find.byKey(const Key('exclude_checkbox')))
-                      .value,
-                  isFalse);
+          expect(find.byType(BookingForm), findsOneWidget);
+          expect(find.text(l10n.save), findsOneWidget);
 
-              await tester.pumpWidget(Container());
-            }));
+          // Date field text should contain today's date
+          final todayTxt = DateFormat('dd.MM.yyyy').format(DateTime.now());
+          expect(find.text(todayTxt), findsOneWidget);
 
-    testWidgets(
-        'form initializes with data for existing booking',
-        (tester) => tester.runAsync(() async {
-              final booking = Booking(
-                id: 1,
-                date: 20230501,
-                category: 'Existing Booking',
-                shares: -50.0,
-                costBasis: 1,
-                assetId: 1,
-                value: -50,
-                accountId: accountId1,
-                excludeFromAverage: true,
-                isGenerated: false,
-                notes: 'Some notes',
-              );
-              await pumpWidget(tester, booking: booking);
+          // Assets dropdown has explicit key in Reusables
+          final assetsDropdown = find.byKey(const Key('assets_dropdown'));
+          expect(assetsDropdown, findsOneWidget);
 
-              expect(find.text('01.05.2023'), findsOneWidget);
-              expect(find.text('-50.0'), findsOneWidget);
-              expect(find.text('Existing Booking'), findsOneWidget);
-              expect(find.text('Some notes'), findsOneWidget);
-              expect(
-                  tester
-                      .widget<CheckboxListTile>(
-                          find.byKey(const Key('exclude_checkbox')))
-                      .value,
-                  isTrue);
-              expect(
-                  tester
-                      .widget<DropdownButtonFormField<int>>(
-                          find.byKey(const Key('account_dropdown')))
-                      .initialValue,
-                  accountId1);
+          // Shares field is keyed
+          final sharesField = find.byKey(const Key('shares_field'));
+          expect(sharesField, findsOneWidget);
+          expect(
+              tester.widget<TextFormField>(sharesField).controller!.text, '');
 
-              await tester.pumpWidget(Container());
-            }));
+          // Category field is Autocomplete: find inner TextFormField
+          final auto = find.byKey(const Key('category_field'));
+          expect(auto, findsOneWidget);
+          final catInner = find.descendant(
+              of: auto, matching: find.byType(TextFormField));
+          expect(catInner, findsOneWidget);
+          expect(
+              tester.widget<TextFormField>(catInner).controller!.text, '');
 
-    testWidgets(
-        'category field shows autocomplete suggestions',
-        (tester) => tester.runAsync(() async {
-              await db.into(db.bookings).insert(BookingsCompanion.insert(
-                  date: 20250101,
-                  accountId: accountId1,
-                  category: 'Food',
-                  shares: 10,
-                  value: 10));
-              await db.into(db.bookings).insert(BookingsCompanion.insert(
-                  date: 20250102,
-                  accountId: accountId1,
-                  category: 'Transport',
-                  shares: 20,
-                  value: 20));
-              await db.into(db.bookings).insert(BookingsCompanion.insert(
-                  date: 20250103,
-                  accountId: accountId1,
-                  category: 'Food expenses',
-                  shares: 30,
-                  value: 30));
+          // Account dropdown (no explicit key) found by label text
+          final accDropdown = dropdownByLabel(l10n.account);
+          expect(accDropdown, findsOneWidget);
 
-              await pumpWidget(tester);
+          // Exclude checkbox default false
+          final exclude = find.byType(CheckboxListTile);
+          expect(exclude, findsOneWidget);
+          expect(tester.widget<CheckboxListTile>(exclude).value, isFalse);
 
-              final categoryField = find.byKey(const Key('category_field'));
-              await tester.enterText(categoryField, 'F');
-              await tester.pumpAndSettle();
+          await tester.pumpWidget(Container());
+        }));
 
-              expect(find.text('Food'), findsOneWidget);
-              expect(find.text('Food expenses'), findsOneWidget);
-              expect(find.text('Transport'), findsNothing);
+    testWidgets('form initializes with data for existing booking',
+            (tester) => tester.runAsync(() async {
+          final booking = Booking(
+            id: 1,
+            date: 20230501,
+            category: 'Existing Booking',
+            shares: -50.0,
+            costBasis: 1,
+            assetId: 1,
+            value: -50,
+            accountId: accountId1,
+            excludeFromAverage: true,
+            isGenerated: false,
+            notes: 'Some notes',
+          );
 
-              await tester.tap(find.text('Food'));
-              await tester.pumpAndSettle();
+          await pumpWidget(tester, booking: booking);
 
-              expect(
-                  tester
-                      .widget<TextFormField>(find.descendant(
-                          of: categoryField,
-                          matching: find.byType(TextFormField)))
-                      .controller!
-                      .text,
-                  'Food');
+          expect(find.text('01.05.2023'), findsOneWidget);
+          expect(find.text('-50.0'), findsOneWidget);
+          expect(find.text('Existing Booking'), findsOneWidget);
+          expect(find.text('Some notes'), findsOneWidget);
 
-              await tester.pumpWidget(Container());
-            }));
+          final exclude = find.byType(CheckboxListTile);
+          expect(tester.widget<CheckboxListTile>(exclude).value, isTrue);
+
+          final accDropdown = dropdownByLabel(l10n.account);
+          expect(accDropdown, findsOneWidget);
+          // Confirm the account dropdown's initialValue equals the inserted account id
+          final accWidget = tester.widget<DropdownButtonFormField>(accDropdown);
+          expect((accWidget as dynamic).initialValue, accountId1);
+
+          await tester.pumpWidget(Container());
+        }));
+
+    testWidgets('category field shows autocomplete suggestions',
+            (tester) => tester.runAsync(() async {
+          // Insert categories
+          await db.into(db.bookings).insert(BookingsCompanion.insert(
+              date: 20250101,
+              accountId: accountId1,
+              category: 'Food',
+              shares: 10,
+              value: 10));
+          await db.into(db.bookings).insert(BookingsCompanion.insert(
+              date: 20250102,
+              accountId: accountId1,
+              category: 'Transport',
+              shares: 20,
+              value: 20));
+          await db.into(db.bookings).insert(BookingsCompanion.insert(
+              date: 20250103,
+              accountId: accountId1,
+              category: 'Food expenses',
+              shares: 30,
+              value: 30));
+
+          await pumpWidget(tester);
+
+          final auto = find.byKey(const Key('category_field'));
+          expect(auto, findsOneWidget);
+          final field = find.descendant(of: auto, matching: find.byType(TextFormField));
+          expect(field, findsOneWidget);
+
+          await tester.enterText(field, 'F');
+          await tester.pumpAndSettle();
+
+          expect(find.text('Food'), findsOneWidget);
+          expect(find.text('Food expenses'), findsOneWidget);
+          expect(find.text('Transport'), findsNothing);
+
+          await tester.tap(find.text('Food'));
+          await tester.pumpAndSettle();
+
+          final tf = tester.widget<TextFormField>(field);
+          expect(tf.controller!.text, 'Food');
+
+          await tester.pumpWidget(Container());
+        }));
 
     group('Validation', () {
-      testWidgets(
-          'shows errors for invalid amount',
-          (tester) => tester.runAsync(() async {
-                await pumpWidget(tester);
+      testWidgets('shows errors for invalid amount',
+              (tester) => tester.runAsync(() async {
+            await pumpWidget(tester);
 
-                await tester.tap(find.text(l10n.save));
-                await tester.pumpAndSettle();
-                expect(find.text(l10n.requiredField), findsWidgets);
+            await tester.tap(find.text(l10n.save));
+            await tester.pumpAndSettle();
 
-                await tester.enterText(
-                    find.byKey(const Key('shares_field')), 'invalid');
-                await tester.tap(find.text(l10n.save));
-                await tester.pumpAndSettle();
-                expect(find.text(l10n.invalidInput), findsOneWidget);
+            expect(find.text(l10n.requiredField), findsWidgets);
 
-                await tester.enterText(
-                    find.byKey(const Key('shares_field')), '1.234');
-                await tester.tap(find.text(l10n.save));
-                await tester.pumpAndSettle();
-                expect(find.text(l10n.tooManyDecimalPlaces), findsOneWidget);
+            final sharesField = find.byKey(const Key('shares_field'));
+            expect(sharesField, findsOneWidget);
 
-                await tester.pumpWidget(Container());
-              }));
+            await tester.enterText(sharesField, 'invalid');
+            await tester.tap(find.text(l10n.save));
+            await tester.pumpAndSettle();
 
-      testWidgets(
-          'shows errors for invalid category',
-          (tester) => tester.runAsync(() async {
-                await pumpWidget(tester);
+            expect(find.text(l10n.invalidInput), findsOneWidget);
 
-                await tester.tap(find.text(l10n.save));
-                await tester.pumpAndSettle();
-                expect(find.text(l10n.requiredField), findsWidgets);
+            await tester.enterText(sharesField, '1.234');
+            await tester.tap(find.text(l10n.save));
+            await tester.pumpAndSettle();
 
-                await tester.pumpWidget(Container());
-              }));
+            expect(find.text(l10n.tooManyDecimalPlaces), findsOneWidget);
 
-      testWidgets(
-          'shows error if account is not selected',
-          (tester) => tester.runAsync(() async {
-                await pumpWidget(tester);
+            await tester.pumpWidget(Container());
+          }));
 
-                await tester.tap(find.text(l10n.save));
-                await tester.pumpAndSettle();
-                expect(find.text(l10n.pleaseSelectAnAccount), findsOneWidget);
+      testWidgets('shows errors for invalid category',
+              (tester) => tester.runAsync(() async {
+            await pumpWidget(tester);
 
-                await tester.pumpWidget(Container());
-              }));
+            await tester.tap(find.text(l10n.save));
+            await tester.pumpAndSettle();
+
+            // requiredField shown for missing category among other fields
+            expect(find.text(l10n.requiredField), findsWidgets);
+
+            await tester.pumpWidget(Container());
+          }));
+
+      testWidgets('shows error if account is not selected',
+              (tester) => tester.runAsync(() async {
+            await pumpWidget(tester);
+
+            await tester.tap(find.text(l10n.save));
+            await tester.pumpAndSettle();
+
+            expect(find.text(l10n.pleaseSelectAnAccount), findsOneWidget);
+
+            await tester.pumpWidget(Container());
+          }));
     });
 
     group('Form Submission', () {
-      testWidgets(
-          'Create new booking successfully',
-          (tester) => tester.runAsync(() async {
-                await pumpWidget(tester);
+      testWidgets('Create new booking successfully',
+              (tester) => tester.runAsync(() async {
+            await pumpWidget(tester);
 
-                await tester.enterText(
-                    find.byKey(const Key('shares_field')), '-50.50');
-                await tester.enterText(
-                    find.byKey(const Key('category_field')), 'Groceries');
-                await tester.tap(find.byKey(const Key('account_dropdown')));
-                await tester.pumpAndSettle();
-                await tester.tap(find.text('Test Account').last);
-                await tester.pumpAndSettle();
+            final sharesField = find.byKey(const Key('shares_field'));
+            expect(sharesField, findsOneWidget);
+            await tester.enterText(sharesField, '-50.50');
 
-                await tester.tap(find.text(l10n.save));
-                await tester.pumpAndSettle();
+            final auto = find.byKey(const Key('category_field'));
+            final catField = find.descendant(of: auto, matching: find.byType(TextFormField));
+            expect(catField, findsOneWidget);
+            await tester.enterText(catField, 'Groceries');
 
-                final bookings = await (db.select(db.bookings)).get();
-                expect(bookings.length, 1);
+            // pick account by tapping the dropdown (found via label) and choose entry
+            final accDropdown = dropdownByLabel(l10n.account);
+            expect(accDropdown, findsOneWidget);
+            await tester.tap(accDropdown);
+            await tester.pumpAndSettle();
+            await tester.tap(find.text('Test Account').last);
+            await tester.pumpAndSettle();
 
-                await tester.pumpWidget(Container());
-              }));
+            await tester.tap(find.text(l10n.save));
+            await tester.pumpAndSettle();
 
-      testWidgets(
-          'shows toast for insufficient balance',
-          (tester) => tester.runAsync(() async {
-                await pumpWidgetWithToast(tester);
+            final bookings = await (db.select(db.bookings)).get();
+            expect(bookings.length, 1);
 
-                await tester.enterText(
-                    find.byKey(const Key('shares_field')), '-150');
-                await tester.enterText(
-                    find.byKey(const Key('category_field')), 'Too Expensive');
-                await tester.tap(find.byKey(const Key('account_dropdown')));
-                await tester.pumpAndSettle();
-                await tester.tap(find.text('Test Account').last);
-                await tester.pumpAndSettle();
+            await tester.pumpWidget(Container());
+          }));
 
-                await tester.tap(find.text(l10n.save));
-                await tester.pumpAndSettle(); // Let toast appear
+      testWidgets('shows toast for insufficient balance',
+              (tester) => tester.runAsync(() async {
+            await pumpWidgetWithToast(tester);
 
-                expect(find.text(l10n.insufficientBalance), findsOneWidget);
+            final sharesField = find.byKey(const Key('shares_field'));
+            expect(sharesField, findsOneWidget);
+            await tester.enterText(sharesField, '-150');
 
-                await tester.pumpAndSettle(
-                    const Duration(seconds: 3)); // let toast disappear
+            final auto = find.byKey(const Key('category_field'));
+            final catField = find.descendant(of: auto, matching: find.byType(TextFormField));
+            expect(catField, findsOneWidget);
+            await tester.enterText(catField, 'Too Expensive');
 
-                await tester.pumpWidget(Container());
-              }));
+            final accDropdown = dropdownByLabel(l10n.account);
+            expect(accDropdown, findsOneWidget);
+            await tester.tap(accDropdown);
+            await tester.pumpAndSettle();
+            await tester.tap(find.text('Test Account').last);
+            await tester.pumpAndSettle();
 
-      testWidgets(
-          'Update existing booking successfully',
-          (tester) => tester.runAsync(() async {
-                Booking bookingWithoutId = Booking(
-                    id: -1,
-                    date: 20250101,
-                    assetId: 1,
-                    accountId: accountId1,
-                    category: 'Initial',
-                    shares: 50,
-                    costBasis: 1,
-                    value: 50,
-                    excludeFromAverage: false,
-                    isGenerated: false);
-                final id = await db
-                    .into(db.bookings)
-                    .insert(bookingWithoutId.toCompanion(false));
-                final booking = bookingWithoutId.copyWith(id: id);
+            await tester.tap(find.text(l10n.save));
+            await tester.pump(); // start toast rendering
+            await tester.pumpAndSettle();
 
-                await pumpWidget(tester, booking: booking);
+            expect(find.text(l10n.insufficientBalance), findsOneWidget);
 
-                await tester.enterText(
-                    find.byKey(const Key('shares_field')), '-25');
-                await tester.enterText(
-                    find.byKey(const Key('category_field')), 'Updated');
+            // allow toast to disappear
+            await tester.pumpAndSettle(const Duration(seconds: 3));
 
-                await tester.tap(find.text(l10n.save));
-                await tester.pumpAndSettle();
+            await tester.pumpWidget(Container());
+          }));
 
-                final updatedBooking =
-                    await db.bookingsDao.getBooking(booking.id);
-                expect(updatedBooking.shares, -25);
+      testWidgets('Update existing booking successfully',
+              (tester) => tester.runAsync(() async {
+            Booking bookingWithoutId = Booking(
+                id: -1,
+                date: 20250101,
+                assetId: 1,
+                accountId: accountId1,
+                category: 'Initial',
+                shares: 50,
+                costBasis: 1,
+                value: 50,
+                excludeFromAverage: false,
+                isGenerated: false);
+            final id = await db
+                .into(db.bookings)
+                .insert(bookingWithoutId.toCompanion(false));
+            final booking = bookingWithoutId.copyWith(id: id);
 
-                await tester.pumpWidget(Container());
-              }));
+            await pumpWidget(tester, booking: booking);
 
-      testWidgets(
-          'Merge dialog appears and merge is successful',
-          (tester) => tester.runAsync(() async {
-                await db.into(db.bookings).insert(BookingsCompanion.insert(
-                    date: dateTimeToInt(DateTime.now()),
-                    accountId: accountId1,
-                    category: 'Groceries',
-                    shares: -30,
-                    value: -30));
+            final sharesField = find.byKey(const Key('shares_field'));
+            expect(sharesField, findsOneWidget);
+            await tester.enterText(sharesField, '-25');
 
-                await pumpWidget(tester);
+            final auto = find.byKey(const Key('category_field'));
+            final catField = find.descendant(of: auto, matching: find.byType(TextFormField));
+            expect(catField, findsOneWidget);
+            await tester.enterText(catField, 'Updated');
 
-                await tester.enterText(
-                    find.byKey(const Key('shares_field')), '-20');
-                await tester.enterText(
-                    find.byKey(const Key('category_field')), 'Groceries');
-                await tester.tap(find.byKey(const Key('account_dropdown')));
-                await tester.pumpAndSettle();
-                await tester.tap(find.text('Test Account').last);
-                await tester.pumpAndSettle();
+            await tester.tap(find.text(l10n.save));
+            await tester.pumpAndSettle();
 
-                await tester.tap(find.text(l10n.save));
-                await tester.pumpAndSettle();
+            final updatedBooking = await db.bookingsDao.getBooking(booking.id);
+            expect(updatedBooking.shares, -25);
 
-                expect(find.text(l10n.mergeBookings), findsOneWidget);
+            await tester.pumpWidget(Container());
+          }));
 
-                await tester.tap(find.text(l10n.merge));
-                await tester.pumpAndSettle();
+      testWidgets('Merge dialog appears and merge is successful',
+              (tester) => tester.runAsync(() async {
+            await db.into(db.bookings).insert(BookingsCompanion.insert(
+                date: dateTimeToInt(DateTime.now()),
+                accountId: accountId1,
+                category: 'Groceries',
+                shares: -30,
+                value: -30));
 
-                final bookings = await (db.select(db.bookings)).get();
-                expect(bookings.length, 1);
-                expect(bookings[0].shares, -50);
-                expect(bookings[0].costBasis, 1);
-                expect(bookings[0].value, -50);
+            await pumpWidget(tester);
 
-                await tester.pumpWidget(Container());
-              }));
+            final sharesField = find.byKey(const Key('shares_field'));
+            expect(sharesField, findsOneWidget);
+            await tester.enterText(sharesField, '-20');
+
+            final auto = find.byKey(const Key('category_field'));
+            final catField = find.descendant(of: auto, matching: find.byType(TextFormField));
+            expect(catField, findsOneWidget);
+            await tester.enterText(catField, 'Groceries');
+
+            final accDropdown = dropdownByLabel(l10n.account);
+            expect(accDropdown, findsOneWidget);
+            await tester.tap(accDropdown);
+            await tester.pumpAndSettle();
+            await tester.tap(find.text('Test Account').last);
+            await tester.pumpAndSettle();
+
+            await tester.tap(find.text(l10n.save));
+            await tester.pumpAndSettle();
+
+            expect(find.text(l10n.mergeBookings), findsOneWidget);
+
+            await tester.tap(find.text(l10n.merge));
+            await tester.pumpAndSettle();
+
+            final bookings = await (db.select(db.bookings)).get();
+            expect(bookings.length, 1);
+            expect(bookings[0].shares, -50);
+            expect(bookings[0].costBasis, 1);
+            expect(bookings[0].value, -50);
+
+            await tester.pumpWidget(Container());
+          }));
     });
   });
 }

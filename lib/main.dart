@@ -161,10 +161,11 @@ class _MainScreenState extends State<MainScreen> {
                 currentIndex: _selectedIndex,
                 onTap: (i) => setState(() => _selectedIndex = i),
                 onLeftTap: () {
+                  final sw = Stopwatch()..start();
                   if (_selectedIndex == 1) {
                     AccountsScreen.showAccountForm(context);
                   } else if (_selectedIndex == 2) {
-                    BookingsScreen.showBookingForm(context, null);
+                    BookingsScreen.showBookingForm(context, null, sw);
                   }
                 },
                 leftVisibleForIndices: const {1, 2},
