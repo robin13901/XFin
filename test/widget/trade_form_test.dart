@@ -676,7 +676,7 @@ void main() {
       });
 
       // stub tradesDao.processTrade to succeed
-      when(() => mockTradesDao.processTrade(any())).thenAnswer((_) async => 1);
+      when(() => mockTradesDao.insertTrade(any())).thenAnswer((_) async => 1);
 
       when(() => mockAccountsDao.leadsToInconsistentBalanceHistory(
           newTrade: any(named: 'newTrade'))).thenAnswer((_) async => false);
@@ -736,7 +736,7 @@ void main() {
       await tester.tap(find.widgetWithText(ElevatedButton, l10n.save));
       await tester.pumpAndSettle();
 
-      verify(() => mockTradesDao.processTrade(any())).called(1);
+      verify(() => mockTradesDao.insertTrade(any())).called(1);
       verify(() => mockObserver.didPop(any(), any())).called(greaterThan(0));
     });
 
@@ -788,7 +788,7 @@ void main() {
       });
 
       // Make processTrade throw
-      when(() => mockTradesDao.processTrade(any()))
+      when(() => mockTradesDao.insertTrade(any()))
           .thenThrow(Exception('boom'));
 
       when(() => mockAccountsDao.leadsToInconsistentBalanceHistory(

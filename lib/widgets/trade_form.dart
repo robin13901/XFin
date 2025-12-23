@@ -1,7 +1,6 @@
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:oktoast/oktoast.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/tables.dart';
@@ -132,31 +131,23 @@ class _TradeFormState extends State<TradeForm> {
   Future<void> _saveForm() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final l10n = AppLocalizations.of(context)!;
     final db = Provider.of<AppDatabase>(context, listen: false);
 
     final trade = TradesCompanion(
-        datetime: drift.Value(
-            int.parse(DateFormat('yyyyMMddHHmmss').format(_selectedDate!))),
-        assetId: drift.Value(_selectedAsset!.id),
-        type: drift.Value(_tradeType!),
-        shares: drift.Value(double.parse(_sharesController.text)),
-        costBasis: drift.Value(double.parse(_costBasisController.text)),
-        fee: drift.Value(double.parse(_feeController.text)),
-        tax: _tradeType == TradeTypes.sell
-            ? drift.Value(double.parse(_taxController.text))
-            : const drift.Value(0),
-        sourceAccountId: drift.Value(_selectedClearingAccount!.id),
-        targetAccountId: drift.Value(_selectedInvestmentAccount!.id));
+      datetime: drift.Value(int.parse(DateFormat('yyyyMMddHHmmss').format(_selectedDate!))),
+      assetId: drift.Value(_selectedAsset!.id),
+      type: drift.Value(_tradeType!),
+      shares: drift.Value(double.parse(_sharesController.text)),
+      costBasis: drift.Value(double.parse(_costBasisController.text)),
+      fee: drift.Value(double.parse(_feeController.text)),
+      tax: _tradeType == TradeTypes.sell ? drift.Value(double.parse(_taxController.text)) : const drift.Value(0),
+      sourceAccountId: drift.Value(_selectedClearingAccount!.id),
+      targetAccountId: drift.Value(_selectedInvestmentAccount!.id),
+    );
 
     try {
-      if (await db.accountsDao.leadsToInconsistentBalanceHistory(
-        newTrade: trade,
-      )) {
-        showToast(l10n.actionCancelledDueToDataInconsistency);
-        return;
-      }
-      await db.tradesDao.processTrade(trade);
+      // NOTE: DAO enforces balance-history checks; UI validators should handle form-level validation.
+      await db.tradesDao.insertTrade(trade);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {

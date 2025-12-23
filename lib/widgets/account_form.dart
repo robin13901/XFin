@@ -109,16 +109,6 @@ class _AccountFormState extends State<AccountForm> {
     if (_assetFormKey.currentState!.validate()) {
       if (_selectedAssetId == null) return;
 
-      // Check uniqueness
-      final isAlreadyAdded =
-      _pendingAssets.any((pa) => pa.assetId == _selectedAssetId);
-      if (isAlreadyAdded) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.assetAlreadyAdded)),
-        );
-        return;
-      }
-
       // Parse values
       final shares = double.parse(_sharesController.text.replaceAll(',', '.'));
       final pricePerShare = _selectedAssetId == 1

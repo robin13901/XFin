@@ -87,103 +87,178 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
         .get();
   }
 
+  /// Build a FIFO queue for (assetId, accountId) that accounts for:
+  /// - trades (buys/sells)
+  /// - bookings
+  /// - transfers
+  /// - the initial AssetsOnAccounts row (reverse engineered from current snapshot)
+  ///
+  /// The returned queue represents the lot state *before* the ordering key:
+  /// ordering key = (upToDatetime, upToType, upToId).
+  /// Events with key < orderingKey are included, events with key >= orderingKey are considered "after".
+  ///
+  /// If upToDatetime/upToType/upToId are omitted, the queue for the full history is returned.
   Future<ListQueue<Map<String, double>>> buildFiFoQueue(
-      int assetId, int accountId,
-      {Transfer? oldTransfer}) async {
-    // Collect initial assets
-    final initialAOA = await getAOA(accountId, assetId);
-    var initialShares = initialAOA.shares;
-    var initialValue = initialAOA.value;
+    int assetId,
+    int accountId, {
+    Transfer? oldTransfer,
+    int? upToDatetime,
+    String? upToType,
+    int? upToId,
+  }) async {
+    int cmpKey(int dtA, String typeA, int idA, int dtB, String typeB, int idB) {
+      if (dtA != dtB) return dtA < dtB ? -1 : 1;
+      final tc = typeA.compareTo(typeB);
+      if (tc != 0) return tc < 0 ? -1 : 1;
+      if (idA != idB) return idA < idB ? -1 : 1;
+      return 0;
+    }
 
-    //1) Collect trades
-    final tRows = await (select(trades)
+    // 0) Current aggregated AOA row
+    final initialAOA = await getAOA(accountId, assetId);
+    double initialShares = initialAOA.shares;
+    double initialValue = initialAOA.value;
+    double initialBuyFeeTotal = initialAOA.buyFeeTotal;
+
+    // 1) Collect raw events
+    final tradeRows = await (select(trades)
           ..where((t) =>
               t.assetId.equals(assetId) &
               ((t.targetAccountId.equals(accountId)) |
                   (t.sourceAccountId.equals(accountId)))))
         .get();
 
-    // 2) Collect bookings
-    final bRows = await (select(bookings)
+    final bookingRows = await (select(bookings)
           ..where(
               (b) => b.assetId.equals(assetId) & b.accountId.equals(accountId)))
         .get();
 
-    // 3) Collect transfers
-    final trRows = await (select(transfers)
+    final transferRows = await (select(transfers)
           ..where((tr) =>
               tr.assetId.equals(assetId) &
-              ((tr.sendingAccountId.equals(accountId)) |
-                  (tr.receivingAccountId.equals(accountId)))))
+              ((tr.receivingAccountId.equals(accountId)) |
+                  (tr.sendingAccountId.equals(accountId)))))
         .get();
 
-    // Build a lightweight list of maps (no extra classes) with common fields
+    // 2) Build unified events list
     final events = <Map<String, dynamic>>[];
 
-    for (final t in tRows) {
+    for (final t in tradeRows) {
       final isInflow = t.type == TradeTypes.buy;
       var value = t.shares * t.costBasis;
       initialShares += isInflow ? -t.shares : t.shares;
       initialValue += isInflow ? -value : value;
-      final datetime = t.datetime;
       events.add({
+        'datetime': t.datetime,
+        'typeStr': t.type.name,
+        'id': t.id,
         'in': isInflow,
-        'datetime': datetime,
         'shares': t.shares,
-        'costBasis': t.costBasis
+        'costBasis': t.costBasis,
+        'fee': t.fee,
       });
     }
 
-    for (final b in bRows) {
-      final datetime = b.date * 1000000; // convert yyyyMMdd -> yyyyMMdd000000
-      events.add({
-        'in': b.shares > 0,
-        'datetime': datetime,
-        'shares': b.shares.abs(),
-        'costBasis': b.costBasis
-      });
+    for (final b in bookingRows) {
       initialShares -= b.shares;
       initialValue -= b.value;
+      final datetime = b.date * 1000000;
+      events.add({
+        'datetime': datetime,
+        'typeStr': '_booking',
+        'id': 0,
+        'in': b.shares > 0,
+        'shares': b.shares.abs(),
+        'costBasis': b.costBasis,
+        'fee': 0.0,
+      });
     }
 
-    for (final tr in trRows) {
+    for (final tr in transferRows) {
       final isInflow = tr.receivingAccountId == accountId;
       initialShares += isInflow ? -tr.shares : tr.shares;
       initialValue += isInflow ? -tr.value : tr.value;
       if (oldTransfer != null && tr.id == oldTransfer.id) continue;
-      final datetime = tr.date * 1000000; // convert yyyyMMdd -> yyyyMMdd000000
+      final datetime = tr.date * 1000000;
       events.add({
-        'in': isInflow,
         'datetime': datetime,
+        'typeStr': '_transfer',
+        'id': tr.id,
+        'in': isInflow,
         'shares': tr.shares,
-        'costBasis': tr.costBasis
+        'costBasis': tr.costBasis,
+        'fee': 0.0,
       });
     }
 
-    // Add initial AOA
-    events.add({
-      'in': true,
-      'datetime': 00000000,
-      'shares': initialShares,
-      'costBasis': initialValue / initialShares
-    });
-    events
-        .sort((a, b) => (a['datetime'] as int).compareTo(b['datetime'] as int));
+    // 3) Partition events
+    final keyDt = upToDatetime ?? 99999999999999;
+    final keyType = upToType ?? '\uFFFF';
+    final keyId = upToId ?? 999999999;
 
-    final fifo = ListQueue<Map<String, double>>();
-    for (var e in events) {
-      if (e['in']) {
-        fifo.add({'shares': e['shares'], 'costBasis': e['costBasis']});
+    final eventsBefore = <Map<String, dynamic>>[];
+    final eventsAfter = <Map<String, dynamic>>[];
+
+    for (final e in events) {
+      final cmp = cmpKey(
+        e['datetime'] as int,
+        e['typeStr'] as String,
+        e['id'] as int,
+        keyDt,
+        keyType,
+        keyId,
+      );
+      if (cmp < 0) {
+        eventsBefore.add(e);
       } else {
-        var sharesToConsume = e['shares'];
-        while (sharesToConsume > 0 && fifo.isNotEmpty) {
-          var currentLot = fifo.first;
-          if (currentLot['shares']! <= sharesToConsume) {
-            sharesToConsume -= currentLot['shares']!;
+        eventsAfter.add(e);
+      }
+    }
+
+    if (initialShares.abs() > 1e-12) {
+      eventsBefore.add({
+        'datetime': 0,
+        'typeStr': 'initial',
+        'id': 0,
+        'in': true,
+        'shares': initialShares,
+        'costBasis':
+            initialShares.abs() > 1e-12 ? initialValue / initialShares : 0.0,
+        'fee': initialBuyFeeTotal,
+      });
+    }
+
+    // 4) Sort
+    eventsBefore.sort((a, b) => cmpKey(
+          a['datetime'] as int,
+          a['typeStr'] as String,
+          a['id'] as int,
+          b['datetime'] as int,
+          b['typeStr'] as String,
+          b['id'] as int,
+        ));
+
+    // 5) Build FIFO queue
+    final fifo = ListQueue<Map<String, double>>();
+
+    for (final e in eventsBefore) {
+      final inFlow = e['in'] as bool;
+      final shares = (e['shares'] as num).toDouble();
+      final costBasis = (e['costBasis'] as num).toDouble();
+      final fee = (e['fee'] as num).toDouble();
+
+      if (inFlow) {
+        fifo.add({'shares': shares, 'costBasis': costBasis, 'fee': fee});
+      } else {
+        var remaining = shares;
+        while (remaining > 0 && fifo.isNotEmpty) {
+          final lot = fifo.first;
+          if (lot['shares']! <= remaining + 1e-12) {
+            remaining -= lot['shares']!;
             fifo.removeFirst();
           } else {
-            currentLot['shares'] = currentLot['shares']! - sharesToConsume;
-            sharesToConsume = 0;
+            lot['shares'] = lot['shares']! - remaining;
+            remaining = 0;
           }
         }
       }

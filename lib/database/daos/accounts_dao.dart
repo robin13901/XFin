@@ -125,6 +125,7 @@ class AccountsDao extends DatabaseAccessor<AppDatabase>
   Future<bool> leadsToInconsistentBalanceHistory({
     Booking? originalBooking,
     BookingsCompanion? newBooking,
+    Trade? originalTrade,
     TradesCompanion? newTrade,
     Transfer? originalTransfer,
     TransfersCompanion? newTransfer,
@@ -132,6 +133,10 @@ class AccountsDao extends DatabaseAccessor<AppDatabase>
     Set<int> accountIds = {};
     if (originalBooking != null) accountIds.add(originalBooking.accountId);
     if (newBooking != null) accountIds.add(newBooking.accountId.value);
+    if (originalTrade != null) {
+      accountIds.add(originalTrade.sourceAccountId);
+      accountIds.add(originalTrade.targetAccountId);
+    }
     if (newTrade != null) {
       accountIds.add(newTrade.sourceAccountId.value);
       accountIds.add(newTrade.targetAccountId.value);
@@ -181,12 +186,10 @@ class AccountsDao extends DatabaseAccessor<AppDatabase>
       final Map<int, double> sumsByDate = {};
 
       // Bookings
-      for (final booking in accountBookings) {
-        if (originalBooking != null && booking.id == originalBooking.id) {
-          continue;
-        }
-        final date = booking.date;
-        sumsByDate[date] = (sumsByDate[date] ?? 0) + booking.value;
+      for (final b in accountBookings) {
+        if (originalBooking != null && b.id == originalBooking.id) continue;
+        final date = b.date;
+        sumsByDate[date] = (sumsByDate[date] ?? 0) + b.value;
       }
 
       // Transfers (sending) — subtract
@@ -204,15 +207,17 @@ class AccountsDao extends DatabaseAccessor<AppDatabase>
       }
 
       // Trades (regarding clearing account)
-      for (final trade in clearingTrades) {
-        final date = trade.datetime ~/ 1000000;
-        sumsByDate[date] = (sumsByDate[date] ?? 0) + trade.sourceAccountValueDelta;
+      for (final t in clearingTrades) {
+        if (originalTrade != null && t.id == originalTrade.id) continue;
+        final date = t.datetime ~/ 1000000;
+        sumsByDate[date] = (sumsByDate[date] ?? 0) + t.sourceAccountValueDelta;
       }
 
       // Trades (regarding portfolio account)
-      for (final trade in portfolioTrades) {
-        final date = trade.datetime ~/ 1000000;
-        sumsByDate[date] = (sumsByDate[date] ?? 0) + trade.targetAccountValueDelta;
+      for (final t in portfolioTrades) {
+        if (originalTrade != null && t.id == originalTrade.id) continue;
+        final date = t.datetime ~/ 1000000;
+        sumsByDate[date] = (sumsByDate[date] ?? 0) + t.targetAccountValueDelta;
       }
 
       // New/updated booking
@@ -234,12 +239,27 @@ class AccountsDao extends DatabaseAccessor<AppDatabase>
         }
       }
 
+      // New trade — apply to clearing and portfolio
+      if (newTrade != null) {
+        final newDate = newTrade.datetime.value ~/ 1000000;
+        if (accountId == newTrade.sourceAccountId.value) {
+          final sourceAccountValueDelta = newTrade.sourceAccountValueDelta.value;
+          sumsByDate[newDate] = (sumsByDate[newDate] ?? 0) + sourceAccountValueDelta;
+        }
+        if (accountId == newTrade.targetAccountId.value) {
+          final targetAccountValueDelta = newTrade.targetAccountValueDelta.value;
+          sumsByDate[newDate] = (sumsByDate[newDate] ?? 0) + targetAccountValueDelta;
+        }
+      }
+
       // Process sorted dates
       final sortedDates = sumsByDate.keys.toList()..sort();
 
       for (final date in sortedDates) {
         runningBalance += sumsByDate[date]!;
-        if (runningBalance < -0.00001) return true;
+        if (runningBalance < -0.00001) {
+          return true;
+        }
       }
     }
 

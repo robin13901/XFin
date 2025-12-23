@@ -127,7 +127,9 @@ class TradesScreen extends StatelessWidget {
             },
           ),
           buildLiquidGlassAppBar(context, title: Text(l10n.trades)),
-          buildFAB(context: context, onTap: () => _showTradeForm(context)), //DevTestScreen().parseAndInsertCsv(context)),
+          buildFAB(context: context, onTap: () => _showTradeForm(context)),
+          // buildFAB(context: context, onTap: () => DevTestScreen().parseAndInsertTrades(context)),
+          // buildFAB(context: context, onTap: () => DevTestScreen().parseAndInsertCsv(context)),
         ],
       ),
     );
