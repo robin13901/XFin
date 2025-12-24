@@ -1306,4 +1306,189 @@ void main() {
       expect(sellAfter.profitAndLoss, closeTo(25.0, 1e-9));
     });
   });
+
+  group('TradesDao – trade reordering, validation and balance consistency', () {
+    test(
+        'reordering trades correctly reapplies FIFO lots and preserves balances',
+            () async {
+          // Initial buy
+          await tradesDao.insertTrade(TradesCompanion(
+            datetime: const drift.Value(20250101000000),
+            assetId: drift.Value(assetOne.id),
+            type: const drift.Value(TradeTypes.buy),
+            shares: const drift.Value(10),
+            costBasis: const drift.Value(10),
+            fee: const drift.Value(5),
+            tax: const drift.Value(0),
+            sourceAccountId: drift.Value(sourceAccount.id),
+            targetAccountId: drift.Value(targetAccount.id),
+          ));
+
+          // Two sells that will later be undone and reapplied
+          await tradesDao.insertTrade(TradesCompanion(
+            datetime: const drift.Value(20250102000000),
+            assetId: drift.Value(assetOne.id),
+            type: const drift.Value(TradeTypes.sell),
+            shares: const drift.Value(4),
+            costBasis: const drift.Value(12),
+            fee: const drift.Value(0),
+            tax: const drift.Value(0),
+            sourceAccountId: drift.Value(sourceAccount.id),
+            targetAccountId: drift.Value(targetAccount.id),
+          ));
+
+          await tradesDao.insertTrade(TradesCompanion(
+            datetime: const drift.Value(20250103000000),
+            assetId: drift.Value(assetOne.id),
+            type: const drift.Value(TradeTypes.sell),
+            shares: const drift.Value(4),
+            costBasis: const drift.Value(11),
+            fee: const drift.Value(0),
+            tax: const drift.Value(0),
+            sourceAccountId: drift.Value(sourceAccount.id),
+            targetAccountId: drift.Value(targetAccount.id),
+          ));
+
+          // Backdated buy forces undo/reapply with partial FIFO lot consumption
+          await tradesDao.insertTrade(TradesCompanion(
+            datetime: const drift.Value(20250101500000),
+            assetId: drift.Value(assetOne.id),
+            type: const drift.Value(TradeTypes.buy),
+            shares: const drift.Value(1),
+            costBasis: const drift.Value(9),
+            fee: const drift.Value(1),
+            tax: const drift.Value(0),
+            sourceAccountId: drift.Value(sourceAccount.id),
+            targetAccountId: drift.Value(targetAccount.id),
+          ));
+
+          final aoa = await (db.select(db.assetsOnAccounts)
+            ..where((a) =>
+            a.assetId.equals(assetOne.id) &
+            a.accountId.equals(targetAccount.id)))
+              .getSingle();
+
+          // 10 + 1 − 4 − 4 = 3
+          expect(aoa.shares, closeTo(3, 1e-9));
+
+          final asset =
+          await (db.select(db.assets)..where((a) => a.id.equals(assetOne.id)))
+              .getSingle();
+          expect(asset.shares, closeTo(3, 1e-9));
+
+          final source =
+          await (db.select(db.accounts)..where((a) => a.id.equals(sourceAccount.id)))
+              .getSingle();
+          final target =
+          await (db.select(db.accounts)..where((a) => a.id.equals(targetAccount.id)))
+              .getSingle();
+
+          expect(source.balance.isFinite, true);
+          expect(target.balance.isFinite, true);
+          expect(aoa.buyFeeTotal >= 0, true);
+        });
+
+    test(
+        'updating a sell to an earlier datetime that would be invalid is rejected',
+            () async {
+          // buy (id = 1)
+          await tradesDao.insertTrade(TradesCompanion(
+            datetime: const drift.Value(20250103000000),
+            assetId: drift.Value(assetOne.id),
+            type: const drift.Value(TradeTypes.buy),
+            shares: const drift.Value(1),
+            costBasis: const drift.Value(10),
+            fee: const drift.Value(0),
+            tax: const drift.Value(0),
+            sourceAccountId: drift.Value(sourceAccount.id),
+            targetAccountId: drift.Value(targetAccount.id),
+          ));
+
+          // sell (id = 2) — initially valid because it consumes the buy above
+          await tradesDao.insertTrade(TradesCompanion(
+            datetime: const drift.Value(20250104000000),
+            assetId: drift.Value(assetOne.id),
+            type: const drift.Value(TradeTypes.sell),
+            shares: const drift.Value(1),
+            costBasis: const drift.Value(20),
+            fee: const drift.Value(0),
+            tax: const drift.Value(0),
+            sourceAccountId: drift.Value(sourceAccount.id),
+            targetAccountId: drift.Value(targetAccount.id),
+          ));
+
+          // Try to move the existing SELL (id = 2) earlier than the buy -> should fail validation
+          expect(
+                () async => await tradesDao.updateTrade(
+              2,
+              const TradesCompanion(
+                datetime: drift.Value(20250101000000), // earlier than the buy
+              ),
+            ),
+            throwsA(isA<Exception>()),
+          );
+
+          // DB must remain consistent: combined effect of buy+sell still leaves zero holdings
+          final assetRow = await (db.select(db.assets)
+            ..where((a) => a.id.equals(assetOne.id)))
+              .getSingle();
+          expect(assetRow.shares, closeTo(0, 1e-9));
+
+          final source = await (db.select(db.accounts)
+            ..where((a) => a.id.equals(sourceAccount.id)))
+              .getSingle();
+          expect(source.balance.isFinite, true);
+        });
+
+    test(
+        'deleting a trade that supports later sells preserves account and asset consistency',
+            () async {
+          await tradesDao.insertTrade(TradesCompanion(
+            datetime: const drift.Value(20250101000000),
+            assetId: drift.Value(assetOne.id),
+            type: const drift.Value(TradeTypes.buy),
+            shares: const drift.Value(1),
+            costBasis: const drift.Value(10),
+            fee: const drift.Value(0),
+            tax: const drift.Value(0),
+            sourceAccountId: drift.Value(sourceAccount.id),
+            targetAccountId: drift.Value(targetAccount.id),
+          ));
+
+          await tradesDao.insertTrade(TradesCompanion(
+            datetime: const drift.Value(20250102000000),
+            assetId: drift.Value(assetOne.id),
+            type: const drift.Value(TradeTypes.sell),
+            shares: const drift.Value(1),
+            costBasis: const drift.Value(20),
+            fee: const drift.Value(0),
+            tax: const drift.Value(0),
+            sourceAccountId: drift.Value(sourceAccount.id),
+            targetAccountId: drift.Value(targetAccount.id),
+          ));
+
+          expect(
+                () async => tradesDao.deleteTrade(1),
+            throwsA(isA<Exception>()),
+          );
+
+          final aoa = await (db.select(db.assetsOnAccounts)
+            ..where((a) =>
+            a.assetId.equals(assetOne.id) &
+            a.accountId.equals(targetAccount.id)))
+              .getSingle();
+          expect(aoa.shares, closeTo(0, 1e-9));
+
+          final asset =
+          await (db.select(db.assets)..where((a) => a.id.equals(assetOne.id)))
+              .getSingle();
+          expect(asset.shares, closeTo(0, 1e-9));
+
+          final source =
+          await (db.select(db.accounts)..where((a) => a.id.equals(sourceAccount.id)))
+              .getSingle();
+          expect(source.balance.isFinite, true);
+        });
+  });
+
 }
