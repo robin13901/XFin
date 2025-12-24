@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -98,7 +99,7 @@ class BookingsScreen extends StatelessWidget {
                               children: [
                                 TextSpan(
                                   text:
-                                      '${booking.shares} ${asset.currencySymbol ?? asset.tickerSymbol} ≈ ',
+                                  '${booking.shares} ${Unicode.RLI}${asset.currencySymbol ?? asset.tickerSymbol}${Unicode.PDI} ≈ ',
                                   style: const TextStyle(color: Colors.grey),
                                 ),
                                 TextSpan(
