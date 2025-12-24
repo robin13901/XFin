@@ -187,9 +187,9 @@ class LiquidGlassBottomNav extends StatelessWidget {
     required bool isSelected,
     required ThemeData theme,
   }) {
-    const Color selectedColor = Colors.indigoAccent;
-    final Color unselectedColor =
-        theme.iconTheme.color?.withValues(alpha: 0.85) ?? Colors.white70;
+    const Color selectedColor = Colors.white;
+    const Color unselectedColor = Colors.grey;
+        // theme.iconTheme.color?.withValues(alpha: 0.85) ?? Colors.white70;
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,

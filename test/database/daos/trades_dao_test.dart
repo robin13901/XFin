@@ -116,97 +116,148 @@ void main() {
           profitAndLoss: const drift.Value(0),
           returnOnInvest: const drift.Value(0)));
 
+
       final rows = await tradesDao.watchAllTrades().first;
       expect(rows, isNotEmpty);
       expect(rows.first.asset.name, 'Asset One');
       expect(rows.first.trade.shares, 1.0);
+    });
+
+    test('returns trades sorted desc by datetime then id', () async {
+      // insert three trades at different datetimes
+      await db.into(db.trades).insert(TradesCompanion(
+        datetime: const drift.Value(20250101000001),
+        assetId: drift.Value(assetOne.id),
+        type: const drift.Value(TradeTypes.buy),
+        shares: const drift.Value(1),
+        costBasis: const drift.Value(1),
+        fee: const drift.Value(0),
+        tax: const drift.Value(0),
+        sourceAccountId: drift.Value(sourceAccount.id),
+        targetAccountId: drift.Value(targetAccount.id),
+        sourceAccountValueDelta: const drift.Value(-1.0),
+        targetAccountValueDelta: const drift.Value(1.0),
+      ));
+
+      await db.into(db.trades).insert(TradesCompanion(
+        datetime: const drift.Value(20250101000003),
+        assetId: drift.Value(assetOne.id),
+        type: const drift.Value(TradeTypes.buy),
+        shares: const drift.Value(1),
+        costBasis: const drift.Value(1),
+        fee: const drift.Value(0),
+        tax: const drift.Value(0),
+        sourceAccountId: drift.Value(sourceAccount.id),
+        targetAccountId: drift.Value(targetAccount.id),
+        sourceAccountValueDelta: const drift.Value(-1.0),
+        targetAccountValueDelta: const drift.Value(1.0),
+      ));
+
+      await db.into(db.trades).insert(TradesCompanion(
+        datetime: const drift.Value(20250101000002),
+        assetId: drift.Value(assetOne.id),
+        type: const drift.Value(TradeTypes.buy),
+        shares: const drift.Value(1),
+        costBasis: const drift.Value(1),
+        fee: const drift.Value(0),
+        tax: const drift.Value(0),
+        sourceAccountId: drift.Value(sourceAccount.id),
+        targetAccountId: drift.Value(targetAccount.id),
+        sourceAccountValueDelta: const drift.Value(-1.0),
+        targetAccountValueDelta: const drift.Value(1.0),
+      ));
+
+      final rows = await tradesDao.watchAllTrades().first;
+      // expected order: datetime 20250101000003, 20250101000002, 20250101000001
+      expect(rows.map((r) => r.trade.datetime).toList(),
+          equals([20250101000003, 20250101000002, 20250101000001]));
     });
   });
 
   group('insertTrade (buy)', () {
     test(
         'when assetsOnAccounts exists -> updates assetsOnAccounts and accounts and inserts trade',
-        () async {
-      // Existing assetsOnAccounts (10 shares, value 100)
-      await db.into(db.assetsOnAccounts).insert(AssetsOnAccountsCompanion(
-          assetId: drift.Value(assetOne.id),
-          accountId: drift.Value(targetAccount.id),
-          shares: const drift.Value(10.0),
-          value: const drift.Value(100.0),
-          netCostBasis: const drift.Value(10.0),
-          brokerCostBasis: const drift.Value(9.5),
-          buyFeeTotal: const drift.Value(5.0)));
-      await (db.update(db.assets)..where((a) => a.id.equals(assetOne.id)))
-          .write(const AssetsCompanion(
+            () async {
+          // Existing assetsOnAccounts (10 shares, value 100)
+          await db.into(db.assetsOnAccounts).insert(AssetsOnAccountsCompanion(
+              assetId: drift.Value(assetOne.id),
+              accountId: drift.Value(targetAccount.id),
+              shares: const drift.Value(10.0),
+              value: const drift.Value(100.0),
+              netCostBasis: const drift.Value(10.0),
+              brokerCostBasis: const drift.Value(9.5),
+              buyFeeTotal: const drift.Value(5.0)));
+          await (db.update(db.assets)..where((a) => a.id.equals(assetOne.id)))
+              .write(const AssetsCompanion(
               shares: drift.Value(10),
               value: drift.Value(100.0),
               netCostBasis: drift.Value(10.0),
               brokerCostBasis: drift.Value(9.5),
               buyFeeTotal: drift.Value(5.0)));
 
-      // Build a buy TradesCompanion: buy 2 shares at 10 each, fee 1, tax 0
-      final buyEntry = TradesCompanion(
-        datetime: const drift.Value(20250101120001),
-        assetId: drift.Value(assetOne.id),
-        type: const drift.Value(TradeTypes.buy),
-        shares: const drift.Value(2.0),
-        costBasis: const drift.Value(10.0),
-        fee: const drift.Value(1.0),
-        tax: const drift.Value(0.0),
-        sourceAccountId: drift.Value(sourceAccount.id),
-        targetAccountId: drift.Value(targetAccount.id),
-      );
+          // Build a buy TradesCompanion: buy 2 shares at 10 each, fee 1, tax 0
+          final buyEntry = TradesCompanion(
+            datetime: const drift.Value(20250101120001),
+            assetId: drift.Value(assetOne.id),
+            type: const drift.Value(TradeTypes.buy),
+            shares: const drift.Value(2.0),
+            costBasis: const drift.Value(10.0),
+            fee: const drift.Value(1.0),
+            tax: const drift.Value(0.0),
+            sourceAccountId: drift.Value(sourceAccount.id),
+            targetAccountId: drift.Value(targetAccount.id),
+          );
 
-      await tradesDao.insertTrade(buyEntry);
+          await tradesDao.insertTrade(buyEntry);
 
-      // Check assetOnAccount updated
-      final updatedAOA = await (db.select(db.assetsOnAccounts)
+          // Check assetOnAccount updated
+          final updatedAOA = await (db.select(db.assetsOnAccounts)
             ..where((a) =>
-                a.assetId.equals(assetOne.id) &
-                a.accountId.equals(targetAccount.id)))
-          .getSingle();
-      expect(updatedAOA.shares, closeTo(10 + 2, 1e-9));
-      expect(updatedAOA.value, closeTo(100 + 2 * 10, 1e-9));
-      expect(updatedAOA.buyFeeTotal, closeTo(5 + 1, 1e-9));
-      expect(updatedAOA.netCostBasis, closeTo(120.0 / 12.0, 1e-9));
-      expect(updatedAOA.brokerCostBasis, closeTo((120.0 + 6.0) / 12.0, 1e-9));
+            a.assetId.equals(assetOne.id) &
+            a.accountId.equals(targetAccount.id)))
+              .getSingle();
+          expect(updatedAOA.shares, closeTo(10 + 2, 1e-9));
+          expect(updatedAOA.value, closeTo(100 + 2 * 10, 1e-9));
+          expect(updatedAOA.buyFeeTotal, closeTo(5 + 1, 1e-9));
+          expect(updatedAOA.netCostBasis, closeTo(120.0 / 12.0, 1e-9));
+          expect(updatedAOA.brokerCostBasis, closeTo((120.0 + 6.0) / 12.0, 1e-9));
 
-      // Check asset updated
-      final updatedAsset = await (db.select(db.assets)
+          // Check asset updated
+          final updatedAsset = await (db.select(db.assets)
             ..where((a) => a.id.equals(assetOne.id)))
-          .getSingle();
-      expect(updatedAsset.shares, closeTo(10 + 2, 1e-9));
-      expect(updatedAsset.value, closeTo(100 + 2 * 10, 1e-9));
-      expect(updatedAsset.buyFeeTotal, closeTo(5 + 1, 1e-9));
-      expect(updatedAsset.netCostBasis, closeTo(120.0 / 12.0, 1e-9));
-      expect(updatedAsset.brokerCostBasis, closeTo((120.0 + 6.0) / 12.0, 1e-9));
+              .getSingle();
+          expect(updatedAsset.shares, closeTo(10 + 2, 1e-9));
+          expect(updatedAsset.value, closeTo(100 + 2 * 10, 1e-9));
+          expect(updatedAsset.buyFeeTotal, closeTo(5 + 1, 1e-9));
+          expect(updatedAsset.netCostBasis, closeTo(120.0 / 12.0, 1e-9));
+          expect(updatedAsset.brokerCostBasis, closeTo((120.0 + 6.0) / 12.0, 1e-9));
 
-      // Check accounts updated
-      final source = await (db.select(db.accounts)
+          // Check accounts updated
+          final source = await (db.select(db.accounts)
             ..where((a) => a.id.equals(sourceAccount.id)))
-          .getSingle();
-      expect(source.balance, closeTo(5000 - 21, 1e-9));
-      final target = await (db.select(db.accounts)
+              .getSingle();
+          expect(source.balance, closeTo(5000 - 21, 1e-9));
+          final target = await (db.select(db.accounts)
             ..where((a) => a.id.equals(targetAccount.id)))
-          .getSingle();
-      expect(target.balance, closeTo(0 + 20, 1e-9));
+              .getSingle();
+          expect(target.balance, closeTo(0 + 20, 1e-9));
 
-      // Check trades inserted and values computed
-      final insertedTrade = await (db.select(db.trades)
+          // Check trades inserted and values computed
+          final insertedTrade = await (db.select(db.trades)
             ..where((t) =>
-                t.assetId.equals(assetOne.id) &
-                t.datetime.equals(20250101120001)))
-          .getSingle();
-      expect(insertedTrade.sourceAccountValueDelta, closeTo(-20 - 1, 1e-9));
-      expect(insertedTrade.targetAccountValueDelta, closeTo(20, 1e-9));
-      expect(insertedTrade.profitAndLoss, closeTo(0.0, 1e-9));
-      expect(insertedTrade.returnOnInvest, closeTo(0.0, 1e-9));
-    });
+            t.assetId.equals(assetOne.id) &
+            t.datetime.equals(20250101120001)))
+              .getSingle();
+          expect(insertedTrade.sourceAccountValueDelta, closeTo(-20 - 1, 1e-9));
+          expect(insertedTrade.targetAccountValueDelta, closeTo(20, 1e-9));
+          expect(insertedTrade.profitAndLoss, closeTo(0.0, 1e-9));
+          expect(insertedTrade.returnOnInvest, closeTo(0.0, 1e-9));
+        });
 
     test(
         'when assetsOnAccounts does not exist -> creates it then processes buy',
-        () async {
-      final newAssetId = await db.into(db.assets).insert(const AssetsCompanion(
+            () async {
+          final newAssetId = await db.into(db.assets).insert(const AssetsCompanion(
             name: drift.Value('New Asset'),
             type: drift.Value(AssetTypes.stock),
             tickerSymbol: drift.Value('NEW'),
@@ -217,42 +268,42 @@ void main() {
             buyFeeTotal: drift.Value(0.0),
           ));
 
-      // Ensure no assetsOnAccounts row exists initially
-      final rowBefore = await (db.select(db.assetsOnAccounts)
+          // Ensure no assetsOnAccounts row exists initially
+          final rowBefore = await (db.select(db.assetsOnAccounts)
             ..where((a) =>
-                a.assetId.equals(newAssetId) &
-                a.accountId.equals(targetAccount.id)))
-          .get();
-      expect(rowBefore, isEmpty);
+            a.assetId.equals(newAssetId) &
+            a.accountId.equals(targetAccount.id)))
+              .get();
+          expect(rowBefore, isEmpty);
 
-      final buyEntry = TradesCompanion(
-        datetime: const drift.Value(20250101121000),
-        assetId: drift.Value(newAssetId),
-        type: const drift.Value(TradeTypes.buy),
-        shares: const drift.Value(0.001),
-        costBasis: const drift.Value(40000),
-        fee: const drift.Value(1),
-        tax: const drift.Value(0.0),
-        sourceAccountId: drift.Value(sourceAccount.id),
-        targetAccountId: drift.Value(targetAccount.id),
-      );
+          final buyEntry = TradesCompanion(
+            datetime: const drift.Value(20250101121000),
+            assetId: drift.Value(newAssetId),
+            type: const drift.Value(TradeTypes.buy),
+            shares: const drift.Value(0.001),
+            costBasis: const drift.Value(40000),
+            fee: const drift.Value(1),
+            tax: const drift.Value(0.0),
+            sourceAccountId: drift.Value(sourceAccount.id),
+            targetAccountId: drift.Value(targetAccount.id),
+          );
 
-      await tradesDao.insertTrade(buyEntry);
+          await tradesDao.insertTrade(buyEntry);
 
-      // Now assetsOnAccounts should exist and be updated
-      final newAssetOnAccount = await (db.select(db.assetsOnAccounts)
+          // Now assetsOnAccounts should exist and be updated
+          final newAssetOnAccount = await (db.select(db.assetsOnAccounts)
             ..where((a) =>
-                a.assetId.equals(newAssetId) &
-                a.accountId.equals(targetAccount.id)))
-          .getSingle();
+            a.assetId.equals(newAssetId) &
+            a.accountId.equals(targetAccount.id)))
+              .getSingle();
 
-      expect(newAssetOnAccount.shares, closeTo(0.001, 1e-9));
-      expect(newAssetOnAccount.value, closeTo(0.001 * 40000, 1e-9));
-      expect(newAssetOnAccount.netCostBasis, closeTo(40 / 0.001, 1e-9));
-      expect(
-          newAssetOnAccount.brokerCostBasis, closeTo((40 + 1) / 0.001, 1e-9));
-      expect(newAssetOnAccount.buyFeeTotal, closeTo(1, 1e-9));
-    });
+          expect(newAssetOnAccount.shares, closeTo(0.001, 1e-9));
+          expect(newAssetOnAccount.value, closeTo(0.001 * 40000, 1e-9));
+          expect(newAssetOnAccount.netCostBasis, closeTo(40 / 0.001, 1e-9));
+          expect(
+              newAssetOnAccount.brokerCostBasis, closeTo((40 + 1) / 0.001, 1e-9));
+          expect(newAssetOnAccount.buyFeeTotal, closeTo(1, 1e-9));
+        });
   });
 
   group('insertTrade (sell) and FIFO', () {
@@ -279,9 +330,9 @@ void main() {
       expect(trade1.targetAccountValueDelta, closeTo(802.7, 1e-9));
 
       final aoaOne1 = await (db.select(db.assetsOnAccounts)
-            ..where((a) =>
-                a.assetId.equals(assetOne.id) &
-                a.accountId.equals(targetAccount.id)))
+        ..where((a) =>
+        a.assetId.equals(assetOne.id) &
+        a.accountId.equals(targetAccount.id)))
           .getSingle();
       expect(aoaOne1.shares, closeTo(50, 1e-9));
       expect(aoaOne1.value, closeTo(802.7, 1e-9));
@@ -290,7 +341,7 @@ void main() {
       expect(aoaOne1.netCostBasis, closeTo(802.7 / 50, 1e-9));
 
       final assetOne1 = await (db.select(db.assets)
-            ..where((a) => a.id.equals(assetOne.id)))
+        ..where((a) => a.id.equals(assetOne.id)))
           .getSingle();
       expect(assetOne1.shares, closeTo(50, 1e-9));
       expect(assetOne1.value, closeTo(802.7, 1e-9));
@@ -299,12 +350,12 @@ void main() {
       expect(assetOne1.netCostBasis, closeTo(802.7 / 50, 1e-9));
 
       final source1 = await (db.select(db.accounts)
-            ..where((a) => a.id.equals(sourceAccount.id)))
+        ..where((a) => a.id.equals(sourceAccount.id)))
           .getSingle();
       expect(source1.balance, closeTo(5000 - 802.7 - 1, 1e-9));
 
       final target1 = await (db.select(db.accounts)
-            ..where((a) => a.id.equals(targetAccount.id)))
+        ..where((a) => a.id.equals(targetAccount.id)))
           .getSingle();
       expect(target1.balance, closeTo(0 + 802.7, 1e-9));
 
@@ -327,9 +378,9 @@ void main() {
       expect(trade2.targetAccountValueDelta, closeTo(499.8, 1e-9));
 
       final aoaTwo2 = await (db.select(db.assetsOnAccounts)
-            ..where((a) =>
-                a.assetId.equals(assetTwo.id) &
-                a.accountId.equals(targetAccount.id)))
+        ..where((a) =>
+        a.assetId.equals(assetTwo.id) &
+        a.accountId.equals(targetAccount.id)))
           .getSingle();
       expect(aoaTwo2.shares, closeTo(4.936808, 1e-9));
       expect(aoaTwo2.value, closeTo(499.8, 1e-9));
@@ -338,7 +389,7 @@ void main() {
       expect(aoaTwo2.netCostBasis, closeTo(499.8 / 4.936808, 1e-9));
 
       final assetTwo2 = await (db.select(db.assets)
-            ..where((a) => a.id.equals(assetTwo.id)))
+        ..where((a) => a.id.equals(assetTwo.id)))
           .getSingle();
       expect(assetTwo2.shares, closeTo(4.936808, 1e-9));
       expect(assetTwo2.value, closeTo(499.8, 1e-9));
@@ -347,12 +398,12 @@ void main() {
       expect(assetTwo2.netCostBasis, closeTo(499.8 / 4.936808, 1e-9));
 
       final source2 = await (db.select(db.accounts)
-            ..where((a) => a.id.equals(sourceAccount.id)))
+        ..where((a) => a.id.equals(sourceAccount.id)))
           .getSingle();
       expect(source2.balance, closeTo(4196.3 - 499.8 - 1, 1e-9));
 
       final target2 = await (db.select(db.accounts)
-            ..where((a) => a.id.equals(targetAccount.id)))
+        ..where((a) => a.id.equals(targetAccount.id)))
           .getSingle();
       expect(target2.balance, closeTo(802.7 + 499.8, 1e-9));
 
@@ -375,9 +426,9 @@ void main() {
       expect(trade3.targetAccountValueDelta, closeTo(382.64, 1e-9));
 
       final aoaOne3 = await (db.select(db.assetsOnAccounts)
-            ..where((a) =>
-                a.assetId.equals(assetOne.id) &
-                a.accountId.equals(targetAccount.id)))
+        ..where((a) =>
+        a.assetId.equals(assetOne.id) &
+        a.accountId.equals(targetAccount.id)))
           .getSingle();
       expect(aoaOne3.shares, closeTo(50 + 34, 1e-9));
       expect(aoaOne3.value, closeTo(802.7 + 382.64, 1e-9));
@@ -386,7 +437,7 @@ void main() {
       expect(aoaOne3.netCostBasis, closeTo((802.7 + 382.64) / 84, 1e-9));
 
       final assetOne3 = await (db.select(db.assets)
-            ..where((a) => a.id.equals(assetOne.id)))
+        ..where((a) => a.id.equals(assetOne.id)))
           .getSingle();
       expect(assetOne3.shares, closeTo(50 + 34, 1e-9));
       expect(assetOne3.value, closeTo(802.7 + 382.64, 1e-9));
@@ -396,12 +447,12 @@ void main() {
       expect(assetOne3.netCostBasis, closeTo((802.7 + 382.64) / 84, 1e-9));
 
       final source3 = await (db.select(db.accounts)
-            ..where((a) => a.id.equals(sourceAccount.id)))
+        ..where((a) => a.id.equals(sourceAccount.id)))
           .getSingle();
       expect(source3.balance, closeTo(3695.5 - 382.64 - 1, 1e-9));
 
       final target3 = await (db.select(db.accounts)
-            ..where((a) => a.id.equals(targetAccount.id)))
+        ..where((a) => a.id.equals(targetAccount.id)))
           .getSingle();
       expect(target3.balance, closeTo(1302.5 + 382.64, 1e-9));
 
@@ -426,9 +477,9 @@ void main() {
       expect(trade4.returnOnInvest, closeTo(1.0195685746263912, 1e-9));
 
       final aoaTwo4 = await (db.select(db.assetsOnAccounts)
-            ..where((a) =>
-                a.assetId.equals(assetTwo.id) &
-                a.accountId.equals(targetAccount.id)))
+        ..where((a) =>
+        a.assetId.equals(assetTwo.id) &
+        a.accountId.equals(targetAccount.id)))
           .getSingle();
       expect(aoaTwo4.shares, closeTo(3, 1e-9));
       expect(aoaTwo4.value, closeTo(499.8 - 196.0814839062, 1e-9));
@@ -439,7 +490,7 @@ void main() {
       expect(aoaTwo4.netCostBasis, closeTo((499.8 - 196.0814839062) / 3, 1e-9));
 
       final assetTwo4 = await (db.select(db.assets)
-            ..where((a) => a.id.equals(assetTwo.id)))
+        ..where((a) => a.id.equals(assetTwo.id)))
           .getSingle();
       expect(assetTwo4.shares, closeTo(3, 1e-9));
       expect(assetTwo4.value, closeTo(499.8 - 196.0814839062, 1e-9));
@@ -450,12 +501,12 @@ void main() {
           assetTwo4.netCostBasis, closeTo((499.8 - 196.0814839062) / 3, 1e-9));
 
       final source4 = await (db.select(db.accounts)
-            ..where((a) => a.id.equals(sourceAccount.id)))
+        ..where((a) => a.id.equals(sourceAccount.id)))
           .getSingle();
       expect(source4.balance, closeTo(3311.86 + 397.4, 1e-9));
 
       final target4 = await (db.select(db.accounts)
-            ..where((a) => a.id.equals(targetAccount.id)))
+        ..where((a) => a.id.equals(targetAccount.id)))
           .getSingle();
       expect(target4.balance, closeTo(1685.14 - 196.0814839062, 1e-9));
 
@@ -480,9 +531,9 @@ void main() {
       expect(trade5.returnOnInvest, closeTo(-0.5291828793774316, 1e-9));
 
       final aoaOne5 = await (db.select(db.assetsOnAccounts)
-            ..where((a) =>
-                a.assetId.equals(assetOne.id) &
-                a.accountId.equals(targetAccount.id)))
+        ..where((a) =>
+        a.assetId.equals(assetOne.id) &
+        a.accountId.equals(targetAccount.id)))
           .getSingle();
       expect(aoaOne5.shares, closeTo(0, 1e-9));
       expect(aoaOne5.value, closeTo(0, 1e-9));
@@ -491,7 +542,7 @@ void main() {
       expect(aoaOne5.netCostBasis, closeTo(0, 1e-9));
 
       final assetOne5 = await (db.select(db.assets)
-            ..where((a) => a.id.equals(assetOne.id)))
+        ..where((a) => a.id.equals(assetOne.id)))
           .getSingle();
       expect(assetOne5.shares, closeTo(0, 1e-9));
       expect(assetOne5.value, closeTo(0, 1e-9));
@@ -500,12 +551,12 @@ void main() {
       expect(assetOne5.netCostBasis, closeTo(0, 1e-9));
 
       final source5 = await (db.select(db.accounts)
-            ..where((a) => a.id.equals(sourceAccount.id)))
+        ..where((a) => a.id.equals(sourceAccount.id)))
           .getSingle();
       expect(source5.balance, closeTo(3709.26 + 558.02, 1e-9));
 
       final target5 = await (db.select(db.accounts)
-            ..where((a) => a.id.equals(targetAccount.id)))
+        ..where((a) => a.id.equals(targetAccount.id)))
           .getSingle();
       expect(target5.balance, closeTo(1489.0585160938 - 1185.34, 1e-9));
 
@@ -538,9 +589,9 @@ void main() {
       expect(trade6.targetAccountValueDelta, closeTo(2000, 1e-9));
 
       final aoaTwo6 = await (db.select(db.assetsOnAccounts)
-            ..where((a) =>
-                a.assetId.equals(assetTwo.id) &
-                a.accountId.equals(targetAccount2.id)))
+        ..where((a) =>
+        a.assetId.equals(assetTwo.id) &
+        a.accountId.equals(targetAccount2.id)))
           .getSingle();
       expect(aoaTwo6.shares, closeTo(10, 1e-9));
       expect(aoaTwo6.value, closeTo(2000, 1e-9));
@@ -549,7 +600,7 @@ void main() {
       expect(aoaTwo6.netCostBasis, closeTo(2000 / 10, 1e-9));
 
       final assetTwo6 = await (db.select(db.assets)
-            ..where((a) => a.id.equals(assetTwo.id)))
+        ..where((a) => a.id.equals(assetTwo.id)))
           .getSingle();
       expect(assetTwo6.shares, closeTo(3 + 10, 1e-9));
       expect(assetTwo6.value, closeTo(303.7185160938 + 2000, 1e-9));
@@ -560,12 +611,12 @@ void main() {
           assetTwo6.netCostBasis, closeTo((303.7185160938 + 2000) / 13, 1e-9));
 
       final source6 = await (db.select(db.accounts)
-            ..where((a) => a.id.equals(sourceAccount.id)))
+        ..where((a) => a.id.equals(sourceAccount.id)))
           .getSingle();
       expect(source6.balance, closeTo(4267.28 - 2000 - 1, 1e-9));
 
       final target2_6 = await (db.select(db.accounts)
-            ..where((a) => a.id.equals(targetAccount2.id)))
+        ..where((a) => a.id.equals(targetAccount2.id)))
           .getSingle();
       expect(target2_6.balance, closeTo(2000, 1e-9));
 
@@ -590,9 +641,9 @@ void main() {
       expect(trade7.returnOnInvest, closeTo(1.0445098249566984, 1e-9));
 
       final aoaTwo7 = await (db.select(db.assetsOnAccounts)
-            ..where((a) =>
-                a.assetId.equals(assetTwo.id) &
-                a.accountId.equals(targetAccount.id)))
+        ..where((a) =>
+        a.assetId.equals(assetTwo.id) &
+        a.accountId.equals(targetAccount.id)))
           .getSingle();
       expect(aoaTwo7.shares, closeTo(0, 1e-9));
       expect(aoaTwo7.value, closeTo(0, 1e-9));
@@ -601,9 +652,9 @@ void main() {
       expect(aoaTwo7.netCostBasis, closeTo(0, 1e-9));
 
       final aoaTwo2_7 = await (db.select(db.assetsOnAccounts)
-            ..where((a) =>
-                a.assetId.equals(assetTwo.id) &
-                a.accountId.equals(targetAccount2.id)))
+        ..where((a) =>
+        a.assetId.equals(assetTwo.id) &
+        a.accountId.equals(targetAccount2.id)))
           .getSingle();
       expect(aoaTwo2_7.shares, closeTo(10, 1e-9));
       expect(aoaTwo2_7.value, closeTo(2000, 1e-9));
@@ -612,7 +663,7 @@ void main() {
       expect(aoaTwo2_7.netCostBasis, closeTo(2000 / 10, 1e-9));
 
       final assetTwo7 = await (db.select(db.assets)
-            ..where((a) => a.id.equals(assetTwo.id)))
+        ..where((a) => a.id.equals(assetTwo.id)))
           .getSingle();
       expect(assetTwo7.shares, closeTo(10, 1e-9));
       expect(assetTwo7.value, closeTo(2000, 1e-9));
@@ -622,114 +673,114 @@ void main() {
       expect(assetTwo7.netCostBasis, closeTo(2000 / 10, 1e-9));
 
       final source7 = await (db.select(db.accounts)
-            ..where((a) => a.id.equals(sourceAccount.id)))
+        ..where((a) => a.id.equals(sourceAccount.id)))
           .getSingle();
       expect(source7.balance, closeTo(2267.28 + 604.18 - 1, 1e-9));
 
       final target7 = await (db.select(db.accounts)
-            ..where((a) => a.id.equals(targetAccount.id)))
+        ..where((a) => a.id.equals(targetAccount.id)))
           .getSingle();
       expect(target7.balance, closeTo(0, 1e-9));
     });
 
     test('buy 2, buy 2, sell 3 - test one sell consumes more than one lot',
-        () async {
-      await tradesDao.insertTrade(TradesCompanion(
-        datetime: const drift.Value(20250101000000),
-        assetId: drift.Value(assetOne.id),
-        type: const drift.Value(TradeTypes.buy),
-        shares: const drift.Value(2),
-        costBasis: const drift.Value(10),
-        fee: const drift.Value(1),
-        tax: const drift.Value(0),
-        sourceAccountId: drift.Value(sourceAccount.id),
-        targetAccountId: drift.Value(targetAccount.id),
-      ));
+            () async {
+          await tradesDao.insertTrade(TradesCompanion(
+            datetime: const drift.Value(20250101000000),
+            assetId: drift.Value(assetOne.id),
+            type: const drift.Value(TradeTypes.buy),
+            shares: const drift.Value(2),
+            costBasis: const drift.Value(10),
+            fee: const drift.Value(1),
+            tax: const drift.Value(0),
+            sourceAccountId: drift.Value(sourceAccount.id),
+            targetAccountId: drift.Value(targetAccount.id),
+          ));
 
-      await tradesDao.insertTrade(TradesCompanion(
-        datetime: const drift.Value(20250102000000),
-        assetId: drift.Value(assetOne.id),
-        type: const drift.Value(TradeTypes.buy),
-        shares: const drift.Value(2),
-        costBasis: const drift.Value(15),
-        fee: const drift.Value(1),
-        tax: const drift.Value(0),
-        sourceAccountId: drift.Value(sourceAccount.id),
-        targetAccountId: drift.Value(targetAccount.id),
-      ));
+          await tradesDao.insertTrade(TradesCompanion(
+            datetime: const drift.Value(20250102000000),
+            assetId: drift.Value(assetOne.id),
+            type: const drift.Value(TradeTypes.buy),
+            shares: const drift.Value(2),
+            costBasis: const drift.Value(15),
+            fee: const drift.Value(1),
+            tax: const drift.Value(0),
+            sourceAccountId: drift.Value(sourceAccount.id),
+            targetAccountId: drift.Value(targetAccount.id),
+          ));
 
-      await tradesDao.insertTrade(TradesCompanion(
-        datetime: const drift.Value(20250103000000),
-        assetId: drift.Value(assetOne.id),
-        type: const drift.Value(TradeTypes.sell),
-        shares: const drift.Value(3),
-        costBasis: const drift.Value(20),
-        fee: const drift.Value(1),
-        tax: const drift.Value(0),
-        sourceAccountId: drift.Value(sourceAccount.id),
-        targetAccountId: drift.Value(targetAccount.id),
-      ));
+          await tradesDao.insertTrade(TradesCompanion(
+            datetime: const drift.Value(20250103000000),
+            assetId: drift.Value(assetOne.id),
+            type: const drift.Value(TradeTypes.sell),
+            shares: const drift.Value(3),
+            costBasis: const drift.Value(20),
+            fee: const drift.Value(1),
+            tax: const drift.Value(0),
+            sourceAccountId: drift.Value(sourceAccount.id),
+            targetAccountId: drift.Value(targetAccount.id),
+          ));
 
-      final aoaOne1 = await (db.select(db.assetsOnAccounts)
+          final aoaOne1 = await (db.select(db.assetsOnAccounts)
             ..where((a) =>
-                a.assetId.equals(assetOne.id) &
-                a.accountId.equals(targetAccount.id)))
-          .getSingle();
-      expect(aoaOne1.shares, closeTo(1, 1e-9));
-      expect(aoaOne1.value, closeTo(15, 1e-9));
-      expect(aoaOne1.buyFeeTotal, closeTo(0.5, 1e-9));
-      expect(aoaOne1.brokerCostBasis, closeTo((15 + 0.5) / 1, 1e-9));
-      expect(aoaOne1.netCostBasis, closeTo(15 / 1, 1e-9));
+            a.assetId.equals(assetOne.id) &
+            a.accountId.equals(targetAccount.id)))
+              .getSingle();
+          expect(aoaOne1.shares, closeTo(1, 1e-9));
+          expect(aoaOne1.value, closeTo(15, 1e-9));
+          expect(aoaOne1.buyFeeTotal, closeTo(0.5, 1e-9));
+          expect(aoaOne1.brokerCostBasis, closeTo((15 + 0.5) / 1, 1e-9));
+          expect(aoaOne1.netCostBasis, closeTo(15 / 1, 1e-9));
 
-      final assetOne1 = await (db.select(db.assets)
+          final assetOne1 = await (db.select(db.assets)
             ..where((a) => a.id.equals(assetOne.id)))
-          .getSingle();
-      expect(assetOne1.shares, closeTo(1, 1e-9));
-      expect(assetOne1.value, closeTo(15, 1e-9));
-      expect(assetOne1.buyFeeTotal, closeTo(0.5, 1e-9));
-      expect(assetOne1.brokerCostBasis, closeTo((15 + 0.5) / 1, 1e-9));
-      expect(assetOne1.netCostBasis, closeTo(15 / 1, 1e-9));
+              .getSingle();
+          expect(assetOne1.shares, closeTo(1, 1e-9));
+          expect(assetOne1.value, closeTo(15, 1e-9));
+          expect(assetOne1.buyFeeTotal, closeTo(0.5, 1e-9));
+          expect(assetOne1.brokerCostBasis, closeTo((15 + 0.5) / 1, 1e-9));
+          expect(assetOne1.netCostBasis, closeTo(15 / 1, 1e-9));
 
-      final source1 = await (db.select(db.accounts)
+          final source1 = await (db.select(db.accounts)
             ..where((a) => a.id.equals(sourceAccount.id)))
-          .getSingle();
-      expect(source1.balance, closeTo(5000 - 20 - 30 + 60 - 3, 1e-9));
+              .getSingle();
+          expect(source1.balance, closeTo(5000 - 20 - 30 + 60 - 3, 1e-9));
 
-      final target1 = await (db.select(db.accounts)
+          final target1 = await (db.select(db.accounts)
             ..where((a) => a.id.equals(targetAccount.id)))
-          .getSingle();
-      expect(target1.balance, closeTo(0 + 20 + 30 - 20 - 15, 1e-9));
-    });
+              .getSingle();
+          expect(target1.balance, closeTo(0 + 20 + 30 - 20 - 15, 1e-9));
+        });
   });
 
   group('getTrade', () {
     test('insert trade then getTrade returns it', () async {
       final assetId = await db.into(db.assets).insert(const AssetsCompanion(
-            name: drift.Value('DEL'),
-            type: drift.Value(AssetTypes.stock),
-            tickerSymbol: drift.Value('DEL'),
-            value: drift.Value(0.0),
-            shares: drift.Value(0.0),
-            netCostBasis: drift.Value(0.0),
-            brokerCostBasis: drift.Value(0.0),
-            buyFeeTotal: drift.Value(0.0),
-          ));
+        name: drift.Value('DEL'),
+        type: drift.Value(AssetTypes.stock),
+        tickerSymbol: drift.Value('DEL'),
+        value: drift.Value(0.0),
+        shares: drift.Value(0.0),
+        netCostBasis: drift.Value(0.0),
+        brokerCostBasis: drift.Value(0.0),
+        buyFeeTotal: drift.Value(0.0),
+      ));
 
       final sourceId =
-          await db.into(db.accounts).insert(const AccountsCompanion(
-                name: drift.Value('Cdel'),
-                balance: drift.Value(10.0),
-                initialBalance: drift.Value(10.0),
-                type: drift.Value(AccountTypes.cash),
-              ));
+      await db.into(db.accounts).insert(const AccountsCompanion(
+        name: drift.Value('Cdel'),
+        balance: drift.Value(10.0),
+        initialBalance: drift.Value(10.0),
+        type: drift.Value(AccountTypes.cash),
+      ));
 
       final targetId =
-          await db.into(db.accounts).insert(const AccountsCompanion(
-                name: drift.Value('Pdel'),
-                balance: drift.Value(0.0),
-                initialBalance: drift.Value(0.0),
-                type: drift.Value(AccountTypes.portfolio),
-              ));
+      await db.into(db.accounts).insert(const AccountsCompanion(
+        name: drift.Value('Pdel'),
+        balance: drift.Value(0.0),
+        initialBalance: drift.Value(0.0),
+        type: drift.Value(AccountTypes.portfolio),
+      ));
 
       final id = await db.into(db.trades).insert(TradesCompanion(
           datetime: const drift.Value(20250103120000),
@@ -745,6 +796,7 @@ void main() {
           targetAccountValueDelta: const drift.Value(1.0),
           profitAndLoss: const drift.Value(0),
           returnOnInvest: const drift.Value(0)));
+
 
       final fetched = await tradesDao.getTrade(id);
       expect(fetched.id, id);
@@ -784,10 +836,10 @@ void main() {
 
       // Verify initial sell profit
       final sellBefore = await (db.select(db.trades)
-            ..where((t) =>
-                t.assetId.equals(assetOne.id) &
-                t.type.equals(TradeTypes.sell.name) &
-                t.datetime.equals(20250103000000)))
+        ..where((t) =>
+        t.assetId.equals(assetOne.id) &
+        t.type.equals(TradeTypes.sell.name) &
+        t.datetime.equals(20250103000000)))
           .getSingle();
       expect(sellBefore.profitAndLoss, closeTo(10.0, 1e-9));
 
@@ -808,10 +860,10 @@ void main() {
 
       // After backdated insert, the sell should now consume the cheaper lot (1@5) -> new profit 20 - 5 = 15
       final sellAfter = await (db.select(db.trades)
-            ..where((t) =>
-                t.assetId.equals(assetOne.id) &
-                t.type.equals(TradeTypes.sell.name) &
-                t.datetime.equals(20250103000000)))
+        ..where((t) =>
+        t.assetId.equals(assetOne.id) &
+        t.type.equals(TradeTypes.sell.name) &
+        t.datetime.equals(20250103000000)))
           .getSingle();
       expect(sellAfter.profitAndLoss, closeTo(15.0, 1e-9));
     });
@@ -848,71 +900,71 @@ void main() {
     });
 
     test('backdated update (move buy after sell) recomputes later sell P&L',
-        () async {
-      // buy1 @2025-01-01 (1@10)
-      await tradesDao.insertTrade(TradesCompanion(
-        datetime: const drift.Value(20250101000000),
-        assetId: drift.Value(assetOne.id),
-        type: const drift.Value(TradeTypes.buy),
-        shares: const drift.Value(1.0),
-        costBasis: const drift.Value(10.0),
-        fee: const drift.Value(0.0),
-        tax: const drift.Value(0.0),
-        sourceAccountId: drift.Value(sourceAccount.id),
-        targetAccountId: drift.Value(targetAccount.id),
-      ));
+            () async {
+          // buy1 @2025-01-01 (1@10)
+          await tradesDao.insertTrade(TradesCompanion(
+            datetime: const drift.Value(20250101000000),
+            assetId: drift.Value(assetOne.id),
+            type: const drift.Value(TradeTypes.buy),
+            shares: const drift.Value(1.0),
+            costBasis: const drift.Value(10.0),
+            fee: const drift.Value(0.0),
+            tax: const drift.Value(0.0),
+            sourceAccountId: drift.Value(sourceAccount.id),
+            targetAccountId: drift.Value(targetAccount.id),
+          ));
 
-      // buy2 @2025-01-03 (1@20)
-      await tradesDao.insertTrade(TradesCompanion(
-        datetime: const drift.Value(20250103000000),
-        assetId: drift.Value(assetOne.id),
-        type: const drift.Value(TradeTypes.buy),
-        shares: const drift.Value(1.0),
-        costBasis: const drift.Value(20.0),
-        fee: const drift.Value(0.0),
-        tax: const drift.Value(0.0),
-        sourceAccountId: drift.Value(sourceAccount.id),
-        targetAccountId: drift.Value(targetAccount.id),
-      ));
+          // buy2 @2025-01-03 (1@20)
+          await tradesDao.insertTrade(TradesCompanion(
+            datetime: const drift.Value(20250103000000),
+            assetId: drift.Value(assetOne.id),
+            type: const drift.Value(TradeTypes.buy),
+            shares: const drift.Value(1.0),
+            costBasis: const drift.Value(20.0),
+            fee: const drift.Value(0.0),
+            tax: const drift.Value(0.0),
+            sourceAccountId: drift.Value(sourceAccount.id),
+            targetAccountId: drift.Value(targetAccount.id),
+          ));
 
-      // sell @2025-01-04 (1@30) -> consumes buy1 (10) => profit 20
-      await tradesDao.insertTrade(TradesCompanion(
-        datetime: const drift.Value(20250104000000),
-        assetId: drift.Value(assetOne.id),
-        type: const drift.Value(TradeTypes.sell),
-        shares: const drift.Value(1.0),
-        costBasis: const drift.Value(30.0),
-        fee: const drift.Value(0.0),
-        tax: const drift.Value(0.0),
-        sourceAccountId: drift.Value(sourceAccount.id),
-        targetAccountId: drift.Value(targetAccount.id),
-      ));
+          // sell @2025-01-04 (1@30) -> consumes buy1 (10) => profit 20
+          await tradesDao.insertTrade(TradesCompanion(
+            datetime: const drift.Value(20250104000000),
+            assetId: drift.Value(assetOne.id),
+            type: const drift.Value(TradeTypes.sell),
+            shares: const drift.Value(1.0),
+            costBasis: const drift.Value(30.0),
+            fee: const drift.Value(0.0),
+            tax: const drift.Value(0.0),
+            sourceAccountId: drift.Value(sourceAccount.id),
+            targetAccountId: drift.Value(targetAccount.id),
+          ));
 
-      // Check initial profit (should be 30 - 10 = 20)
-      final sellBefore = await (db.select(db.trades)
+          // Check initial profit (should be 30 - 10 = 20)
+          final sellBefore = await (db.select(db.trades)
             ..where((t) =>
-                t.assetId.equals(assetOne.id) &
-                t.type.equals(TradeTypes.sell.name) &
-                t.datetime.equals(20250104000000)))
-          .getSingle();
-      expect(sellBefore.profitAndLoss, closeTo(20.0, 1e-9));
+            t.assetId.equals(assetOne.id) &
+            t.type.equals(TradeTypes.sell.name) &
+            t.datetime.equals(20250104000000)))
+              .getSingle();
+          expect(sellBefore.profitAndLoss, closeTo(20.0, 1e-9));
 
-      // Now move buy1 to 2025-01-05 (after the sell) via updateTrade -> the sell should now consume buy2 (20) => profit 10
-      const updateComp = TradesCompanion(
-        datetime: drift.Value(20250105000000),
-      );
+          // Now move buy1 to 2025-01-05 (after the sell) via updateTrade -> the sell should now consume buy2 (20) => profit 10
+          const updateComp = TradesCompanion(
+            datetime: drift.Value(20250105000000),
+          );
 
-      // original buy1 has id 1
-      await tradesDao.updateTrade(1, updateComp);
+          // original buy1 has id 1
+          await tradesDao.updateTrade(1, updateComp);
 
-      final sellAfter = await (db.select(db.trades)
+          final sellAfter = await (db.select(db.trades)
             ..where((t) =>
-                t.assetId.equals(assetOne.id) &
-                t.type.equals(TradeTypes.sell.name) &
-                t.datetime.equals(20250104000000)))
-          .getSingle();
-      expect(sellAfter.profitAndLoss, closeTo(10.0, 1e-9));
-    });
+            t.assetId.equals(assetOne.id) &
+            t.type.equals(TradeTypes.sell.name) &
+            t.datetime.equals(20250104000000)))
+              .getSingle();
+          expect(sellAfter.profitAndLoss, closeTo(10.0, 1e-9));
+        });
 
     test('backdated delete adjusts later sell P&L', () async {
       // buy1 @2025-01-01 (1@10)
@@ -956,10 +1008,10 @@ void main() {
 
       // Confirm initial profit
       final sellBefore = await (db.select(db.trades)
-            ..where((t) =>
-                t.assetId.equals(assetOne.id) &
-                t.type.equals(TradeTypes.sell.name) &
-                t.datetime.equals(20250104000000)))
+        ..where((t) =>
+        t.assetId.equals(assetOne.id) &
+        t.type.equals(TradeTypes.sell.name) &
+        t.datetime.equals(20250104000000)))
           .getSingle();
       expect(sellBefore.profitAndLoss, closeTo(20.0, 1e-9));
 
@@ -967,19 +1019,19 @@ void main() {
       await tradesDao.deleteTrade(1);
 
       final sellAfter = await (db.select(db.trades)
-            ..where((t) =>
-                t.assetId.equals(assetOne.id) &
-                t.type.equals(TradeTypes.sell.name) &
-                t.datetime.equals(20250104000000)))
+        ..where((t) =>
+        t.assetId.equals(assetOne.id) &
+        t.type.equals(TradeTypes.sell.name) &
+        t.datetime.equals(20250104000000)))
           .getSingle();
       expect(sellAfter.profitAndLoss, closeTo(10.0, 1e-9));
     });
 
     test(
         'bookings and transfers are included in FIFO (booking -> sell allowed)',
-        () async {
-      // Create a booking that gives targetAccount 5 shares of assetOne at date 20250101
-      await db.bookingsDao.createBooking(BookingsCompanion.insert(
+            () async {
+          // Create a booking that gives targetAccount 5 shares of assetOne at date 20250101
+          await db.bookingsDao.createBooking(BookingsCompanion.insert(
             date: 20250101,
             assetId: drift.Value(assetOne.id),
             accountId: targetAccount.id,
@@ -988,44 +1040,44 @@ void main() {
             value: 50.0,
           ));
 
-      // Now attempt to sell 5 shares later -> should be possible and consume booking lot
-      await tradesDao.insertTrade(TradesCompanion(
-        datetime: const drift.Value(20250102000000),
-        assetId: drift.Value(assetOne.id),
-        type: const drift.Value(TradeTypes.sell),
-        shares: const drift.Value(5.0),
-        costBasis: const drift.Value(12.0),
-        fee: const drift.Value(0.0),
-        tax: const drift.Value(0.0),
-        sourceAccountId: drift.Value(sourceAccount.id),
-        targetAccountId: drift.Value(targetAccount.id),
-      ));
+          // Now attempt to sell 5 shares later -> should be possible and consume booking lot
+          await tradesDao.insertTrade(TradesCompanion(
+            datetime: const drift.Value(20250102000000),
+            assetId: drift.Value(assetOne.id),
+            type: const drift.Value(TradeTypes.sell),
+            shares: const drift.Value(5.0),
+            costBasis: const drift.Value(12.0),
+            fee: const drift.Value(0.0),
+            tax: const drift.Value(0.0),
+            sourceAccountId: drift.Value(sourceAccount.id),
+            targetAccountId: drift.Value(targetAccount.id),
+          ));
 
-      final sold = await (db.select(db.trades)
+          final sold = await (db.select(db.trades)
             ..where((t) =>
-                t.assetId.equals(assetOne.id) &
-                t.type.equals(TradeTypes.sell.name) &
-                t.datetime.equals(20250102000000)))
-          .getSingle();
-      expect(sold.sourceAccountValueDelta, closeTo(60.0, 1e-9));
-    });
+            t.assetId.equals(assetOne.id) &
+            t.type.equals(TradeTypes.sell.name) &
+            t.datetime.equals(20250102000000)))
+              .getSingle();
+          expect(sold.sourceAccountValueDelta, closeTo(60.0, 1e-9));
+        });
 
     test(
         'transfers into account are considered by FIFO (transfer -> sell allowed)',
-        () async {
-      // Create a second account that holds assetOne previously
-      Account other = const Account(
-        id: 4,
-        name: 'Other',
-        balance: 0,
-        initialBalance: 0,
-        type: AccountTypes.portfolio,
-        isArchived: false,
-      );
-      await db.accountsDao.insert(other.toCompanion(false));
+            () async {
+          // Create a second account that holds assetOne previously
+          Account other = const Account(
+            id: 4,
+            name: 'Other',
+            balance: 0,
+            initialBalance: 0,
+            type: AccountTypes.portfolio,
+            isArchived: false,
+          );
+          await db.accountsDao.insert(other.toCompanion(false));
 
-      // Put 3 shares of assetOne on the other account
-      await db.into(db.assetsOnAccounts).insert(AssetsOnAccountsCompanion(
+          // Put 3 shares of assetOne on the other account
+          await db.into(db.assetsOnAccounts).insert(AssetsOnAccountsCompanion(
             assetId: drift.Value(assetOne.id),
             accountId: drift.Value(other.id),
             shares: const drift.Value(3.0),
@@ -1034,14 +1086,14 @@ void main() {
             brokerCostBasis: const drift.Value(10.0),
             buyFeeTotal: const drift.Value(0.0),
           ));
-      await (db.update(db.assets)..where((a) => a.id.equals(assetOne.id)))
-          .write(const AssetsCompanion(
+          await (db.update(db.assets)..where((a) => a.id.equals(assetOne.id)))
+              .write(const AssetsCompanion(
               shares: drift.Value(3.0),
               value: drift.Value(30.0),
               buyFeeTotal: drift.Value(0.0)));
 
-      // Transfer those 3 shares into targetAccount on date 20250101
-      await db.transfersDao.createTransfer(TransfersCompanion.insert(
+          // Transfer those 3 shares into targetAccount on date 20250101
+          await db.transfersDao.createTransfer(TransfersCompanion.insert(
             date: 20250101,
             sendingAccountId: other.id,
             receivingAccountId: targetAccount.id,
@@ -1051,12 +1103,165 @@ void main() {
             value: 30.0,
           ));
 
-      // Now sell 3 shares from targetAccount later -> should be allowed (consumes transfer)
+          // Now sell 3 shares from targetAccount later -> should be allowed (consumes transfer)
+          await tradesDao.insertTrade(TradesCompanion(
+            datetime: const drift.Value(20250102000000),
+            assetId: drift.Value(assetOne.id),
+            type: const drift.Value(TradeTypes.sell),
+            shares: const drift.Value(3.0),
+            costBasis: const drift.Value(15.0),
+            fee: const drift.Value(0.0),
+            tax: const drift.Value(0.0),
+            sourceAccountId: drift.Value(sourceAccount.id),
+            targetAccountId: drift.Value(targetAccount.id),
+          ));
+
+          final sold = await (db.select(db.trades)
+            ..where((t) =>
+            t.assetId.equals(assetOne.id) &
+            t.type.equals(TradeTypes.sell.name) &
+            t.datetime.equals(20250102000000)))
+              .getSingle();
+          expect(sold.sourceAccountValueDelta, closeTo(45.0, 1e-9));
+        });
+  });
+
+  // ----------------------------
+  // extra coverage — more branches & edge cases
+  // ----------------------------
+  group('extra coverage — more branches & edge cases', () {
+    test(
+        'updateTrade that moves a buy after an existing sell with no other coverage throws (insufficient shares)',
+            () async {
+          // Setup: single buy (id 1) and single sell (id 2)
+          await tradesDao.insertTrade(TradesCompanion(
+            datetime: const drift.Value(20250101000000),
+            assetId: drift.Value(assetOne.id),
+            type: const drift.Value(TradeTypes.buy),
+            shares: const drift.Value(1.0),
+            costBasis: const drift.Value(10.0),
+            fee: const drift.Value(0.0),
+            tax: const drift.Value(0.0),
+            sourceAccountId: drift.Value(sourceAccount.id),
+            targetAccountId: drift.Value(targetAccount.id),
+          ));
+
+          await tradesDao.insertTrade(TradesCompanion(
+            datetime: const drift.Value(20250102000000),
+            assetId: drift.Value(assetOne.id),
+            type: const drift.Value(TradeTypes.sell),
+            shares: const drift.Value(1.0),
+            costBasis: const drift.Value(20.0),
+            fee: const drift.Value(0.0),
+            tax: const drift.Value(0.0),
+            sourceAccountId: drift.Value(sourceAccount.id),
+            targetAccountId: drift.Value(targetAccount.id),
+          ));
+
+          // Move buy (id=1) after the sell -> should make the sell invalid and updateTrade should throw
+          const updateToAfterSell = TradesCompanion(
+            datetime: drift.Value(20250103000000),
+          );
+
+          expect(() async => await tradesDao.updateTrade(1, updateToAfterSell),
+              throwsA(isA<Exception>()));
+        });
+
+    test(
+        'deleteTrade that would leave later sells without coverage throws (cannot reapply)',
+            () async {
+          // buy id1, sell id2
+          await tradesDao.insertTrade(TradesCompanion(
+            datetime: const drift.Value(20250101000000),
+            assetId: drift.Value(assetOne.id),
+            type: const drift.Value(TradeTypes.buy),
+            shares: const drift.Value(1.0),
+            costBasis: const drift.Value(10.0),
+            fee: const drift.Value(0.0),
+            tax: const drift.Value(0.0),
+            sourceAccountId: drift.Value(sourceAccount.id),
+            targetAccountId: drift.Value(targetAccount.id),
+          ));
+
+          await tradesDao.insertTrade(TradesCompanion(
+            datetime: const drift.Value(20250102000000),
+            assetId: drift.Value(assetOne.id),
+            type: const drift.Value(TradeTypes.sell),
+            shares: const drift.Value(1.0),
+            costBasis: const drift.Value(20.0),
+            fee: const drift.Value(0.0),
+            tax: const drift.Value(0.0),
+            sourceAccountId: drift.Value(sourceAccount.id),
+            targetAccountId: drift.Value(targetAccount.id),
+          ));
+
+          // Deleting buy id1 would leave the sell uncovered -> deleteTrade should throw
+          expect(() async => await tradesDao.deleteTrade(1), throwsA(isA<Exception>()));
+        });
+
+    test('sell with fee and tax calculates profit and deltas correctly', () async {
+      // buy 1@10
+      await tradesDao.insertTrade(TradesCompanion(
+        datetime: const drift.Value(20250101000000),
+        assetId: drift.Value(assetOne.id),
+        type: const drift.Value(TradeTypes.buy),
+        shares: const drift.Value(1.0),
+        costBasis: const drift.Value(10.0),
+        fee: const drift.Value(0.0),
+        tax: const drift.Value(0.0),
+        sourceAccountId: drift.Value(sourceAccount.id),
+        targetAccountId: drift.Value(targetAccount.id),
+      ));
+
+      // sell 1@20 with fee=1 tax=2
       await tradesDao.insertTrade(TradesCompanion(
         datetime: const drift.Value(20250102000000),
         assetId: drift.Value(assetOne.id),
         type: const drift.Value(TradeTypes.sell),
-        shares: const drift.Value(3.0),
+        shares: const drift.Value(1.0),
+        costBasis: const drift.Value(20.0),
+        fee: const drift.Value(1.0),
+        tax: const drift.Value(2.0),
+        sourceAccountId: drift.Value(sourceAccount.id),
+        targetAccountId: drift.Value(targetAccount.id),
+      ));
+
+      final sell = await (db.select(db.trades)
+        ..where((t) =>
+        t.assetId.equals(assetOne.id) &
+        t.type.equals(TradeTypes.sell.name) &
+        t.datetime.equals(20250102000000)))
+          .getSingle();
+
+      // calculations from code:
+      // sourceAccountValueDelta = movedValue - fee - tax = 20 -1 -2 = 17
+      // targetAccountValueDelta = -costBasisConsumed = -10
+      // profitAndLoss = source + target - fee + tax = 17 + (-10) -1 +2 = 8
+      expect(sell.sourceAccountValueDelta, closeTo(17.0, 1e-9));
+      expect(sell.targetAccountValueDelta, closeTo(-10.0, 1e-9));
+      expect(sell.profitAndLoss, closeTo(8.0, 1e-9));
+    });
+
+    test('updateTrade changing a buy costBasis recomputes later sell P&L', () async {
+      // buy1 @day1: 1@10 (id 1)
+      await tradesDao.insertTrade(TradesCompanion(
+        datetime: const drift.Value(20250101000000),
+        assetId: drift.Value(assetOne.id),
+        type: const drift.Value(TradeTypes.buy),
+        shares: const drift.Value(1.0),
+        costBasis: const drift.Value(10.0),
+        fee: const drift.Value(0.0),
+        tax: const drift.Value(0.0),
+        sourceAccountId: drift.Value(sourceAccount.id),
+        targetAccountId: drift.Value(targetAccount.id),
+      ));
+
+      // buy2 @day2: 2@15 (id 2)
+      await tradesDao.insertTrade(TradesCompanion(
+        datetime: const drift.Value(20250102000000),
+        assetId: drift.Value(assetOne.id),
+        type: const drift.Value(TradeTypes.buy),
+        shares: const drift.Value(2.0),
         costBasis: const drift.Value(15.0),
         fee: const drift.Value(0.0),
         tax: const drift.Value(0.0),
@@ -1064,13 +1269,41 @@ void main() {
         targetAccountId: drift.Value(targetAccount.id),
       ));
 
-      final sold = await (db.select(db.trades)
-            ..where((t) =>
-                t.assetId.equals(assetOne.id) &
-                t.type.equals(TradeTypes.sell.name) &
-                t.datetime.equals(20250102000000)))
+      // sell @day3: 2@20 (consumes buy1 (1@10) + 1 from buy2 (1@15))
+      await tradesDao.insertTrade(TradesCompanion(
+        datetime: const drift.Value(20250103000000),
+        assetId: drift.Value(assetOne.id),
+        type: const drift.Value(TradeTypes.sell),
+        shares: const drift.Value(2.0),
+        costBasis: const drift.Value(20.0),
+        fee: const drift.Value(0.0),
+        tax: const drift.Value(0.0),
+        sourceAccountId: drift.Value(sourceAccount.id),
+        targetAccountId: drift.Value(targetAccount.id),
+      ));
+
+      final sellBefore = await (db.select(db.trades)
+        ..where((t) =>
+        t.assetId.equals(assetOne.id) &
+        t.type.equals(TradeTypes.sell.name) &
+        t.datetime.equals(20250103000000)))
           .getSingle();
-      expect(sold.sourceAccountValueDelta, closeTo(45.0, 1e-9));
+
+      // Expected cost consumed = 10 + 15 = 25, proceeds = 40 -> profit = 15
+      expect(sellBefore.profitAndLoss, closeTo(15.0, 1e-9));
+
+      // Now change buy2's costBasis to 5 via updateTrade (id 2)
+      await tradesDao.updateTrade(2, const TradesCompanion(costBasis: drift.Value(5.0)));
+
+      final sellAfter = await (db.select(db.trades)
+        ..where((t) =>
+        t.assetId.equals(assetOne.id) &
+        t.type.equals(TradeTypes.sell.name) &
+        t.datetime.equals(20250103000000)))
+          .getSingle();
+
+      // Now expected cost consumed = 10 + 5 = 15, proceeds = 40 -> profit = 25
+      expect(sellAfter.profitAndLoss, closeTo(25.0, 1e-9));
     });
   });
 }

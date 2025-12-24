@@ -196,7 +196,7 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
   Future<void> _applyTradeToDb(TradesCompanion entry,
       {required bool insertNew,
       int? updateTradeId,
-      ListQueue<Map<String, double>>? fifoParam}) async {
+      required ListQueue<Map<String, double>> fifo}) async {
     final assetId = entry.assetId.value;
     final targetAccountId = entry.targetAccountId.value;
     final sourceAccountId = entry.sourceAccountId.value;
@@ -229,9 +229,7 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
       sourceAccountValueDelta = -movedValue - fee - tax;
       targetAccountValueDelta = movedValue;
 
-      if (fifoParam != null) {
-        fifoParam.add({'shares': shares, 'costBasis': costBasis, 'fee': fee});
-      }
+      fifo.add({'shares': shares, 'costBasis': costBasis, 'fee': fee});
 
       updatedAOAShares = assetOnAccount.shares + shares;
       updatedAOABuyFeeTotal = assetOnAccount.buyFeeTotal + fee;
@@ -240,9 +238,6 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
       updatedAssetBuyFeeTotal = asset.buyFeeTotal + fee;
     } else {
       // SELL
-      final fifo = fifoParam ??
-          await db.assetsOnAccountsDao.buildFiFoQueue(assetId, targetAccountId);
-
       var sharesToSell = shares;
       sourceAccountValueDelta = movedValue - fee - tax;
       double buyFeeTotalDelta = 0.0;
@@ -452,7 +447,7 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
       }
 
       // 6) Apply new trade (insert) passing fifo so it is mutated and used by re-applies
-      await _applyTradeToDb(newEntry, insertNew: true, fifoParam: fifo);
+      await _applyTradeToDb(newEntry, insertNew: true, fifo: fifo);
 
       // 7) Reapply tradesAfter in chronological order with same FIFO instance
       for (final t in tradesAfter) {
@@ -468,7 +463,7 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
           targetAccountId: Value(t.targetAccountId),
         );
         await _applyTradeToDb(comp,
-            insertNew: false, updateTradeId: t.id, fifoParam: fifo);
+            insertNew: false, updateTradeId: t.id, fifo: fifo);
       }
     });
   }
@@ -669,10 +664,10 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
       for (final entry in reapplyEntries) {
         if (entry.isMerged) {
           await _applyTradeToDb(entry.companion,
-              insertNew: false, updateTradeId: entry.id, fifoParam: fifo);
+              insertNew: false, updateTradeId: entry.id, fifo: fifo);
         } else {
           await _applyTradeToDb(entry.companion,
-              insertNew: false, updateTradeId: entry.id, fifoParam: fifo);
+              insertNew: false, updateTradeId: entry.id, fifo: fifo);
         }
       }
     });
@@ -805,7 +800,7 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
           targetAccountId: Value(t.targetAccountId),
         );
         await _applyTradeToDb(comp,
-            insertNew: false, updateTradeId: t.id, fifoParam: fifo);
+            insertNew: false, updateTradeId: t.id, fifo: fifo);
       }
     });
   }
