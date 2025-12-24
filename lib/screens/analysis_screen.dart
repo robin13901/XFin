@@ -554,6 +554,8 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             currencyFormat,
             analysisData.currentMonthProfit >= 0 ? AppColors.green : AppColors.red),
         const SizedBox(height: 8),
+        const Divider(color: Colors.grey),
+        const SizedBox(height: 8),
         _buildSummaryRow('Ø Monatliche Einnahmen:',
             analysisData.averageMonthlyInflows, currencyFormat, AppColors.green),
         _buildSummaryRow('Ø Monatliche Ausgaben:',
@@ -717,6 +719,9 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           onPressed: () {
             setState(() {
               _showAllCategories = true;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                scrollToBottom();
+              });
             });
           },
           child: const Text('Alle anzeigen'),
@@ -728,6 +733,9 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           onPressed: () {
             setState(() {
               _showAllCategories = false;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                scrollToBottom();
+              });
             });
           },
           child: const Text('Weniger anzeigen'),
