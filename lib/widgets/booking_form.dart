@@ -12,12 +12,10 @@ import '../utils/validators.dart';
 
 class BookingForm extends StatefulWidget {
   final Booking? booking;
-  final Stopwatch stopwatch;
 
   const BookingForm({
     super.key,
     this.booking,
-    required this.stopwatch,
   });
 
   @override
@@ -98,12 +96,6 @@ class _BookingFormState extends State<BookingForm> {
 
     // --- Measure first paint ---
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      widget.stopwatch.stop();
-      debugPrint(
-        'BookingForm first frame: ${widget.stopwatch.elapsedMilliseconds} ms',
-      );
-
-      // 🔥 Defer ALL heavy widgets until AFTER first paint
       _loadStaticData().then((_) {
         if (mounted) setState(() => _renderHeavy = true);
       });

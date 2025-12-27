@@ -111,7 +111,7 @@ void main() {
                               value: currencyProvider),
                         ],
                         child:
-                        BookingForm(booking: booking, stopwatch: Stopwatch()),
+                        BookingForm(booking: booking),
                       ),
                     );
                   },
@@ -150,7 +150,7 @@ void main() {
             ],
             supportedLocales: AppLocalizations.supportedLocales,
             home: Scaffold(
-              body: BookingForm(booking: booking, stopwatch: Stopwatch()),
+              body: BookingForm(booking: booking),
             ),
           ),
         ),

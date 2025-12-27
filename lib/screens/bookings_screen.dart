@@ -16,11 +16,11 @@ class BookingsScreen extends StatefulWidget {
   const BookingsScreen({super.key});
 
   static void showBookingForm(
-      BuildContext context, Booking? booking, Stopwatch stopwatch) {
+      BuildContext context, Booking? booking) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (_) => BookingForm(booking: booking, stopwatch: stopwatch),
+      builder: (_) => BookingForm(booking: booking),
     );
   }
 
@@ -120,6 +120,9 @@ class _BookingsScreenState extends State<BookingsScreen> {
             'after ${_stopwatch.elapsedMilliseconds} ms',
       );
 
+      // If the page is smaller than the requested limit, we've reached the end.
+      // This prevents an always-visible loading spinner at the bottom which
+      // would keep widget tests from settling (pumpAndSettle).
       if (page.isEmpty) {
         _hasMore = false;
       } else {
@@ -129,9 +132,16 @@ class _BookingsScreenState extends State<BookingsScreen> {
             _items.add(item);
           }
         }
+        // If we received fewer rows than requested, there are no more pages.
+        if (page.length < limit) {
+          _hasMore = false;
+        } else {
+          _hasMore = true;
+        }
       }
     } catch (e, st) {
       debugPrint('BookingsScreen: error loading page: $e\n$st');
+      // On error keep _hasMore as-is (or you could set to false to stop retry).
     } finally {
       _isLoading = false;
       if (mounted) setState(() {});
@@ -245,7 +255,6 @@ class _BookingsScreenState extends State<BookingsScreen> {
                   onTap: () => BookingsScreen.showBookingForm(
                     context,
                     booking,
-                    Stopwatch(),
                   ),
                   onLongPress: () => _showDeleteDialog(context, item),
                 );

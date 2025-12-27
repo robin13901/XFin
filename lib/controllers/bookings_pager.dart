@@ -1,16 +1,13 @@
 import 'dart:async';
-
 import 'package:flutter/cupertino.dart';
-
 import '../database/daos/bookings_dao.dart';
 
 class BookingsPager extends ChangeNotifier {
   BookingsPager(this._dao);
 
   final BookingsDao _dao;
-
   final List<BookingWithAccountAndAsset> _items = [];
-  StreamSubscription? _sub;
+  StreamSubscription<List<BookingWithAccountAndAsset>>? _sub;
 
   bool _isLoading = false;
   bool _hasMore = true;
@@ -31,7 +28,6 @@ class BookingsPager extends ChangeNotifier {
 
   void _loadPage({required int limit}) {
     _isLoading = true;
-
     final last = _items.isNotEmpty ? _items.last : null;
 
     _sub?.cancel();
