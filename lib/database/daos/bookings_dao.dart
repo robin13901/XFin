@@ -15,23 +15,57 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
       leftOuterJoin(assets, assets.id.equalsExp(bookings.assetId)),
     ]);
 
-    // Only show bookings from non-archived accounts
     query.where(accounts.isArchived.equals(false));
+    query.orderBy([
+      OrderingTerm.desc(bookings.date),
+      OrderingTerm.desc(bookings.shares),
+    ]);
+
+    return query.watch().map(_mapRows);
+  }
+
+  List<BookingWithAccountAndAsset> _mapRows(
+      List<TypedResult> rows,
+      ) {
+    return rows.map((row) {
+      return BookingWithAccountAndAsset(
+        booking: row.readTable(bookings),
+        account: row.readTable(accounts),
+        asset: row.readTable(assets),
+      );
+    }).toList();
+  }
+
+  Stream<List<BookingWithAccountAndAsset>> watchBookingsPage({
+    required int limit,
+    int? lastDate,
+    double? lastShares,
+  }) {
+    final query = select(bookings).join([
+      leftOuterJoin(accounts, accounts.id.equalsExp(bookings.accountId)),
+      leftOuterJoin(assets, assets.id.equalsExp(bookings.assetId)),
+    ]);
+
+    // Only non-archived accounts
+    query.where(accounts.isArchived.equals(false));
+
+    // Keyset pagination condition
+    if (lastDate != null && lastShares != null) {
+      query.where(
+        bookings.date.isSmallerThanValue(lastDate) |
+        (bookings.date.equals(lastDate) &
+        bookings.shares.isSmallerThanValue(lastShares)),
+      );
+    }
 
     query.orderBy([
       OrderingTerm.desc(bookings.date),
       OrderingTerm.desc(bookings.shares),
     ]);
 
-    return query.watch().map((rows) {
-      return rows.map((row) {
-        return BookingWithAccountAndAsset(
-          booking: row.readTable(bookings),
-          account: row.readTable(accounts),
-          asset: row.readTable(assets),
-        );
-      }).toList();
-    });
+    query.limit(limit);
+
+    return query.watch().map(_mapRows);
   }
 
   Future<Booking?> findMergeableBooking(BookingsCompanion newBooking) async {

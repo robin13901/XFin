@@ -67,6 +67,10 @@ class CyclesConverter extends TypeConverter<Cycles, String> {
 }
 
 // Tables
+@TableIndex(
+  name: 'accounts_is_archived',
+  columns: {#isArchived},
+)
 @DataClassName('Account')
 class Accounts extends Table {
   IntColumn get id => integer().autoIncrement()();
@@ -127,7 +131,18 @@ class AssetsOnAccounts extends Table {
   Set<Column> get primaryKey => {accountId, assetId};
 }
 
-@TableIndex(name: 'bookings_account_id_date', columns: {#accountId, #date})
+@TableIndex(
+  name: 'bookings_account_id_date',
+  columns: {#accountId, #date},
+)
+@TableIndex(
+  name: 'bookings_asset_id',
+  columns: {#assetId},
+)
+@TableIndex(
+  name: 'bookings_date_shares',
+  columns: {#date, #shares},
+)
 @DataClassName('Booking')
 class Bookings extends Table {
   IntColumn get id => integer().autoIncrement()();
