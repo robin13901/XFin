@@ -8,6 +8,20 @@ import 'package:xfin/screens/transfers_screen.dart';
 
 import 'liquid_glass_widgets.dart';
 
+/// New helper function for fade transition
+// PageRouteBuilder _buildFadePageRoute(Widget page) {
+//   return PageRouteBuilder(
+//     pageBuilder: (context, animation, secondaryAnimation) => page,
+//     transitionsBuilder: (context, animation, secondaryAnimation, child) {
+//       return FadeTransition(
+//         opacity: animation,
+//         child: child,
+//       );
+//     },
+//     transitionDuration: const Duration(milliseconds: 300), // Adjust duration as needed
+//   );
+// }
+
 Future<void> showMorePane({
   required BuildContext context,
   required GlobalKey navBarKey,
@@ -116,41 +130,39 @@ class _AnimatedMorePane extends StatefulWidget {
 
 class _AnimatedMorePaneState extends State<_AnimatedMorePane>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _ctr;
-  late final Animation<double> _scale;
-  late final Animation<double> _opacity;
+  // Removed: AnimationController _ctr, _scale, _opacity
 
   @override
   void initState() {
     super.initState();
-    _ctr = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 100));
-    _scale = CurvedAnimation(parent: _ctr, curve: Curves.easeOutBack);
-    _opacity = CurvedAnimation(parent: _ctr, curve: Curves.easeIn);
+    // Removed: Animation setup
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       widget.onOpenHideNav();
-      _ctr.forward();
+      // Removed: _ctr.forward();
     });
   }
 
   @override
   void dispose() {
-    _ctr.dispose();
+    // Removed: _ctr.dispose();
     super.dispose();
   }
 
   Future<void> _dismiss() async {
-    await _ctr.reverse();
+    // Removed: await _ctr.reverse();
     widget.onCloseRestoreNav();
     widget.entryRemover();
   }
 
   Future<void> _onItemTap(VoidCallback cb) async {
-    await _ctr.reverse();
-    widget.onCloseRestoreNav();
+    // Removed: await _ctr.reverse();
     widget.entryRemover();
-    Future.microtask(cb);
+    // Schedule the navbar to be shown again after the pane is removed
+    Future.microtask(() {
+      widget.onCloseRestoreNav();
+      cb(); // Execute the navigation callback
+    });
   }
 
   @override
@@ -168,25 +180,15 @@ class _AnimatedMorePaneState extends State<_AnimatedMorePane>
               right: widget.right,
               bottom: widget.bottom,
               child: SafeArea(
-                child: AnimatedBuilder(
-                  animation: _ctr,
-                  builder: (context, child) {
-                    return Opacity(
-                      opacity: _opacity.value,
-                      child: Transform.scale(
-                        scale: _scale.value.clamp(0.01, 1.0),
-                        alignment: Alignment.bottomRight,
-                        child: child,
-                      ),
-                    );
-                  },
-                  child: SizedBox(
-                    width: widget.paneWidth,
+                // Removed: AnimatedBuilder
+                child: SizedBox(
+                  width: widget.paneWidth,
+                  child: RepaintBoundary( // Added RepaintBoundary here
                     child: LiquidGlassLayer(
                       settings: widget.settings,
                       child: LiquidGlass.grouped(
                         shape:
-                            const LiquidRoundedSuperellipse(borderRadius: 28),
+                        const LiquidRoundedSuperellipse(borderRadius: 28),
                         child: _PaneContent(
                           items: widget.items,
                           onItemTap: (cb) => _onItemTap(cb),

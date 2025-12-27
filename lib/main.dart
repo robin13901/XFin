@@ -127,19 +127,9 @@ class _MainScreenState extends State<MainScreen> {
             child: ValueListenableBuilder<bool>(
               valueListenable: _navBarVisible,
               builder: (context, visible, child) {
-                // slide down slightly and fade out when hidden
-                return AnimatedSlide(
-                  duration: const Duration(milliseconds: 100),
-                  offset: visible ? Offset.zero : const Offset(0, 0.15),
-                  child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 100),
-                    opacity: visible ? 1.0 : 0.0,
-                    child: IgnorePointer(
-                      ignoring: !visible,
-                      child: child,
-                    ),
-                  ),
-                );
+                // If navbar is not visible, return an empty SizedBox to maintain layout
+                // Otherwise, show the navbar.
+                return visible ? RepaintBoundary(child: child!) : const SizedBox.shrink();
               },
               child: LiquidGlassBottomNav(
                 key: _navBarKey,
@@ -161,11 +151,10 @@ class _MainScreenState extends State<MainScreen> {
                 currentIndex: _selectedIndex,
                 onTap: (i) => setState(() => _selectedIndex = i),
                 onLeftTap: () {
-                  final sw = Stopwatch()..start();
                   if (_selectedIndex == 1) {
                     AccountsScreen.showAccountForm(context);
                   } else if (_selectedIndex == 2) {
-                    BookingsScreen.showBookingForm(context, null, sw);
+                    BookingsScreen.showBookingForm(context, null);
                   }
                 },
                 leftVisibleForIndices: const {1, 2},

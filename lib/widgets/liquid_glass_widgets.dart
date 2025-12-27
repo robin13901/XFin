@@ -338,11 +338,7 @@ Future<void> showLiquidGlassPanel({
   required List<GlassMenuItem> items,
   double widthFraction = 0.65, // fraction of screen width
   double maxHeightFraction = 0.7,
-  LiquidGlassSettings settings = const LiquidGlassSettings(
-    thickness: 22,
-    blur: 6,
-    glassColor: Color(0x33595959),
-  ),
+  LiquidGlassSettings settings = liquidGlassSettings,
 }) async {
   final overlay = Overlay.of(context);
 
@@ -453,8 +449,8 @@ class _PanelItem extends StatelessWidget {
         // close overlay by popping the overlay: easiest is Navigator.pop until overlay removed,
         // but because we used OverlayEntry directly we remove by searching overlays or let the caller remove it.
         // For simplicity we pop the route if possible:
-        Navigator.of(context)
-            .pop(); // may or may not remove overlay depending how called
+        // Navigator.of(context)
+        //     .pop(); // may or may not remove overlay depending how called
       },
       child: Row(
         children: [
