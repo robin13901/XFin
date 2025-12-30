@@ -8,8 +8,8 @@ import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/daos/bookings_dao.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/widgets/booking_form.dart';
-import 'package:xfin/widgets/delete_booking_dialog.dart';
 
+import '../widgets/dialogs.dart';
 import '../widgets/liquid_glass_widgets.dart';
 
 class BookingsScreen extends StatefulWidget {
@@ -46,15 +46,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
   void initState() {
     super.initState();
     _stopwatch.start();
-
     _scrollController = ScrollController()..addListener(_onScroll);
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      debugPrint(
-        'BookingsScreen: first frame painted at ${DateTime.now()} '
-            '(${_stopwatch.elapsedMilliseconds} ms)',
-      );
-    });
   }
 
   @override
@@ -87,13 +79,8 @@ class _BookingsScreenState extends State<BookingsScreen> {
       _items.isNotEmpty ? _items.last.booking.shares : null;
 
   Future<void> _loadInitial() async {
-    debugPrint(
-      'BookingsScreen: loading INITIAL page at ${_stopwatch.elapsedMilliseconds} ms',
-    );
-
     _items.clear();
     _hasMore = true;
-
     await _loadPage(limit: _initialLimit);
   }
 
@@ -112,13 +99,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
         limit: limit,
         lastDate: _lastDate,
         lastShares: _lastShares,
-      )
-          .first;
-
-      debugPrint(
-        'BookingsScreen: received ${page.length} rows '
-            'after ${_stopwatch.elapsedMilliseconds} ms',
-      );
+      ).first;
 
       // If the page is smaller than the requested limit, we've reached the end.
       // This prevents an always-visible loading spinner at the bottom which
@@ -139,24 +120,12 @@ class _BookingsScreenState extends State<BookingsScreen> {
           _hasMore = true;
         }
       }
-    } catch (e, st) {
-      debugPrint('BookingsScreen: error loading page: $e\n$st');
+    } catch (e) {
       // On error keep _hasMore as-is (or you could set to false to stop retry).
     } finally {
       _isLoading = false;
       if (mounted) setState(() {});
     }
-  }
-
-  Future<void> _showDeleteDialog(
-      BuildContext context,
-      BookingWithAccountAndAsset bookingWithAccountAndAsset) async {
-    await showDialog(
-      context: context,
-      builder: (_) => DeleteBookingDialog(
-        bookingWithAccountAndAsset: bookingWithAccountAndAsset,
-      ),
-    );
   }
 
   static final _currencyFormat =
@@ -165,11 +134,6 @@ class _BookingsScreenState extends State<BookingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint(
-      'BookingsScreen: build called at ${_stopwatch.elapsedMilliseconds} ms '
-          '(items=${_items.length}, loading=$_isLoading)',
-    );
-
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
@@ -256,7 +220,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
                     context,
                     booking,
                   ),
-                  onLongPress: () => _showDeleteDialog(context, item),
+                  onLongPress: () => showDeleteDialog(context, booking: booking),
                 );
               },
             ),

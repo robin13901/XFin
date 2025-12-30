@@ -58,22 +58,12 @@
   "notes": "Notizen",
   "excludeFromAverage": "Vom Durchschnitt ausschließen",
   "dateCannotBeInTheFuture": "Das Datum darf nicht in der Zukunft liegen.",
-  "cannotDeleteAccount": "Konto kann nicht gelöscht werden",
   "accountHasReferencesArchiveInstead": "Dieses Konto hat Referenzen und kann nicht gelöscht werden. Möchten Sie es stattdessen archivieren?",
   "archive": "Archivieren",
-  "deleteAccount": "Konto löschen",
-  "confirmDeleteAccount": "Sind Sie sicher, dass Sie dieses Konto löschen möchten?",
   "confirm": "Bestätigen",
   "unarchiveAccount": "Konto dearchivieren",
   "confirmUnarchiveAccount": "Möchten Sie dieses Konto dearchivieren?",
-  "error": "Fehler: {error}",
-  "@error": {
-    "placeholders": {
-      "error": {
-        "type": "String"
-      }
-    }
-  },
+  "error": "Fehler",
   "noActiveAccounts": "Noch keine aktiven Konten vorhanden",
   "archivedAccounts": "Archivierte Konten",
   "anErrorOccurred": "Ein Fehler ist aufgetreten: {error}",
@@ -85,18 +75,11 @@
     }
   },
   "valueMustNotBeZero": "Wert darf nicht 0 sein",
-  "cannotDeleteOrArchiveAccount": "Löschen oder Archivieren nicht möglich",
-  "cannotDeleteOrArchiveAccountLong": "Konten können nur gelöscht werden, wenn sie keine Referenzen mehr haben. Dieses Konto hat Referenzen und kann nicht gelöscht werden.\n\nKonten mit Referenzen können archiviert werden, jedoch nur dann wenn der Saldo 0 beträgt.",
   "noBookingsYet": "Noch keine Buchungen vorhanden",
   "unknownAccount": "Unbekanntes Konto",
-  "deleteBookingConfirmation": "Buchung löschen?",
-  "delete": "Löschen",
   "assets": "Assets",
   "noAssets": "Noch keine Assets vorhanden",
-  "cannotDeleteAsset": "Asset kann nicht gelöscht werden",
   "assetHasReferences": "Dieses Asset hat Referenzen und kann nicht gelöscht werden.",
-  "deleteAsset": "Asset löschen",
-  "confirmDeleteAsset": "Sind Sie sicher, dass Sie dieses Asset löschen möchten?",
   "assetName": "Asset Name",
   "pleaseEnterAssetName": "Bitte geben Sie einen Asset-Namen ein",
   "assetAlreadyExists": "Ein Asset mit diesem Namen existiert bereits",
@@ -149,8 +132,25 @@
   "valueMustBeGreaterZero": "Wert muss > 0 sein",
   "valueMustBeGreaterEqualZero": "Wert muss ≥ 0 sein",
   "valueCannotBeZero": "Wert darf nicht 0 sein",
-  "deleteTransfer": "Überweisung löschen?",
-  "deleteTransferConfirmation": "Sind Sie sicher, dass Sie diese Überweisung löschen möchten?",
   "noTransfersYet": "Noch keine Überweisungen vorhanden",
-  "transfers": "Überweisung"
+  "transfers": "Überweisung",
+  "isGenerated": "Erstellt durch Dauerauftrag",
+
+  "updateWouldBreakAccountBalanceHistory": "Die Änderungen können nicht gespeichert werden. Die eingegebenen Werte würden zu Inkonsistenzen im Verlauf des Kontostandes eines oder mehrerer beteiligter Konten führen.",
+
+  "delete": "Löschen",
+  "deleteAccount": "Konto löschen",
+  "deleteAsset": "Asset löschen",
+  "deleteBooking": "Buchung löschen",
+  "deleteTrade": "Trade löschen",
+  "deleteTransfer": "Überweisung löschen",
+  "deleteAccountConfirmation": "Sind Sie sicher, dass Sie dieses Konto löschen möchten?",
+  "deleteAssetConfirmation": "Sind Sie sicher, dass Sie dieses Asset löschen möchten?",
+  "deleteBookingConfirmation": "Sind Sie sicher, dass Sie diese Buchung löschen möchten?",
+  "deleteTradeConfirmation": "Sind Sie sicher, dass Sie diesen Trade löschen möchten?",
+  "deleteTransferConfirmation": "Sind Sie sicher, dass Sie diese Überweisung löschen möchten?",
+  "cannotDeleteAccount": "Konto kann nicht gelöscht werden",
+  "cannotDeleteAsset": "Asset kann nicht gelöscht werden",
+  "cannotDeleteOrArchiveAccount": "Löschen oder Archivieren nicht möglich",
+  "cannotDeleteOrArchiveAccountLong": "Konten können nur gelöscht werden, wenn sie keine Referenzen mehr haben. Dieses Konto hat Referenzen und kann nicht gelöscht werden.\n\nKonten mit Referenzen können archiviert werden, jedoch nur dann wenn der Saldo 0 beträgt."
 }

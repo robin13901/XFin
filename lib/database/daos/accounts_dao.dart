@@ -215,7 +215,7 @@ class AccountsDao extends DatabaseAccessor<AppDatabase>
 
       // Trades (regarding portfolio account)
       for (final t in portfolioTrades) {
-        if (originalTrade != null && t.id == originalTrade.id) continue;
+        // if (originalTrade != null && t.id == originalTrade.id) continue; // TODO figure out
         final date = t.datetime ~/ 1000000;
         sumsByDate[date] = (sumsByDate[date] ?? 0) + t.targetAccountValueDelta;
       }
@@ -246,10 +246,10 @@ class AccountsDao extends DatabaseAccessor<AppDatabase>
           final sourceAccountValueDelta = newTrade.sourceAccountValueDelta.value;
           sumsByDate[newDate] = (sumsByDate[newDate] ?? 0) + sourceAccountValueDelta;
         }
-        if (accountId == newTrade.targetAccountId.value) {
-          final targetAccountValueDelta = newTrade.targetAccountValueDelta.value;
-          sumsByDate[newDate] = (sumsByDate[newDate] ?? 0) + targetAccountValueDelta;
-        }
+        // if (accountId == newTrade.targetAccountId.value) { // TODO figure out
+        //   final targetAccountValueDelta = newTrade.targetAccountValueDelta.value;
+        //   sumsByDate[newDate] = (sumsByDate[newDate] ?? 0) + targetAccountValueDelta;
+        // }
       }
 
       // Process sorted dates

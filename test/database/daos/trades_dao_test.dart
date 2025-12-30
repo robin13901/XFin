@@ -1,9 +1,12 @@
+import 'dart:ui';
+
 import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/daos/trades_dao.dart';
 import 'package:xfin/database/tables.dart';
+import 'package:xfin/l10n/app_localizations.dart';
 
 void main() {
   late AppDatabase db;
@@ -15,10 +18,14 @@ void main() {
   late Account sourceAccount;
   late Account targetAccount;
   late AssetOnAccount baseCurrencyAssetOnSourceAccount;
+  late AppLocalizations l10n;
 
   setUp(() async {
     db = AppDatabase(NativeDatabase.memory());
     tradesDao = db.tradesDao;
+
+    const locale = Locale('en');
+    l10n = await AppLocalizations.delegate.load(locale);
 
     baseCurrencyAsset = const Asset(
         id: 1,
@@ -955,7 +962,7 @@ void main() {
           );
 
           // original buy1 has id 1
-          await tradesDao.updateTrade(1, updateComp);
+          await tradesDao.updateTrade(1, updateComp, l10n);
 
           final sellAfter = await (db.select(db.trades)
             ..where((t) =>
@@ -965,6 +972,54 @@ void main() {
               .getSingle();
           expect(sellAfter.profitAndLoss, closeTo(10.0, 1e-9));
         });
+
+    test('trade gets correctly updated', () async {
+      // first trade, so id = 1
+      await tradesDao.insertTrade(TradesCompanion(
+        datetime: const drift.Value(20250101000000),
+        assetId: drift.Value(assetOne.id),
+        type: const drift.Value(TradeTypes.buy),
+        shares: const drift.Value(1.0),
+        costBasis: const drift.Value(10.0),
+        fee: const drift.Value(0.0),
+        tax: const drift.Value(0.0),
+        sourceAccountId: drift.Value(sourceAccount.id),
+        targetAccountId: drift.Value(targetAccount.id),
+      ));
+
+      // Pre-update checks
+      final preUpdateTradeList = await db.tradesDao.getAllTrades();
+      expect(preUpdateTradeList.length, 1);
+      final preUpdateTrade = preUpdateTradeList[0];
+      expect(preUpdateTrade.id, 1);
+      expect(preUpdateTrade.datetime, 20250101000000);
+      expect(preUpdateTrade.shares, 1);
+      expect(preUpdateTrade.costBasis, 10);
+      expect(preUpdateTrade.fee, 0);
+      expect(preUpdateTrade.tax, 0);
+      expect(preUpdateTrade.sourceAccountValueDelta, -10);
+      expect(preUpdateTrade.targetAccountValueDelta, 10);
+
+      await tradesDao.updateTrade(1, const TradesCompanion(
+        datetime: drift.Value(20250102000000),
+        shares: drift.Value(1.5),
+        costBasis: drift.Value(12.0),
+        fee: drift.Value(1.0),
+        tax: drift.Value(1.0)), l10n);
+
+      // Post-update checks
+      final postUpdateTradeList = await db.tradesDao.getAllTrades();
+      expect(postUpdateTradeList.length, 1);
+      final postUpdateTrade = postUpdateTradeList[0];
+      expect(postUpdateTrade.id, 1);
+      expect(postUpdateTrade.datetime, 20250102000000);
+      expect(postUpdateTrade.shares, 1.5);
+      expect(postUpdateTrade.costBasis, 12);
+      expect(postUpdateTrade.fee, 1);
+      expect(postUpdateTrade.tax, 1);
+      expect(postUpdateTrade.sourceAccountValueDelta, -19);
+      expect(postUpdateTrade.targetAccountValueDelta, 18);
+    });
 
     test('backdated delete adjusts later sell P&L', () async {
       // buy1 @2025-01-01 (1@10)
@@ -1163,7 +1218,7 @@ void main() {
             datetime: drift.Value(20250103000000),
           );
 
-          expect(() async => await tradesDao.updateTrade(1, updateToAfterSell),
+          expect(() async => await tradesDao.updateTrade(1, updateToAfterSell, l10n),
               throwsA(isA<Exception>()));
         });
 
@@ -1293,7 +1348,7 @@ void main() {
       expect(sellBefore.profitAndLoss, closeTo(15.0, 1e-9));
 
       // Now change buy2's costBasis to 5 via updateTrade (id 2)
-      await tradesDao.updateTrade(2, const TradesCompanion(costBasis: drift.Value(5.0)));
+      await tradesDao.updateTrade(2, const TradesCompanion(costBasis: drift.Value(5.0)), l10n);
 
       final sellAfter = await (db.select(db.trades)
         ..where((t) =>
@@ -1423,7 +1478,7 @@ void main() {
               2,
               const TradesCompanion(
                 datetime: drift.Value(20250101000000), // earlier than the buy
-              ),
+              ), l10n
             ),
             throwsA(isA<Exception>()),
           );

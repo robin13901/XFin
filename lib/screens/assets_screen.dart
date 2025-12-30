@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/widgets/asset_form.dart';
+import 'package:xfin/widgets/dialogs.dart';
 
 import '../utils/global_constants.dart';
 import '../widgets/liquid_glass_widgets.dart';
@@ -48,26 +49,7 @@ class AssetsScreen extends StatelessWidget {
         ),
       );
     } else {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text(l10n.deleteAsset),
-          content: Text(l10n.confirmDeleteAsset),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(l10n.cancel),
-            ),
-            TextButton(
-              onPressed: () {
-                db.assetsDao.deleteAsset(asset.id);
-                Navigator.of(context).pop();
-              },
-              child: Text(l10n.confirm),
-            ),
-          ],
-        ),
-      );
+      showDeleteDialog(context, asset: asset);
     }
   }
 
@@ -93,8 +75,7 @@ class AssetsScreen extends StatelessWidget {
                       return const Center(child: CircularProgressIndicator());
                     }
                     if (snapshot.hasError) {
-                      return Center(
-                          child: Text(l10n.error(snapshot.error.toString())));
+                      showErrorDialog(context, snapshot.error.toString());
                     }
                     final assets = snapshot.data ?? [];
                     if (assets.isEmpty) {

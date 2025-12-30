@@ -148,7 +148,7 @@ void main() {
 
               // Delete dialog should appear (no references => delete path)
               expect(find.text(l10n.deleteAccount), findsOneWidget);
-              expect(find.text(l10n.confirmDeleteAccount), findsOneWidget);
+              expect(find.text(l10n.deleteAccountConfirmation), findsOneWidget);
 
               // Cancel first -> account still present
               await tester.tap(find.text(l10n.cancel));
@@ -163,10 +163,15 @@ void main() {
               await tester.pumpAndSettle();
 
               expect(find.text(l10n.deleteAccount), findsOneWidget);
-              await tester.tap(find.text(l10n.confirm));
+              await tester.tap(find.text(l10n.delete));
               await tester.pumpAndSettle();
+              await tester.pump();
 
-              // Account should be removed from active list
+              // Account should be removed from db
+              final accounts = await db.accountsDao.getAllAccounts();
+              expect(accounts.length, 0);
+
+              // Account should be removed from UI list
               expect(find.text('Test Account'), findsNothing);
 
               await tester.pumpWidget(Container());

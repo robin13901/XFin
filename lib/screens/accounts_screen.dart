@@ -5,6 +5,7 @@ import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/widgets/account_form.dart';
 
 import '../providers/base_currency_provider.dart';
+import '../widgets/dialogs.dart';
 import '../widgets/liquid_glass_widgets.dart';
 
 class AccountsScreen extends StatelessWidget {
@@ -82,26 +83,7 @@ class AccountsScreen extends StatelessWidget {
         );
       }
     } else {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text(l10n.deleteAccount),
-          content: Text(l10n.confirmDeleteAccount),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(l10n.cancel),
-            ),
-            TextButton(
-              onPressed: () {
-                db.accountsDao.deleteAccount(account.id);
-                Navigator.of(context).pop();
-              },
-              child: Text(l10n.confirm),
-            ),
-          ],
-        ),
-      );
+      showDeleteDialog(context, account: account);
     }
   }
 
@@ -148,8 +130,7 @@ class AccountsScreen extends StatelessWidget {
                       return const Center(child: CircularProgressIndicator());
                     }
                     if (snapshot.hasError) {
-                      return Center(
-                          child: Text(l10n.error(snapshot.error.toString())));
+                      showErrorDialog(context, snapshot.error.toString());
                     }
                     final accounts = snapshot.data ?? [];
                     if (accounts.isEmpty) {

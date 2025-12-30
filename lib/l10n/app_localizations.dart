@@ -452,12 +452,6 @@ abstract class AppLocalizations {
   /// **'The date cannot be in the future.'**
   String get dateCannotBeInTheFuture;
 
-  /// No description provided for @cannotDeleteAccount.
-  ///
-  /// In en, this message translates to:
-  /// **'Cannot Delete Account'**
-  String get cannotDeleteAccount;
-
   /// No description provided for @accountHasReferencesArchiveInstead.
   ///
   /// In en, this message translates to:
@@ -469,18 +463,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Archive'**
   String get archive;
-
-  /// No description provided for @deleteAccount.
-  ///
-  /// In en, this message translates to:
-  /// **'Delete Account'**
-  String get deleteAccount;
-
-  /// No description provided for @confirmDeleteAccount.
-  ///
-  /// In en, this message translates to:
-  /// **'Are you sure you want to delete this account?'**
-  String get confirmDeleteAccount;
 
   /// No description provided for @confirm.
   ///
@@ -503,20 +485,8 @@ abstract class AppLocalizations {
   /// No description provided for @error.
   ///
   /// In en, this message translates to:
-  /// **'Error: {error}'**
-  String error(String error);
-
-  /// No description provided for @cannotDeleteOrArchiveAccount.
-  ///
-  /// In en, this message translates to:
-  /// **'Löschen oder Archivieren nicht möglich'**
-  String get cannotDeleteOrArchiveAccount;
-
-  /// No description provided for @cannotDeleteOrArchiveAccountLong.
-  ///
-  /// In en, this message translates to:
-  /// **'Accounts can only be deleted when they have no references. This account has references and cannot be deleted.\n\nAccounts with references can be archived but only if the balance is 0.'**
-  String get cannotDeleteOrArchiveAccountLong;
+  /// **'Error'**
+  String get error;
 
   /// No description provided for @noActiveAccounts.
   ///
@@ -554,18 +524,6 @@ abstract class AppLocalizations {
   /// **'Unknown Account'**
   String get unknownAccount;
 
-  /// No description provided for @deleteBookingConfirmation.
-  ///
-  /// In en, this message translates to:
-  /// **'Delete Booking?'**
-  String get deleteBookingConfirmation;
-
-  /// No description provided for @delete.
-  ///
-  /// In en, this message translates to:
-  /// **'Delete'**
-  String get delete;
-
   /// No description provided for @assets.
   ///
   /// In en, this message translates to:
@@ -578,29 +536,11 @@ abstract class AppLocalizations {
   /// **'No assets yet'**
   String get noAssets;
 
-  /// No description provided for @cannotDeleteAsset.
-  ///
-  /// In en, this message translates to:
-  /// **'Cannot Delete Asset'**
-  String get cannotDeleteAsset;
-
   /// No description provided for @assetHasReferences.
   ///
   /// In en, this message translates to:
   /// **'This asset has references and cannot be deleted.'**
   String get assetHasReferences;
-
-  /// No description provided for @deleteAsset.
-  ///
-  /// In en, this message translates to:
-  /// **'Delete Asset'**
-  String get deleteAsset;
-
-  /// No description provided for @confirmDeleteAsset.
-  ///
-  /// In en, this message translates to:
-  /// **'Are you sure you want to delete this asset?'**
-  String get confirmDeleteAsset;
 
   /// No description provided for @assetName.
   ///
@@ -914,18 +854,6 @@ abstract class AppLocalizations {
   /// **'Value must not be 0'**
   String get valueCannotBeZero;
 
-  /// No description provided for @deleteTransfer.
-  ///
-  /// In en, this message translates to:
-  /// **'Delete Transfer?'**
-  String get deleteTransfer;
-
-  /// No description provided for @deleteTransferConfirmation.
-  ///
-  /// In en, this message translates to:
-  /// **'Are you sure you want to delete this transfer?'**
-  String get deleteTransferConfirmation;
-
   /// No description provided for @noTransfersYet.
   ///
   /// In en, this message translates to:
@@ -937,6 +865,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Transfers'**
   String get transfers;
+
+  /// No description provided for @isGenerated.
+  ///
+  /// In en, this message translates to:
+  /// **'Created by standing order'**
+  String get isGenerated;
+
+  /// No description provided for @updateWouldBreakAccountBalanceHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'The changes cannot be saved. The entered values would lead to inconsistencies in the account balance history of one or more of the accounts involved.'**
+  String get updateWouldBreakAccountBalanceHistory;
+
+  /// No description provided for @delete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get delete;
+
+  /// No description provided for @deleteAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Account'**
+  String get deleteAccount;
+
+  /// No description provided for @deleteAsset.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Asset'**
+  String get deleteAsset;
+
+  /// No description provided for @deleteBooking.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Booking'**
+  String get deleteBooking;
+
+  /// No description provided for @deleteTrade.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Trade'**
+  String get deleteTrade;
+
+  /// No description provided for @deleteTransfer.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Transfer'**
+  String get deleteTransfer;
+
+  /// No description provided for @deleteAccountConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this account?'**
+  String get deleteAccountConfirmation;
+
+  /// No description provided for @deleteAssetConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this asset?'**
+  String get deleteAssetConfirmation;
+
+  /// No description provided for @deleteBookingConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this booking?'**
+  String get deleteBookingConfirmation;
+
+  /// No description provided for @deleteTradeConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this trade?'**
+  String get deleteTradeConfirmation;
+
+  /// No description provided for @deleteTransferConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this transfer?'**
+  String get deleteTransferConfirmation;
+
+  /// No description provided for @cannotDeleteAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot Delete Account'**
+  String get cannotDeleteAccount;
+
+  /// No description provided for @cannotDeleteAsset.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot Delete Asset'**
+  String get cannotDeleteAsset;
+
+  /// No description provided for @cannotDeleteOrArchiveAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Löschen oder Archivieren nicht möglich'**
+  String get cannotDeleteOrArchiveAccount;
+
+  /// No description provided for @cannotDeleteOrArchiveAccountLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Accounts can only be deleted when they have no references. This account has references and cannot be deleted.\n\nAccounts with references can be archived but only if the balance is 0.'**
+  String get cannotDeleteOrArchiveAccountLong;
 }
 
 class _AppLocalizationsDelegate

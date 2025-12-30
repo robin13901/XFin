@@ -1,6 +1,8 @@
 import 'dart:collection';
 
 import 'package:drift/drift.dart';
+import 'package:xfin/l10n/app_localizations.dart';
+import 'package:xfin/utils/global_constants.dart';
 import '../app_database.dart';
 import '../tables.dart';
 
@@ -136,12 +138,13 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
               a.assetId.equals(t.assetId) &
               a.accountId.equals(t.targetAccountId)))
         .write(AssetsOnAccountsCompanion(
-      shares: Value(newAoaShares),
-      value: Value(newAoaValue),
-      buyFeeTotal: Value(newAoaBuyFee),
-      netCostBasis: Value(newAoaShares > 0 ? newAoaValue / newAoaShares : 0),
-      brokerCostBasis: Value(
-          newAoaShares > 0 ? (newAoaValue + newAoaBuyFee) / newAoaShares : 0),
+      shares: Value(normalize(newAoaShares)),
+      value: Value(normalize(newAoaValue)),
+      buyFeeTotal: Value(normalize(newAoaBuyFee)),
+      netCostBasis:
+          Value(normalize(newAoaShares > 0 ? newAoaValue / newAoaShares : 0)),
+      brokerCostBasis: Value(normalize(
+          newAoaShares > 0 ? (newAoaValue + newAoaBuyFee) / newAoaShares : 0)),
     ));
 
     // Update global asset
@@ -154,14 +157,14 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
 
     await (update(assets)..where((a) => a.id.equals(t.assetId)))
         .write(AssetsCompanion(
-      shares: Value(newAssetShares),
-      value: Value(newAssetValue),
-      buyFeeTotal: Value(newAssetBuyFee),
-      netCostBasis:
-          Value(newAssetShares > 0 ? newAssetValue / newAssetShares : 0),
-      brokerCostBasis: Value(newAssetShares > 0
+      shares: Value(normalize(newAssetShares)),
+      value: Value(normalize(newAssetValue)),
+      buyFeeTotal: Value(normalize(newAssetBuyFee)),
+      netCostBasis: Value(
+          normalize(newAssetShares > 0 ? newAssetValue / newAssetShares : 0)),
+      brokerCostBasis: Value(normalize(newAssetShares > 0
           ? (newAssetValue + newAssetBuyFee) / newAssetShares
-          : 0),
+          : 0)),
     ));
 
     // Undo account balances
@@ -171,7 +174,8 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
     await (update(accounts)..where((a) => a.id.equals(t.sourceAccountId)))
         .write(
       AccountsCompanion(
-          balance: Value(sourceAcc.balance - t.sourceAccountValueDelta)),
+          balance:
+              Value(normalize(sourceAcc.balance - t.sourceAccountValueDelta))),
     );
 
     final targetAcc = await (select(accounts)
@@ -180,7 +184,8 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
     await (update(accounts)..where((a) => a.id.equals(t.targetAccountId)))
         .write(
       AccountsCompanion(
-          balance: Value(targetAcc.balance - t.targetAccountValueDelta)),
+          balance:
+              Value(normalize(targetAcc.balance - t.targetAccountValueDelta))),
     );
 
     // Undo base-currency adjustments
@@ -262,12 +267,13 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
       }
 
       // Balance history check
-      var newTrade = insertNew ? entry.copyWith(
-          sourceAccountValueDelta: Value(sourceAccountValueDelta),
-          targetAccountValueDelta: Value(targetAccountValueDelta)) : null;
+      var newTrade = insertNew
+          ? entry.copyWith(
+              sourceAccountValueDelta: Value(sourceAccountValueDelta),
+              targetAccountValueDelta: Value(targetAccountValueDelta))
+          : null;
       if (await db.accountsDao
-          .leadsToInconsistentBalanceHistory(
-          newTrade: newTrade)) {
+          .leadsToInconsistentBalanceHistory(newTrade: newTrade)) {
         throw Exception(
             'Applying this trade would break account balance history.');
       }
@@ -302,28 +308,28 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
           ..where((a) =>
               a.assetId.equals(assetId) & a.accountId.equals(targetAccountId)))
         .write(AssetsOnAccountsCompanion(
-      shares: Value(updatedAOAShares),
-      value: Value(updatedAOAValue),
-      buyFeeTotal: Value(updatedAOABuyFeeTotal),
-      netCostBasis:
-          Value(updatedAOAShares > 0 ? updatedAOAValue / updatedAOAShares : 0),
-      brokerCostBasis: Value(updatedAOAShares > 0
+      shares: Value(normalize(updatedAOAShares)),
+      value: Value(normalize(updatedAOAValue)),
+      buyFeeTotal: Value(normalize(updatedAOABuyFeeTotal)),
+      netCostBasis: Value(normalize(
+          updatedAOAShares > 0 ? updatedAOAValue / updatedAOAShares : 0)),
+      brokerCostBasis: Value(normalize(updatedAOAShares > 0
           ? (updatedAOAValue + updatedAOABuyFeeTotal) / updatedAOAShares
-          : 0),
+          : 0)),
     ));
 
     // Update Asset totals
     updatedAssetValue = asset.value + targetAccountValueDelta;
     await (update(assets)..where((a) => a.id.equals(assetId)))
         .write(AssetsCompanion(
-      shares: Value(updatedAssetShares),
-      value: Value(updatedAssetValue),
-      buyFeeTotal: Value(updatedAssetBuyFeeTotal),
-      netCostBasis: Value(
-          updatedAssetShares > 0 ? updatedAssetValue / updatedAssetShares : 0),
-      brokerCostBasis: Value(updatedAssetShares > 0
+      shares: Value(normalize(updatedAssetShares)),
+      value: Value(normalize(updatedAssetValue)),
+      buyFeeTotal: Value(normalize(updatedAssetBuyFeeTotal)),
+      netCostBasis: Value(normalize(
+          updatedAssetShares > 0 ? updatedAssetValue / updatedAssetShares : 0)),
+      brokerCostBasis: Value(normalize(updatedAssetShares > 0
           ? (updatedAssetValue + updatedAssetBuyFeeTotal) / updatedAssetShares
-          : 0),
+          : 0)),
     ));
 
     // Base currency adjustments
@@ -335,10 +341,10 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
     // Insert or update trade row
     if (insertNew) {
       final tradeWithCalculatedValues = entry.copyWith(
-        sourceAccountValueDelta: Value(sourceAccountValueDelta),
-        targetAccountValueDelta: Value(targetAccountValueDelta),
-        profitAndLoss: Value(profitAndLoss),
-        returnOnInvest: Value(returnOnInvest),
+        sourceAccountValueDelta: Value(normalize(sourceAccountValueDelta)),
+        targetAccountValueDelta: Value(normalize(targetAccountValueDelta)),
+        profitAndLoss: Value(normalize(profitAndLoss)),
+        returnOnInvest: Value(normalize(returnOnInvest)),
       );
       await into(trades).insert(tradeWithCalculatedValues);
     } else {
@@ -347,10 +353,15 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
       }
       await (update(trades)..where((t) => t.id.equals(updateTradeId)))
           .write(TradesCompanion(
-        sourceAccountValueDelta: Value(sourceAccountValueDelta),
-        targetAccountValueDelta: Value(targetAccountValueDelta),
-        profitAndLoss: Value(profitAndLoss),
-        returnOnInvest: Value(returnOnInvest),
+        datetime: Value(entry.datetime.value),
+        shares: Value(entry.shares.value),
+        costBasis: Value(entry.costBasis.value),
+        fee: Value(entry.fee.value),
+        tax: Value(entry.tax.value),
+        sourceAccountValueDelta: Value(normalize(sourceAccountValueDelta)),
+        targetAccountValueDelta: Value(normalize(targetAccountValueDelta)),
+        profitAndLoss: Value(normalize(profitAndLoss)),
+        returnOnInvest: Value(normalize(returnOnInvest)),
       ));
     }
 
@@ -360,7 +371,8 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
         .getSingle();
     await (update(accounts)..where((a) => a.id.equals(sourceAccountId))).write(
       AccountsCompanion(
-          balance: Value(clearingAccount.balance + sourceAccountValueDelta)),
+          balance: Value(
+              normalize(clearingAccount.balance + sourceAccountValueDelta))),
     );
 
     final portfolioAccount = await (select(accounts)
@@ -368,7 +380,8 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
         .getSingle();
     await (update(accounts)..where((a) => a.id.equals(targetAccountId))).write(
       AccountsCompanion(
-          balance: Value(portfolioAccount.balance + targetAccountValueDelta)),
+          balance: Value(
+              normalize(portfolioAccount.balance + targetAccountValueDelta))),
     );
   }
 
@@ -468,12 +481,11 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
     });
   }
 
-  // ----------------------------
-  // PUBLIC API: updateTrade (replaces processBackdatedUpdate)
-  // ----------------------------
-  Future<void> updateTrade(int tradeId, TradesCompanion updatedFields) {
+  Future<void> updateTrade(
+      int tradeId, TradesCompanion updatedFields, AppLocalizations l10n) {
     return db.transaction(() async {
-      final original = await (select(trades)
+      // 1) Load original trade
+      final originalTrade = await (select(trades)
             ..where((t) => t.id.equals(tradeId)))
           .getSingle();
 
@@ -481,56 +493,93 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
       Value<T> merge<T>(Value<T>? v, T orig) =>
           (v != null && v.present) ? v : Value(orig);
 
-      final merged = TradesCompanion(
-        datetime: merge<int>(updatedFields.datetime, original.datetime),
-        assetId: Value(original.assetId),
-        sourceAccountId: Value(original.sourceAccountId),
-        targetAccountId: Value(original.targetAccountId),
-        type: Value(original.type),
-        shares: merge<double>(updatedFields.shares, original.shares),
-        costBasis: merge<double>(updatedFields.costBasis, original.costBasis),
-        fee: merge<double>(updatedFields.fee, original.fee),
-        tax: merge<double>(updatedFields.tax, original.tax),
+      // 2) Build updated trade
+      var updatedTrade = TradesCompanion(
+        datetime: merge<int>(updatedFields.datetime, originalTrade.datetime),
+        assetId: Value(originalTrade.assetId),
+        sourceAccountId: Value(originalTrade.sourceAccountId),
+        targetAccountId: Value(originalTrade.targetAccountId),
+        type: Value(originalTrade.type),
+        shares: merge<double>(updatedFields.shares, originalTrade.shares),
+        costBasis:
+            merge<double>(updatedFields.costBasis, originalTrade.costBasis),
+        fee: merge<double>(updatedFields.fee, originalTrade.fee),
+        tax: merge<double>(updatedFields.tax, originalTrade.tax),
       );
 
-      final assetId = original.assetId;
-      final accountId = original.targetAccountId;
+      // 3) Compute earliestKey
+      final dt1 = originalTrade.datetime;
+      final t1 = originalTrade.type.name;
+      final id1 = originalTrade.id;
+      final dt2 = updatedTrade.datetime.value;
+      final t2 = _typeString(updatedTrade.type.value);
+      final id2 = id1; // keep same id for ordering comparisons
+      final earliestIsNew = cmpKey(dt2, t2, id2, dt1, t1, id1) < 0;
+      final earliestDt = earliestIsNew ? dt2 : dt1;
+      final earliestType = earliestIsNew ? t2 : t1;
+      final earliestId = earliestIsNew ? id2 : id1;
 
-      // compute earliestKey
-      final oldDt = original.datetime;
-      final oldTypeStr = _typeString(original.type);
-      final oldId = original.id;
-
-      final newDt = merged.datetime.value;
-      final newTypeStr = _typeString(merged.type.value);
-      final newId = oldId; // keep same id for ordering comparisons
-
-      final earliestIsNew =
-          cmpKey(newDt, newTypeStr, newId, oldDt, oldTypeStr, oldId) < 0;
-      final earliestDt = earliestIsNew ? newDt : oldDt;
-      final earliestType = earliestIsNew ? newTypeStr : oldTypeStr;
-      final earliestId = earliestIsNew ? newId : oldId;
-
-      // // 1) Balance timeline check
-      // final inconsistent = await db.accountsDao
-      //     .leadsToInconsistentBalanceHistory(
-      //         originalBooking: null, newTrade: merged);
-      // if (inconsistent)
-      //   throw Exception('Edit would break account balance history.');
-
-      // 2) Build FIFO prefix using AOA builder up to earliestKey (includes bookings/transfers)
+      // 4) Build FIFO queue up to earliestKey
       final fifo = await db.assetsOnAccountsDao.buildFiFoQueue(
-        assetId,
-        accountId,
+        originalTrade.assetId,
+        originalTrade.targetAccountId,
         upToDatetime: earliestDt,
         upToType: earliestType,
         upToId: earliestId,
       );
 
-      // 3) Fetch candidate trades with datetime >= earliestDt (only these can be undone)
+      // 5) Compute clearingAccountValueDelta and portfolioAccountValueDelta for updated trade
+      double clearingAccountValueDelta = 0;
+      double portfolioAccountValueDelta = 0;
+      final shares = updatedTrade.shares.value;
+      final costBasis = updatedTrade.costBasis.value;
+      final fee = updatedTrade.fee.value;
+      final tax = updatedTrade.tax.value;
+      final movedValue = shares * costBasis;
+
+      final fifoCopy = ListQueue<Map<String, double>>.from(
+          fifo.map((e) => Map<String, double>.from(e)));
+
+      if (updatedTrade.type.value == TradeTypes.buy) {
+        clearingAccountValueDelta = -movedValue - fee - tax;
+        portfolioAccountValueDelta = movedValue;
+      } else {
+        var sharesToSell = shares;
+        clearingAccountValueDelta = movedValue - fee - tax;
+
+        while (sharesToSell > 0 && fifoCopy.isNotEmpty) {
+          final currentLot = fifoCopy.first;
+          final lotShares = currentLot['shares']!;
+          final lotCostBasis = currentLot['costBasis']!;
+
+          if (lotShares <= sharesToSell + 1e-12) {
+            portfolioAccountValueDelta -= lotShares * lotCostBasis;
+            sharesToSell -= lotShares;
+            fifo.removeFirst();
+          } else {
+            portfolioAccountValueDelta -= sharesToSell * lotCostBasis;
+            currentLot['shares'] = lotShares - sharesToSell;
+            sharesToSell = 0;
+          }
+        }
+      }
+
+      updatedTrade = updatedTrade.copyWith(
+          sourceAccountValueDelta: Value(clearingAccountValueDelta),
+          targetAccountValueDelta: Value(portfolioAccountValueDelta));
+
+      // 6) Ensure update does not lead to inconsistent balance history on clearing and portfolio accounts
+      if (await db.accountsDao.leadsToInconsistentBalanceHistory(
+          originalTrade: originalTrade, newTrade: updatedTrade)) {
+        throw Exception(l10n.updateWouldBreakAccountBalanceHistory);
+      }
+
+      // 7) Fetch candidate trades that might have to be undone
       final candidateTrades = await (select(trades)
             ..where((t) =>
-                t.assetId.equals(assetId) &
+                t.assetId.equals(originalTrade.assetId) &
+                t.sourceAccountId.equals(originalTrade.sourceAccountId) &
+                t.targetAccountId.equals(originalTrade.targetAccountId) &
                 t.datetime.isBiggerOrEqualValue(earliestDt))
             ..orderBy([
               (t) => OrderingTerm(expression: t.datetime),
@@ -539,14 +588,12 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
             ]))
           .get();
 
-      // 4) Partition into tradesBefore (in the candidate set that are actually before earliestKey) and tradesToUndo (>= earliestKey)
+      // 8) Partition into trades before and after earliestKey
       final tradesBefore = <Trade>[];
       final tradesToUndo = <Trade>[];
-
       for (final t in candidateTrades) {
-        final tTypeStr = _typeString(t.type);
-        final cmp = cmpKey(
-            t.datetime, tTypeStr, t.id, earliestDt, earliestType, earliestId);
+        final cmp = cmpKey(t.datetime, t.type.name, t.id, earliestDt,
+            earliestType, earliestId);
         if (cmp < 0) {
           tradesBefore.add(t);
         } else {
@@ -554,33 +601,29 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
         }
       }
 
-      // Ensure original is in tradesToUndo
+      // 9) Ensure originalTrade is in tradesToUndo
       if (!tradesToUndo.any((t) => t.id == tradeId)) {
-        tradesToUndo.add(original);
+        tradesToUndo.add(originalTrade);
         tradesToUndo.sort((a, b) {
-          final ta = _typeString(a.type);
-          final tb = _typeString(b.type);
+          final ta = a.type.name;
+          final tb = b.type.name;
           return cmpKey(a.datetime, ta, a.id, b.datetime, tb, b.id);
         });
       }
 
-      // 5) Undo tradesToUndo in reverse chronological order (we need the full chronological context for fee undo)
-      final allTradesAsc =
-          await _loadTradesForAssetAndAccount(assetId, accountId);
+      // 10) Undo trades in reverse chronological order
+      final allTradesAsc = await _loadTradesForAssetAndAccount(
+          originalTrade.assetId, originalTrade.targetAccountId);
       for (final t in tradesToUndo.reversed) {
         await _undoTradeFromDb(t, allTradesAsc);
       }
 
-      // 6) Rebuild the FIFO from tradesBefore using the AOA builder (this is effectively identical to 'fifo' above,
-      // but if tradesBefore contains some trades that are not represented in the AOA builder prefix we rely on the builder anyway)
-      // (we already built fifo up to earliestKey; we will use it as the prefix to reapply)
-      // 7) Build the reapply list: tradesToUndo without original + merged inserted in correct spot
+      // 11) Build the reapply list: tradesToUndo - originalTrade + updatedTrade inserted in correct spot
       final toReapplyBase = tradesToUndo.where((t) => t.id != tradeId).toList();
 
       int insertIndex = toReapplyBase.indexWhere((existing) {
-        final existingTypeStr = _typeString(existing.type);
-        final cmpExistingVsMerged = cmpKey(existing.datetime, existingTypeStr,
-            existing.id, newDt, newTypeStr, newId);
+        final cmpExistingVsMerged = cmpKey(
+            existing.datetime, existing.type.name, existing.id, dt2, t2, id2);
         return cmpExistingVsMerged > 0;
       });
       if (insertIndex < 0) insertIndex = toReapplyBase.length;
@@ -588,8 +631,8 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
       final reapplyEntries = <_ReapplyEntry>[];
       for (int i = 0; i < toReapplyBase.length + 1; i++) {
         if (i == insertIndex) {
-          reapplyEntries.add(
-              _ReapplyEntry(companion: merged, isMerged: true, id: tradeId));
+          reapplyEntries.add(_ReapplyEntry(
+              companion: updatedTrade, isMerged: true, id: tradeId));
         }
         if (i < toReapplyBase.length) {
           final t = toReapplyBase[i];
@@ -611,8 +654,8 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
         }
       }
 
-      // 8) Validate merged if it is a sell (simulate on a copy)
-      if (merged.type.value == TradeTypes.sell) {
+      // 12) Validate updatedTrade if it is a sell (simulate on a fifo copy)
+      if (updatedTrade.type.value == TradeTypes.sell) {
         final fifoCopyForValidation = ListQueue<Map<String, double>>.from(
             fifo.map((e) => Map<String, double>.from(e)));
         for (final entry in reapplyEntries) {
@@ -629,8 +672,7 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
               }
             }
             if (sharesToSell > 1e-12) {
-              throw Exception(
-                  'Not enough shares to process this edited sell at its new position.');
+              throw Exception(l10n.updateWouldBreakAccountBalanceHistory);
             }
           } else {
             if (entry.companion.type.value == TradeTypes.buy) {
@@ -652,16 +694,17 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
                 }
               }
               if (s > 1e-12) {
-                throw Exception(
-                    'Existing trade sequence invalid during validation.');
+                throw Exception(l10n.updateWouldBreakAccountBalanceHistory);
               }
             }
           }
         }
       }
 
-      // 9) Reapply all entries in order using the same fifo instance.
+      // 13) Reapply all entries in order using the same fifo instance
       for (final entry in reapplyEntries) {
+        // await _applyTradeToDb(entry.companion,
+        //     insertNew: false, updateTradeId: entry.id, fifo: fifo);
         if (entry.isMerged) {
           await _applyTradeToDb(entry.companion,
               insertNew: false, updateTradeId: entry.id, fifo: fifo);
@@ -672,6 +715,257 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
       }
     });
   }
+
+  // Future<void> updateTrade(int tradeId, TradesCompanion updatedFields) {
+  //   return db.transaction(() async {
+  //     final original = await (select(trades)
+  //       ..where((t) => t.id.equals(tradeId)))
+  //         .getSingle();
+  //
+  //     // ----------------------------
+  //     // Merge helper
+  //     // ----------------------------
+  //     Value<T> merge<T>(Value<T>? v, T orig) =>
+  //         (v != null && v.present) ? v : Value(orig);
+  //
+  //     final merged = TradesCompanion(
+  //       datetime: merge<int>(updatedFields.datetime, original.datetime),
+  //       assetId: Value(original.assetId),
+  //       sourceAccountId: Value(original.sourceAccountId),
+  //       targetAccountId: Value(original.targetAccountId),
+  //       type: Value(original.type),
+  //       shares: merge<double>(updatedFields.shares, original.shares),
+  //       costBasis: merge<double>(updatedFields.costBasis, original.costBasis),
+  //       fee: merge<double>(updatedFields.fee, original.fee),
+  //       tax: merge<double>(updatedFields.tax, original.tax),
+  //     );
+  //
+  //     final assetId = original.assetId;
+  //     final accountId = original.targetAccountId;
+  //
+  //     // ----------------------------
+  //     // Determine earliest affected key
+  //     // ----------------------------
+  //     final oldDt = original.datetime;
+  //     final oldTypeStr = _typeString(original.type);
+  //     final oldId = original.id;
+  //
+  //     final newDt = merged.datetime.value;
+  //     final newTypeStr = _typeString(merged.type.value);
+  //     final newId = oldId;
+  //
+  //     final earliestIsNew =
+  //         cmpKey(newDt, newTypeStr, newId, oldDt, oldTypeStr, oldId) < 0;
+  //
+  //     final earliestDt = earliestIsNew ? newDt : oldDt;
+  //     final earliestType = earliestIsNew ? newTypeStr : oldTypeStr;
+  //     final earliestId = earliestIsNew ? newId : oldId;
+  //
+  //     // ----------------------------
+  //     // Build FIFO prefix up to earliest key
+  //     // ----------------------------
+  //     final fifo = await db.assetsOnAccountsDao.buildFiFoQueue(
+  //       assetId,
+  //       accountId,
+  //       upToDatetime: earliestDt,
+  //       upToType: earliestType,
+  //       upToId: earliestId,
+  //     );
+  //
+  //     // ----------------------------
+  //     // Fetch candidate trades >= earliestDt
+  //     // ----------------------------
+  //     final candidateTrades = await (select(trades)
+  //       ..where((t) =>
+  //       t.assetId.equals(assetId) &
+  //       t.datetime.isBiggerOrEqualValue(earliestDt))
+  //       ..orderBy([
+  //             (t) => OrderingTerm(expression: t.datetime),
+  //             (t) => OrderingTerm(expression: t.type),
+  //             (t) => OrderingTerm(expression: t.id),
+  //       ]))
+  //         .get();
+  //
+  //     final tradesBefore = <Trade>[];
+  //     final tradesToUndo = <Trade>[];
+  //
+  //     for (final t in candidateTrades) {
+  //       final tTypeStr = _typeString(t.type);
+  //       final cmp =
+  //       cmpKey(t.datetime, tTypeStr, t.id, earliestDt, earliestType, earliestId);
+  //       if (cmp < 0) {
+  //         tradesBefore.add(t);
+  //       } else {
+  //         tradesToUndo.add(t);
+  //       }
+  //     }
+  //
+  //     if (!tradesToUndo.any((t) => t.id == tradeId)) {
+  //       tradesToUndo.add(original);
+  //       tradesToUndo.sort((a, b) {
+  //         final ta = _typeString(a.type);
+  //         final tb = _typeString(b.type);
+  //         return cmpKey(a.datetime, ta, a.id, b.datetime, tb, b.id);
+  //       });
+  //     }
+  //
+  //     // ----------------------------
+  //     // Build reapply list (BEFORE undo!)
+  //     // ----------------------------
+  //     final toReapplyBase = tradesToUndo.where((t) => t.id != tradeId).toList();
+  //
+  //     int insertIndex = toReapplyBase.indexWhere((existing) {
+  //       final existingTypeStr = _typeString(existing.type);
+  //       final cmpExistingVsMerged = cmpKey(
+  //           existing.datetime,
+  //           existingTypeStr,
+  //           existing.id,
+  //           newDt,
+  //           newTypeStr,
+  //           newId);
+  //       return cmpExistingVsMerged > 0;
+  //     });
+  //     if (insertIndex < 0) insertIndex = toReapplyBase.length;
+  //
+  //     final reapplyEntries = <_ReapplyEntry>[];
+  //     for (int i = 0; i < toReapplyBase.length + 1; i++) {
+  //       if (i == insertIndex) {
+  //         reapplyEntries.add(
+  //           _ReapplyEntry(companion: merged, isMerged: true, id: tradeId),
+  //         );
+  //       }
+  //       if (i < toReapplyBase.length) {
+  //         final t = toReapplyBase[i];
+  //         reapplyEntries.add(_ReapplyEntry(
+  //           companion: TradesCompanion(
+  //             datetime: Value(t.datetime),
+  //             assetId: Value(t.assetId),
+  //             type: Value(t.type),
+  //             shares: Value(t.shares),
+  //             costBasis: Value(t.costBasis),
+  //             fee: Value(t.fee),
+  //             tax: Value(t.tax),
+  //             sourceAccountId: Value(t.sourceAccountId),
+  //             targetAccountId: Value(t.targetAccountId),
+  //           ),
+  //           isMerged: false,
+  //           id: t.id,
+  //         ));
+  //       }
+  //     }
+  //
+  //     // ----------------------------
+  //     // EARLY BALANCE CHECK (key fix)
+  //     // ----------------------------
+  //     final fifoForDelta = ListQueue<Map<String, double>>.from(
+  //         fifo.map((e) => Map<String, double>.from(e)));
+  //
+  //     double mergedSourceDelta = 0;
+  //     double mergedTargetDelta = 0;
+  //     bool computed = false;
+  //
+  //     for (final entry in reapplyEntries) {
+  //       final c = entry.companion;
+  //       if (entry.isMerged) {
+  //         final shares = c.shares.value;
+  //         final costBasis = c.costBasis.value;
+  //         final fee = c.fee.value;
+  //         final tax =
+  //         c.type.value == TradeTypes.sell ? c.tax.value : 0.0;
+  //         final movedValue = shares * costBasis;
+  //
+  //         if (c.type.value == TradeTypes.buy) {
+  //           mergedSourceDelta = -movedValue - fee - tax;
+  //           mergedTargetDelta = movedValue;
+  //         } else {
+  //           mergedSourceDelta = movedValue - fee - tax;
+  //           var s = shares;
+  //           var targetAcc = 0.0;
+  //
+  //           while (s > 0 && fifoForDelta.isNotEmpty) {
+  //             final lot = fifoForDelta.first;
+  //             final lotShares = lot['shares']!;
+  //             final lotCost = lot['costBasis']!;
+  //             if (lotShares <= s + 1e-12) {
+  //               targetAcc -= lotShares * lotCost;
+  //               s -= lotShares;
+  //               fifoForDelta.removeFirst();
+  //             } else {
+  //               targetAcc -= s * lotCost;
+  //               lot['shares'] = lotShares - s;
+  //               s = 0;
+  //             }
+  //           }
+  //
+  //           if (s > 1e-12) {
+  //             throw Exception('Not enough shares to process edited sell.');
+  //           }
+  //           mergedTargetDelta = targetAcc;
+  //         }
+  //         computed = true;
+  //         break;
+  //       } else {
+  //         if (c.type.value == TradeTypes.buy) {
+  //           fifoForDelta.add({
+  //             'shares': c.shares.value,
+  //             'costBasis': c.costBasis.value,
+  //             'fee': c.fee.value,
+  //           });
+  //         } else {
+  //           var s = c.shares.value;
+  //           while (s > 0 && fifoForDelta.isNotEmpty) {
+  //             final lot = fifoForDelta.first;
+  //             if (lot['shares']! <= s + 1e-12) {
+  //               s -= lot['shares']!;
+  //               fifoForDelta.removeFirst();
+  //             } else {
+  //               lot['shares'] = lot['shares']! - s;
+  //               s = 0;
+  //             }
+  //           }
+  //           if (s > 1e-12) {
+  //             throw Exception('Invalid existing trade sequence.');
+  //           }
+  //         }
+  //       }
+  //     }
+  //
+  //     if (!computed) {
+  //       throw Exception('Internal error computing merged trade deltas.');
+  //     }
+  //
+  //     final mergedWithDeltas = merged.copyWith(
+  //       sourceAccountValueDelta: Value(normalize(mergedSourceDelta)),
+  //       targetAccountValueDelta: Value(normalize(mergedTargetDelta)),
+  //     );
+  //
+  //     if (await db.accountsDao.leadsToInconsistentBalanceHistory(
+  //         originalTrade: original, newTrade: mergedWithDeltas)) {
+  //       throw Exception('Edit would break account balance history.');
+  //     }
+  //
+  //     // ----------------------------
+  //     // Undo
+  //     // ----------------------------
+  //     final allTradesAsc =
+  //     await _loadTradesForAssetAndAccount(assetId, accountId);
+  //     for (final t in tradesToUndo.reversed) {
+  //       await _undoTradeFromDb(t, allTradesAsc);
+  //     }
+  //
+  //     // ----------------------------
+  //     // Reapply
+  //     // ----------------------------
+  //     for (final entry in reapplyEntries) {
+  //       await _applyTradeToDb(
+  //         entry.companion,
+  //         insertNew: false,
+  //         updateTradeId: entry.id,
+  //         fifo: fifo,
+  //       );
+  //     }
+  //   });
+  // }
 
   // ----------------------------
   // PUBLIC API: deleteTrade (replaces processBackdatedDelete)

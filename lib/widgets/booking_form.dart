@@ -6,6 +6,7 @@ import 'package:oktoast/oktoast.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/l10n/app_localizations.dart';
+import 'package:xfin/utils/format.dart';
 import 'package:xfin/widgets/reusables.dart';
 import '../database/tables.dart';
 import '../utils/validators.dart';
@@ -13,10 +14,7 @@ import '../utils/validators.dart';
 class BookingForm extends StatefulWidget {
   final Booking? booking;
 
-  const BookingForm({
-    super.key,
-    this.booking,
-  });
+  const BookingForm({super.key, this.booking});
 
   @override
   State<BookingForm> createState() => _BookingFormState();
@@ -31,19 +29,18 @@ class _BookingFormState extends State<BookingForm> {
   late Reusables _reusables;
 
   // Controllers
-  late DateTime _date;
   late TextEditingController _dateCtrl;
   late TextEditingController _sharesCtrl;
-  late TextEditingController _priceCtrl;
+  late TextEditingController _costBasisCtrl;
   late TextEditingController _catCtrl;
   late TextEditingController _notesCtrl;
 
+  // Form values
+  late DateTime _date;
   int? _accountId;
   int? _assetId;
-
   bool _excludeFromAverage = false;
   bool _isGenerated = false;
-  bool _hideCostBasis = false;
 
   // Static DB data (loaded once)
   List<Asset> _allAssets = [];
@@ -51,8 +48,8 @@ class _BookingFormState extends State<BookingForm> {
   List<String> _distinctCategories = [];
   Map<int, Asset> _assetMap = {};
 
-  /// 🔥 Controls progressive rendering
   bool _renderHeavy = false;
+  bool _hideCostBasis = false;
 
   @override
   void didChangeDependencies() {
@@ -68,33 +65,21 @@ class _BookingFormState extends State<BookingForm> {
     super.initState();
     final b = widget.booking;
 
-    // --- Date ---
-    if (b != null) {
-      final ds = b.date.toString();
-      _date = DateTime.parse(
-        '${ds.substring(0, 4)}-${ds.substring(4, 6)}-${ds.substring(6, 8)}',
-      );
-    } else {
-      _date = DateTime.now();
-    }
-
-    // --- Controllers (ONCE) ---
-    _dateCtrl =
-        TextEditingController(text: DateFormat('dd.MM.yyyy').format(_date));
-    _sharesCtrl = TextEditingController(text: b?.shares.toString());
-    _priceCtrl = TextEditingController(text: b?.costBasis.toString());
-    _catCtrl = TextEditingController(text: b?.category);
-    _notesCtrl = TextEditingController(text: b?.notes);
-
+    _date = b == null ? DateTime.now() : intToDateTime(b.date)!;
     _accountId = b?.accountId;
     _assetId = b?.assetId ?? 1;
     _excludeFromAverage = b?.excludeFromAverage ?? false;
     _isGenerated = b?.isGenerated ?? false;
 
+    _dateCtrl = TextEditingController(text: dateFormat.format(_date));
+    _sharesCtrl = TextEditingController(text: b?.shares.toString());
+    _costBasisCtrl = TextEditingController(text: b?.costBasis.toString());
+    _catCtrl = TextEditingController(text: b?.category);
+    _notesCtrl = TextEditingController(text: b?.notes);
+
     _hideCostBasis = _sharesCtrl.text.trim().startsWith('-');
     _sharesCtrl.addListener(_onSharesChanged);
 
-    // --- Measure first paint ---
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadStaticData().then((_) {
         if (mounted) setState(() => _renderHeavy = true);
@@ -127,7 +112,7 @@ class _BookingFormState extends State<BookingForm> {
     _sharesCtrl.removeListener(_onSharesChanged);
     _dateCtrl.dispose();
     _sharesCtrl.dispose();
-    _priceCtrl.dispose();
+    _costBasisCtrl.dispose();
     _catCtrl.dispose();
     _notesCtrl.dispose();
     super.dispose();
@@ -148,7 +133,6 @@ class _BookingFormState extends State<BookingForm> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 _dateAndAssetRow(),
-
                 if (_renderHeavy) ...[
                   const SizedBox(height: 16),
                   _sharesRow(),
@@ -157,10 +141,12 @@ class _BookingFormState extends State<BookingForm> {
                   const SizedBox(height: 16),
                   _accountDropdown(),
                 ],
-
                 const SizedBox(height: 16),
                 _notesField(),
                 _excludeCheckbox(),
+                if (widget.booking != null) ...[
+                  _generatedCheckbox(),
+                ],
                 const SizedBox(height: 16),
                 _footerButtons(),
               ],
@@ -194,8 +180,8 @@ class _BookingFormState extends State<BookingForm> {
           _reusables.buildAssetsDropdown(
             _assetId!,
             _allAssets,
-                (v) => v != _assetId ? setState(() => _assetId = v) : null,
-                (v) => v == null ? _l10n.pleaseSelectAnAsset : null,
+            (v) => v != _assetId ? setState(() => _assetId = v) : null,
+            (v) => v == null ? _l10n.pleaseSelectAnAsset : null,
           )
         else
           const SizedBox(width: 140),
@@ -206,7 +192,7 @@ class _BookingFormState extends State<BookingForm> {
   Widget _sharesRow() {
     return _reusables.buildSharesInputRow(
       _sharesCtrl,
-      _priceCtrl,
+      _costBasisCtrl,
       _assetMap[_assetId],
       hideCostBasis: _hideCostBasis,
     );
@@ -217,8 +203,8 @@ class _BookingFormState extends State<BookingForm> {
       optionsBuilder: (v) => v.text.isEmpty
           ? const []
           : _distinctCategories.where(
-            (c) => c.toLowerCase().contains(v.text.toLowerCase()),
-      ),
+              (c) => c.toLowerCase().contains(v.text.toLowerCase()),
+            ),
       key: const Key('category_field'),
       onSelected: (s) => _catCtrl.text = s,
       fieldViewBuilder: (_, tCtrl, node, onSubmit) {
@@ -253,13 +239,12 @@ class _BookingFormState extends State<BookingForm> {
       items: _allAccounts
           .map(
             (a) => DropdownMenuItem(
-          value: a.id,
-          child: Text(a.name),
-        ),
-      )
+              value: a.id,
+              child: Text(a.name),
+            ),
+          )
           .toList(),
-      onChanged: (v) =>
-      v != _accountId ? setState(() => _accountId = v) : null,
+      onChanged: (v) => v != _accountId ? setState(() => _accountId = v) : null,
       validator: _validator.validateAccountSelected,
     );
   }
@@ -279,6 +264,16 @@ class _BookingFormState extends State<BookingForm> {
       title: Text(_l10n.excludeFromAverage),
       value: _excludeFromAverage,
       onChanged: (v) => setState(() => _excludeFromAverage = v ?? false),
+      controlAffinity: ListTileControlAffinity.leading,
+      contentPadding: EdgeInsets.zero,
+    );
+  }
+
+  Widget _generatedCheckbox() {
+    return CheckboxListTile(
+      title: Text(_l10n.isGenerated),
+      value: _isGenerated,
+      onChanged: (v) => setState(() => _isGenerated = v ?? false),
       controlAffinity: ListTileControlAffinity.leading,
       contentPadding: EdgeInsets.zero,
     );
@@ -325,7 +320,7 @@ class _BookingFormState extends State<BookingForm> {
     final shares = double.parse(_sharesCtrl.text.replaceAll(',', '.'));
     final price = _assetId == 1
         ? 1.0
-        : double.parse(_priceCtrl.text.replaceAll(',', '.'));
+        : double.parse(_costBasisCtrl.text.replaceAll(',', '.'));
     final value = shares * price;
 
     // --- Validation Checks ---
@@ -380,17 +375,16 @@ class _BookingFormState extends State<BookingForm> {
     // --- Merge Logic ---
     if (original == null && _notesCtrl.text.isEmpty) {
       final mergeCandidate =
-      await _db.bookingsDao.findMergeableBooking(companion);
+          await _db.bookingsDao.findMergeableBooking(companion);
 
       if (mergeCandidate != null && mounted) {
         final mergedComp = mergeCandidate.toCompanion(false).copyWith(
-          shares: drift.Value(mergeCandidate.shares + shares),
-          value:
-          drift.Value(mergeCandidate.value + value),
-        );
+              shares: drift.Value(mergeCandidate.shares + shares),
+              value: drift.Value(mergeCandidate.value + value),
+            );
 
         final isMergeSafe =
-        !(await _db.accountsDao.leadsToInconsistentBalanceHistory(
+            !(await _db.accountsDao.leadsToInconsistentBalanceHistory(
           originalBooking: mergeCandidate,
           newBooking: mergedComp,
         ));

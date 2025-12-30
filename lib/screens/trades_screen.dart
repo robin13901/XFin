@@ -4,11 +4,12 @@ import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/utils/global_constants.dart';
+import 'package:xfin/widgets/dialogs.dart';
 import 'package:xfin/widgets/trade_form.dart';
 import 'package:xfin/database/daos/trades_dao.dart';
 
 import '../database/tables.dart';
-import '../widgets/liquid_glass_widgets.dart'; // Import TradeWithAsset
+import '../widgets/liquid_glass_widgets.dart';
 
 class TradesScreen extends StatelessWidget {
   const TradesScreen({super.key});
@@ -43,8 +44,7 @@ class TradesScreen extends StatelessWidget {
                 return const Center(child: CircularProgressIndicator());
               }
               if (snapshot.hasError) {
-                return Center(
-                    child: Text(l10n.error(snapshot.error.toString())));
+                showErrorDialog(context, snapshot.error.toString());
               }
               final tradesWithAssets = snapshot.data ?? [];
               if (tradesWithAssets.isEmpty) {
@@ -119,8 +119,8 @@ class TradesScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: subtitleWidgets,
                     ),
-                    // onTap: () => _showTradeForm(context, trade: trade),
-                    // onLongPress: () => {}, // Deleting trades requires recalculation logic
+                    onTap: () => _showTradeForm(context, trade: trade),
+                    onLongPress: () => showDeleteDialog(context, trade: trade),
                   );
                 },
               );

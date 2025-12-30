@@ -6,6 +6,7 @@ import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/widgets/transfer_form.dart';
 
 import '../database/daos/transfers_dao.dart';
+import '../widgets/dialogs.dart';
 import '../widgets/liquid_glass_widgets.dart';
 
 class TransfersScreen extends StatelessWidget {
@@ -18,34 +19,6 @@ class TransfersScreen extends StatelessWidget {
       isScrollControlled: true,
       builder: (_) => TransferForm(transfer: transfer),
     );
-  }
-
-  Future<void> _showDeleteDialog(
-      BuildContext context, Transfer transfer) async {
-    final l10n = AppLocalizations.of(context)!;
-    final db = Provider.of<AppDatabase>(context, listen: false);
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.deleteTransfer),
-        content: Text(l10n.deleteTransferConfirmation),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.cancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l10n.delete),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      await db.transfersDao.deleteTransfer(transfer.id);
-    }
   }
 
   @override
@@ -86,10 +59,10 @@ class TransfersScreen extends StatelessWidget {
                 itemCount: items.length,
                 itemBuilder: (context, index) {
                   final it = items[index];
-                  final t = it.transfer;
+                  final transfer = it.transfer;
                   final asset = it.asset;
 
-                  final dateString = t.date.toString();
+                  final dateString = transfer.date.toString();
                   final date = DateTime.parse(
                       '${dateString.substring(0, 4)}-${dateString.substring(4, 6)}-${dateString.substring(6, 8)}');
                   final dateText = dateFormat.format(date);
@@ -104,7 +77,7 @@ class TransfersScreen extends StatelessWidget {
                       children: [
                         if (asset.id == 1) ...[
                           Text(
-                            currencyFormat.format(t.value),
+                            currencyFormat.format(transfer.value),
                             style: const TextStyle(
                                 color: Colors.indigoAccent,
                                 fontWeight: FontWeight.bold),
@@ -115,13 +88,13 @@ class TransfersScreen extends StatelessWidget {
                               children: [
                                 TextSpan(
                                   text:
-                                      '${t.shares} ${asset.currencySymbol ?? asset.tickerSymbol} ≈ ',
+                                      '${transfer.shares} ${asset.currencySymbol ?? asset.tickerSymbol} ≈ ',
                                   style: const TextStyle(color: Colors.grey),
                                 ),
                                 TextSpan(
-                                  text: currencyFormat.format(t.value),
+                                  text: currencyFormat.format(transfer.value),
                                   style: TextStyle(
-                                      color: t.value < 0
+                                      color: transfer.value < 0
                                           ? Colors.red
                                           : Colors.black),
                                 ),
@@ -133,8 +106,8 @@ class TransfersScreen extends StatelessWidget {
                             style: Theme.of(context).textTheme.bodySmall),
                       ],
                     ),
-                    onTap: () => _showTransferForm(context, t),
-                    onLongPress: () => _showDeleteDialog(context, t),
+                    onTap: () => _showTransferForm(context, transfer),
+                    onLongPress: () => showDeleteDialog(context, transfer: transfer),
                   );
                 },
               );

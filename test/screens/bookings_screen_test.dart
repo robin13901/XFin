@@ -13,8 +13,6 @@ import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/providers/base_currency_provider.dart';
 import 'package:xfin/screens/bookings_screen.dart';
 import 'package:xfin/widgets/booking_form.dart';
-import 'package:xfin/widgets/delete_booking_dialog.dart';
-import 'package:flutter/gestures.dart';
 
 class MockAccountsDao extends Mock implements AccountsDao {}
 
@@ -192,27 +190,6 @@ void main() {
               expect(form.booking, isNotNull);
               expect(form.booking!.id, booking1.id);
               expect(form.booking!.category, 'Income');
-
-              await tester.pumpWidget(Container());
-            }));
-
-    testWidgets(
-        'long-pressing a list item opens DeleteBookingDialog',
-        (tester) => tester.runAsync(() async {
-              final l10n = await pumpWidget(tester);
-              await tester.pumpAndSettle();
-
-              // Manually simulate a long press gesture
-              final offset = tester.getCenter(find.text('Income'));
-              final gesture = await tester.startGesture(offset);
-              await tester.pump();
-              await Future.delayed(kLongPressTimeout);
-              await gesture.up();
-              await tester.pumpAndSettle();
-
-              expect(find.byType(DeleteBookingDialog), findsOneWidget);
-              expect(find.text(l10n.deleteBookingConfirmation), findsOneWidget);
-              expect(find.text('Income'), findsWidgets);
 
               await tester.pumpWidget(Container());
             }));

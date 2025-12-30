@@ -76,8 +76,8 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
           ..where((a) => a.assetId.equals(1) & a.accountId.equals(accountId)))
         .write(
       AssetsOnAccountsCompanion(
-          shares: Value(baseCurrencyAssetOnAccount.shares + amount),
-          value: Value(baseCurrencyAssetOnAccount.value + amount)),
+          shares: Value(normalize(baseCurrencyAssetOnAccount.shares + amount)),
+          value: Value(normalize(baseCurrencyAssetOnAccount.value + amount))),
     );
   }
 

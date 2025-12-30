@@ -58,24 +58,12 @@
   "notes": "Notes",
   "excludeFromAverage": "Exclude from average",
   "dateCannotBeInTheFuture": "The date cannot be in the future.",
-  "cannotDeleteAccount": "Cannot Delete Account",
   "accountHasReferencesArchiveInstead": "This account has references and cannot be deleted. Would you like to archive it instead?",
   "archive": "Archive",
-  "deleteAccount": "Delete Account",
-  "confirmDeleteAccount": "Are you sure you want to delete this account?",
   "confirm": "Confirm",
   "unarchiveAccount": "Unarchive Account",
   "confirmUnarchiveAccount": "Do you want to unarchive this account?",
-  "error": "Error: {error}",
-  "@error": {
-    "placeholders": {
-      "error": {
-        "type": "String"
-      }
-    }
-  },
-  "cannotDeleteOrArchiveAccount": "Löschen oder Archivieren nicht möglich",
-  "cannotDeleteOrArchiveAccountLong": "Accounts can only be deleted when they have no references. This account has references and cannot be deleted.\n\nAccounts with references can be archived but only if the balance is 0.",
+  "error": "Error",
   "noActiveAccounts": "No active accounts yet",
   "archivedAccounts": "Archived Accounts",
   "anErrorOccurred": "An error occurred: {error}",
@@ -89,14 +77,9 @@
   "valueMustNotBeZero": "Value can not be 0",
   "noBookingsYet": "No bookings yet",
   "unknownAccount": "Unknown Account",
-  "deleteBookingConfirmation": "Delete Booking?",
-  "delete": "Delete",
   "assets": "Assets",
   "noAssets": "No assets yet",
-  "cannotDeleteAsset": "Cannot Delete Asset",
   "assetHasReferences": "This asset has references and cannot be deleted.",
-  "deleteAsset": "Delete Asset",
-  "confirmDeleteAsset": "Are you sure you want to delete this asset?",
   "assetName": "Asset Name",
   "pleaseEnterAssetName": "Please enter an asset name",
   "assetAlreadyExists": "An asset with this name already exists",
@@ -149,8 +132,25 @@
   "valueMustBeGreaterZero": "Value must be > 0",
   "valueMustBeGreaterEqualZero": "Value must be ≥ 0",
   "valueCannotBeZero": "Value must not be 0",
-  "deleteTransfer": "Delete Transfer?",
-  "deleteTransferConfirmation": "Are you sure you want to delete this transfer?",
   "noTransfersYet": "No transfers yet",
-  "transfers": "Transfers"
+  "transfers": "Transfers",
+  "isGenerated": "Created by standing order",
+
+  "updateWouldBreakAccountBalanceHistory": "The changes cannot be saved. The entered values would lead to inconsistencies in the account balance history of one or more of the accounts involved.",
+
+  "delete": "Delete",
+  "deleteAccount": "Delete Account",
+  "deleteAsset": "Delete Asset",
+  "deleteBooking": "Delete Booking",
+  "deleteTrade": "Delete Trade",
+  "deleteTransfer": "Delete Transfer",
+  "deleteAccountConfirmation": "Are you sure you want to delete this account?",
+  "deleteAssetConfirmation": "Are you sure you want to delete this asset?",
+  "deleteBookingConfirmation": "Are you sure you want to delete this booking?",
+  "deleteTradeConfirmation": "Are you sure you want to delete this trade?",
+  "deleteTransferConfirmation": "Are you sure you want to delete this transfer?",
+  "cannotDeleteAccount": "Cannot Delete Account",
+  "cannotDeleteAsset": "Cannot Delete Asset",
+  "cannotDeleteOrArchiveAccount": "Löschen oder Archivieren nicht möglich",
+  "cannotDeleteOrArchiveAccountLong": "Accounts can only be deleted when they have no references. This account has references and cannot be deleted.\n\nAccounts with references can be archived but only if the balance is 0."
 }

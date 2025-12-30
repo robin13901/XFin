@@ -396,7 +396,7 @@ void main() {
               await tester.pumpAndSettle();
 
               expect(find.text(l10n.deleteAsset), findsOneWidget);
-              expect(find.text(l10n.confirmDeleteAsset), findsOneWidget);
+              expect(find.text(l10n.deleteAssetConfirmation), findsOneWidget);
 
               // Cancel first -> still present
               await tester.tap(find.text(l10n.cancel));
@@ -411,7 +411,7 @@ void main() {
               await tester.pumpAndSettle();
 
               expect(find.text(l10n.deleteAsset), findsOneWidget);
-              await tester.tap(find.text(l10n.confirm));
+              await tester.tap(find.text(l10n.delete));
               await tester.pumpAndSettle();
 
               // Asset should be removed from the list

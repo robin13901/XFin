@@ -243,8 +243,11 @@ void main() {
           expect(find.text('Existing Booking'), findsOneWidget);
           expect(find.text('Some notes'), findsOneWidget);
 
-          final exclude = find.byType(CheckboxListTile);
+          final exclude = find.byType(CheckboxListTile).first;
           expect(tester.widget<CheckboxListTile>(exclude).value, isTrue);
+
+          final isGenerated = find.byType(CheckboxListTile).last;
+          expect(tester.widget<CheckboxListTile>(isGenerated).value, isFalse);
 
           final accDropdown = dropdownByLabel(l10n.account);
           expect(accDropdown, findsOneWidget);

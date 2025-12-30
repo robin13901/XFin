@@ -191,21 +191,11 @@ class AppLocalizationsDe extends AppLocalizations {
       'Das Datum darf nicht in der Zukunft liegen.';
 
   @override
-  String get cannotDeleteAccount => 'Konto kann nicht gelöscht werden';
-
-  @override
   String get accountHasReferencesArchiveInstead =>
       'Dieses Konto hat Referenzen und kann nicht gelöscht werden. Möchten Sie es stattdessen archivieren?';
 
   @override
   String get archive => 'Archivieren';
-
-  @override
-  String get deleteAccount => 'Konto löschen';
-
-  @override
-  String get confirmDeleteAccount =>
-      'Sind Sie sicher, dass Sie dieses Konto löschen möchten?';
 
   @override
   String get confirm => 'Bestätigen';
@@ -218,17 +208,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Möchten Sie dieses Konto dearchivieren?';
 
   @override
-  String error(String error) {
-    return 'Fehler: $error';
-  }
-
-  @override
-  String get cannotDeleteOrArchiveAccount =>
-      'Löschen oder Archivieren nicht möglich';
-
-  @override
-  String get cannotDeleteOrArchiveAccountLong =>
-      'Konten können nur gelöscht werden, wenn sie keine Referenzen mehr haben. Dieses Konto hat Referenzen und kann nicht gelöscht werden.\n\nKonten mit Referenzen können archiviert werden, jedoch nur dann wenn der Saldo 0 beträgt.';
+  String get error => 'Fehler';
 
   @override
   String get noActiveAccounts => 'Noch keine aktiven Konten vorhanden';
@@ -251,30 +231,14 @@ class AppLocalizationsDe extends AppLocalizations {
   String get unknownAccount => 'Unbekanntes Konto';
 
   @override
-  String get deleteBookingConfirmation => 'Buchung löschen?';
-
-  @override
-  String get delete => 'Löschen';
-
-  @override
   String get assets => 'Assets';
 
   @override
   String get noAssets => 'Noch keine Assets vorhanden';
 
   @override
-  String get cannotDeleteAsset => 'Asset kann nicht gelöscht werden';
-
-  @override
   String get assetHasReferences =>
       'Dieses Asset hat Referenzen und kann nicht gelöscht werden.';
-
-  @override
-  String get deleteAsset => 'Asset löschen';
-
-  @override
-  String get confirmDeleteAsset =>
-      'Sind Sie sicher, dass Sie dieses Asset löschen möchten?';
 
   @override
   String get assetName => 'Asset Name';
@@ -442,15 +406,67 @@ class AppLocalizationsDe extends AppLocalizations {
   String get valueCannotBeZero => 'Wert darf nicht 0 sein';
 
   @override
-  String get deleteTransfer => 'Überweisung löschen?';
+  String get noTransfersYet => 'Noch keine Überweisungen vorhanden';
+
+  @override
+  String get transfers => 'Überweisung';
+
+  @override
+  String get isGenerated => 'Erstellt durch Dauerauftrag';
+
+  @override
+  String get updateWouldBreakAccountBalanceHistory =>
+      'Die Änderungen können nicht gespeichert werden. Die eingegebenen Werte würden zu Inkonsistenzen im Verlauf des Kontostandes eines oder mehrerer beteiligter Konten führen.';
+
+  @override
+  String get delete => 'Löschen';
+
+  @override
+  String get deleteAccount => 'Konto löschen';
+
+  @override
+  String get deleteAsset => 'Asset löschen';
+
+  @override
+  String get deleteBooking => 'Buchung löschen';
+
+  @override
+  String get deleteTrade => 'Trade löschen';
+
+  @override
+  String get deleteTransfer => 'Überweisung löschen';
+
+  @override
+  String get deleteAccountConfirmation =>
+      'Sind Sie sicher, dass Sie dieses Konto löschen möchten?';
+
+  @override
+  String get deleteAssetConfirmation =>
+      'Sind Sie sicher, dass Sie dieses Asset löschen möchten?';
+
+  @override
+  String get deleteBookingConfirmation =>
+      'Sind Sie sicher, dass Sie diese Buchung löschen möchten?';
+
+  @override
+  String get deleteTradeConfirmation =>
+      'Sind Sie sicher, dass Sie diesen Trade löschen möchten?';
 
   @override
   String get deleteTransferConfirmation =>
       'Sind Sie sicher, dass Sie diese Überweisung löschen möchten?';
 
   @override
-  String get noTransfersYet => 'Noch keine Überweisungen vorhanden';
+  String get cannotDeleteAccount => 'Konto kann nicht gelöscht werden';
 
   @override
-  String get transfers => 'Überweisung';
+  String get cannotDeleteAsset => 'Asset kann nicht gelöscht werden';
+
+  @override
+  String get cannotDeleteOrArchiveAccount =>
+      'Löschen oder Archivieren nicht möglich';
+
+  @override
+  String get cannotDeleteOrArchiveAccountLong =>
+      'Konten können nur gelöscht werden, wenn sie keine Referenzen mehr haben. Dieses Konto hat Referenzen und kann nicht gelöscht werden.\n\nKonten mit Referenzen können archiviert werden, jedoch nur dann wenn der Saldo 0 beträgt.';
 }

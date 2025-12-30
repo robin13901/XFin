@@ -190,21 +190,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dateCannotBeInTheFuture => 'The date cannot be in the future.';
 
   @override
-  String get cannotDeleteAccount => 'Cannot Delete Account';
-
-  @override
   String get accountHasReferencesArchiveInstead =>
       'This account has references and cannot be deleted. Would you like to archive it instead?';
 
   @override
   String get archive => 'Archive';
-
-  @override
-  String get deleteAccount => 'Delete Account';
-
-  @override
-  String get confirmDeleteAccount =>
-      'Are you sure you want to delete this account?';
 
   @override
   String get confirm => 'Confirm';
@@ -217,17 +207,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Do you want to unarchive this account?';
 
   @override
-  String error(String error) {
-    return 'Error: $error';
-  }
-
-  @override
-  String get cannotDeleteOrArchiveAccount =>
-      'Löschen oder Archivieren nicht möglich';
-
-  @override
-  String get cannotDeleteOrArchiveAccountLong =>
-      'Accounts can only be deleted when they have no references. This account has references and cannot be deleted.\n\nAccounts with references can be archived but only if the balance is 0.';
+  String get error => 'Error';
 
   @override
   String get noActiveAccounts => 'No active accounts yet';
@@ -250,30 +230,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get unknownAccount => 'Unknown Account';
 
   @override
-  String get deleteBookingConfirmation => 'Delete Booking?';
-
-  @override
-  String get delete => 'Delete';
-
-  @override
   String get assets => 'Assets';
 
   @override
   String get noAssets => 'No assets yet';
 
   @override
-  String get cannotDeleteAsset => 'Cannot Delete Asset';
-
-  @override
   String get assetHasReferences =>
       'This asset has references and cannot be deleted.';
-
-  @override
-  String get deleteAsset => 'Delete Asset';
-
-  @override
-  String get confirmDeleteAsset =>
-      'Are you sure you want to delete this asset?';
 
   @override
   String get assetName => 'Asset Name';
@@ -439,15 +403,67 @@ class AppLocalizationsEn extends AppLocalizations {
   String get valueCannotBeZero => 'Value must not be 0';
 
   @override
-  String get deleteTransfer => 'Delete Transfer?';
+  String get noTransfersYet => 'No transfers yet';
+
+  @override
+  String get transfers => 'Transfers';
+
+  @override
+  String get isGenerated => 'Created by standing order';
+
+  @override
+  String get updateWouldBreakAccountBalanceHistory =>
+      'The changes cannot be saved. The entered values would lead to inconsistencies in the account balance history of one or more of the accounts involved.';
+
+  @override
+  String get delete => 'Delete';
+
+  @override
+  String get deleteAccount => 'Delete Account';
+
+  @override
+  String get deleteAsset => 'Delete Asset';
+
+  @override
+  String get deleteBooking => 'Delete Booking';
+
+  @override
+  String get deleteTrade => 'Delete Trade';
+
+  @override
+  String get deleteTransfer => 'Delete Transfer';
+
+  @override
+  String get deleteAccountConfirmation =>
+      'Are you sure you want to delete this account?';
+
+  @override
+  String get deleteAssetConfirmation =>
+      'Are you sure you want to delete this asset?';
+
+  @override
+  String get deleteBookingConfirmation =>
+      'Are you sure you want to delete this booking?';
+
+  @override
+  String get deleteTradeConfirmation =>
+      'Are you sure you want to delete this trade?';
 
   @override
   String get deleteTransferConfirmation =>
       'Are you sure you want to delete this transfer?';
 
   @override
-  String get noTransfersYet => 'No transfers yet';
+  String get cannotDeleteAccount => 'Cannot Delete Account';
 
   @override
-  String get transfers => 'Transfers';
+  String get cannotDeleteAsset => 'Cannot Delete Asset';
+
+  @override
+  String get cannotDeleteOrArchiveAccount =>
+      'Löschen oder Archivieren nicht möglich';
+
+  @override
+  String get cannotDeleteOrArchiveAccountLong =>
+      'Accounts can only be deleted when they have no references. This account has references and cannot be deleted.\n\nAccounts with references can be archived but only if the balance is 0.';
 }

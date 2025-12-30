@@ -7,7 +7,9 @@ import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 
 import '../providers/base_currency_provider.dart';
+import '../utils/format.dart';
 import '../utils/validators.dart';
+import 'dialogs.dart';
 
 class TradeForm extends StatefulWidget {
   final Trade? trade;
@@ -20,6 +22,7 @@ class TradeForm extends StatefulWidget {
 
 class _TradeFormState extends State<TradeForm> {
   final _formKey = GlobalKey<FormState>();
+  late AppLocalizations l10n;
 
   // Controllers
   late TextEditingController _dateController;
@@ -29,7 +32,7 @@ class _TradeFormState extends State<TradeForm> {
   late TextEditingController _taxController;
 
   // Form Values
-  DateTime? _selectedDate;
+  late DateTime _datetime;
   Asset? _selectedAsset;
   TradeTypes? _tradeType;
   Account? _selectedClearingAccount;
@@ -46,25 +49,39 @@ class _TradeFormState extends State<TradeForm> {
   @override
   void initState() {
     super.initState();
-    _dateController = TextEditingController();
-    _sharesController = TextEditingController();
-    _costBasisController = TextEditingController();
-    _feeController = TextEditingController();
-    _taxController = TextEditingController();
+    Trade? t = widget.trade;
+
+    _datetime = t == null ? DateTime.now() : intToDateTime(t.datetime)!;
+    _tradeType = t?.type;
+
+    _dateController =
+        TextEditingController(text: dateTimeFormat.format(_datetime));
+    _sharesController = TextEditingController(text: t?.shares.toString());
+    _costBasisController = TextEditingController(text: t?.costBasis.toString());
+    _feeController = TextEditingController(text: t?.fee.toString());
+    _taxController = TextEditingController(text: t?.tax.toString());
 
     if (_isEditing) {
-      // Editing logic to be implemented if needed
+      // Editing ogic to be implemented if needed
     }
 
-    _loadInitialData();
+    _loadInitialData(t);
   }
 
-  Future<void> _loadInitialData() async {
+  Future<void> _loadInitialData(Trade? t) async {
     final currencyProvider =
         Provider.of<BaseCurrencyProvider>(context, listen: false);
     final db = Provider.of<AppDatabase>(context, listen: false);
-    final allAssets = await db.assetsDao.watchAllAssets().first;
-    final allAccounts = await db.accountsDao.watchAllAccounts().first;
+    final allAssets = await db.assetsDao.getAllAssets();
+    final allAccounts = await db.accountsDao.getAllAccounts();
+
+    if (t != null) {
+      _selectedAsset = allAssets.firstWhere((a) => a.id == t.assetId);
+      _selectedClearingAccount = allAccounts.firstWhere((a) =>
+      a.id == t.sourceAccountId);
+      _selectedInvestmentAccount = allAccounts.firstWhere((a) =>
+      a.id == t.targetAccountId);
+    }
 
     if (mounted) {
       setState(() {
@@ -72,8 +89,9 @@ class _TradeFormState extends State<TradeForm> {
             .where((a) => a.tickerSymbol != currencyProvider.tickerSymbol)
             .toList();
         _clearingAccounts = allAccounts;
-        _investmentAccounts =
-            allAccounts.where((a) => a.type != AccountTypes.bankAccount).toList();
+        _investmentAccounts = allAccounts
+            .where((a) => a.type != AccountTypes.bankAccount)
+            .toList();
       });
     }
   }
@@ -104,7 +122,7 @@ class _TradeFormState extends State<TradeForm> {
   Future<void> _selectDate(BuildContext context) async {
     final pickedDate = await showDatePicker(
       context: context,
-      initialDate: _selectedDate ?? DateTime.now(),
+      initialDate: _datetime,
       firstDate: DateTime(2000),
       lastDate: DateTime.now(),
     );
@@ -112,14 +130,14 @@ class _TradeFormState extends State<TradeForm> {
       if (!context.mounted) return;
       final pickedTime = await showTimePicker(
         context: context,
-        initialTime: TimeOfDay.fromDateTime(_selectedDate ?? DateTime.now()),
+        initialTime: TimeOfDay.fromDateTime(_datetime),
       );
       if (pickedTime != null) {
         final picked = DateTime(pickedDate.year, pickedDate.month,
             pickedDate.day, pickedTime.hour, pickedTime.minute);
-        if (picked != _selectedDate) {
+        if (picked != _datetime) {
           setState(() {
-            _selectedDate = picked;
+            _datetime = picked;
             _dateController.text =
                 "${DateFormat('dd.MM.yyyy, HH:mm').format(picked)} Uhr";
           });
@@ -134,34 +152,37 @@ class _TradeFormState extends State<TradeForm> {
     final db = Provider.of<AppDatabase>(context, listen: false);
 
     final trade = TradesCompanion(
-      datetime: drift.Value(int.parse(DateFormat('yyyyMMddHHmmss').format(_selectedDate!))),
+      datetime: drift.Value(
+          int.parse(DateFormat('yyyyMMddHHmmss').format(_datetime))),
       assetId: drift.Value(_selectedAsset!.id),
       type: drift.Value(_tradeType!),
       shares: drift.Value(double.parse(_sharesController.text)),
       costBasis: drift.Value(double.parse(_costBasisController.text)),
       fee: drift.Value(double.parse(_feeController.text)),
-      tax: _tradeType == TradeTypes.sell ? drift.Value(double.parse(_taxController.text)) : const drift.Value(0),
+      tax: _tradeType == TradeTypes.sell
+          ? drift.Value(double.parse(_taxController.text))
+          : const drift.Value(0),
       sourceAccountId: drift.Value(_selectedClearingAccount!.id),
       targetAccountId: drift.Value(_selectedInvestmentAccount!.id),
     );
 
     try {
       // NOTE: DAO enforces balance-history checks; UI validators should handle form-level validation.
-      await db.tradesDao.insertTrade(trade);
+      if (_isEditing) {
+        await db.tradesDao.updateTrade(widget.trade!.id, trade, l10n);
+      } else {
+        await db.tradesDao.insertTrade(trade);
+      }
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error processing trade: ${e.toString()}')),
-        );
-      }
+      if (mounted) showErrorDialog(context, e.toString());
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final currencyProvider = Provider.of<BaseCurrencyProvider>(context);
-    final l10n = AppLocalizations.of(context)!;
+    l10n = AppLocalizations.of(context)!;
     final validator = Validator(l10n);
 
     return Padding(
@@ -191,12 +212,13 @@ class _TradeFormState extends State<TradeForm> {
                     initialValue: _tradeType,
                     decoration: InputDecoration(
                         labelText: l10n.type,
+                        enabled: !_isEditing,
                         border: const OutlineInputBorder()),
                     items: TradeTypes.values
                         .map((type) => DropdownMenuItem(
                             value: type, child: Text(type.name)))
                         .toList(),
-                    onChanged: (value) => setState(() => _tradeType = value!),
+                    onChanged: _isEditing ? null : (value) => setState(() => _tradeType = value!),
                     validator: (value) =>
                         value == null ? l10n.pleaseSelectAType : null),
                 const SizedBox(height: 16),
@@ -204,12 +226,13 @@ class _TradeFormState extends State<TradeForm> {
                   initialValue: _selectedAsset,
                   decoration: InputDecoration(
                       labelText: l10n.asset,
+                      enabled: !_isEditing,
                       border: const OutlineInputBorder()),
                   items: _assets
                       .map((asset) => DropdownMenuItem(
                           value: asset, child: Text(asset.name)))
                       .toList(),
-                  onChanged: (value) {
+                  onChanged: _isEditing ? null : (value) {
                     setState(() => _selectedAsset = value);
                     _fetchOwnedShares();
                   },
@@ -243,8 +266,8 @@ class _TradeFormState extends State<TradeForm> {
                         ),
                         keyboardType: const TextInputType.numberWithOptions(
                             decimal: true, signed: true),
-                        validator: (value) => validator
-                            .validateDecimalGreaterEqualZero(value),
+                        validator: (value) =>
+                            validator.validateDecimalGreaterEqualZero(value),
                       ),
                     ),
                   ],
@@ -290,25 +313,27 @@ class _TradeFormState extends State<TradeForm> {
                     initialValue: _selectedClearingAccount,
                     decoration: InputDecoration(
                         labelText: l10n.clearingAccount,
+                        enabled: !_isEditing,
                         border: const OutlineInputBorder()),
                     items: _clearingAccounts
                         .map((account) => DropdownMenuItem(
                             value: account, child: Text(account.name)))
                         .toList(),
-                    onChanged: (value) =>
-                        setState(() => _selectedClearingAccount = value),
+                    onChanged: _isEditing ? null : (value) => setState(() => _selectedClearingAccount = value),
                     validator: (value) {
                       String? error = validator.validateNotInitial(value?.name);
                       if (_tradeType == TradeTypes.buy) {
                         try {
                           double shares = double.parse(_sharesController.text);
                           double costBasis =
-                          double.parse(_costBasisController.text);
-                          double fee =
-                          double.parse(_feeController.text);
+                              double.parse(_costBasisController.text);
+                          double fee = double.parse(_feeController.text);
+                          double oldClearingAccountValueDelta = _isEditing ? widget.trade!.sourceAccountValueDelta : 0;
                           double clearingAccountValueDelta =
                               shares * costBasis + fee;
-                          if (value!.balance < clearingAccountValueDelta) {
+                          double accountBalance = value!.balance - oldClearingAccountValueDelta;
+
+                          if (accountBalance < clearingAccountValueDelta) {
                             error = l10n.insufficientBalance;
                           }
                         } catch (e) {
@@ -322,12 +347,13 @@ class _TradeFormState extends State<TradeForm> {
                   initialValue: _selectedInvestmentAccount,
                   decoration: InputDecoration(
                       labelText: l10n.investmentAccount,
+                      enabled: !_isEditing,
                       border: const OutlineInputBorder()),
                   items: _investmentAccounts
                       .map((account) => DropdownMenuItem(
                           value: account, child: Text(account.name)))
                       .toList(),
-                  onChanged: (value) {
+                  onChanged: _isEditing ? null : (value) {
                     setState(() => _selectedInvestmentAccount = value);
                     _fetchOwnedShares();
                   },

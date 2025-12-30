@@ -74,10 +74,10 @@ void main() {
     l10n = await AppLocalizations.delegate.load(locale);
 
     // Default behavior: by default have empty asset/account lists (tests will override)
-    when(() => mockAssetsDao.watchAllAssets())
-        .thenAnswer((_) => Stream.value(<Asset>[]));
-    when(() => mockAccountsDao.watchAllAccounts())
-        .thenAnswer((_) => Stream.value(<Account>[]));
+    when(() => mockAssetsDao.getAllAssets())
+    .thenAnswer((_) async => <Asset>[]);
+    when(() => mockAccountsDao.getAllAccounts())
+        .thenAnswer((_) async => <Account>[]);
   });
 
   Widget buildTestWidget() {
@@ -173,10 +173,10 @@ void main() {
           type: AccountTypes.portfolio,
           isArchived: false);
 
-      when(() => mockAssetsDao.watchAllAssets())
-          .thenAnswer((_) => Stream.value([eur, acme]));
-      when(() => mockAccountsDao.watchAllAccounts())
-          .thenAnswer((_) => Stream.value([cashAcc, portAcc]));
+      when(() => mockAssetsDao.getAllAssets())
+          .thenAnswer((_) async => [eur, acme]);
+      when(() => mockAccountsDao.getAllAccounts())
+          .thenAnswer((_) async => [cashAcc, portAcc]);
 
       await openForm(tester);
       await tester.pumpAndSettle();
@@ -253,10 +253,10 @@ void main() {
           type: AccountTypes.portfolio,
           isArchived: false);
 
-      when(() => mockAssetsDao.watchAllAssets())
-          .thenAnswer((_) => Stream.value([asset]));
-      when(() => mockAccountsDao.watchAllAccounts())
-          .thenAnswer((_) => Stream.value([cashAcc, portAcc]));
+      when(() => mockAssetsDao.getAllAssets())
+          .thenAnswer((_) async => [asset]);
+      when(() => mockAccountsDao.getAllAccounts())
+          .thenAnswer((_) async => [cashAcc, portAcc]);
 
       await openForm(tester);
 
@@ -307,10 +307,10 @@ void main() {
           type: AccountTypes.portfolio,
           isArchived: false);
 
-      when(() => mockAssetsDao.watchAllAssets())
-          .thenAnswer((_) => Stream.value([asset]));
-      when(() => mockAccountsDao.watchAllAccounts())
-          .thenAnswer((_) => Stream.value([cashAcc, portAcc]));
+      when(() => mockAssetsDao.getAllAssets())
+          .thenAnswer((_) async => [asset]);
+      when(() => mockAccountsDao.getAllAccounts())
+          .thenAnswer((_) async => [cashAcc, portAcc]);
 
       // when getAssetOnAccount called with portfolio id and asset id, return an object with shares = 5
       final aOnAcc = AssetOnAccount(
@@ -388,10 +388,10 @@ void main() {
           type: AccountTypes.portfolio,
           isArchived: false);
 
-      when(() => mockAssetsDao.watchAllAssets())
-          .thenAnswer((_) => Stream.value([asset]));
-      when(() => mockAccountsDao.watchAllAccounts())
-          .thenAnswer((_) => Stream.value([cashAcc, portAcc]));
+      when(() => mockAssetsDao.getAllAssets())
+          .thenAnswer((_) async => [asset]);
+      when(() => mockAccountsDao.getAllAccounts())
+          .thenAnswer((_) async => [cashAcc, portAcc]);
 
       // Simulate asset not present by throwing
       when(() =>
@@ -460,10 +460,10 @@ void main() {
           type: AccountTypes.portfolio,
           isArchived: false);
 
-      when(() => mockAssetsDao.watchAllAssets())
-          .thenAnswer((_) => Stream.value([asset]));
-      when(() => mockAccountsDao.watchAllAccounts())
-          .thenAnswer((_) => Stream.value([cashAcc, portAcc]));
+      when(() => mockAssetsDao.getAllAssets())
+          .thenAnswer((_) async => [asset]);
+      when(() => mockAccountsDao.getAllAccounts())
+          .thenAnswer((_) async => [cashAcc, portAcc]);
 
       await openForm(tester);
 
@@ -562,10 +562,10 @@ void main() {
           type: AccountTypes.portfolio,
           isArchived: false);
 
-      when(() => mockAssetsDao.watchAllAssets())
-          .thenAnswer((_) => Stream.value([asset]));
-      when(() => mockAccountsDao.watchAllAccounts())
-          .thenAnswer((_) => Stream.value([cashAcc, portAcc]));
+      when(() => mockAssetsDao.getAllAssets())
+          .thenAnswer((_) async => [asset]);
+      when(() => mockAccountsDao.getAllAccounts())
+          .thenAnswer((_) async => [cashAcc, portAcc]);
 
       await openForm(tester);
 
@@ -657,10 +657,10 @@ void main() {
           type: AccountTypes.portfolio,
           isArchived: false);
 
-      when(() => mockAssetsDao.watchAllAssets())
-          .thenAnswer((_) => Stream.value([asset]));
-      when(() => mockAccountsDao.watchAllAccounts())
-          .thenAnswer((_) => Stream.value([cashAcc, portAcc]));
+      when(() => mockAssetsDao.getAllAssets())
+          .thenAnswer((_) async => [asset]);
+      when(() => mockAccountsDao.getAllAccounts())
+          .thenAnswer((_) async => [cashAcc, portAcc]);
 
       // stub getAssetOnAccount to return 0 shares so sell validations fail if used; tests will choose buy flow
       when(() => mockAssetsOnAccountsDao.getAOA(any(), any()))
@@ -769,10 +769,10 @@ void main() {
           type: AccountTypes.portfolio,
           isArchived: false);
 
-      when(() => mockAssetsDao.watchAllAssets())
-          .thenAnswer((_) => Stream.value([asset]));
-      when(() => mockAccountsDao.watchAllAccounts())
-          .thenAnswer((_) => Stream.value([cashAcc, portAcc]));
+      when(() => mockAssetsDao.getAllAssets())
+          .thenAnswer((_) async => [asset]);
+      when(() => mockAccountsDao.getAllAccounts())
+          .thenAnswer((_) async => [cashAcc, portAcc]);
 
       // stub getAssetOnAccount for completeness
       when(() => mockAssetsOnAccountsDao.getAOA(any(), any()))
@@ -846,9 +846,9 @@ void main() {
       await tester.tap(find.widgetWithText(ElevatedButton, l10n.save));
       await tester.pumpAndSettle();
 
-      // An error SnackBar should display
-      expect(find.byType(SnackBar), findsOneWidget);
-      expect(find.textContaining('Error processing trade:'), findsOneWidget);
+      // An error dialog should display
+      expect(find.byType(Dialog), findsOneWidget);
+      expect(find.text(l10n.error), findsOneWidget);
     });
   });
 }
