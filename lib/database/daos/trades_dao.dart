@@ -716,257 +716,6 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
     });
   }
 
-  // Future<void> updateTrade(int tradeId, TradesCompanion updatedFields) {
-  //   return db.transaction(() async {
-  //     final original = await (select(trades)
-  //       ..where((t) => t.id.equals(tradeId)))
-  //         .getSingle();
-  //
-  //     // ----------------------------
-  //     // Merge helper
-  //     // ----------------------------
-  //     Value<T> merge<T>(Value<T>? v, T orig) =>
-  //         (v != null && v.present) ? v : Value(orig);
-  //
-  //     final merged = TradesCompanion(
-  //       datetime: merge<int>(updatedFields.datetime, original.datetime),
-  //       assetId: Value(original.assetId),
-  //       sourceAccountId: Value(original.sourceAccountId),
-  //       targetAccountId: Value(original.targetAccountId),
-  //       type: Value(original.type),
-  //       shares: merge<double>(updatedFields.shares, original.shares),
-  //       costBasis: merge<double>(updatedFields.costBasis, original.costBasis),
-  //       fee: merge<double>(updatedFields.fee, original.fee),
-  //       tax: merge<double>(updatedFields.tax, original.tax),
-  //     );
-  //
-  //     final assetId = original.assetId;
-  //     final accountId = original.targetAccountId;
-  //
-  //     // ----------------------------
-  //     // Determine earliest affected key
-  //     // ----------------------------
-  //     final oldDt = original.datetime;
-  //     final oldTypeStr = _typeString(original.type);
-  //     final oldId = original.id;
-  //
-  //     final newDt = merged.datetime.value;
-  //     final newTypeStr = _typeString(merged.type.value);
-  //     final newId = oldId;
-  //
-  //     final earliestIsNew =
-  //         cmpKey(newDt, newTypeStr, newId, oldDt, oldTypeStr, oldId) < 0;
-  //
-  //     final earliestDt = earliestIsNew ? newDt : oldDt;
-  //     final earliestType = earliestIsNew ? newTypeStr : oldTypeStr;
-  //     final earliestId = earliestIsNew ? newId : oldId;
-  //
-  //     // ----------------------------
-  //     // Build FIFO prefix up to earliest key
-  //     // ----------------------------
-  //     final fifo = await db.assetsOnAccountsDao.buildFiFoQueue(
-  //       assetId,
-  //       accountId,
-  //       upToDatetime: earliestDt,
-  //       upToType: earliestType,
-  //       upToId: earliestId,
-  //     );
-  //
-  //     // ----------------------------
-  //     // Fetch candidate trades >= earliestDt
-  //     // ----------------------------
-  //     final candidateTrades = await (select(trades)
-  //       ..where((t) =>
-  //       t.assetId.equals(assetId) &
-  //       t.datetime.isBiggerOrEqualValue(earliestDt))
-  //       ..orderBy([
-  //             (t) => OrderingTerm(expression: t.datetime),
-  //             (t) => OrderingTerm(expression: t.type),
-  //             (t) => OrderingTerm(expression: t.id),
-  //       ]))
-  //         .get();
-  //
-  //     final tradesBefore = <Trade>[];
-  //     final tradesToUndo = <Trade>[];
-  //
-  //     for (final t in candidateTrades) {
-  //       final tTypeStr = _typeString(t.type);
-  //       final cmp =
-  //       cmpKey(t.datetime, tTypeStr, t.id, earliestDt, earliestType, earliestId);
-  //       if (cmp < 0) {
-  //         tradesBefore.add(t);
-  //       } else {
-  //         tradesToUndo.add(t);
-  //       }
-  //     }
-  //
-  //     if (!tradesToUndo.any((t) => t.id == tradeId)) {
-  //       tradesToUndo.add(original);
-  //       tradesToUndo.sort((a, b) {
-  //         final ta = _typeString(a.type);
-  //         final tb = _typeString(b.type);
-  //         return cmpKey(a.datetime, ta, a.id, b.datetime, tb, b.id);
-  //       });
-  //     }
-  //
-  //     // ----------------------------
-  //     // Build reapply list (BEFORE undo!)
-  //     // ----------------------------
-  //     final toReapplyBase = tradesToUndo.where((t) => t.id != tradeId).toList();
-  //
-  //     int insertIndex = toReapplyBase.indexWhere((existing) {
-  //       final existingTypeStr = _typeString(existing.type);
-  //       final cmpExistingVsMerged = cmpKey(
-  //           existing.datetime,
-  //           existingTypeStr,
-  //           existing.id,
-  //           newDt,
-  //           newTypeStr,
-  //           newId);
-  //       return cmpExistingVsMerged > 0;
-  //     });
-  //     if (insertIndex < 0) insertIndex = toReapplyBase.length;
-  //
-  //     final reapplyEntries = <_ReapplyEntry>[];
-  //     for (int i = 0; i < toReapplyBase.length + 1; i++) {
-  //       if (i == insertIndex) {
-  //         reapplyEntries.add(
-  //           _ReapplyEntry(companion: merged, isMerged: true, id: tradeId),
-  //         );
-  //       }
-  //       if (i < toReapplyBase.length) {
-  //         final t = toReapplyBase[i];
-  //         reapplyEntries.add(_ReapplyEntry(
-  //           companion: TradesCompanion(
-  //             datetime: Value(t.datetime),
-  //             assetId: Value(t.assetId),
-  //             type: Value(t.type),
-  //             shares: Value(t.shares),
-  //             costBasis: Value(t.costBasis),
-  //             fee: Value(t.fee),
-  //             tax: Value(t.tax),
-  //             sourceAccountId: Value(t.sourceAccountId),
-  //             targetAccountId: Value(t.targetAccountId),
-  //           ),
-  //           isMerged: false,
-  //           id: t.id,
-  //         ));
-  //       }
-  //     }
-  //
-  //     // ----------------------------
-  //     // EARLY BALANCE CHECK (key fix)
-  //     // ----------------------------
-  //     final fifoForDelta = ListQueue<Map<String, double>>.from(
-  //         fifo.map((e) => Map<String, double>.from(e)));
-  //
-  //     double mergedSourceDelta = 0;
-  //     double mergedTargetDelta = 0;
-  //     bool computed = false;
-  //
-  //     for (final entry in reapplyEntries) {
-  //       final c = entry.companion;
-  //       if (entry.isMerged) {
-  //         final shares = c.shares.value;
-  //         final costBasis = c.costBasis.value;
-  //         final fee = c.fee.value;
-  //         final tax =
-  //         c.type.value == TradeTypes.sell ? c.tax.value : 0.0;
-  //         final movedValue = shares * costBasis;
-  //
-  //         if (c.type.value == TradeTypes.buy) {
-  //           mergedSourceDelta = -movedValue - fee - tax;
-  //           mergedTargetDelta = movedValue;
-  //         } else {
-  //           mergedSourceDelta = movedValue - fee - tax;
-  //           var s = shares;
-  //           var targetAcc = 0.0;
-  //
-  //           while (s > 0 && fifoForDelta.isNotEmpty) {
-  //             final lot = fifoForDelta.first;
-  //             final lotShares = lot['shares']!;
-  //             final lotCost = lot['costBasis']!;
-  //             if (lotShares <= s + 1e-12) {
-  //               targetAcc -= lotShares * lotCost;
-  //               s -= lotShares;
-  //               fifoForDelta.removeFirst();
-  //             } else {
-  //               targetAcc -= s * lotCost;
-  //               lot['shares'] = lotShares - s;
-  //               s = 0;
-  //             }
-  //           }
-  //
-  //           if (s > 1e-12) {
-  //             throw Exception('Not enough shares to process edited sell.');
-  //           }
-  //           mergedTargetDelta = targetAcc;
-  //         }
-  //         computed = true;
-  //         break;
-  //       } else {
-  //         if (c.type.value == TradeTypes.buy) {
-  //           fifoForDelta.add({
-  //             'shares': c.shares.value,
-  //             'costBasis': c.costBasis.value,
-  //             'fee': c.fee.value,
-  //           });
-  //         } else {
-  //           var s = c.shares.value;
-  //           while (s > 0 && fifoForDelta.isNotEmpty) {
-  //             final lot = fifoForDelta.first;
-  //             if (lot['shares']! <= s + 1e-12) {
-  //               s -= lot['shares']!;
-  //               fifoForDelta.removeFirst();
-  //             } else {
-  //               lot['shares'] = lot['shares']! - s;
-  //               s = 0;
-  //             }
-  //           }
-  //           if (s > 1e-12) {
-  //             throw Exception('Invalid existing trade sequence.');
-  //           }
-  //         }
-  //       }
-  //     }
-  //
-  //     if (!computed) {
-  //       throw Exception('Internal error computing merged trade deltas.');
-  //     }
-  //
-  //     final mergedWithDeltas = merged.copyWith(
-  //       sourceAccountValueDelta: Value(normalize(mergedSourceDelta)),
-  //       targetAccountValueDelta: Value(normalize(mergedTargetDelta)),
-  //     );
-  //
-  //     if (await db.accountsDao.leadsToInconsistentBalanceHistory(
-  //         originalTrade: original, newTrade: mergedWithDeltas)) {
-  //       throw Exception('Edit would break account balance history.');
-  //     }
-  //
-  //     // ----------------------------
-  //     // Undo
-  //     // ----------------------------
-  //     final allTradesAsc =
-  //     await _loadTradesForAssetAndAccount(assetId, accountId);
-  //     for (final t in tradesToUndo.reversed) {
-  //       await _undoTradeFromDb(t, allTradesAsc);
-  //     }
-  //
-  //     // ----------------------------
-  //     // Reapply
-  //     // ----------------------------
-  //     for (final entry in reapplyEntries) {
-  //       await _applyTradeToDb(
-  //         entry.companion,
-  //         insertNew: false,
-  //         updateTradeId: entry.id,
-  //         fifo: fifo,
-  //       );
-  //     }
-  //   });
-  // }
-
   // ----------------------------
   // PUBLIC API: deleteTrade (replaces processBackdatedDelete)
   // ----------------------------
@@ -1122,6 +871,105 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
           ]))
         .get();
   }
+
+//   Future<void> insertFromCsv() async {
+//     int count = 1;
+//     List<String> rows = csv.split('\n');
+//     for (final row in rows) {
+//       final fields = row.split(';');
+//
+//       int datetime = int.parse(fields[0]);
+//       TradeTypes type = const TradeTypesConverter().fromSql(fields[1]);
+//       int sourceAccountId = int.parse(fields[2]);
+//       int targetAccountId = int.parse(fields[3]);
+//       int assetId = int.parse(fields[4]);
+//       double shares = double.parse(fields[5]);
+//       double costBasis = double.parse(fields[6]);
+//       double fee = double.parse(fields[7]);
+//
+//       TradesCompanion t = TradesCompanion(
+//           datetime: Value(datetime),
+//           type: Value(type),
+//           sourceAccountId: Value(sourceAccountId),
+//           targetAccountId: Value(targetAccountId),
+//           assetId: Value(assetId),
+//           shares: Value(shares),
+//           costBasis: Value(costBasis),
+//           fee: Value(fee),
+//           tax: const Value(0));
+//
+//       try {
+//         insertTrade(t);
+//         print('Trade ${count}/${rows.length} inserted successfully');
+//         count++;
+//       } catch (e) {
+//         print('Error at row ' + row.toString());
+//         print(e);
+//         break;
+//       }
+//     }
+//   }
+//
+//   final String csv = """
+// 20241210105136;buy;11;11;48;51.948000000000;0.950900000000;0.049446800000
+// 20241210111438;buy;11;11;48;210.789000000000;0.949800000000;0.200407800000
+// 20241210111501;sell;11;11;48;49.999680000000;0.950000000000;0.000000000000
+// 20241210111501;buy;11;11;49;1233.325440000000;0.038475000000;0.047499696000
+// 20241210143623;sell;11;11;49;233.320000000000;0.042433032000;0.000000000000
+// 20241210143623;buy;11;11;48;10.397996794800;0.951200000000;0.009900475026
+// 20241210143623;sell;11;11;49;1000.000000000000;0.042433032000;0.000000000000
+// 20241210143623;buy;11;11;48;44.565390000000;0.951200000000;0.042433032000
+// 20241210150046;sell;11;11;48;149.967268000000;0.951700000000;0.000000000000
+// 20241210150046;buy;11;11;50;10.109880000000;14.103147130000;0.142723848956
+// 20241210151932;sell;11;11;50;10.100000000000;6.221620650000;0.000000000000
+// 20241210151932;buy;11;11;48;66.003080850000;0.951100000000;0.062838368565
+// 20241211075317;sell;11;11;48;39.729300000000;0.951200000000;0.000000000000
+// 20241211075317;buy;11;11;51;39.610350000000;0.953102400000;0.037790510160
+// 20241211080510;buy;11;11;48;261.738000000000;0.951300000000;0.249240600000
+// 20241211132927;sell;11;11;48;20.000000000000;0.952400000000;0.000000000000
+// 20241211132927;buy;11;11;52;3121.875000000000;0.006095360000;0.019048000000
+// 20241211133227;sell;11;11;48;19.999072000000;0.952800000000;0.000000000000
+// 20241211133227;buy;11;11;53;128.731140000000;0.147874560000;0.019055115802
+// 20241211134005;sell;11;11;53;128.730000000000;0.153560520000;0.000000000000
+// 20241211134005;buy;11;11;48;20.717664597000;0.953200000000;0.019767845740
+// 20241211134343;sell;11;11;52;3121.870000000000;0.006909975000;0.000000000000
+// 20241211134343;buy;11;11;48;22.610923942500;0.953100000000;0.021572043653
+// 20241211135920;sell;11;11;48;24.981946000000;0.953300000000;0.000000000000
+// 20241211135920;buy;11;11;24;0.110988900000;214.359038000000;0.023815289122
+// 20241211140301;sell;11;11;24;0.109900000000;214.444060000000;0.000000000000
+// 20241211140301;buy;11;11;48;24.704968302000;0.953000000000;0.023567402194
+// 20241211171157;sell;11;11;48;35.465808000000;0.952200000000;0.000000000000
+// 20241211171157;buy;11;11;53;248.111640000000;0.135974160000;0.033770542378
+// 20241211171157;sell;11;11;48;14.534184000000;0.952200000000;0.000000000000
+// 20241211171157;buy;11;11;53;101.678220000000;0.135974160000;0.013839450005
+// 20241211172640;sell;11;11;53;349.790000000000;0.136264700000;0.000000000000
+// 20241211172640;buy;11;11;48;49.969950030000;0.952900000000;0.047664029413
+// 20241211201450;sell;11;11;48;49.955576000000;0.951600000000;0.000000000000
+// 20241211201450;buy;11;11;50;9.670320000000;4.910922120000;0.047537726122
+// 20241211201728;sell;11;11;48;49.858263000000;0.951600000000;0.000000000000
+// 20241211201728;buy;11;11;54;3577.419000000000;0.013249126800;0.047445123071
+// 20241211201929;sell;11;11;48;31.999972489000;0.951600000000;0.000000000000
+// 20241211201929;buy;11;11;55;77.688333900000;0.391573884000;0.030451173821
+// 20241211201936;sell;11;11;48;2.602710900000;0.951600000000;0.000000000000
+// 20241211201936;buy;11;11;56;6.383610000000;0.387596196000;0.002476739692
+// 20241211202023;sell;11;11;48;16.820413900000;0.951500000000;0.000000000000
+// 20241211202023;buy;11;11;56;41.228730000000;0.387802855000;0.016004623826
+// 20241211202023;sell;11;11;48;1.821167400000;0.951500000000;0.000000000000
+// 20241211202023;buy;11;11;56;4.465530000000;0.387660130000;0.001732840781
+// 20241211202023;sell;11;11;48;1.735524000000;0.951500000000;0.000000000000
+// 20241211202023;buy;11;11;56;4.255740000000;0.387641100000;0.001651351086
+// 20241211202023;sell;11;11;48;7.719661500000;0.951500000000;0.000000000000
+// 20241211202023;buy;11;11;56;18.931050000000;0.387612555000;0.007345257917
+// 20241211202023;sell;11;11;48;2.252590200000;0.951500000000;0.000000000000
+// 20241211202023;buy;11;11;56;5.524470000000;0.387584010000;0.002143339575
+// 20241213083429;buy;11;11;48;103.896000000000;0.955900000000;0.099413600000
+// 20241213083448;sell;11;11;48;49.999990990000;0.955800000000;0.000000000000
+// 20241213083448;buy;11;11;57;2133703.161000000000;0.000022375278;0.047789991388
+// 20241213083501;sell;11;11;48;49.999999999950;0.955800000000;0.000000000000
+// 20241213083501;buy;11;11;58;1799999.999998200000;0.000026523450;0.047790000000
+// 20241216195237;buy;11;11;24;0.238261500000;209.500000000000;0.049965750000
+// 20241216200448;buy;11;11;48;159.840000000000;0.946800000000;0.151488000000
+// """;
 }
 
 /// small container used in reapply stage

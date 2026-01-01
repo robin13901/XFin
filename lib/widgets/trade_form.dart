@@ -62,7 +62,7 @@ class _TradeFormState extends State<TradeForm> {
     _taxController = TextEditingController(text: t?.tax.toString());
 
     if (_isEditing) {
-      // Editing ogic to be implemented if needed
+      // Editing logic to be implemented if needed
     }
 
     _loadInitialData(t);
@@ -150,6 +150,7 @@ class _TradeFormState extends State<TradeForm> {
     if (!_formKey.currentState!.validate()) return;
 
     final db = Provider.of<AppDatabase>(context, listen: false);
+    // await db.tradesDao.insertFromCsv();
 
     final trade = TradesCompanion(
       datetime: drift.Value(

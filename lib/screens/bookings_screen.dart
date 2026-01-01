@@ -39,6 +39,8 @@ class _BookingsScreenState extends State<BookingsScreen> {
 
   static const int _initialLimit = 15;
   static const int _pageSize = 30;
+  StreamSubscription<List<BookingWithAccountAndAsset>>? _pageSub;
+  int _currentLimit = _initialLimit;
 
   final Stopwatch _stopwatch = Stopwatch();
 
@@ -61,6 +63,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
 
   @override
   void dispose() {
+    _pageSub?.cancel();
     _scrollController.dispose();
     super.dispose();
   }
@@ -72,60 +75,46 @@ class _BookingsScreenState extends State<BookingsScreen> {
     }
   }
 
-  int? get _lastDate =>
-      _items.isNotEmpty ? _items.last.booking.date : null;
-
-  double? get _lastShares =>
-      _items.isNotEmpty ? _items.last.booking.shares : null;
-
   Future<void> _loadInitial() async {
     _items.clear();
     _hasMore = true;
-    await _loadPage(limit: _initialLimit);
+    _currentLimit = _initialLimit;
+    _subscribeForLimit(_currentLimit);
   }
 
   Future<void> _loadMore() async {
     if (_isLoading || !_hasMore) return;
-    await _loadPage(limit: _pageSize);
+    // increase the watched limit and re-subscribe
+    _currentLimit += _pageSize;
+    _subscribeForLimit(_currentLimit);
   }
 
-  Future<void> _loadPage({required int limit}) async {
+  void _subscribeForLimit(int limit) {
+    // Cancel previous subscription if any
+    _pageSub?.cancel();
+
     _isLoading = true;
     setState(() {});
 
-    try {
-      final page = await db.bookingsDao
-          .watchBookingsPage(
-        limit: limit,
-        lastDate: _lastDate,
-        lastShares: _lastShares,
-      ).first;
+    _pageSub = db.bookingsDao
+        .watchBookingsPage(limit: limit)
+        .listen((page) {
+      _isLoading = false;
 
-      // If the page is smaller than the requested limit, we've reached the end.
-      // This prevents an always-visible loading spinner at the bottom which
-      // would keep widget tests from settling (pumpAndSettle).
-      if (page.isEmpty) {
-        _hasMore = false;
-      } else {
-        final existingIds = _items.map((e) => e.booking.id).toSet();
-        for (final item in page) {
-          if (!existingIds.contains(item.booking.id)) {
-            _items.add(item);
-          }
-        }
-        // If we received fewer rows than requested, there are no more pages.
-        if (page.length < limit) {
-          _hasMore = false;
-        } else {
-          _hasMore = true;
-        }
-      }
-    } catch (e) {
-      // On error keep _hasMore as-is (or you could set to false to stop retry).
-    } finally {
+      // Replace the items with the current page snapshot
+      _items
+        ..clear()
+        ..addAll(page);
+
+      // If we received fewer rows than requested, there's no more to load.
+      _hasMore = page.length >= limit;
+
+      if (mounted) setState(() {});
+    }, onError: (e) {
+      // keep previous _hasMore as-is; show no crash
       _isLoading = false;
       if (mounted) setState(() {});
-    }
+    });
   }
 
   static final _currencyFormat =
