@@ -225,7 +225,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             LineChartBarData(
               spots: currentData,
               barWidth: 3,
-              color: profitColor,
+              color: Colors.white,
               dotData: const FlDotData(show: false),
             ),
           ];
