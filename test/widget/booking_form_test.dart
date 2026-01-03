@@ -487,6 +487,7 @@ void main() {
 
             await tester.tap(find.text(l10n.save));
             await tester.pumpAndSettle();
+            await tester.pump();
 
             expect(find.text(l10n.mergeBookings), findsOneWidget);
 

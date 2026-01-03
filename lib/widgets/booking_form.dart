@@ -313,15 +313,38 @@ class _BookingFormState extends State<BookingForm> {
     }
   }
 
+  Future<double> _calculateCostBasis(double shares) async {
+    if (_assetId == 1) return 1;
+    if (shares > 0) return double.parse(_costBasisCtrl.text.replaceAll(',', '.'));
+    final fifo = await _db.assetsOnAccountsDao.buildFiFoQueue(_assetId!, _accountId!);
+
+    double sharesToConsume = shares.abs();
+    double value = 0.0;
+    while (sharesToConsume > 0 && fifo.isNotEmpty) {
+      final currentLot = fifo.first;
+      final lotShares = currentLot['shares']!;
+      final lotCostBasis = currentLot['costBasis']!;
+
+      if (lotShares <= sharesToConsume + 1e-12) {
+        sharesToConsume -= lotShares;
+        value += lotShares * lotCostBasis;
+        fifo.removeFirst();
+      } else {
+        currentLot['shares'] = lotShares - sharesToConsume;
+        value += sharesToConsume * lotCostBasis;
+        sharesToConsume = 0;
+      }
+    }
+    return value / shares.abs();
+  }
+
   Future<void> _saveForm() async {
     if (!_formKey.currentState!.validate()) return;
 
     // --- Parsing ---
     final shares = double.parse(_sharesCtrl.text.replaceAll(',', '.'));
-    final price = _assetId == 1
-        ? 1.0
-        : double.parse(_costBasisCtrl.text.replaceAll(',', '.'));
-    final value = shares * price;
+    final costBasis = await _calculateCostBasis(shares);
+    final value = shares * costBasis;
 
     // --- Validation Checks ---
     // 1. Balance Checks (New Bookings Only)
@@ -363,7 +386,7 @@ class _BookingFormState extends State<BookingForm> {
       excludeFromAverage: drift.Value(_excludeFromAverage),
       isGenerated: drift.Value(_isGenerated),
       shares: drift.Value(shares),
-      costBasis: drift.Value(price),
+      costBasis: drift.Value(costBasis),
       value: drift.Value(value),
       assetId: drift.Value(_assetId!),
       accountId: drift.Value(_accountId!),
