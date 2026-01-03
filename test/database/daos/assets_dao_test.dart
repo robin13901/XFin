@@ -180,7 +180,7 @@ void main() {
 
       await db.into(db.assetsOnAccounts).insert(
           AssetsOnAccountsCompanion.insert(
-              assetId: assetId, accountId: account.id));
+              assetId: assetId, accountId: account.id, shares: const Value(0.00000001), value: const Value(0.5)));
 
       expect(await assetsDao.hasAssetsOnAccounts(assetId), isTrue);
     });

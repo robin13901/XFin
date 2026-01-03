@@ -71,10 +71,11 @@ class _AssetFormState extends State<AssetForm> {
       // Get input values from form
       final name = _nameController.text.trim();
       final tickerSymbol = _tickerSymbolController.text.trim();
-      final currencySymbol =
+      var currencySymbol =
           _type == AssetTypes.fiat || _type == AssetTypes.crypto
               ? _currencySymbolController.text.trim()
               : null;
+      if (currencySymbol == "") currencySymbol = null;
 
       // Insert and pop
       await db.assetsDao.insert(AssetsCompanion.insert(

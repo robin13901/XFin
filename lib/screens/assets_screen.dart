@@ -60,9 +60,6 @@ class AssetsScreen extends StatelessWidget {
     final currencyFormat = NumberFormat.currency(locale: 'de_DE', symbol: '€');
 
     return Scaffold(
-      // appBar: AppBar(
-      //   title: Text(l10n.assets),
-      // ),
       body: Stack(
         children: [
           Column(

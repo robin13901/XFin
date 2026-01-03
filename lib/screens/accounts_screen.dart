@@ -150,10 +150,9 @@ class AccountsScreen extends StatelessWidget {
                           title: Text(account.name),
                           trailing: Text(
                             currencyProvider.format.format(account.balance),
-                            style: TextStyle(
-                              color: account.balance < 0
-                                  ? Colors.red
-                                  : Colors.green,
+                            style: const TextStyle(
+                              color: Colors.green,
+                              fontSize: 16,
                               fontWeight: FontWeight.bold,
                             ),
                           ),

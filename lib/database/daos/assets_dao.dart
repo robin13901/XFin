@@ -11,8 +11,17 @@ class AssetsDao extends DatabaseAccessor<AppDatabase> with _$AssetsDaoMixin {
 
   Future<int> insert(AssetsCompanion entry) => into(assets).insert(entry);
 
-  Future<void> deleteAsset(int id) =>
-      (delete(assets)..where((a) => a.id.equals(id))).go();
+  Future<void> deleteAsset(int assetId) {
+    return transaction(() async {
+      await (delete(assetsOnAccounts)
+        ..where((a) => a.assetId.equals(assetId)))
+          .go();
+
+      await (delete(assets)
+        ..where((a) => a.id.equals(assetId)))
+          .go();
+    });
+  }
 
   Future<Asset> getAsset(int id) =>
       (select(assets)..where((a) => a.id.equals(id))).getSingle();
@@ -25,7 +34,7 @@ class AssetsDao extends DatabaseAccessor<AppDatabase> with _$AssetsDaoMixin {
 
   Future<bool> hasAssetsOnAccounts(int assetId) async {
     final result = await (select(assetsOnAccounts)
-      ..where((a) => a.assetId.equals(assetId)))
+      ..where((a) => a.assetId.equals(assetId) & a.shares.isBiggerThanValue(1e-12)))
         .get();
     return result.isNotEmpty;
   }

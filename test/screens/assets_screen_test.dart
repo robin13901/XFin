@@ -413,6 +413,7 @@ void main() {
               expect(find.text(l10n.deleteAsset), findsOneWidget);
               await tester.tap(find.text(l10n.delete));
               await tester.pumpAndSettle();
+              await tester.pump();
 
               // Asset should be removed from the list
               expect(find.text('DeletableAsset'), findsNothing);
