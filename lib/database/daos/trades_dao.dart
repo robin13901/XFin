@@ -62,12 +62,12 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
     final existingDt = existing.datetime;
     if (existingDt > newDt) return true;
     if (existingDt < newDt) return false;
-    final existingTypeStr = _typeString(existing.type);
+    final existingTypeStr = existing.type.name;
     final cmp = existingTypeStr.compareTo(newTypeStr);
     if (cmp > 0) return true;
     if (cmp < 0) return false;
-    // equal datetime & type -> consider existing as after (so new trade goes before existing)
-    return true;
+    // equal datetime & type -> consider existing as before (so new trade goes after existing)
+    return false;
   }
 
   // ----------------------------
@@ -412,6 +412,7 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
       final candidateAfter = await (select(trades)
             ..where((t) =>
                 t.assetId.equals(assetId) &
+                t.targetAccountId.equals(targetAccountId) &
                 t.datetime.isBiggerOrEqualValue(newDt))
             ..orderBy([
               (t) => OrderingTerm(expression: t.datetime),
