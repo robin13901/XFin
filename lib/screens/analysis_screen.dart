@@ -327,16 +327,24 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                           children: ['1W', '1M', '1J', 'MAX'].map((range) {
                             return TextButton(
                               onPressed: () => _onRangeSelected(range),
-                              child: Text(range,
-                                  style: TextStyle(
-                                      color: _selectedRange == range
-                                          ? Theme.of(context)
-                                              .colorScheme
-                                              .secondary
-                                          : Theme.of(context)
-                                              .textTheme
-                                              .bodyLarge
-                                              ?.color)),
+                              style: TextButton.styleFrom(
+                                backgroundColor: _selectedRange == range
+                                    ? Theme.of(context).colorScheme.secondary.withOpacity(0.25)
+                                    : Colors.transparent,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20), // pill / ellipse
+                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              ),
+                              child: Text(
+                                range,
+                                style: TextStyle(
+                                  color: _selectedRange == range
+                                      ? Theme.of(context).colorScheme.secondary
+                                      : Theme.of(context).textTheme.bodyLarge?.color,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             );
                           }).toList(),
                         ),
@@ -487,23 +495,26 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                             Row(children: [
                               Checkbox(
                                   value: _showSma,
+                                  activeColor: Colors.orange,
                                   onChanged: (value) =>
                                       setState(() => _showSma = value!)),
-                              const Text('30-SMA')
+                              Text('30-SMA', style: TextStyle(color: _showSma ? Colors.orange : Colors.white))
                             ]),
                             Row(children: [
                               Checkbox(
                                   value: _showEma,
+                                  activeColor: Colors.purple,
                                   onChanged: (value) =>
                                       setState(() => _showEma = value!)),
-                              const Text('30-EMA')
+                              Text('30-EMA', style: TextStyle(color: _showEma ? Colors.purple : Colors.white))
                             ]),
                             Row(children: [
                               Checkbox(
                                   value: _showBb,
+                                  activeColor: Colors.blue,
                                   onChanged: (value) =>
                                       setState(() => _showBb = value!)),
-                              const Text('20-BB')
+                              Text('20-BB', style: TextStyle(color: _showBb ? Colors.blue : Colors.white))
                             ]),
                           ],
                         ),
