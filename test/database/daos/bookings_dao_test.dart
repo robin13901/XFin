@@ -311,14 +311,14 @@ void main() {
 
           // Second page: request with cursor should return [C, D]
           final page2 =
-          await bookingsDao.watchBookingsPage(limit: 2, lastDate: lastDate, lastShares: lastShares).first;
+          await bookingsDao.watchBookingsPage(limit: 2, lastDate: lastDate, lastValue: lastShares).first;
           expect(page2.length, 2);
           // Because date desc, shares desc, the rows after (B) are C (same date, lower shares) then D (older date)
           expect(page2[0].booking.id, idC);
           expect(page2[1].booking.id, idD);
 
           // Third page: there should be no more rows (empty list)
-          final page3 = await bookingsDao.watchBookingsPage(limit: 2, lastDate: page2.last.booking.date, lastShares: page2.last.booking.shares).first;
+          final page3 = await bookingsDao.watchBookingsPage(limit: 2, lastDate: page2.last.booking.date, lastValue: page2.last.booking.shares).first;
           expect(page3, isEmpty);
         });
   });

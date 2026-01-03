@@ -153,8 +153,8 @@ class _BookingsScreenState extends State<BookingsScreen> {
                 final booking = item.booking;
                 final asset = item.asset;
 
-                final amountColor =
-                booking.shares < 0 ? Colors.red : Colors.green;
+                final valueColor =
+                booking.value < 0 ? Colors.red : Colors.green;
 
                 final dateString = booking.date.toString();
                 final date = DateTime.parse(
@@ -175,7 +175,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
                         Text(
                           _currencyFormat.format(booking.value),
                           style: TextStyle(
-                            color: amountColor,
+                            color: valueColor,
                             fontWeight: FontWeight.bold,
                           ),
                         )
@@ -193,7 +193,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
                                 text: _currencyFormat
                                     .format(booking.value),
                                 style:
-                                TextStyle(color: amountColor),
+                                TextStyle(color: valueColor),
                               ),
                             ],
                           ),

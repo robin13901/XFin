@@ -35,7 +35,7 @@ class BookingsPager extends ChangeNotifier {
         .watchBookingsPage(
       limit: limit,
       lastDate: last?.booking.date,
-      lastShares: last?.booking.shares,
+      lastValue: last?.booking.value,
     )
         .listen((page) {
       _isLoading = false;

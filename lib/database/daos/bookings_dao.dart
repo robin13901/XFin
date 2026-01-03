@@ -39,7 +39,7 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
   Stream<List<BookingWithAccountAndAsset>> watchBookingsPage({
     required int limit,
     int? lastDate,
-    double? lastShares,
+    double? lastValue,
   }) {
     final query = select(bookings).join([
       leftOuterJoin(accounts, accounts.id.equalsExp(bookings.accountId)),
@@ -50,17 +50,17 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
     query.where(accounts.isArchived.equals(false));
 
     // Keyset pagination condition
-    if (lastDate != null && lastShares != null) {
+    if (lastDate != null && lastValue != null) {
       query.where(
         bookings.date.isSmallerThanValue(lastDate) |
         (bookings.date.equals(lastDate) &
-        bookings.shares.isSmallerThanValue(lastShares)),
+        bookings.value.isSmallerThanValue(lastValue)),
       );
     }
 
     query.orderBy([
       OrderingTerm.desc(bookings.date),
-      OrderingTerm.desc(bookings.shares),
+      OrderingTerm.desc(bookings.value),
     ]);
 
     query.limit(limit);
