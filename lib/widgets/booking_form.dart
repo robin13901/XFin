@@ -313,10 +313,10 @@ class _BookingFormState extends State<BookingForm> {
     }
   }
 
-  Future<double> _calculateCostBasis(double shares) async {
+  Future<double> _calculateCostBasis(double shares, int upToDatetimeForFiFo) async {
     if (_assetId == 1) return 1;
     if (shares > 0) return double.parse(_costBasisCtrl.text.replaceAll(',', '.'));
-    final fifo = await _db.assetsOnAccountsDao.buildFiFoQueue(_assetId!, _accountId!);
+    final fifo = await _db.assetsOnAccountsDao.buildFiFoQueue(_assetId!, _accountId!, upToDatetime: upToDatetimeForFiFo);
 
     double sharesToConsume = shares.abs();
     double value = 0.0;
@@ -340,11 +340,10 @@ class _BookingFormState extends State<BookingForm> {
 
   Future<void> _saveForm() async {
     if (!_formKey.currentState!.validate()) return;
+    final dateInt = int.parse(DateFormat('yyyyMMdd').format(_date));
 
     // --- Parsing ---
     final shares = double.parse(_sharesCtrl.text.replaceAll(',', '.'));
-    final costBasis = await _calculateCostBasis(shares);
-    final value = shares * costBasis;
 
     // --- Validation Checks ---
     // 1. Balance Checks (New Bookings Only)
@@ -377,8 +376,10 @@ class _BookingFormState extends State<BookingForm> {
       }
     }
 
+    final costBasis = await _calculateCostBasis(shares, dateInt * 1000000);
+    final value = shares * costBasis;
+
     // --- Companion Construction ---
-    final dateInt = int.parse(DateFormat('yyyyMMdd').format(_date));
     var companion = BookingsCompanion(
       date: drift.Value(dateInt),
       category: drift.Value(_catCtrl.text.trim()),
@@ -401,9 +402,13 @@ class _BookingFormState extends State<BookingForm> {
           await _db.bookingsDao.findMergeableBooking(companion);
 
       if (mergeCandidate != null && mounted) {
+        final mergedShares = mergeCandidate.shares + shares;
+        final mergedValue = mergeCandidate.value + value;
+        final mergedCostBasis = mergedValue / mergedShares;
         final mergedComp = mergeCandidate.toCompanion(false).copyWith(
-              shares: drift.Value(mergeCandidate.shares + shares),
-              value: drift.Value(mergeCandidate.value + value),
+              shares: drift.Value(mergedShares),
+              value: drift.Value(mergedValue),
+              costBasis: drift.Value(mergedCostBasis)
             );
 
         final isMergeSafe =

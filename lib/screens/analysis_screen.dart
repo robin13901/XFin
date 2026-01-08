@@ -329,7 +329,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                               onPressed: () => _onRangeSelected(range),
                               style: TextButton.styleFrom(
                                 backgroundColor: _selectedRange == range
-                                    ? Theme.of(context).colorScheme.secondary.withOpacity(0.25)
+                                    ? Theme.of(context).colorScheme.secondary.withValues(alpha: 0.25)
                                     : Colors.transparent,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(20), // pill / ellipse

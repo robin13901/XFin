@@ -38,36 +38,12 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
         });
   }
 
-  // ----------------------------
-  // Small helpers (ordering / type string)
-  // ----------------------------
-  String _typeString(dynamic type) {
-    if (type == null) return '';
-    if (type is String) return type;
-    final s = type.toString();
-    if (s.contains('.')) return s.split('.').last;
-    return s;
-  }
-
   int cmpKey(int dtA, String typeA, int idA, int dtB, String typeB, int idB) {
     if (dtA != dtB) return dtA < dtB ? -1 : 1;
     final tc = typeA.compareTo(typeB);
     if (tc != 0) return tc < 0 ? -1 : 1;
     if (idA != idB) return idA < idB ? -1 : 1;
     return 0;
-  }
-
-  /// Returns true if existing should be considered AFTER a hypothetical new trade (newDt,newTypeStr)
-  bool _isExistingTradeAfter(Trade existing, int newDt, String newTypeStr) {
-    final existingDt = existing.datetime;
-    if (existingDt > newDt) return true;
-    if (existingDt < newDt) return false;
-    final existingTypeStr = existing.type.name;
-    final cmp = existingTypeStr.compareTo(newTypeStr);
-    if (cmp > 0) return true;
-    if (cmp < 0) return false;
-    // equal datetime & type -> consider existing as before (so new trade goes after existing)
-    return false;
   }
 
   // ----------------------------
@@ -116,7 +92,7 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
   // ----------------------------
   // Undo a single trade's numeric effects (does NOT delete the row)
   // ----------------------------
-  Future<void> _undoTradeFromDb(Trade t, List<Trade> allTradesAsc) async {
+  Future<void> undoTradeFromDb(Trade t, List<Trade> allTradesAsc) async {
     final double buyFeeDelta = _computeBuyFeeDeltaForTrade(t, allTradesAsc);
     final double targetValueDelta = t.targetAccountValueDelta;
     final double sharesDelta =
@@ -198,7 +174,7 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
   // ----------------------------
   // Core apply method (insert/update)
   // ----------------------------
-  Future<void> _applyTradeToDb(TradesCompanion entry,
+  Future<void> applyTradeToDb(TradesCompanion entry,
       {required bool insertNew,
       int? updateTradeId,
       required ListQueue<Map<String, double>> fifo}) async {
@@ -385,66 +361,31 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
     );
   }
 
-  // ----------------------------
-  // PUBLIC API: insertTrade (replaces processBackdatedInsert/processTrade)
-  // ----------------------------
   Future<void> insertTrade(TradesCompanion newEntry) {
     return db.transaction(() async {
       final assetId = newEntry.assetId.value;
       final targetAccountId = newEntry.targetAccountId.value;
       final newDt = newEntry.datetime.value;
-      final newTypeStr = _typeString(newEntry.type.value);
+      final newTypeStr = newEntry.type.value.name;
 
-      await db.assetsOnAccountsDao
-          .ensureAssetOnAccountExists(assetId, targetAccountId);
+      // Ensure AOA exists
+      await db.assetsOnAccountsDao.ensureAssetOnAccountExists(assetId, targetAccountId);
 
-      // 1) Build FIFO prefix up to the new trade key.
-      // Use upToId = 0 so existing trades with same (dt,type) are considered AFTER the new trade (as per original rule).
+      // 1) Build FIFO prefix up to the new trade key (new trade NOT yet in DB)
       final fifo = await db.assetsOnAccountsDao.buildFiFoQueue(
         assetId,
         targetAccountId,
         upToDatetime: newDt,
         upToType: newTypeStr,
-        upToId: 0,
+        upToId: 0, // existing trades with same (dt,type) are considered AFTER the new trade
       );
 
-      // 2) Fetch only candidate trades that could be after the new trade
-      final candidateAfter = await (select(trades)
-            ..where((t) =>
-                t.assetId.equals(assetId) &
-                t.targetAccountId.equals(targetAccountId) &
-                t.datetime.isBiggerOrEqualValue(newDt))
-            ..orderBy([
-              (t) => OrderingTerm(expression: t.datetime),
-              (t) => OrderingTerm(expression: t.type),
-              (t) => OrderingTerm(expression: t.id),
-            ]))
-          .get();
-
-      // 3) Partition into tradesAfter
-      final tradesAfter = <Trade>[];
-      for (final t in candidateAfter) {
-        if (_isExistingTradeAfter(t, newDt, newTypeStr)) {
-          tradesAfter.add(t);
-        }
-      }
-
-      // 4) Undo tradesAfter (reverse order)
-      for (final t in tradesAfter.reversed) {
-        // For buy-fee computations we need the chronological all-trades context for that asset/account.
-        // We can pass `candidateAfter` + prefix trades if callers need full context; keep original approach: fetch chronological slice including all trades before and after
-        // But to compute fee deltas we need an "allTradesAsc" that represents the chronological order of trades in DB.
-        // For correctness of undo fee calculation we build allTradesAsc by fetching all trades for that asset+account.
-        final allTradesAsc =
-            await _loadTradesForAssetAndAccount(assetId, targetAccountId);
-        await _undoTradeFromDb(t, allTradesAsc);
-      }
-
-      // 5) Validate new trade if it's a sell (using fifo we built earlier)
+      // 2) Validate new trade if it's a sell (simulate on fifo copy)
       if (newEntry.type.value == TradeTypes.sell) {
         var sharesToSell = newEntry.shares.value;
         final fifoCopy = ListQueue<Map<String, double>>.from(
-            fifo.map((e) => Map<String, double>.from(e)));
+          fifo.map((e) => Map<String, double>.from(e)),
+        );
         while (sharesToSell > 0 && fifoCopy.isNotEmpty) {
           final lot = fifoCopy.first;
           if (lot['shares']! <= sharesToSell + 1e-12) {
@@ -460,25 +401,24 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
         }
       }
 
-      // 6) Apply new trade (insert) passing fifo so it is mutated and used by re-applies
-      await _applyTradeToDb(newEntry, insertNew: true, fifo: fifo);
+      // 3) Apply new trade (this inserts/updates AOAs/assets/accounts).
+      // applyTradeToDb now returns the inserted id when insertNew == true (see small change below).
+      await applyTradeToDb(newEntry, insertNew: true, fifo: fifo);
 
-      // 7) Reapply tradesAfter in chronological order with same FIFO instance
-      for (final t in tradesAfter) {
-        final comp = TradesCompanion(
-          datetime: Value(t.datetime),
-          assetId: Value(t.assetId),
-          type: Value(t.type),
-          shares: Value(t.shares),
-          costBasis: Value(t.costBasis),
-          fee: Value(t.fee),
-          tax: Value(t.tax),
-          sourceAccountId: Value(t.sourceAccountId),
-          targetAccountId: Value(t.targetAccountId),
-        );
-        await _applyTradeToDb(comp,
-            insertNew: false, updateTradeId: t.id, fifo: fifo);
-      }
+      // 4) Recalculate *subsequent* events (trades, transfers, bookings) that come AFTER the new trade.
+      // We want the recalculation prefix to *include* the newly inserted trade (because we've already applied it),
+      // but exclude events that are strictly after it. To accomplish this we set the ordering key to
+      // (newDt, newTypeStr, insertedId + 1) so that events with (dt,type,id) < that key (i.e. the new trade)
+      // are included in the prefix.
+      await db.assetsOnAccountsDao.recalculateSubsequentEvents(
+        assetId: assetId,
+        accountId: targetAccountId,
+        upToDatetime: newDt,
+        upToType: newTypeStr,
+        upToId: 999999999,
+      );
+
+      // done (transaction ensures atomicity)
     });
   }
 
@@ -486,15 +426,13 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
       int tradeId, TradesCompanion updatedFields, AppLocalizations l10n) {
     return db.transaction(() async {
       // 1) Load original trade
-      final originalTrade = await (select(trades)
-            ..where((t) => t.id.equals(tradeId)))
+      final originalTrade = await (select(trades)..where((t) => t.id.equals(tradeId)))
           .getSingle();
 
-      // Merge helper
-      Value<T> merge<T>(Value<T>? v, T orig) =>
-          (v != null && v.present) ? v : Value(orig);
+      // Merge helper (unchanged)
+      Value<T> merge<T>(Value<T>? v, T orig) => (v != null && v.present) ? v : Value(orig);
 
-      // 2) Build updated trade
+      // 2) Build updated trade companion (merged values)
       var updatedTrade = TradesCompanion(
         datetime: merge<int>(updatedFields.datetime, originalTrade.datetime),
         assetId: Value(originalTrade.assetId),
@@ -502,26 +440,25 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
         targetAccountId: Value(originalTrade.targetAccountId),
         type: Value(originalTrade.type),
         shares: merge<double>(updatedFields.shares, originalTrade.shares),
-        costBasis:
-            merge<double>(updatedFields.costBasis, originalTrade.costBasis),
+        costBasis: merge<double>(updatedFields.costBasis, originalTrade.costBasis),
         fee: merge<double>(updatedFields.fee, originalTrade.fee),
         tax: merge<double>(updatedFields.tax, originalTrade.tax),
       );
 
-      // 3) Compute earliestKey
+      // 3) Compute earliestKey (min of original vs updated)
       final dt1 = originalTrade.datetime;
       final t1 = originalTrade.type.name;
       final id1 = originalTrade.id;
       final dt2 = updatedTrade.datetime.value;
-      final t2 = _typeString(updatedTrade.type.value);
+      final t2 = updatedTrade.type.value.name;
       final id2 = id1; // keep same id for ordering comparisons
       final earliestIsNew = cmpKey(dt2, t2, id2, dt1, t1, id1) < 0;
       final earliestDt = earliestIsNew ? dt2 : dt1;
       final earliestType = earliestIsNew ? t2 : t1;
       final earliestId = earliestIsNew ? id2 : id1;
 
-      // 4) Build FIFO queue up to earliestKey
-      final fifo = await db.assetsOnAccountsDao.buildFiFoQueue(
+      // 4) Build FIFO up to earliestKey (used to compute account deltas for validation)
+      final fifoForValidation = await db.assetsOnAccountsDao.buildFiFoQueue(
         originalTrade.assetId,
         originalTrade.targetAccountId,
         upToDatetime: earliestDt,
@@ -538,8 +475,8 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
       final tax = updatedTrade.tax.value;
       final movedValue = shares * costBasis;
 
-      final fifoCopy = ListQueue<Map<String, double>>.from(
-          fifo.map((e) => Map<String, double>.from(e)));
+      final fifoCopyForCalc = ListQueue<Map<String, double>>.from(
+          fifoForValidation.map((e) => Map<String, double>.from(e)));
 
       if (updatedTrade.type.value == TradeTypes.buy) {
         clearingAccountValueDelta = -movedValue - fee - tax;
@@ -548,15 +485,15 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
         var sharesToSell = shares;
         clearingAccountValueDelta = movedValue - fee - tax;
 
-        while (sharesToSell > 0 && fifoCopy.isNotEmpty) {
-          final currentLot = fifoCopy.first;
+        while (sharesToSell > 0 && fifoCopyForCalc.isNotEmpty) {
+          final currentLot = fifoCopyForCalc.first;
           final lotShares = currentLot['shares']!;
           final lotCostBasis = currentLot['costBasis']!;
 
           if (lotShares <= sharesToSell + 1e-12) {
             portfolioAccountValueDelta -= lotShares * lotCostBasis;
             sharesToSell -= lotShares;
-            fifo.removeFirst();
+            fifoCopyForCalc.removeFirst();
           } else {
             portfolioAccountValueDelta -= sharesToSell * lotCostBasis;
             currentLot['shares'] = lotShares - sharesToSell;
@@ -569,161 +506,69 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
           sourceAccountValueDelta: Value(clearingAccountValueDelta),
           targetAccountValueDelta: Value(portfolioAccountValueDelta));
 
-      // 6) Ensure update does not lead to inconsistent balance history on clearing and portfolio accounts
+      // 6) Ensure update does not lead to inconsistent balance history (same as before)
       if (await db.accountsDao.leadsToInconsistentBalanceHistory(
           originalTrade: originalTrade, newTrade: updatedTrade)) {
         throw Exception(l10n.updateWouldBreakAccountBalanceHistory);
       }
 
-      // 7) Fetch candidate trades that might have to be undone
-      final candidateTrades = await (select(trades)
-            ..where((t) =>
-                t.assetId.equals(originalTrade.assetId) &
-                t.sourceAccountId.equals(originalTrade.sourceAccountId) &
-                t.targetAccountId.equals(originalTrade.targetAccountId) &
-                t.datetime.isBiggerOrEqualValue(earliestDt))
-            ..orderBy([
-              (t) => OrderingTerm(expression: t.datetime),
-              (t) => OrderingTerm(expression: t.type),
-              (t) => OrderingTerm(expression: t.id),
-            ]))
-          .get();
-
-      // 8) Partition into trades before and after earliestKey
-      final tradesBefore = <Trade>[];
-      final tradesToUndo = <Trade>[];
-      for (final t in candidateTrades) {
-        final cmp = cmpKey(t.datetime, t.type.name, t.id, earliestDt,
-            earliestType, earliestId);
-        if (cmp < 0) {
-          tradesBefore.add(t);
-        } else {
-          tradesToUndo.add(t);
-        }
-      }
-
-      // 9) Ensure originalTrade is in tradesToUndo
-      if (!tradesToUndo.any((t) => t.id == tradeId)) {
-        tradesToUndo.add(originalTrade);
-        tradesToUndo.sort((a, b) {
-          final ta = a.type.name;
-          final tb = b.type.name;
-          return cmpKey(a.datetime, ta, a.id, b.datetime, tb, b.id);
-        });
-      }
-
-      // 10) Undo trades in reverse chronological order
-      final allTradesAsc = await _loadTradesForAssetAndAccount(
+      // 7) Undo ONLY the original trade's numeric effects (we will reapply updated trade and let
+      //    the global recalculation handle subsequent trades/transfers/bookings).
+      final allTradesAsc = await loadTradesForAssetAndAccount(
           originalTrade.assetId, originalTrade.targetAccountId);
-      for (final t in tradesToUndo.reversed) {
-        await _undoTradeFromDb(t, allTradesAsc);
-      }
+      await undoTradeFromDb(originalTrade, allTradesAsc);
 
-      // 11) Build the reapply list: tradesToUndo - originalTrade + updatedTrade inserted in correct spot
-      final toReapplyBase = tradesToUndo.where((t) => t.id != tradeId).toList();
+      // 8) Build FIFO prefix **up to the updated trade key** (this is the correct prefix for applying the updated trade)
+      final fifoForApply = await db.assetsOnAccountsDao.buildFiFoQueue(
+        originalTrade.assetId,
+        originalTrade.targetAccountId,
+        upToDatetime: dt2,
+        upToType: t2,
+        upToId: id2,
+      );
 
-      int insertIndex = toReapplyBase.indexWhere((existing) {
-        final cmpExistingVsMerged = cmpKey(
-            existing.datetime, existing.type.name, existing.id, dt2, t2, id2);
-        return cmpExistingVsMerged > 0;
-      });
-      if (insertIndex < 0) insertIndex = toReapplyBase.length;
-
-      final reapplyEntries = <_ReapplyEntry>[];
-      for (int i = 0; i < toReapplyBase.length + 1; i++) {
-        if (i == insertIndex) {
-          reapplyEntries.add(_ReapplyEntry(
-              companion: updatedTrade, isMerged: true, id: tradeId));
-        }
-        if (i < toReapplyBase.length) {
-          final t = toReapplyBase[i];
-          reapplyEntries.add(_ReapplyEntry(
-            companion: TradesCompanion(
-              datetime: Value(t.datetime),
-              assetId: Value(t.assetId),
-              type: Value(t.type),
-              shares: Value(t.shares),
-              costBasis: Value(t.costBasis),
-              fee: Value(t.fee),
-              tax: Value(t.tax),
-              sourceAccountId: Value(t.sourceAccountId),
-              targetAccountId: Value(t.targetAccountId),
-            ),
-            isMerged: false,
-            id: t.id,
-          ));
-        }
-      }
-
-      // 12) Validate updatedTrade if it is a sell (simulate on a fifo copy)
+      // 9) Validate updatedTrade if it is a sell (simulate on fifo copy built for apply)
       if (updatedTrade.type.value == TradeTypes.sell) {
-        final fifoCopyForValidation = ListQueue<Map<String, double>>.from(
-            fifo.map((e) => Map<String, double>.from(e)));
-        for (final entry in reapplyEntries) {
-          if (entry.isMerged) {
-            var sharesToSell = entry.companion.shares.value;
-            while (sharesToSell > 0 && fifoCopyForValidation.isNotEmpty) {
-              final lot = fifoCopyForValidation.first;
-              if (lot['shares']! <= sharesToSell + 1e-12) {
-                sharesToSell -= lot['shares']!;
-                fifoCopyForValidation.removeFirst();
-              } else {
-                lot['shares'] = lot['shares']! - sharesToSell;
-                sharesToSell = 0;
-              }
-            }
-            if (sharesToSell > 1e-12) {
-              throw Exception(l10n.updateWouldBreakAccountBalanceHistory);
-            }
+        var sharesToSell = updatedTrade.shares.value;
+        final fifoCopy = ListQueue<Map<String, double>>.from(
+            fifoForValidation.map((e) => Map<String, double>.from(e)));
+        while (sharesToSell > 0 && fifoCopy.isNotEmpty) {
+          final lot = fifoCopy.first;
+          if (lot['shares']! <= sharesToSell + 1e-12) {
+            sharesToSell -= lot['shares']!;
+            fifoCopy.removeFirst();
           } else {
-            if (entry.companion.type.value == TradeTypes.buy) {
-              fifoCopyForValidation.add({
-                'shares': entry.companion.shares.value,
-                'costBasis': entry.companion.costBasis.value,
-                'fee': entry.companion.fee.value,
-              });
-            } else {
-              var s = entry.companion.shares.value;
-              while (s > 0 && fifoCopyForValidation.isNotEmpty) {
-                final lot = fifoCopyForValidation.first;
-                if (lot['shares']! <= s + 1e-12) {
-                  s -= lot['shares']!;
-                  fifoCopyForValidation.removeFirst();
-                } else {
-                  lot['shares'] = lot['shares']! - s;
-                  s = 0;
-                }
-              }
-              if (s > 1e-12) {
-                throw Exception(l10n.updateWouldBreakAccountBalanceHistory);
-              }
-            }
+            lot['shares'] = lot['shares']! - sharesToSell;
+            sharesToSell = 0;
           }
         }
-      }
-
-      // 13) Reapply all entries in order using the same fifo instance
-      for (final entry in reapplyEntries) {
-        // await _applyTradeToDb(entry.companion,
-        //     insertNew: false, updateTradeId: entry.id, fifo: fifo);
-        if (entry.isMerged) {
-          await _applyTradeToDb(entry.companion,
-              insertNew: false, updateTradeId: entry.id, fifo: fifo);
-        } else {
-          await _applyTradeToDb(entry.companion,
-              insertNew: false, updateTradeId: entry.id, fifo: fifo);
+        if (sharesToSell > 1e-12) {
+          throw Exception(l10n.updateWouldBreakAccountBalanceHistory);
         }
       }
+
+      // 10) Apply updated trade (update existing row) using fifoForApply so all numeric deltas are computed & written
+      await applyTradeToDb(updatedTrade,
+          insertNew: false, updateTradeId: tradeId, fifo: fifoForApply);
+
+      // 11) Recalculate subsequent events (bookings/transfers/trades) that come AFTER the updated trade
+      // Use ordering key just after updated trade so that the updated trade is considered part of
+      // the prefix in the recalc and subsequent events are processed.
+      final recalcUpToId = tradeId + 1;
+      await db.assetsOnAccountsDao.recalculateSubsequentEvents(
+        assetId: originalTrade.assetId,
+        accountId: originalTrade.targetAccountId,
+        upToDatetime: dt2 < dt1 ? dt2 : dt1,
+        upToType: t2,
+        upToId: recalcUpToId,
+      );
     });
   }
 
-  // ----------------------------
-  // PUBLIC API: deleteTrade (replaces processBackdatedDelete)
-  // ----------------------------
   Future<void> deleteTrade(int tradeId) {
     return db.transaction(() async {
-      final original = await (select(trades)
-            ..where((t) => t.id.equals(tradeId)))
+      // 1) Load original trade
+      final original = await (select(trades)..where((t) => t.id.equals(tradeId)))
           .getSingle();
 
       final assetId = original.assetId;
@@ -731,123 +576,28 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
 
       // earliestKey = original's key
       final oldDt = original.datetime;
-      final oldTypeStr = _typeString(original.type);
+      final oldTypeStr = original.type.name;
       final oldId = original.id;
 
-      // 1) Build FIFO prefix up to original key
-      final fifo = await db.assetsOnAccountsDao.buildFiFoQueue(
-        assetId,
-        accountId,
+      // 2) Undo only the original trade's numeric effects (use full chronological context)
+      final allTradesAsc = await loadTradesForAssetAndAccount(assetId, accountId);
+      await undoTradeFromDb(original, allTradesAsc);
+
+      // 3) Delete the original trade row
+      await (delete(trades)..where((t) => t.id.equals(tradeId))).go();
+
+      // 4) Recalculate everything that comes AFTER the original trade key.
+      // Use the original trade key as the ordering cutoff so events with key < originalKey are part of the prefix.
+      await db.assetsOnAccountsDao.recalculateSubsequentEvents(
+        assetId: assetId,
+        accountId: accountId,
         upToDatetime: oldDt,
         upToType: oldTypeStr,
         upToId: oldId,
       );
-
-      // 2) Fetch candidate trades with datetime >= earliestDt
-      final candidateTrades = await (select(trades)
-            ..where((t) =>
-                t.assetId.equals(assetId) &
-                t.datetime.isBiggerOrEqualValue(oldDt))
-            ..orderBy([
-              (t) => OrderingTerm(expression: t.datetime),
-              (t) => OrderingTerm(expression: t.type),
-              (t) => OrderingTerm(expression: t.id),
-            ]))
-          .get();
-
-      // Partition into tradesBefore and tradesToUndo
-      final tradesBefore = <Trade>[];
-      final tradesToUndo = <Trade>[];
-
-      for (final t in candidateTrades) {
-        final tTypeStr = _typeString(t.type);
-        final cmp =
-            cmpKey(t.datetime, tTypeStr, t.id, oldDt, oldTypeStr, oldId);
-        if (cmp < 0) {
-          tradesBefore.add(t);
-        } else {
-          tradesToUndo.add(t);
-        }
-      }
-
-      // Ensure original is included
-      if (!tradesToUndo.any((t) => t.id == tradeId)) {
-        tradesToUndo.add(original);
-        tradesToUndo.sort((a, b) {
-          final ta = _typeString(a.type);
-          final tb = _typeString(b.type);
-          return cmpKey(a.datetime, ta, a.id, b.datetime, tb, b.id);
-        });
-      }
-
-      // // Balance timeline check
-      // final inconsistent =
-      //     await db.accountsDao.leadsToInconsistentBalanceHistory();
-      // if (inconsistent)
-      //   throw Exception(
-      //       'Deleting this trade would break account balance history.');
-
-      // Undo tradesToUndo in reverse (need full chronological context)
-      final allTradesAsc =
-          await _loadTradesForAssetAndAccount(assetId, accountId);
-      for (final t in tradesToUndo.reversed) {
-        await _undoTradeFromDb(t, allTradesAsc);
-      }
-
-      // Delete original trade row
-      await (delete(trades)..where((t) => t.id.equals(tradeId))).go();
-
-      // Validate reapplying remaining trades will succeed (simulate with a copy)
-      final toReapplyBase = tradesToUndo.where((t) => t.id != tradeId).toList()
-        ..sort((a, b) {
-          final ta = _typeString(a.type);
-          final tb = _typeString(b.type);
-          return cmpKey(a.datetime, ta, a.id, b.datetime, tb, b.id);
-        });
-
-      final fifoCopy = ListQueue<Map<String, double>>.from(
-          fifo.map((e) => Map<String, double>.from(e)));
-      for (final t in toReapplyBase) {
-        if (t.type == TradeTypes.buy) {
-          fifoCopy.add(
-              {'shares': t.shares, 'costBasis': t.costBasis, 'fee': t.fee});
-        } else {
-          var s = t.shares;
-          while (s > 0 && fifoCopy.isNotEmpty) {
-            final lot = fifoCopy.first;
-            if (lot['shares']! <= s + 1e-12) {
-              s -= lot['shares']!;
-              fifoCopy.removeFirst();
-            } else {
-              lot['shares'] = lot['shares']! - s;
-              s = 0;
-            }
-          }
-          if (s > 1e-12) {
-            throw Exception(
-                'Reapplying trades after delete would result in an invalid sell (insufficient shares).');
-          }
-        }
-      }
-
-      // Reapply using the SAME FIFO instance (mutated)
-      for (final t in toReapplyBase) {
-        final comp = TradesCompanion(
-          datetime: Value(t.datetime),
-          assetId: Value(t.assetId),
-          type: Value(t.type),
-          shares: Value(t.shares),
-          costBasis: Value(t.costBasis),
-          fee: Value(t.fee),
-          tax: Value(t.tax),
-          sourceAccountId: Value(t.sourceAccountId),
-          targetAccountId: Value(t.targetAccountId),
-        );
-        await _applyTradeToDb(comp,
-            insertNew: false, updateTradeId: t.id, fifo: fifo);
-      }
     });
   }
+
 
   // ----------------------------
   // Helper: getTrade
@@ -860,7 +610,7 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
   // Internal helper kept for some undo logic that expects all chronological trades.
   // You can still keep this if other parts rely on full list; otherwise you can remove.
   // ----------------------------
-  Future<List<Trade>> _loadTradesForAssetAndAccount(
+  Future<List<Trade>> loadTradesForAssetAndAccount(
       int assetId, int accountId) {
     return (select(trades)
           ..where((t) =>
@@ -971,14 +721,4 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
 // 20241216195237;buy;11;11;24;0.238261500000;209.500000000000;0.049965750000
 // 20241216200448;buy;11;11;48;159.840000000000;0.946800000000;0.151488000000
 // """;
-}
-
-/// small container used in reapply stage
-class _ReapplyEntry {
-  final TradesCompanion companion;
-  final bool isMerged;
-  final int id;
-
-  _ReapplyEntry(
-      {required this.companion, required this.isMerged, required this.id});
 }

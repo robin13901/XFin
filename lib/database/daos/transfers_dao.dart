@@ -52,13 +52,49 @@ class TransfersDao extends DatabaseAccessor<AppDatabase> with _$TransfersDaoMixi
 
   Future<List<Transfer>> getAllTransfers() => select(transfers).get();
 
+  Future<double> _calculateCostBasis(TransfersCompanion transfer, {Transfer? oldTransfer}) async {
+    final assetId = transfer.assetId.value;
+    final sendingAccountId = transfer.sendingAccountId.value;
+    final shares = transfer.shares.value;
+    var datetime = transfer.date.value * 1000000;
+
+    if (assetId == 1) return 1;
+    // if (shares > 0) return double.parse(_costBasisCtrl.text.replaceAll(',', '.'));
+    final fifo = await db.assetsOnAccountsDao.buildFiFoQueue(assetId, sendingAccountId, upToDatetime: datetime, oldTransfer: oldTransfer);
+
+    double sharesToConsume = shares.abs();
+    double value = 0.0;
+    while (sharesToConsume > 0 && fifo.isNotEmpty) {
+      final currentLot = fifo.first;
+      final lotShares = currentLot['shares']!;
+      final lotCostBasis = currentLot['costBasis']!;
+
+      if (lotShares <= sharesToConsume + 1e-12) {
+        sharesToConsume -= lotShares;
+        value += lotShares * lotCostBasis;
+        fifo.removeFirst();
+      } else {
+        currentLot['shares'] = lotShares - sharesToConsume;
+        value += sharesToConsume * lotCostBasis;
+        sharesToConsume = 0;
+      }
+    }
+    return value / shares.abs();
+  }
+
   /// Create a transfer and apply its effects:
   /// - subtract value from sending account balance
   /// - add value to receiving account balance
   /// - adjust AssetsOnAccounts: subtract shares/value from sending account, add shares/value to receiving account
   Future<void> createTransfer(TransfersCompanion transfer) {
     return transaction(() async {
-      await _addTransfer(transfer);
+      if (!transfer.costBasis.present) {
+        final costBasis = await _calculateCostBasis(transfer);
+        final value = transfer.shares.value * costBasis;
+        transfer = transfer.copyWith(costBasis: Value(costBasis), value: Value(value));
+      }
+
+      final transferId = await _addTransfer(transfer);
 
       final sendingId = transfer.sendingAccountId.value;
       final receivingId = transfer.receivingAccountId.value;
@@ -91,6 +127,22 @@ class TransfersDao extends DatabaseAccessor<AppDatabase> with _$TransfersDaoMixi
         buyFeeTotal: 0,
       ));
 
+      // await db.assetsOnAccountsDao.recalculateSubsequentEvents(
+      //   assetId: transfer.assetId.value,
+      //   accountId: transfer.sendingAccountId.value,
+      //   upToDatetime: transfer.date.value * 1000000 + 1,
+      //   upToType: '_transfer',
+      //   upToId: transferId,
+      // );
+
+      await db.assetsOnAccountsDao.recalculateSubsequentEvents(
+        assetId: transfer.assetId.value,
+        accountId: transfer.receivingAccountId.value,
+        upToDatetime: transfer.date.value * 1000000 + 1,
+        upToType: '_transfer',
+        upToId: transferId,
+      );
+
       // Note: global Assets (assets table) represent totals across accounts.
       // A transfer between accounts does not change the global totals, so we do not update assets table here.
     });
@@ -103,6 +155,25 @@ class TransfersDao extends DatabaseAccessor<AppDatabase> with _$TransfersDaoMixi
   /// Doing it this way keeps logic simple and correct for all cases (changed accounts, changed asset, changed amount).
   Future<void> updateTransfer(Transfer oldTransfer, TransfersCompanion newTransfer) {
     return transaction(() async {
+      if (!newTransfer.costBasis.present) {
+        final costBasis = await _calculateCostBasis(newTransfer, oldTransfer: oldTransfer);
+        final value = newTransfer.shares.value * costBasis;
+        newTransfer = newTransfer.copyWith(costBasis: Value(costBasis), value: Value(value));
+      }
+      newTransfer = newTransfer.copyWith(id: Value(oldTransfer.id));
+
+
+      // We'll collect recalc tasks in this set (avoid duplicates).
+      // Each entry is a tuple (assetId, accountId, datetime)
+      final Set<String> recalcTasks = {};
+
+      // Helper to add a task (string key to make set dedupe easy)
+      void addRecalcTask(int assetId, int accountId, int dateUtc) {
+        // dateUtc is yyyyMMddhhmmss (we'll store as int)
+        final key = '$assetId|$accountId|$dateUtc';
+        recalcTasks.add(key);
+      }
+
       // Update the DB row first
       await _updateTransfer(newTransfer);
 
@@ -145,6 +216,14 @@ class TransfersDao extends DatabaseAccessor<AppDatabase> with _$TransfersDaoMixi
       final newShares = newTransfer.shares.value;
       final newValue = newTransfer.value.value;
 
+      // For update we want to schedule recalculation for all affected (asset,account) pairs.
+      final oldKeyDt = oldTransfer.date * 1000000;
+      final newKeyDt = newTransfer.date.value * 1000000;
+      addRecalcTask(oldAssetId, oldSending, oldKeyDt);
+      addRecalcTask(oldAssetId, oldReceiving, newKeyDt);
+      addRecalcTask(newAssetId, newSending, oldKeyDt);
+      addRecalcTask(newAssetId, newReceiving, newKeyDt);
+
       await db.accountsDao.updateBalance(newSending, -newValue);
       await db.accountsDao.updateBalance(newReceiving, newValue);
 
@@ -168,7 +247,23 @@ class TransfersDao extends DatabaseAccessor<AppDatabase> with _$TransfersDaoMixi
         buyFeeTotal: 0,
       ));
 
-      // As with create, global Assets don't change for transfers between accounts.
+      // --- AFTER all immediate numeric updates: run recalc for each affected pair ---
+      // Convert the deduped string keys back to (assetId, accountId, datetime)
+      for (final k in recalcTasks) {
+        final parts = k.split('|');
+        final assetIdToRecalc = int.parse(parts[0]);
+        final accountIdToRecalc = int.parse(parts[1]);
+        final dt = int.parse(parts[2]); // already yyyyMMddhhmmss
+
+        await db.assetsOnAccountsDao.recalculateSubsequentEvents(
+          assetId: assetIdToRecalc,
+          accountId: accountIdToRecalc,
+          upToDatetime: dt + 1,
+          upToType: '_transfer',
+          upToId: oldTransfer.id, // existing transfer id (same for update)
+        );
+      }
+
     });
   }
 
@@ -203,6 +298,15 @@ class TransfersDao extends DatabaseAccessor<AppDatabase> with _$TransfersDaoMixi
 
       // Delete row
       await _deleteTransfer(id);
+
+      await db.assetsOnAccountsDao.recalculateSubsequentEvents(
+        assetId: transfer.assetId,
+        accountId: transfer.receivingAccountId, // call on sending account; recursion handles receiver
+        upToDatetime: transfer.date * 1000000 + 1,
+        upToType: '_transfer',
+        upToId: id,
+      );
+
     });
   }
 }

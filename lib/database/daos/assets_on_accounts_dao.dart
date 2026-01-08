@@ -115,7 +115,7 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
     }
 
     // 0) Current aggregated AOA row
-    final initialAOA = await getAOA(accountId, assetId);
+    final initialAOA = await ensureAssetOnAccountExists(assetId, accountId);//await getAOA(accountId, assetId);
     double initialShares = initialAOA.shares;
     double initialValue = initialAOA.value;
     double initialBuyFeeTotal = initialAOA.buyFeeTotal;
@@ -174,7 +174,7 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
       });
     }
 
-    for (final tr in transferRows) {
+    for (var tr in transferRows) {
       final isInflow = tr.receivingAccountId == accountId;
       initialShares += isInflow ? -tr.shares : tr.shares;
       initialValue += isInflow ? -tr.value : tr.value;
@@ -266,4 +266,381 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
 
     return fifo;
   }
+
+  // --- NEW -------------------------------------------------------------------
+
+  int cmpKey(int dtA, String typeA, int idA, int dtB, String typeB, int idB) {
+    if (dtA != dtB) return dtA < dtB ? -1 : 1;
+    final tc = typeA.compareTo(typeB);
+    if (tc != 0) return tc < 0 ? -1 : 1;
+    if (idA != idB) return idA < idB ? -1 : 1;
+    return 0;
+  }
+
+  int _compareEvents(_RecalcEvent a, _RecalcEvent b) {
+    return cmpKey(a.datetime, a.typeStr, a.id, b.datetime, b.typeStr, b.id);
+  }
+
+// ----------------------------
+// Public entrypoint
+// ----------------------------
+// upToDatetime/upToType/upToId define the ordering key such that events with
+// key < orderingKey are considered "before" and events with key >= orderingKey
+// are "after" (and therefore should be recalculated).
+  Future<void> recalculateSubsequentEvents({
+    required int assetId,
+    required int accountId,
+    required int upToDatetime, // yyyyMMddhhmmss
+    required String upToType, // '_booking' | '_transfer' | 'buy' | 'sell'
+    required int upToId,
+  }) {
+    return transaction(() async {
+      final visited = <String>{};
+      await _recalculateInternal(
+        assetId: assetId,
+        accountId: accountId,
+        upToDatetime: upToDatetime,
+        upToType: upToType,
+        upToId: upToId,
+        visited: visited,
+        initialFifo: null,
+      );
+    });
+  }
+
+// ----------------------------
+// Core recursive worker
+// ----------------------------
+  Future<void> _recalculateInternal({
+    required int assetId,
+    required int accountId,
+    required int upToDatetime, // ordering key
+    required String upToType,
+    required int upToId,
+    required Set<String> visited,
+    ListQueue<Map<String, double>>? initialFifo, // optional pre-built FIFO for receiver recursion
+  }) async {
+    // No need to recalculate base currency events
+    if (assetId == 1) return;
+
+    // visited key should include the ordering key to prevent reprocessing same startpoint
+    final visitKey = '$assetId|$accountId|$upToDatetime|$upToType|$upToId';
+    if (visited.contains(visitKey)) return;
+    visited.add(visitKey);
+
+    // 1) Build or use provided FIFO prefix
+    final fifo = initialFifo ??
+        await buildFiFoQueue(
+          assetId,
+          accountId,
+          upToDatetime: upToDatetime,
+          upToType: upToType,
+          upToId: upToId,
+        );
+
+    // 2) Collect candidate events (loose filter) and then tightly partition using cmpKey
+    final events = <_RecalcEvent>[];
+
+    // bookings candidate: date >= upToDate (coarse)
+    final upToDate = upToDatetime ~/ 1000000;
+    final bookingsCandidates = await (select(bookings)
+      ..where((b) =>
+      b.assetId.equals(assetId) &
+      b.accountId.equals(accountId) &
+      b.date.isBiggerOrEqualValue(upToDate)))
+        .get();
+    for (final b in bookingsCandidates) {
+      final e = _RecalcEvent.booking(b);
+      if (cmpKey(e.datetime, e.typeStr, e.id, upToDatetime, upToType, upToId) > 0) {
+        events.add(e);
+      }
+    }
+
+    // transfers candidate: date >= upToDate (coarse)
+    final transfersCandidates = await (select(transfers)
+      ..where((t) =>
+      t.assetId.equals(assetId) &
+      (t.sendingAccountId.equals(accountId) |
+      t.receivingAccountId.equals(accountId)) &
+      t.date.isBiggerOrEqualValue(upToDate)))
+        .get();
+    for (final t in transfersCandidates) {
+      final e = _RecalcEvent.transfer(t);
+      if (cmpKey(e.datetime, e.typeStr, e.id, upToDatetime, upToType, upToId) > 0) {
+        events.add(e);
+      }
+    }
+
+    // trades candidate: load chronological full list for asset/account and filter
+    final allTradesAsc =
+    await db.tradesDao.loadTradesForAssetAndAccount(assetId, accountId);
+    for (final t in allTradesAsc) {
+      final e = _RecalcEvent.trade(t);
+      if (cmpKey(e.datetime, e.typeStr, e.id, upToDatetime, upToType, upToId) > 0) {
+        events.add(e);
+      }
+    }
+
+    // 3) Sort events in canonical chronological order
+    events.sort(_compareEvents);
+
+    // 4) Undo trades (reverse chronological)
+    final tradesToUndo = events
+        .where((e) => e.type == _RecalcEventType.trade)
+        .map((e) => e.trade!)
+        .toList();
+    tradesToUndo.sort((a, b) => b.datetime.compareTo(a.datetime));
+
+    if (tradesToUndo.isNotEmpty) {
+      // use allTradesAsc for fee computations as _undoTradeFromDb expects it
+      // Note: we already loaded allTradesAsc above; reuse it.
+      for (final t in tradesToUndo) {
+        await db.tradesDao.undoTradeFromDb(t, allTradesAsc);
+      }
+    }
+
+    // 5) Replay all events forward, mutating fifo and updating rows as needed
+    for (final event in events) {
+      if (event.type == _RecalcEventType.booking) {
+        final b = event.booking!;
+        // Check key again here, because we might have already recalculated this one in a previous recursion
+        final visitKey = '$assetId|$accountId|${b.date*1000000}|_booking|${b.id}';
+        if (visited.contains(visitKey)) return;
+        visited.add(visitKey);
+        final shares = b.shares;
+        if (shares > 0) {
+          fifo.add({'shares': shares, 'costBasis': b.costBasis, 'fee': 0.0});
+        } else if (shares < 0) {
+          var remaining = -shares;
+          double removedShares = 0.0;
+          double removedCost = 0.0;
+          while (remaining > 1e-12 && fifo.isNotEmpty) {
+            final lot = fifo.first;
+            final lotShares = lot['shares']!;
+            final take = lotShares <= remaining + 1e-12 ? lotShares : remaining;
+            removedShares += take;
+            removedCost += take * lot['costBasis']!;
+            if (lotShares <= remaining + 1e-12) {
+              fifo.removeFirst();
+            } else {
+              lot['shares'] = lotShares - take;
+            }
+            remaining -= take;
+          }
+
+          final newCostBasis = removedShares > 1e-12 ? removedCost / removedShares : b.costBasis;
+
+          if ((b.costBasis - newCostBasis).abs() > 1e-9) {
+            final oldValue = (await db.bookingsDao.getBooking(b.id)).value;//b.value;
+            final newValue = newCostBasis * b.shares;
+
+            // Persist booking with new computed values
+            await (update(bookings)..where((tbl) => tbl.id.equals(b.id))).write(
+              BookingsCompanion(
+                costBasis: Value(newCostBasis),
+                value: Value(newValue),
+              ),
+            );
+
+            // Apply deltas to snapshot rows: account balance, AOA, and global asset
+            final valueDelta = newValue - oldValue;
+
+            // 1) account balance: booking previously contributed oldValue, now must contribute newValue -> delta
+            await db.accountsDao.updateBalance(b.accountId, valueDelta);
+
+            // 2) assetsOnAccounts: adjust the value (shares are unchanged for a booking that only changed costBasis)
+            await db.assetsOnAccountsDao.updateAOA(AssetOnAccount(
+              accountId: b.accountId,
+              assetId: assetId,
+              value: valueDelta,
+              shares: 0,
+              netCostBasis: 0,
+              brokerCostBasis: 0,
+              buyFeeTotal: 0,
+            ));
+
+            // 3) global asset totals must also reflect booking value change
+            await db.assetsDao.updateAsset(assetId, 0, valueDelta);
+
+            // Update the in-memory event object so later code in this loop sees updated values
+            // b = b.copyWith(costBasis: newCostBasis, value: newValue);
+          }
+        } // else shares == 0 -> ignore
+      } else if (event.type == _RecalcEventType.transfer) {
+        final tr = event.transfer!;
+        // Check key again here, because we might have already recalculated this one in a previous recursion
+        final visitKey = '$assetId|$accountId|${tr.date*1000000}|_transfer|${tr.id}';
+        if (visited.contains(visitKey)) return;
+        visited.add(visitKey);
+        final isInflow = tr.receivingAccountId == accountId;
+        if (isInflow) {
+          // incoming transfer: rely on transfer.costBasis (should have been set by sending-side),
+          // but if zero/fallback, still add with stored costBasis.
+          fifo.add({'shares': tr.shares, 'costBasis': tr.costBasis, 'fee': 0.0});
+        } else {
+          // sending side: consume FIFO and write transfer.costBasis, then propagate to receiver
+          var remaining = tr.shares;
+          double removedShares = 0.0;
+          double removedCost = 0.0;
+          while (remaining > 1e-12 && fifo.isNotEmpty) {
+            final lot = fifo.first;
+            final lotShares = lot['shares']!;
+            final take = lotShares <= remaining + 1e-12 ? lotShares : remaining;
+            removedShares += take;
+            removedCost += take * lot['costBasis']!;
+            if (lotShares <= remaining + 1e-12) {
+              fifo.removeFirst();
+            } else {
+              lot['shares'] = lotShares - take;
+            }
+            remaining -= take;
+          }
+
+          final newCostBasis = removedShares > 1e-12 ? removedCost / removedShares : tr.costBasis;
+
+          if ((tr.costBasis - newCostBasis).abs() > 1e-9) {
+            final oldValue = (await db.transfersDao.getTransfer(tr.id)).value;//tr.value;
+            final newValue = newCostBasis * tr.shares;
+
+            await (update(transfers)..where((tbl) => tbl.id.equals(tr.id))).write(
+              TransfersCompanion(
+                costBasis: Value(newCostBasis),
+                value: Value(newValue),
+              ),
+            );
+
+            // Apply deltas to snapshot rows:
+            final valueDelta = newValue - oldValue; // positive if newValue > oldValue
+
+            final sendingId = tr.sendingAccountId;
+            final receivingId = tr.receivingAccountId;
+
+            // 1) Account balances: sending had -oldValue, should have -newValue => adjust by -delta
+            await db.accountsDao.updateBalance(sendingId, -valueDelta);
+            // receiving had +oldValue, should have +newValue => adjust by +delta
+            await db.accountsDao.updateBalance(receivingId, valueDelta);
+
+            // 2) AssetsOnAccounts: subtract valueDelta from sender, add to receiver (shares unchanged)
+            await db.assetsOnAccountsDao.updateAOA(AssetOnAccount(
+              accountId: sendingId,
+              assetId: assetId,
+              value: -valueDelta,
+              shares: 0,
+              netCostBasis: 0,
+              brokerCostBasis: 0,
+              buyFeeTotal: 0,
+            ));
+
+            await db.assetsOnAccountsDao.updateAOA(AssetOnAccount(
+              accountId: receivingId,
+              assetId: assetId,
+              value: valueDelta,
+              shares: 0,
+              netCostBasis: 0,
+              brokerCostBasis: 0,
+              buyFeeTotal: 0,
+            ));
+
+            // No change to global assets table for intra-account transfer values.
+
+            // Update the in-memory event/tr so subsequent code sees new values
+            // tr = tr.copyWith(costBasis: newCostBasis, value: newValue);
+          }
+
+          // Build receiver FIFO prefix up to *before* this transfer, then add incoming lot and recurse.
+          final recvId = tr.receivingAccountId;
+          final recvUpToDt = event.datetime - 1; // just before transfer
+          final recvFifo = await buildFiFoQueue(
+            assetId,
+            recvId,
+            upToDatetime: recvUpToDt,
+            upToType: '_transfer',
+            upToId: tr.id,
+          );
+          // add incoming lot
+          recvFifo.add({'shares': tr.shares, 'costBasis': newCostBasis, 'fee': 0.0});
+
+          // recurse for receiver, starting at this transfer's key (so receiver will process events after transfer)
+          await _recalculateInternal(
+            assetId: assetId,
+            accountId: recvId,
+            upToDatetime: event.datetime,
+            upToType: '_transfer',
+            upToId: tr.id,
+            visited: visited,
+            initialFifo: recvFifo,
+          );
+
+          // break;
+        }
+      } else {
+        // trade: reapply using your existing _applyTradeToDb helper.
+        final t = event.trade!;
+
+        // Check key again here, because we might have already recalculated this one in a previous recursion
+        final visitKey = '$assetId|$accountId|${t.datetime}|_trade|${t.id}';
+        if (visited.contains(visitKey)) return;
+        visited.add(visitKey);
+
+        final companion = TradesCompanion(
+          datetime: Value(t.datetime),
+          type: Value(t.type),
+          sourceAccountId: Value(t.sourceAccountId),
+          targetAccountId: Value(t.targetAccountId),
+          assetId: Value(t.assetId),
+          shares: Value(t.shares),
+          costBasis: Value(t.costBasis),
+          fee: Value(t.fee),
+          tax: Value(t.tax),
+        );
+
+        // Re-apply trade (update existing row). This will mutate FIFO and update aggregates.
+        await db.tradesDao.applyTradeToDb(
+          companion,
+          insertNew: false,
+          updateTradeId: t.id,
+          fifo: fifo,
+        );
+      }
+    } // end for events
+  }
+
+}
+
+// --- small helper types for unified event handling ---
+enum _RecalcEventType { booking, transfer, trade }
+
+class _RecalcEvent {
+  final _RecalcEventType type;
+  final int datetime; // yyyyMMddHHmmss
+  final String typeStr; // '_booking', '_transfer', 'buy'/'sell'
+  final int id;
+
+  final Booking? booking;
+  final Transfer? transfer;
+  final Trade? trade;
+
+  _RecalcEvent.booking(this.booking)
+      : type = _RecalcEventType.booking,
+        datetime = booking!.date * 1000000,
+        typeStr = '_booking',
+        id = booking.id,
+        transfer = null,
+        trade = null;
+
+  _RecalcEvent.transfer(this.transfer)
+      : type = _RecalcEventType.transfer,
+        datetime = transfer!.date * 1000000,
+        typeStr = '_transfer',
+        id = transfer.id,
+        booking = null,
+        trade = null;
+
+  _RecalcEvent.trade(this.trade)
+      : type = _RecalcEventType.trade,
+        datetime = trade!.datetime,
+        typeStr = trade.type.name,
+        id = trade.id,
+        booking = null,
+        transfer = null;
 }

@@ -36,8 +36,7 @@ class BookingsPager extends ChangeNotifier {
       limit: limit,
       lastDate: last?.booking.date,
       lastValue: last?.booking.value,
-    )
-        .listen((page) {
+    ).listen((page) {
       _isLoading = false;
 
       if (page.isEmpty) {
