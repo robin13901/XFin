@@ -173,7 +173,7 @@ class _TradeFormState extends State<TradeForm> {
       if (_isEditing) {
         await db.tradesDao.updateTrade(widget.trade!.id, trade, l10n);
       } else {
-        await db.tradesDao.insertTrade(trade);
+        await db.tradesDao.insertTrade(trade, l10n);
       }
       if (mounted) Navigator.of(context).pop();
     } catch (e) {

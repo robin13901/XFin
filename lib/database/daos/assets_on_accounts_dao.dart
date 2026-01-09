@@ -1,6 +1,7 @@
 import 'dart:collection';
 
 import 'package:drift/drift.dart';
+import 'package:xfin/l10n/app_localizations.dart';
 import '../../utils/global_constants.dart';
 import '../app_database.dart';
 import '../tables.dart';
@@ -291,6 +292,7 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
 // key < orderingKey are considered "before" and events with key >= orderingKey
 // are "after" (and therefore should be recalculated).
   Future<void> recalculateSubsequentEvents({
+    required AppLocalizations l10n,
     required int assetId,
     required int accountId,
     required int upToDatetime, // yyyyMMddhhmmss
@@ -300,6 +302,7 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
     return transaction(() async {
       final visited = <String>{};
       await _recalculateInternal(
+        l10n: l10n,
         assetId: assetId,
         accountId: accountId,
         upToDatetime: upToDatetime,
@@ -315,6 +318,7 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
 // Core recursive worker
 // ----------------------------
   Future<void> _recalculateInternal({
+    required AppLocalizations l10n,
     required int assetId,
     required int accountId,
     required int upToDatetime, // ordering key
@@ -580,6 +584,7 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
 
           // recurse for receiver, starting at this transfer's key (so receiver will process events after transfer)
           await _recalculateInternal(
+            l10n: l10n,
             assetId: assetId,
             accountId: recvId,
             upToDatetime: event.datetime,
@@ -621,6 +626,9 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
         );
       }
     } // end for events
+    if (await db.accountsDao.leadsToInconsistentBalanceHistory(accountId: accountId)) {
+      throw Exception(l10n.actionCancelledDueToDataInconsistency);
+    }
   }
 }
 

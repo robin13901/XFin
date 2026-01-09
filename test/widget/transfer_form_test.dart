@@ -480,7 +480,7 @@ void main() {
               assetId: const Value(1),
               excludeFromAverage: const Value(false),
               isGenerated: const Value(false),
-            ));
+            ), l10n);
             // booking 2: 70 shares @ costBasis 1
             await db.bookingsDao.createBooking(BookingsCompanion.insert(
               date: dateTimeToInt(DateTime.now().subtract(const Duration(days: 1))),
@@ -492,7 +492,7 @@ void main() {
               assetId: const Value(1),
               excludeFromAverage: const Value(false),
               isGenerated: const Value(false),
-            ));
+            ), l10n);
 
             await pumpWidget(tester);
 

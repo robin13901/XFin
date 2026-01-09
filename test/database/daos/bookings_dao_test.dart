@@ -1,4 +1,6 @@
 // test/bookings_dao_test.dart
+import 'dart:ui';
+
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/daos/bookings_dao.dart';
 import 'package:xfin/database/tables.dart';
+import 'package:xfin/l10n/app_localizations.dart';
 
 void main() {
   late AppDatabase db;
@@ -15,10 +18,14 @@ void main() {
   late int accountId;
   late Asset assetOne;
   late Account portfolio1;
+  late AppLocalizations l10n;
 
   setUp(() async {
     // Make sure prefs are clean (some DAOs/tests rely on SharedPreferences)
     SharedPreferences.setMockInitialValues({});
+
+    const locale = Locale('en');
+    l10n = await AppLocalizations.delegate.load(locale);
 
     db = AppDatabase(NativeDatabase.memory());
     bookingsDao = db.bookingsDao;
@@ -80,7 +87,7 @@ void main() {
             value: 50.0,
           );
 
-          await bookingsDao.createBooking(booking);
+          await bookingsDao.createBooking(booking, l10n);
 
           // Booking should exist in DB
           final all = await bookingsDao.getAllBookings();
@@ -158,7 +165,7 @@ void main() {
               category: const Value('Test'),
               shares: const Value(0.5),
               costBasis: const Value(100),
-              value: const Value(50)));
+              value: const Value(50)), l10n);
           await db.bookingsDao.createBooking(BookingsCompanion(
               date: const Value(20250102),
               assetId: Value(assetOne.id),
@@ -166,7 +173,7 @@ void main() {
               category: const Value('Test'),
               shares: const Value(0.5),
               costBasis: const Value(200),
-              value: const Value(100)));
+              value: const Value(100)), l10n);
 
           // Create SUT
           await db.bookingsDao.createBooking(BookingsCompanion(
@@ -174,7 +181,7 @@ void main() {
               assetId: Value(assetOne.id),
               accountId: Value(portfolio1.id),
               category: const Value('Test'),
-              shares: const Value(-1)));
+              shares: const Value(-1)), l10n);
 
           // Post-create-checks
           var sut = await db.bookingsDao.getBooking(3);
@@ -190,7 +197,7 @@ void main() {
               accountId: Value(portfolio1.id),
               category: const Value('Test'),
               shares: const Value(-0.5));
-          db.bookingsDao.updateBooking(sut, updatedBooking);
+          db.bookingsDao.updateBooking(sut, updatedBooking, l10n);
 
           // Post-update-checks
           sut = await db.bookingsDao.getBooking(3);
@@ -425,7 +432,7 @@ void main() {
             value: const Value(15.0),
           );
 
-          await bookingsDao.updateBooking(old, updatedCompanion);
+          await bookingsDao.updateBooking(old, updatedCompanion, l10n);
 
           // booking updated in DB
           final changed = await bookingsDao.getBooking(id);
@@ -485,7 +492,7 @@ void main() {
             excludeFromAverage: const Value(false),
           );
 
-          await bookingsDao.updateBooking(old, updated);
+          await bookingsDao.updateBooking(old, updated, l10n);
 
           final changed = await bookingsDao.getBooking(id);
           expect(changed.assetId, assetNew);
@@ -547,7 +554,7 @@ void main() {
             value: const Value(12.0),
           );
 
-          await bookingsDao.updateBooking(old, updated);
+          await bookingsDao.updateBooking(old, updated, l10n);
 
           // old account should have decreased by old base (-8) => 292
           final oldAcc = await (db.select(db.accounts)
@@ -632,7 +639,7 @@ void main() {
             value: const Value(9.0),
           );
 
-          await bookingsDao.updateBooking(old, updated);
+          await bookingsDao.updateBooking(old, updated, l10n);
 
           // old account decreased by 3 -> 47
           final aOld = await (db.select(db.accounts)
@@ -684,7 +691,7 @@ void main() {
       expect(acc.balance, closeTo(500.0, 1e-9));
 
       // Now call deleteBooking, which will read booking and update account (-base)
-      await bookingsDao.deleteBooking(id);
+      await bookingsDao.deleteBooking(id, l10n);
 
       // Booking removed
       final all = await bookingsDao.getAllBookings();

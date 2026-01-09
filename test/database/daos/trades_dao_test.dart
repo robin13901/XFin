@@ -215,7 +215,7 @@ void main() {
             targetAccountId: drift.Value(targetAccount.id),
           );
 
-          await tradesDao.insertTrade(buyEntry);
+          await tradesDao.insertTrade(buyEntry, l10n);
 
           // Check assetOnAccount updated
           final updatedAOA = await (db.select(db.assetsOnAccounts)
@@ -295,7 +295,7 @@ void main() {
             targetAccountId: drift.Value(targetAccount.id),
           );
 
-          await tradesDao.insertTrade(buyEntry);
+          await tradesDao.insertTrade(buyEntry, l10n);
 
           // Now assetsOnAccounts should exist and be updated
           final newAssetOnAccount = await (db.select(db.assetsOnAccounts)
@@ -326,7 +326,7 @@ void main() {
         tax: const drift.Value(0),
         sourceAccountId: drift.Value(sourceAccount.id),
         targetAccountId: drift.Value(targetAccount.id),
-      ));
+      ), l10n);
 
       final trade1 = await (db.select(db.trades)..where((t) => t.id.equals(1)))
           .getSingle();
@@ -374,7 +374,7 @@ void main() {
         tax: const drift.Value(0),
         sourceAccountId: drift.Value(sourceAccount.id),
         targetAccountId: drift.Value(targetAccount.id),
-      ));
+      ), l10n);
 
       final trade2 = await (db.select(db.trades)..where((t) => t.id.equals(2)))
           .getSingle();
@@ -422,7 +422,7 @@ void main() {
         tax: const drift.Value(0),
         sourceAccountId: drift.Value(sourceAccount.id),
         targetAccountId: drift.Value(targetAccount.id),
-      ));
+      ), l10n);
 
       final trade3 = await (db.select(db.trades)..where((t) => t.id.equals(3)))
           .getSingle();
@@ -471,7 +471,7 @@ void main() {
         tax: const drift.Value(0),
         sourceAccountId: drift.Value(sourceAccount.id),
         targetAccountId: drift.Value(targetAccount.id),
-      ));
+      ), l10n);
 
       final trade4 = await (db.select(db.trades)..where((t) => t.id.equals(4)))
           .getSingle();
@@ -525,7 +525,7 @@ void main() {
         tax: const drift.Value(0),
         sourceAccountId: drift.Value(sourceAccount.id),
         targetAccountId: drift.Value(targetAccount.id),
-      ));
+      ), l10n);
 
       final trade5 = await (db.select(db.trades)..where((t) => t.id.equals(5)))
           .getSingle();
@@ -585,7 +585,7 @@ void main() {
         tax: const drift.Value(0),
         sourceAccountId: drift.Value(sourceAccount.id),
         targetAccountId: drift.Value(targetAccount2.id),
-      ));
+      ), l10n);
 
       final trade6 = await (db.select(db.trades)..where((t) => t.id.equals(6)))
           .getSingle();
@@ -635,7 +635,7 @@ void main() {
         tax: const drift.Value(18.82),
         sourceAccountId: drift.Value(sourceAccount.id),
         targetAccountId: drift.Value(targetAccount.id),
-      ));
+      ), l10n);
 
       final trade7 = await (db.select(db.trades)..where((t) => t.id.equals(7)))
           .getSingle();
@@ -699,7 +699,7 @@ void main() {
         tax: const drift.Value(0),
         sourceAccountId: drift.Value(sourceAccount.id),
         targetAccountId: drift.Value(targetAccount.id),
-      ));
+      ), l10n);
 
       final trade1 = await (db.select(db.trades)..where((t) => t.id.equals(1)))
           .getSingle();
@@ -747,7 +747,7 @@ void main() {
         tax: const drift.Value(0),
         sourceAccountId: drift.Value(sourceAccount.id),
         targetAccountId: drift.Value(targetAccount.id),
-      ));
+      ), l10n);
 
       final trade2 = await (db.select(db.trades)..where((t) => t.id.equals(2)))
           .getSingle();
@@ -797,7 +797,7 @@ void main() {
         tax: const drift.Value(0),
         sourceAccountId: drift.Value(sourceAccount.id),
         targetAccountId: drift.Value(targetAccount.id),
-      ));
+      ), l10n);
 
       final trade3 = await (db.select(db.trades)..where((t) => t.id.equals(3)))
           .getSingle();
@@ -848,7 +848,7 @@ void main() {
             tax: const drift.Value(0),
             sourceAccountId: drift.Value(sourceAccount.id),
             targetAccountId: drift.Value(targetAccount.id),
-          ));
+          ), l10n);
 
           await tradesDao.insertTrade(TradesCompanion(
             datetime: const drift.Value(20250102000000),
@@ -860,7 +860,7 @@ void main() {
             tax: const drift.Value(0),
             sourceAccountId: drift.Value(sourceAccount.id),
             targetAccountId: drift.Value(targetAccount.id),
-          ));
+          ), l10n);
 
           await tradesDao.insertTrade(TradesCompanion(
             datetime: const drift.Value(20250103000000),
@@ -872,7 +872,7 @@ void main() {
             tax: const drift.Value(0),
             sourceAccountId: drift.Value(sourceAccount.id),
             targetAccountId: drift.Value(targetAccount.id),
-          ));
+          ), l10n);
 
           final aoaOne1 = await (db.select(db.assetsOnAccounts)
             ..where((a) =>
@@ -972,7 +972,7 @@ void main() {
         tax: const drift.Value(0.0),
         sourceAccountId: drift.Value(sourceAccount.id),
         targetAccountId: drift.Value(targetAccount.id),
-      ));
+      ), l10n);
 
       // Sell at 2025-01-03: 1 share @20 -> consumes 1@10, P&L = 20 - 10 = 10
       await tradesDao.insertTrade(TradesCompanion(
@@ -985,7 +985,7 @@ void main() {
         tax: const drift.Value(0.0),
         sourceAccountId: drift.Value(sourceAccount.id),
         targetAccountId: drift.Value(targetAccount.id),
-      ));
+      ), l10n);
 
       // Verify initial sell profit
       final sellBefore = await (db.select(db.trades)
@@ -1009,7 +1009,7 @@ void main() {
         targetAccountId: drift.Value(targetAccount.id),
       );
 
-      await tradesDao.insertTrade(backdatedBuy);
+      await tradesDao.insertTrade(backdatedBuy, l10n);
 
       // After backdated insert, the sell should now consume the cheaper lot (1@5) -> new profit 20 - 5 = 15
       final sellAfter = await (db.select(db.trades)
@@ -1033,7 +1033,7 @@ void main() {
         tax: const drift.Value(0.0),
         sourceAccountId: drift.Value(sourceAccount.id),
         targetAccountId: drift.Value(targetAccount.id),
-      ));
+      ), l10n);
 
       // Try to insert a backdated sell at 2025-01-01 of 2 shares -> impossible (0 shares at that time)
       final backdatedImpossibleSell = TradesCompanion(
@@ -1048,7 +1048,7 @@ void main() {
         targetAccountId: drift.Value(targetAccount.id),
       );
 
-      expect(() async => await tradesDao.insertTrade(backdatedImpossibleSell),
+      expect(() async => await tradesDao.insertTrade(backdatedImpossibleSell, l10n),
           throwsA(isA<Exception>()));
     });
 
@@ -1065,7 +1065,7 @@ void main() {
             tax: const drift.Value(0.0),
             sourceAccountId: drift.Value(sourceAccount.id),
             targetAccountId: drift.Value(targetAccount.id),
-          ));
+          ), l10n);
 
           // buy2 @2025-01-03 (1@20)
           await tradesDao.insertTrade(TradesCompanion(
@@ -1078,7 +1078,7 @@ void main() {
             tax: const drift.Value(0.0),
             sourceAccountId: drift.Value(sourceAccount.id),
             targetAccountId: drift.Value(targetAccount.id),
-          ));
+          ), l10n);
 
           // sell @2025-01-04 (1@30) -> consumes buy1 (10) => profit 20
           await tradesDao.insertTrade(TradesCompanion(
@@ -1091,7 +1091,7 @@ void main() {
             tax: const drift.Value(0.0),
             sourceAccountId: drift.Value(sourceAccount.id),
             targetAccountId: drift.Value(targetAccount.id),
-          ));
+          ), l10n);
 
           // Check initial profit (should be 30 - 10 = 20)
           final sellBefore = await (db.select(db.trades)
@@ -1131,7 +1131,7 @@ void main() {
         tax: const drift.Value(0.0),
         sourceAccountId: drift.Value(sourceAccount.id),
         targetAccountId: drift.Value(targetAccount.id),
-      ));
+      ), l10n);
 
       // Pre-update checks
       final preUpdateTradeList = await db.tradesDao.getAllTrades();
@@ -1179,7 +1179,7 @@ void main() {
         tax: const drift.Value(0.0),
         sourceAccountId: drift.Value(sourceAccount.id),
         targetAccountId: drift.Value(targetAccount.id),
-      ));
+      ), l10n);
 
       // buy2 @2025-01-03 (1@20)
       await tradesDao.insertTrade(TradesCompanion(
@@ -1192,7 +1192,7 @@ void main() {
         tax: const drift.Value(0.0),
         sourceAccountId: drift.Value(sourceAccount.id),
         targetAccountId: drift.Value(targetAccount.id),
-      ));
+      ), l10n);
 
       // sell @2025-01-04 (1@30) -> consumes buy1 (10) => profit 20
       await tradesDao.insertTrade(TradesCompanion(
@@ -1205,7 +1205,7 @@ void main() {
         tax: const drift.Value(0.0),
         sourceAccountId: drift.Value(sourceAccount.id),
         targetAccountId: drift.Value(targetAccount.id),
-      ));
+      ), l10n);
 
       // Confirm initial profit
       final sellBefore = await (db.select(db.trades)
@@ -1217,7 +1217,7 @@ void main() {
       expect(sellBefore.profitAndLoss, closeTo(20.0, 1e-9));
 
       // Delete buy1 (id 1). The sell should then consume buy2 (20) -> profit 10
-      await tradesDao.deleteTrade(1);
+      await tradesDao.deleteTrade(1, l10n);
 
       final sellAfter = await (db.select(db.trades)
         ..where((t) =>
@@ -1239,7 +1239,7 @@ void main() {
             category: 'test-booking',
             shares: 5.0,
             value: 50.0,
-          ));
+          ), l10n);
 
           // Now attempt to sell 5 shares later -> should be possible and consume booking lot
           await tradesDao.insertTrade(TradesCompanion(
@@ -1252,7 +1252,7 @@ void main() {
             tax: const drift.Value(0.0),
             sourceAccountId: drift.Value(sourceAccount.id),
             targetAccountId: drift.Value(targetAccount.id),
-          ));
+          ), l10n);
 
           final sold = await (db.select(db.trades)
             ..where((t) =>
@@ -1302,7 +1302,7 @@ void main() {
             shares: 3.0,
             costBasis: const drift.Value(10.0),
             value: 30.0,
-          ));
+          ), l10n);
 
           // Now sell 3 shares from targetAccount later -> should be allowed (consumes transfer)
           await tradesDao.insertTrade(TradesCompanion(
@@ -1315,7 +1315,7 @@ void main() {
             tax: const drift.Value(0.0),
             sourceAccountId: drift.Value(sourceAccount.id),
             targetAccountId: drift.Value(targetAccount.id),
-          ));
+          ), l10n);
 
           final sold = await (db.select(db.trades)
             ..where((t) =>
@@ -1345,7 +1345,7 @@ void main() {
             tax: const drift.Value(0.0),
             sourceAccountId: drift.Value(sourceAccount.id),
             targetAccountId: drift.Value(targetAccount.id),
-          ));
+          ), l10n);
 
           await tradesDao.insertTrade(TradesCompanion(
             datetime: const drift.Value(20250102000000),
@@ -1357,7 +1357,7 @@ void main() {
             tax: const drift.Value(0.0),
             sourceAccountId: drift.Value(sourceAccount.id),
             targetAccountId: drift.Value(targetAccount.id),
-          ));
+          ), l10n);
 
           // Move buy (id=1) after the sell -> should make the sell invalid and updateTrade should throw
           const updateToAfterSell = TradesCompanion(
@@ -1382,7 +1382,7 @@ void main() {
             tax: const drift.Value(0.0),
             sourceAccountId: drift.Value(sourceAccount.id),
             targetAccountId: drift.Value(targetAccount.id),
-          ));
+          ), l10n);
 
           await tradesDao.insertTrade(TradesCompanion(
             datetime: const drift.Value(20250102000000),
@@ -1394,10 +1394,10 @@ void main() {
             tax: const drift.Value(0.0),
             sourceAccountId: drift.Value(sourceAccount.id),
             targetAccountId: drift.Value(targetAccount.id),
-          ));
+          ), l10n);
 
           // Deleting buy id1 would leave the sell uncovered -> deleteTrade should throw
-          expect(() async => await tradesDao.deleteTrade(1), throwsA(isA<Exception>()));
+          expect(() async => await tradesDao.deleteTrade(1, l10n), throwsA(isA<Exception>()));
         });
 
     test('sell with fee and tax calculates profit and deltas correctly', () async {
@@ -1412,7 +1412,7 @@ void main() {
         tax: const drift.Value(0.0),
         sourceAccountId: drift.Value(sourceAccount.id),
         targetAccountId: drift.Value(targetAccount.id),
-      ));
+      ), l10n);
 
       // sell 1@20 with fee=1 tax=2
       await tradesDao.insertTrade(TradesCompanion(
@@ -1425,7 +1425,7 @@ void main() {
         tax: const drift.Value(2.0),
         sourceAccountId: drift.Value(sourceAccount.id),
         targetAccountId: drift.Value(targetAccount.id),
-      ));
+      ), l10n);
 
       final sell = await (db.select(db.trades)
         ..where((t) =>
@@ -1455,7 +1455,7 @@ void main() {
         tax: const drift.Value(0.0),
         sourceAccountId: drift.Value(sourceAccount.id),
         targetAccountId: drift.Value(targetAccount.id),
-      ));
+      ), l10n);
 
       // buy2 @day2: 2@15 (id 2)
       await tradesDao.insertTrade(TradesCompanion(
@@ -1468,7 +1468,7 @@ void main() {
         tax: const drift.Value(0.0),
         sourceAccountId: drift.Value(sourceAccount.id),
         targetAccountId: drift.Value(targetAccount.id),
-      ));
+      ), l10n);
 
       // sell @day3: 2@20 (consumes buy1 (1@10) + 1 from buy2 (1@15))
       await tradesDao.insertTrade(TradesCompanion(
@@ -1481,7 +1481,7 @@ void main() {
         tax: const drift.Value(0.0),
         sourceAccountId: drift.Value(sourceAccount.id),
         targetAccountId: drift.Value(targetAccount.id),
-      ));
+      ), l10n);
 
       final sellBefore = await (db.select(db.trades)
         ..where((t) =>
@@ -1523,7 +1523,7 @@ void main() {
             tax: const drift.Value(0),
             sourceAccountId: drift.Value(sourceAccount.id),
             targetAccountId: drift.Value(targetAccount.id),
-          ));
+          ), l10n);
 
           // Two sells that will later be undone and reapplied
           await tradesDao.insertTrade(TradesCompanion(
@@ -1536,7 +1536,7 @@ void main() {
             tax: const drift.Value(0),
             sourceAccountId: drift.Value(sourceAccount.id),
             targetAccountId: drift.Value(targetAccount.id),
-          ));
+          ), l10n);
 
           await tradesDao.insertTrade(TradesCompanion(
             datetime: const drift.Value(20250103000000),
@@ -1548,7 +1548,7 @@ void main() {
             tax: const drift.Value(0),
             sourceAccountId: drift.Value(sourceAccount.id),
             targetAccountId: drift.Value(targetAccount.id),
-          ));
+          ), l10n);
 
           // Backdated buy forces undo/reapply with partial FIFO lot consumption
           await tradesDao.insertTrade(TradesCompanion(
@@ -1561,7 +1561,7 @@ void main() {
             tax: const drift.Value(0),
             sourceAccountId: drift.Value(sourceAccount.id),
             targetAccountId: drift.Value(targetAccount.id),
-          ));
+          ), l10n);
 
           final aoa = await (db.select(db.assetsOnAccounts)
             ..where((a) =>
@@ -1603,7 +1603,7 @@ void main() {
             tax: const drift.Value(0),
             sourceAccountId: drift.Value(sourceAccount.id),
             targetAccountId: drift.Value(targetAccount.id),
-          ));
+          ), l10n);
 
           // sell (id = 2) — initially valid because it consumes the buy above
           await tradesDao.insertTrade(TradesCompanion(
@@ -1616,7 +1616,7 @@ void main() {
             tax: const drift.Value(0),
             sourceAccountId: drift.Value(sourceAccount.id),
             targetAccountId: drift.Value(targetAccount.id),
-          ));
+          ), l10n);
 
           // Try to move the existing SELL (id = 2) earlier than the buy -> should fail validation
           expect(
@@ -1654,7 +1654,7 @@ void main() {
             tax: const drift.Value(0),
             sourceAccountId: drift.Value(sourceAccount.id),
             targetAccountId: drift.Value(targetAccount.id),
-          ));
+          ), l10n);
 
           await tradesDao.insertTrade(TradesCompanion(
             datetime: const drift.Value(20250102000000),
@@ -1666,10 +1666,10 @@ void main() {
             tax: const drift.Value(0),
             sourceAccountId: drift.Value(sourceAccount.id),
             targetAccountId: drift.Value(targetAccount.id),
-          ));
+          ), l10n);
 
           expect(
-                () async => tradesDao.deleteTrade(1),
+                () async => tradesDao.deleteTrade(1, l10n),
             throwsA(isA<Exception>()),
           );
 

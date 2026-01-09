@@ -122,7 +122,7 @@
   "selectCurrency": "Währung auswählen",
   "currencySelectionPrompt": "Bitte wählen Sie Ihre Basiswährung. Dies kann später nicht mehr geändert werden.",
   "returnOnInvestment": "Rendite",
-  "actionCancelledDueToDataInconsistency": "Diese Aktion is nicht möglich, da sie zu Dateninkonsistenz führen würde",
+  "actionCancelledDueToDataInconsistency": "Diese Aktion ist nicht möglich, da sie zu Dateninkonsistenz führen würde",
   "onlyBaseCurrencyCanBeBookedOnBankAccount": "Nur die Basiswährung kann auf einen Bank Account gebucht werden.",
   "onlyCryptoCanBeBookedOnCryptoWallet": "Nur Krypto kann auf eine Krypto Wallet gebucht werden.",
   "onlyCurrenciesCanBeBookedOnCashAccount": "Nur Währungen können auf einen Cash Account gebucht werden.",

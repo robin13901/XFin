@@ -15,6 +15,8 @@ import 'package:xfin/widgets/trade_form.dart';
 
 class MockAppDatabase extends Mock implements AppDatabase {}
 
+class FakeAppLocalizations extends Fake implements AppLocalizations {}
+
 class MockAssetsDao extends Mock implements AssetsDao {}
 
 class MockAccountsDao extends Mock implements AccountsDao {}
@@ -48,6 +50,7 @@ void main() {
     registerFallbackValue(const TradesCompanion());
     // Also fallback Locale if needed by mocktail anywhere
     registerFallbackValue(const Locale('en', 'US'));
+    registerFallbackValue(FakeAppLocalizations());
   });
 
   setUp(() async {
@@ -676,7 +679,7 @@ void main() {
       });
 
       // stub tradesDao.processTrade to succeed
-      when(() => mockTradesDao.insertTrade(any())).thenAnswer((_) async => 1);
+      when(() => mockTradesDao.insertTrade(any(), l10n)).thenAnswer((_) async => 1);
 
       when(() => mockAccountsDao.leadsToInconsistentBalanceHistory(
           newTrade: any(named: 'newTrade'))).thenAnswer((_) async => false);
@@ -736,7 +739,7 @@ void main() {
       await tester.tap(find.widgetWithText(ElevatedButton, l10n.save));
       await tester.pumpAndSettle();
 
-      verify(() => mockTradesDao.insertTrade(any())).called(1);
+      verify(() => mockTradesDao.insertTrade(any(), any())).called(1);
       verify(() => mockObserver.didPop(any(), any())).called(greaterThan(0));
     });
 
@@ -788,7 +791,7 @@ void main() {
       });
 
       // Make processTrade throw
-      when(() => mockTradesDao.insertTrade(any()))
+      when(() => mockTradesDao.insertTrade(any(), l10n))
           .thenThrow(Exception('boom'));
 
       when(() => mockAccountsDao.leadsToInconsistentBalanceHistory(

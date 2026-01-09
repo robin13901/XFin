@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import '../../l10n/app_localizations.dart';
 import '../app_database.dart';
 import '../tables.dart';
 
@@ -52,35 +53,6 @@ class TransfersDao extends DatabaseAccessor<AppDatabase> with _$TransfersDaoMixi
 
   Future<List<Transfer>> getAllTransfers() => select(transfers).get();
 
-  Future<double> _calculateCostBasis(TransfersCompanion transfer, {Transfer? oldTransfer}) async {
-    final assetId = transfer.assetId.value;
-    final sendingAccountId = transfer.sendingAccountId.value;
-    final shares = transfer.shares.value;
-    var datetime = transfer.date.value * 1000000;
-
-    if (assetId == 1) return 1;
-    // if (shares > 0) return double.parse(_costBasisCtrl.text.replaceAll(',', '.'));
-    final fifo = await db.assetsOnAccountsDao.buildFiFoQueue(assetId, sendingAccountId, upToDatetime: datetime, oldTransfer: oldTransfer);
-
-    double sharesToConsume = shares.abs();
-    double value = 0.0;
-    while (sharesToConsume > 0 && fifo.isNotEmpty) {
-      final currentLot = fifo.first;
-      final lotShares = currentLot['shares']!;
-      final lotCostBasis = currentLot['costBasis']!;
-
-      if (lotShares <= sharesToConsume + 1e-12) {
-        sharesToConsume -= lotShares;
-        value += lotShares * lotCostBasis;
-        fifo.removeFirst();
-      } else {
-        currentLot['shares'] = lotShares - sharesToConsume;
-        value += sharesToConsume * lotCostBasis;
-        sharesToConsume = 0;
-      }
-    }
-    return value / shares.abs();
-  }
 
   Future<TransfersCompanion> calculateCostBasisAndValue(TransfersCompanion transfer,
       {Transfer? oldTransfer}) async {
@@ -123,7 +95,7 @@ class TransfersDao extends DatabaseAccessor<AppDatabase> with _$TransfersDaoMixi
   /// - subtract value from sending account balance
   /// - add value to receiving account balance
   /// - adjust AssetsOnAccounts: subtract shares/value from sending account, add shares/value to receiving account
-  Future<void> createTransfer(TransfersCompanion transfer) {
+  Future<void> createTransfer(TransfersCompanion transfer, AppLocalizations l10n) {
     return transaction(() async {
       if (!transfer.costBasis.present) {
         transfer = await calculateCostBasisAndValue(transfer);
@@ -171,6 +143,7 @@ class TransfersDao extends DatabaseAccessor<AppDatabase> with _$TransfersDaoMixi
       // );
 
       await db.assetsOnAccountsDao.recalculateSubsequentEvents(
+        l10n: l10n,
         assetId: transfer.assetId.value,
         accountId: transfer.receivingAccountId.value,
         upToDatetime: transfer.date.value * 1000000 + 1,
@@ -188,7 +161,7 @@ class TransfersDao extends DatabaseAccessor<AppDatabase> with _$TransfersDaoMixi
   /// - reverse the effects of the old transfer (restore sending account, remove from receiving)
   /// - apply the effects of the new transfer
   /// Doing it this way keeps logic simple and correct for all cases (changed accounts, changed asset, changed amount).
-  Future<void> updateTransfer(Transfer oldTransfer, TransfersCompanion newTransfer) {
+  Future<void> updateTransfer(Transfer oldTransfer, TransfersCompanion newTransfer, AppLocalizations l10n) {
     return transaction(() async {
       newTransfer = await calculateCostBasisAndValue(newTransfer, oldTransfer: oldTransfer);
       // if (!newTransfer.costBasis.present) {
@@ -292,6 +265,7 @@ class TransfersDao extends DatabaseAccessor<AppDatabase> with _$TransfersDaoMixi
         final dt = int.parse(parts[2]); // already yyyyMMddhhmmss
 
         await db.assetsOnAccountsDao.recalculateSubsequentEvents(
+          l10n: l10n,
           assetId: assetIdToRecalc,
           accountId: accountIdToRecalc,
           upToDatetime: dt + 1,
@@ -304,7 +278,7 @@ class TransfersDao extends DatabaseAccessor<AppDatabase> with _$TransfersDaoMixi
   }
 
   /// Delete a transfer and reverse its effects.
-  Future<void> deleteTransfer(int id) {
+  Future<void> deleteTransfer(int id, AppLocalizations l10n) {
     return transaction(() async {
       final transfer = await getTransfer(id);
 
@@ -336,6 +310,7 @@ class TransfersDao extends DatabaseAccessor<AppDatabase> with _$TransfersDaoMixi
       await _deleteTransfer(id);
 
       await db.assetsOnAccountsDao.recalculateSubsequentEvents(
+        l10n: l10n,
         assetId: transfer.assetId,
         accountId: transfer.receivingAccountId, // call on sending account; recursion handles receiver
         upToDatetime: transfer.date * 1000000 + 1,

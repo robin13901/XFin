@@ -123,6 +123,7 @@ class AccountsDao extends DatabaseAccessor<AppDatabase>
   }
 
   Future<bool> leadsToInconsistentBalanceHistory({
+    int? accountId,
     Booking? originalBooking,
     BookingsCompanion? newBooking,
     Trade? originalTrade,
@@ -131,6 +132,7 @@ class AccountsDao extends DatabaseAccessor<AppDatabase>
     TransfersCompanion? newTransfer,
   }) async {
     Set<int> accountIds = {};
+    if (accountId != null) accountIds.add(accountId);
     if (originalBooking != null) accountIds.add(originalBooking.accountId);
     if (newBooking != null) accountIds.add(newBooking.accountId.value);
     if (originalTrade != null) {

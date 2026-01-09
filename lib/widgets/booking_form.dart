@@ -429,8 +429,8 @@ class _BookingFormState extends State<BookingForm> {
     }
 
     original != null
-        ? await _db.bookingsDao.updateBooking(original, companion)
-        : await _db.bookingsDao.createBooking(companion);
+        ? await _db.bookingsDao.updateBooking(original, companion, _l10n)
+        : await _db.bookingsDao.createBooking(companion, _l10n);
 
     if (mounted) Navigator.of(context).pop();
   }

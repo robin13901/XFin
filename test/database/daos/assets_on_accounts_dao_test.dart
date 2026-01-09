@@ -236,9 +236,10 @@ void main() {
 
     setUp(() async {
       acc = await db.into(db.accounts).insert(AccountsCompanion.insert(
-            name: 'FIFOAcc',
-            type: AccountTypes.portfolio,
-          ));
+          name: 'FIFOAcc',
+          type: AccountTypes.portfolio,
+          balance: const Value(100),
+          initialBalance: const Value(100)));
       asset = await db.into(db.assets).insert(AssetsCompanion.insert(
             name: 'FIFOAS',
             type: AssetTypes.stock,
@@ -280,15 +281,17 @@ void main() {
           ));
 
       // booking: outflow of 4 shares
-      await db.bookingsDao.createBooking(BookingsCompanion.insert(
-        date: 20240102,
-        shares: -4.0,
-        value: -40.0,
-        costBasis: const Value(10.0),
-        category: 'B',
-        accountId: acc,
-        assetId: Value(asset),
-      ));
+      await db.bookingsDao.createBooking(
+          BookingsCompanion.insert(
+            date: 20240102,
+            shares: -4.0,
+            value: -40.0,
+            costBasis: const Value(10.0),
+            category: 'B',
+            accountId: acc,
+            assetId: Value(asset),
+          ),
+          l10n);
 
       final fifo = await aoaDao.buildFiFoQueue(asset, acc);
       final list = fifoToList(fifo);
@@ -309,26 +312,30 @@ void main() {
           ));
 
       // booking 1: in 5 @ 12 (later)
-      await db.bookingsDao.createBooking(BookingsCompanion.insert(
-        date: 20240103,
-        shares: 5.0,
-        value: 60.0,
-        costBasis: const Value(12.0),
-        category: 'B1',
-        accountId: acc,
-        assetId: Value(asset),
-      ));
+      await db.bookingsDao.createBooking(
+          BookingsCompanion.insert(
+            date: 20240103,
+            shares: 5.0,
+            value: 60.0,
+            costBasis: const Value(12.0),
+            category: 'B1',
+            accountId: acc,
+            assetId: Value(asset),
+          ),
+          l10n);
 
       // booking 2: out 8 (consumes from earliest lot first)
-      await db.bookingsDao.createBooking(BookingsCompanion.insert(
-        date: 20240104,
-        shares: -8.0,
-        value: -96.0,
-        costBasis: const Value(12.0),
-        category: 'B2',
-        accountId: acc,
-        assetId: Value(asset),
-      ));
+      await db.bookingsDao.createBooking(
+          BookingsCompanion.insert(
+            date: 20240104,
+            shares: -8.0,
+            value: -96.0,
+            costBasis: const Value(12.0),
+            category: 'B2',
+            accountId: acc,
+            assetId: Value(asset),
+          ),
+          l10n);
 
       final fifo = await aoaDao.buildFiFoQueue(asset, acc);
       final list = fifoToList(fifo);
@@ -664,15 +671,17 @@ void main() {
           ));
 
       // booking out 5 shares in the past (creating an impossible "out")
-      await db.bookingsDao.createBooking(BookingsCompanion.insert(
-        date: 20240101,
-        shares: -5.0,
-        value: -50.0,
-        costBasis: const Value(10.0),
-        category: 'bad',
-        accountId: acc,
-        assetId: Value(asset),
-      ));
+      await db.bookingsDao.createBooking(
+          BookingsCompanion.insert(
+            date: 20240101,
+            shares: -5.0,
+            value: -50.0,
+            costBasis: const Value(10.0),
+            category: 'bad',
+            accountId: acc,
+            assetId: Value(asset),
+          ),
+          l10n);
 
       // A well-behaved FIFO builder should return an empty queue or a queue with zero shares rather than throwing.
       // We assert builder returns and that total shares is >= 0 (no NaN)
@@ -758,30 +767,34 @@ void main() {
     group('Insert/Update/Delete Booking', () {
       test('insert booking recalculates subsequent trade correctly', () async {
         // Buy 1 @ 100
-        await db.tradesDao.insertTrade(TradesCompanion(
-          datetime: const Value(20250101111111),
-          assetId: Value(assetOne.id),
-          type: const Value(TradeTypes.buy),
-          shares: const Value(1),
-          costBasis: const Value(100),
-          fee: const Value(0),
-          tax: const Value(0),
-          sourceAccountId: Value(bankAccount.id),
-          targetAccountId: Value(portfolio1.id),
-        ));
+        await db.tradesDao.insertTrade(
+            TradesCompanion(
+              datetime: const Value(20250101111111),
+              assetId: Value(assetOne.id),
+              type: const Value(TradeTypes.buy),
+              shares: const Value(1),
+              costBasis: const Value(100),
+              fee: const Value(0),
+              tax: const Value(0),
+              sourceAccountId: Value(bankAccount.id),
+              targetAccountId: Value(portfolio1.id),
+            ),
+            l10n);
 
         // Sell 1 @ 200
-        await db.tradesDao.insertTrade(TradesCompanion(
-          datetime: const Value(20250202222222),
-          assetId: Value(assetOne.id),
-          type: const Value(TradeTypes.sell),
-          shares: const Value(1),
-          costBasis: const Value(200),
-          fee: const Value(0),
-          tax: const Value(0),
-          sourceAccountId: Value(bankAccount.id),
-          targetAccountId: Value(portfolio1.id),
-        ));
+        await db.tradesDao.insertTrade(
+            TradesCompanion(
+              datetime: const Value(20250202222222),
+              assetId: Value(assetOne.id),
+              type: const Value(TradeTypes.sell),
+              shares: const Value(1),
+              costBasis: const Value(200),
+              fee: const Value(0),
+              tax: const Value(0),
+              sourceAccountId: Value(bankAccount.id),
+              targetAccountId: Value(portfolio1.id),
+            ),
+            l10n);
 
         // Prechecks
         var secondTrade = await db.tradesDao.getTrade(2);
@@ -819,14 +832,16 @@ void main() {
         /// Insert booking before first trade
         /// The first trade should be unaffected since its a buy
         /// The second trade should be recalculated since its a sell
-        await db.bookingsDao.createBooking(BookingsCompanion(
-            date: const Value(20250101),
-            assetId: Value(assetOne.id),
-            accountId: Value(portfolio1.id),
-            category: const Value('B'),
-            shares: const Value(0.5),
-            costBasis: const Value(50),
-            value: const Value(25)));
+        await db.bookingsDao.createBooking(
+            BookingsCompanion(
+                date: const Value(20250101),
+                assetId: Value(assetOne.id),
+                accountId: Value(portfolio1.id),
+                category: const Value('B'),
+                shares: const Value(0.5),
+                costBasis: const Value(50),
+                value: const Value(25)),
+            l10n);
 
         // Postchecks
         var firstTrade = await db.tradesDao.getTrade(1);
@@ -871,35 +886,41 @@ void main() {
           'insert booking recalculates subsequent transfer and withdrawal correctly',
           () async {
         // Buy 1 @ 100
-        await db.tradesDao.insertTrade(TradesCompanion(
-          datetime: const Value(20250101111111),
-          assetId: Value(assetOne.id),
-          type: const Value(TradeTypes.buy),
-          shares: const Value(1),
-          costBasis: const Value(100),
-          fee: const Value(0),
-          tax: const Value(0),
-          sourceAccountId: Value(bankAccount.id),
-          targetAccountId: Value(portfolio1.id),
-        ));
+        await db.tradesDao.insertTrade(
+            TradesCompanion(
+              datetime: const Value(20250101111111),
+              assetId: Value(assetOne.id),
+              type: const Value(TradeTypes.buy),
+              shares: const Value(1),
+              costBasis: const Value(100),
+              fee: const Value(0),
+              tax: const Value(0),
+              sourceAccountId: Value(bankAccount.id),
+              targetAccountId: Value(portfolio1.id),
+            ),
+            l10n);
 
         // Transfer 1 share to portfolio 2
-        await db.transfersDao.createTransfer(TransfersCompanion(
-          date: const Value(20250102),
-          assetId: Value(assetOne.id),
-          sendingAccountId: Value(portfolio1.id),
-          receivingAccountId: Value(portfolio2.id),
-          shares: const Value(1),
-        ));
+        await db.transfersDao.createTransfer(
+            TransfersCompanion(
+              date: const Value(20250102),
+              assetId: Value(assetOne.id),
+              sendingAccountId: Value(portfolio1.id),
+              receivingAccountId: Value(portfolio2.id),
+              shares: const Value(1),
+            ),
+            l10n);
 
         // Withdraw 1 share from portfolio 2
-        await db.bookingsDao.createBooking(BookingsCompanion(
-          date: const Value(20250103),
-          assetId: Value(assetOne.id),
-          accountId: Value(portfolio2.id),
-          category: const Value('B'),
-          shares: const Value(-1),
-        ));
+        await db.bookingsDao.createBooking(
+            BookingsCompanion(
+              date: const Value(20250103),
+              assetId: Value(assetOne.id),
+              accountId: Value(portfolio2.id),
+              category: const Value('B'),
+              shares: const Value(-1),
+            ),
+            l10n);
 
         // Prechecks
         var transfer = await db.transfersDao.getTransfer(1);
@@ -938,14 +959,16 @@ void main() {
         /// Insert booking before trade
         /// The trade should be unaffected since its a buy
         /// The transfer and withdrawal should be recalculated
-        await db.bookingsDao.createBooking(BookingsCompanion(
-            date: const Value(20250101),
-            assetId: Value(assetOne.id),
-            accountId: Value(portfolio1.id),
-            category: const Value('B'),
-            shares: const Value(0.5),
-            costBasis: const Value(50),
-            value: const Value(25)));
+        await db.bookingsDao.createBooking(
+            BookingsCompanion(
+                date: const Value(20250101),
+                assetId: Value(assetOne.id),
+                accountId: Value(portfolio1.id),
+                category: const Value('B'),
+                shares: const Value(0.5),
+                costBasis: const Value(50),
+                value: const Value(25)),
+            l10n);
 
         // Postchecks
         transfer = await db.transfersDao.getTransfer(1);
@@ -984,40 +1007,46 @@ void main() {
 
       test('update booking recalculates subsequent trade correctly', () async {
         // Buy 0.5 @ 100
-        await db.tradesDao.insertTrade(TradesCompanion(
-          datetime: const Value(20250101111111),
-          assetId: Value(assetOne.id),
-          type: const Value(TradeTypes.buy),
-          shares: const Value(0.5),
-          costBasis: const Value(100),
-          fee: const Value(0),
-          tax: const Value(0),
-          sourceAccountId: Value(bankAccount.id),
-          targetAccountId: Value(portfolio1.id),
-        ));
+        await db.tradesDao.insertTrade(
+            TradesCompanion(
+              datetime: const Value(20250101111111),
+              assetId: Value(assetOne.id),
+              type: const Value(TradeTypes.buy),
+              shares: const Value(0.5),
+              costBasis: const Value(100),
+              fee: const Value(0),
+              tax: const Value(0),
+              sourceAccountId: Value(bankAccount.id),
+              targetAccountId: Value(portfolio1.id),
+            ),
+            l10n);
 
         // Inflow: 0.5 @ 50
-        await db.bookingsDao.createBooking(BookingsCompanion(
-            date: const Value(20250102),
-            assetId: Value(assetOne.id),
-            accountId: Value(portfolio1.id),
-            category: const Value('B'),
-            shares: const Value(0.5),
-            costBasis: const Value(50),
-            value: const Value(25)));
+        await db.bookingsDao.createBooking(
+            BookingsCompanion(
+                date: const Value(20250102),
+                assetId: Value(assetOne.id),
+                accountId: Value(portfolio1.id),
+                category: const Value('B'),
+                shares: const Value(0.5),
+                costBasis: const Value(50),
+                value: const Value(25)),
+            l10n);
 
         // Sell 1 @ 200
-        await db.tradesDao.insertTrade(TradesCompanion(
-          datetime: const Value(20250202222222),
-          assetId: Value(assetOne.id),
-          type: const Value(TradeTypes.sell),
-          shares: const Value(1),
-          costBasis: const Value(200),
-          fee: const Value(0),
-          tax: const Value(0),
-          sourceAccountId: Value(bankAccount.id),
-          targetAccountId: Value(portfolio1.id),
-        ));
+        await db.tradesDao.insertTrade(
+            TradesCompanion(
+              datetime: const Value(20250202222222),
+              assetId: Value(assetOne.id),
+              type: const Value(TradeTypes.sell),
+              shares: const Value(1),
+              costBasis: const Value(200),
+              fee: const Value(0),
+              tax: const Value(0),
+              sourceAccountId: Value(bankAccount.id),
+              targetAccountId: Value(portfolio1.id),
+            ),
+            l10n);
 
         // Prechecks
         var subsequentTrade = await db.tradesDao.getTrade(2);
@@ -1066,7 +1095,8 @@ void main() {
                 category: Value('B'),
                 shares: Value(0.5),
                 costBasis: Value(40),
-                value: Value(20)));
+                value: Value(20)),
+            l10n);
 
         // Postchecks
         var updatedBooking = await db.bookingsDao.getBooking(1);
@@ -1110,32 +1140,38 @@ void main() {
           'update booking recalculates subsequent transfer and withdrawal correctly',
           () async {
         // Inflow: 1 @ 100
-        await db.bookingsDao.createBooking(BookingsCompanion(
-            date: const Value(20250101),
-            assetId: Value(assetOne.id),
-            accountId: Value(portfolio1.id),
-            category: const Value('B'),
-            shares: const Value(1),
-            costBasis: const Value(100),
-            value: const Value(100)));
+        await db.bookingsDao.createBooking(
+            BookingsCompanion(
+                date: const Value(20250101),
+                assetId: Value(assetOne.id),
+                accountId: Value(portfolio1.id),
+                category: const Value('B'),
+                shares: const Value(1),
+                costBasis: const Value(100),
+                value: const Value(100)),
+            l10n);
 
         // Transfer 1 share to portfolio 2
-        await db.transfersDao.createTransfer(TransfersCompanion(
-          date: const Value(20250102),
-          assetId: Value(assetOne.id),
-          sendingAccountId: Value(portfolio1.id),
-          receivingAccountId: Value(portfolio2.id),
-          shares: const Value(1),
-        ));
+        await db.transfersDao.createTransfer(
+            TransfersCompanion(
+              date: const Value(20250102),
+              assetId: Value(assetOne.id),
+              sendingAccountId: Value(portfolio1.id),
+              receivingAccountId: Value(portfolio2.id),
+              shares: const Value(1),
+            ),
+            l10n);
 
         // Withdraw 1 share from portfolio 2
-        await db.bookingsDao.createBooking(BookingsCompanion(
-          date: const Value(20250103),
-          assetId: Value(assetOne.id),
-          accountId: Value(portfolio2.id),
-          category: const Value('B'),
-          shares: const Value(-1),
-        ));
+        await db.bookingsDao.createBooking(
+            BookingsCompanion(
+              date: const Value(20250103),
+              assetId: Value(assetOne.id),
+              accountId: Value(portfolio2.id),
+              category: const Value('B'),
+              shares: const Value(-1),
+            ),
+            l10n);
 
         // Prechecks
         var transfer = await db.transfersDao.getTransfer(1);
@@ -1186,7 +1222,8 @@ void main() {
                 category: Value('B'),
                 shares: Value(1),
                 costBasis: Value(40),
-                value: Value(40)));
+                value: Value(40)),
+            l10n);
 
         // Postchecks
         transfer = await db.transfersDao.getTransfer(1);
@@ -1225,40 +1262,46 @@ void main() {
 
       test('delete booking recalculates subsequent trade correctly', () async {
         // Inflow: 0.5 @ 50
-        await db.bookingsDao.createBooking(BookingsCompanion(
-            date: const Value(20250101),
-            assetId: Value(assetOne.id),
-            accountId: Value(portfolio1.id),
-            category: const Value('B'),
-            shares: const Value(0.5),
-            costBasis: const Value(50),
-            value: const Value(25)));
+        await db.bookingsDao.createBooking(
+            BookingsCompanion(
+                date: const Value(20250101),
+                assetId: Value(assetOne.id),
+                accountId: Value(portfolio1.id),
+                category: const Value('B'),
+                shares: const Value(0.5),
+                costBasis: const Value(50),
+                value: const Value(25)),
+            l10n);
 
         // Buy 1 @ 100
-        await db.tradesDao.insertTrade(TradesCompanion(
-          datetime: const Value(20250101111111),
-          assetId: Value(assetOne.id),
-          type: const Value(TradeTypes.buy),
-          shares: const Value(1),
-          costBasis: const Value(100),
-          fee: const Value(0),
-          tax: const Value(0),
-          sourceAccountId: Value(bankAccount.id),
-          targetAccountId: Value(portfolio1.id),
-        ));
+        await db.tradesDao.insertTrade(
+            TradesCompanion(
+              datetime: const Value(20250101111111),
+              assetId: Value(assetOne.id),
+              type: const Value(TradeTypes.buy),
+              shares: const Value(1),
+              costBasis: const Value(100),
+              fee: const Value(0),
+              tax: const Value(0),
+              sourceAccountId: Value(bankAccount.id),
+              targetAccountId: Value(portfolio1.id),
+            ),
+            l10n);
 
         // Sell 1 @ 200
-        await db.tradesDao.insertTrade(TradesCompanion(
-          datetime: const Value(20250202222222),
-          assetId: Value(assetOne.id),
-          type: const Value(TradeTypes.sell),
-          shares: const Value(1),
-          costBasis: const Value(200),
-          fee: const Value(0),
-          tax: const Value(0),
-          sourceAccountId: Value(bankAccount.id),
-          targetAccountId: Value(portfolio1.id),
-        ));
+        await db.tradesDao.insertTrade(
+            TradesCompanion(
+              datetime: const Value(20250202222222),
+              assetId: Value(assetOne.id),
+              type: const Value(TradeTypes.sell),
+              shares: const Value(1),
+              costBasis: const Value(200),
+              fee: const Value(0),
+              tax: const Value(0),
+              sourceAccountId: Value(bankAccount.id),
+              targetAccountId: Value(portfolio1.id),
+            ),
+            l10n);
 
         // Prechecks
         var subsequentTrade = await db.tradesDao.getTrade(2);
@@ -1295,7 +1338,7 @@ void main() {
 
         /// Delete booking
         /// This should recalculate the second trade
-        await db.bookingsDao.deleteBooking(1);
+        await db.bookingsDao.deleteBooking(1, l10n);
 
         // Postchecks
         var secondTrade = await db.tradesDao.getTrade(2);
@@ -1335,43 +1378,51 @@ void main() {
           'delete booking recalculates subsequent transfer and withdrawal correctly',
           () async {
         // Inflow: 0.5 @ 50
-        await db.bookingsDao.createBooking(BookingsCompanion(
-            date: const Value(20250101),
-            assetId: Value(assetOne.id),
-            accountId: Value(portfolio1.id),
-            category: const Value('B'),
-            shares: const Value(0.5),
-            costBasis: const Value(50),
-            value: const Value(25)));
+        await db.bookingsDao.createBooking(
+            BookingsCompanion(
+                date: const Value(20250101),
+                assetId: Value(assetOne.id),
+                accountId: Value(portfolio1.id),
+                category: const Value('B'),
+                shares: const Value(0.5),
+                costBasis: const Value(50),
+                value: const Value(25)),
+            l10n);
 
         // Buy 1 @ 100
-        await db.tradesDao.insertTrade(TradesCompanion(
-          datetime: const Value(20250101111111),
-          assetId: Value(assetOne.id),
-          type: const Value(TradeTypes.buy),
-          shares: const Value(1),
-          costBasis: const Value(100),
-          fee: const Value(0),
-          tax: const Value(0),
-          sourceAccountId: Value(bankAccount.id),
-          targetAccountId: Value(portfolio1.id),
-        ));
+        await db.tradesDao.insertTrade(
+            TradesCompanion(
+              datetime: const Value(20250101111111),
+              assetId: Value(assetOne.id),
+              type: const Value(TradeTypes.buy),
+              shares: const Value(1),
+              costBasis: const Value(100),
+              fee: const Value(0),
+              tax: const Value(0),
+              sourceAccountId: Value(bankAccount.id),
+              targetAccountId: Value(portfolio1.id),
+            ),
+            l10n);
 
         // Transfer 1 share to portfolio 2
-        await db.transfersDao.createTransfer(TransfersCompanion(
-            date: const Value(20250102),
-            assetId: Value(assetOne.id),
-            sendingAccountId: Value(portfolio1.id),
-            receivingAccountId: Value(portfolio2.id),
-            shares: const Value(1)));
+        await db.transfersDao.createTransfer(
+            TransfersCompanion(
+                date: const Value(20250102),
+                assetId: Value(assetOne.id),
+                sendingAccountId: Value(portfolio1.id),
+                receivingAccountId: Value(portfolio2.id),
+                shares: const Value(1)),
+            l10n);
 
         // Withdraw 1 share from portfolio 2
-        await db.bookingsDao.createBooking(BookingsCompanion(
-            date: const Value(20250103),
-            assetId: Value(assetOne.id),
-            accountId: Value(portfolio2.id),
-            category: const Value('B'),
-            shares: const Value(-1)));
+        await db.bookingsDao.createBooking(
+            BookingsCompanion(
+                date: const Value(20250103),
+                assetId: Value(assetOne.id),
+                accountId: Value(portfolio2.id),
+                category: const Value('B'),
+                shares: const Value(-1)),
+            l10n);
 
         // Prechecks
         var transfer = await db.transfersDao.getTransfer(1);
@@ -1408,7 +1459,7 @@ void main() {
         expect(portAcc2.balance, closeTo(0, 1e-9));
 
         /// Delete booking
-        await db.bookingsDao.deleteBooking(1);
+        await db.bookingsDao.deleteBooking(1, l10n);
 
         // Postchecks
         transfer = await db.transfersDao.getTransfer(1);
@@ -1449,30 +1500,34 @@ void main() {
     group('Insert/Update/Delete Transfer', () {
       test('insert transfer recalculates subsequent trade correctly', () async {
         // Buy 1 @ 100
-        await db.tradesDao.insertTrade(TradesCompanion(
-          datetime: const Value(20250101111111),
-          assetId: Value(assetOne.id),
-          type: const Value(TradeTypes.buy),
-          shares: const Value(1),
-          costBasis: const Value(100),
-          fee: const Value(0),
-          tax: const Value(0),
-          sourceAccountId: Value(bankAccount.id),
-          targetAccountId: Value(portfolio1.id),
-        ));
+        await db.tradesDao.insertTrade(
+            TradesCompanion(
+              datetime: const Value(20250101111111),
+              assetId: Value(assetOne.id),
+              type: const Value(TradeTypes.buy),
+              shares: const Value(1),
+              costBasis: const Value(100),
+              fee: const Value(0),
+              tax: const Value(0),
+              sourceAccountId: Value(bankAccount.id),
+              targetAccountId: Value(portfolio1.id),
+            ),
+            l10n);
 
         // Sell 1 @ 200
-        await db.tradesDao.insertTrade(TradesCompanion(
-          datetime: const Value(20250202222222),
-          assetId: Value(assetOne.id),
-          type: const Value(TradeTypes.sell),
-          shares: const Value(1),
-          costBasis: const Value(200),
-          fee: const Value(0),
-          tax: const Value(0),
-          sourceAccountId: Value(bankAccount.id),
-          targetAccountId: Value(portfolio1.id),
-        ));
+        await db.tradesDao.insertTrade(
+            TradesCompanion(
+              datetime: const Value(20250202222222),
+              assetId: Value(assetOne.id),
+              type: const Value(TradeTypes.sell),
+              shares: const Value(1),
+              costBasis: const Value(200),
+              fee: const Value(0),
+              tax: const Value(0),
+              sourceAccountId: Value(bankAccount.id),
+              targetAccountId: Value(portfolio1.id),
+            ),
+            l10n);
 
         // Prechecks
         var secondTrade = await db.tradesDao.getTrade(2);
@@ -1510,21 +1565,25 @@ void main() {
         /// Insert booking on other account and transfer to portfolio 1 before first trade
         /// The first trade should be unaffected since its a buy
         /// The second trade should be recalculated since its a sell
-        await db.bookingsDao.createBooking(BookingsCompanion(
-            date: const Value(20241201),
-            assetId: Value(assetOne.id),
-            accountId: Value(portfolio2.id),
-            category: const Value('B'),
-            shares: const Value(0.5),
-            costBasis: const Value(50),
-            value: const Value(25)));
-        await db.transfersDao.createTransfer(TransfersCompanion(
-          date: const Value(20241202),
-          assetId: Value(assetOne.id),
-          sendingAccountId: Value(portfolio2.id),
-          receivingAccountId: Value(portfolio1.id),
-          shares: const Value(0.5),
-        ));
+        await db.bookingsDao.createBooking(
+            BookingsCompanion(
+                date: const Value(20241201),
+                assetId: Value(assetOne.id),
+                accountId: Value(portfolio2.id),
+                category: const Value('B'),
+                shares: const Value(0.5),
+                costBasis: const Value(50),
+                value: const Value(25)),
+            l10n);
+        await db.transfersDao.createTransfer(
+            TransfersCompanion(
+              date: const Value(20241202),
+              assetId: Value(assetOne.id),
+              sendingAccountId: Value(portfolio2.id),
+              receivingAccountId: Value(portfolio1.id),
+              shares: const Value(0.5),
+            ),
+            l10n);
 
         // Postchecks
         var firstTrade = await db.tradesDao.getTrade(1);
@@ -1569,49 +1628,59 @@ void main() {
           'insert transfer recalculates subsequent transfer and withdrawal correctly',
           () async {
         // Buy 1 @ 100
-        await db.tradesDao.insertTrade(TradesCompanion(
-          datetime: const Value(20250101111111),
-          assetId: Value(assetOne.id),
-          type: const Value(TradeTypes.buy),
-          shares: const Value(1),
-          costBasis: const Value(100),
-          fee: const Value(0),
-          tax: const Value(0),
-          sourceAccountId: Value(bankAccount.id),
-          targetAccountId: Value(portfolio1.id),
-        ));
+        await db.tradesDao.insertTrade(
+            TradesCompanion(
+              datetime: const Value(20250101111111),
+              assetId: Value(assetOne.id),
+              type: const Value(TradeTypes.buy),
+              shares: const Value(1),
+              costBasis: const Value(100),
+              fee: const Value(0),
+              tax: const Value(0),
+              sourceAccountId: Value(bankAccount.id),
+              targetAccountId: Value(portfolio1.id),
+            ),
+            l10n);
 
         // Transfer 1 share to portfolio 2 effectively (+ back and forth a few times)
-        await db.transfersDao.createTransfer(TransfersCompanion(
-          date: const Value(20250102),
-          assetId: Value(assetOne.id),
-          sendingAccountId: Value(portfolio1.id),
-          receivingAccountId: Value(portfolio2.id),
-          shares: const Value(1),
-        ));
-        await db.transfersDao.createTransfer(TransfersCompanion(
-          date: const Value(20250103),
-          assetId: Value(assetOne.id),
-          sendingAccountId: Value(portfolio2.id),
-          receivingAccountId: Value(portfolio1.id),
-          shares: const Value(1),
-        ));
-        await db.transfersDao.createTransfer(TransfersCompanion(
-          date: const Value(20250104),
-          assetId: Value(assetOne.id),
-          sendingAccountId: Value(portfolio1.id),
-          receivingAccountId: Value(portfolio2.id),
-          shares: const Value(1),
-        ));
+        await db.transfersDao.createTransfer(
+            TransfersCompanion(
+              date: const Value(20250102),
+              assetId: Value(assetOne.id),
+              sendingAccountId: Value(portfolio1.id),
+              receivingAccountId: Value(portfolio2.id),
+              shares: const Value(1),
+            ),
+            l10n);
+        await db.transfersDao.createTransfer(
+            TransfersCompanion(
+              date: const Value(20250103),
+              assetId: Value(assetOne.id),
+              sendingAccountId: Value(portfolio2.id),
+              receivingAccountId: Value(portfolio1.id),
+              shares: const Value(1),
+            ),
+            l10n);
+        await db.transfersDao.createTransfer(
+            TransfersCompanion(
+              date: const Value(20250104),
+              assetId: Value(assetOne.id),
+              sendingAccountId: Value(portfolio1.id),
+              receivingAccountId: Value(portfolio2.id),
+              shares: const Value(1),
+            ),
+            l10n);
 
         // Withdraw 1 share from portfolio 2
-        await db.bookingsDao.createBooking(BookingsCompanion(
-          date: const Value(20250105),
-          assetId: Value(assetOne.id),
-          accountId: Value(portfolio2.id),
-          category: const Value('B'),
-          shares: const Value(-1),
-        ));
+        await db.bookingsDao.createBooking(
+            BookingsCompanion(
+              date: const Value(20250105),
+              assetId: Value(assetOne.id),
+              accountId: Value(portfolio2.id),
+              category: const Value('B'),
+              shares: const Value(-1),
+            ),
+            l10n);
 
         // Prechecks
         var transfer = await db.transfersDao.getTransfer(1);
@@ -1650,21 +1719,25 @@ void main() {
         /// Insert booking and transfer before trade
         /// The trade should be unaffected since its a buy
         /// The transfer and withdrawal should be recalculated
-        await db.bookingsDao.createBooking(BookingsCompanion(
-            date: const Value(20241201),
-            assetId: Value(assetOne.id),
-            accountId: Value(portfolio2.id),
-            category: const Value('B'),
-            shares: const Value(0.5),
-            costBasis: const Value(50),
-            value: const Value(25)));
-        await db.transfersDao.createTransfer(TransfersCompanion(
-          date: const Value(20241202),
-          assetId: Value(assetOne.id),
-          sendingAccountId: Value(portfolio2.id),
-          receivingAccountId: Value(portfolio1.id),
-          shares: const Value(0.5),
-        ));
+        await db.bookingsDao.createBooking(
+            BookingsCompanion(
+                date: const Value(20241201),
+                assetId: Value(assetOne.id),
+                accountId: Value(portfolio2.id),
+                category: const Value('B'),
+                shares: const Value(0.5),
+                costBasis: const Value(50),
+                value: const Value(25)),
+            l10n);
+        await db.transfersDao.createTransfer(
+            TransfersCompanion(
+              date: const Value(20241202),
+              assetId: Value(assetOne.id),
+              sendingAccountId: Value(portfolio2.id),
+              receivingAccountId: Value(portfolio1.id),
+              shares: const Value(0.5),
+            ),
+            l10n);
 
         // Postchecks
         transfer = await db.transfersDao.getTransfer(1);
@@ -1703,46 +1776,54 @@ void main() {
 
       test('update transfer recalculates subsequent trade correctly', () async {
         // Inflow: 1 @ 50 on portfolio 1
-        await db.bookingsDao.createBooking(BookingsCompanion(
-            date: const Value(20250101),
-            assetId: Value(assetOne.id),
-            accountId: Value(portfolio1.id),
-            category: const Value('B'),
-            shares: const Value(1),
-            costBasis: const Value(50),
-            value: const Value(50)));
+        await db.bookingsDao.createBooking(
+            BookingsCompanion(
+                date: const Value(20250101),
+                assetId: Value(assetOne.id),
+                accountId: Value(portfolio1.id),
+                category: const Value('B'),
+                shares: const Value(1),
+                costBasis: const Value(50),
+                value: const Value(50)),
+            l10n);
 
         // Transfer 1 @ 50 to portfolio 2
-        await db.transfersDao.createTransfer(TransfersCompanion(
-          date: const Value(20250102),
-          assetId: Value(assetOne.id),
-          sendingAccountId: Value(portfolio1.id),
-          receivingAccountId: Value(portfolio2.id),
-          shares: const Value(1),
-        ));
+        await db.transfersDao.createTransfer(
+            TransfersCompanion(
+              date: const Value(20250102),
+              assetId: Value(assetOne.id),
+              sendingAccountId: Value(portfolio1.id),
+              receivingAccountId: Value(portfolio2.id),
+              shares: const Value(1),
+            ),
+            l10n);
 
         // Inflow: 1 @ 100 on portfolio 2
-        await db.bookingsDao.createBooking(BookingsCompanion(
-            date: const Value(20250103),
-            assetId: Value(assetOne.id),
-            accountId: Value(portfolio2.id),
-            category: const Value('B'),
-            shares: const Value(1),
-            costBasis: const Value(100),
-            value: const Value(100)));
+        await db.bookingsDao.createBooking(
+            BookingsCompanion(
+                date: const Value(20250103),
+                assetId: Value(assetOne.id),
+                accountId: Value(portfolio2.id),
+                category: const Value('B'),
+                shares: const Value(1),
+                costBasis: const Value(100),
+                value: const Value(100)),
+            l10n);
 
         // Sell 1 @ 200
-        await db.tradesDao.insertTrade(TradesCompanion(
-          datetime: const Value(20250202222222),
-          assetId: Value(assetOne.id),
-          type: const Value(TradeTypes.sell),
-          shares: const Value(1),
-          costBasis: const Value(200),
-          fee: const Value(0),
-          tax: const Value(0),
-          sourceAccountId: Value(bankAccount.id),
-          targetAccountId: Value(portfolio2.id),
-        ));
+        await db.tradesDao.insertTrade(
+            TradesCompanion(
+              datetime: const Value(20250202222222),
+              assetId: Value(assetOne.id),
+              type: const Value(TradeTypes.sell),
+              shares: const Value(1),
+              costBasis: const Value(200),
+              fee: const Value(0),
+              tax: const Value(0),
+              sourceAccountId: Value(bankAccount.id),
+              targetAccountId: Value(portfolio2.id),
+            ),
+            l10n);
 
         // Prechecks
         var subsequentTrade = await db.tradesDao.getTrade(1);
@@ -1783,7 +1864,8 @@ void main() {
               sendingAccountId: Value(portfolio1.id),
               receivingAccountId: Value(portfolio2.id),
               shares: const Value(0.5),
-            ));
+            ),
+            l10n);
 
         // Postchecks
         var updatedTransfer = await db.transfersDao.getTransfer(1);
@@ -1821,51 +1903,61 @@ void main() {
           'update transfer recalculates subsequent transfer and withdrawal correctly',
           () async {
         // Inflow: 1 @ 50 on portfolio 1
-        await db.bookingsDao.createBooking(BookingsCompanion(
-            date: const Value(20250101),
-            assetId: Value(assetOne.id),
-            accountId: Value(portfolio1.id),
-            category: const Value('B'),
-            shares: const Value(1),
-            costBasis: const Value(50),
-            value: const Value(50)));
+        await db.bookingsDao.createBooking(
+            BookingsCompanion(
+                date: const Value(20250101),
+                assetId: Value(assetOne.id),
+                accountId: Value(portfolio1.id),
+                category: const Value('B'),
+                shares: const Value(1),
+                costBasis: const Value(50),
+                value: const Value(50)),
+            l10n);
 
         // Inflow: 1 @ 100 on portfolio 2
-        await db.bookingsDao.createBooking(BookingsCompanion(
-            date: const Value(20250103),
-            assetId: Value(assetOne.id),
-            accountId: Value(portfolio2.id),
-            category: const Value('B'),
-            shares: const Value(1),
-            costBasis: const Value(100),
-            value: const Value(100)));
+        await db.bookingsDao.createBooking(
+            BookingsCompanion(
+                date: const Value(20250103),
+                assetId: Value(assetOne.id),
+                accountId: Value(portfolio2.id),
+                category: const Value('B'),
+                shares: const Value(1),
+                costBasis: const Value(100),
+                value: const Value(100)),
+            l10n);
 
         // Transfer 1 @ 50 from portfolio 1 to portfolio 2
-        await db.transfersDao.createTransfer(TransfersCompanion(
-          date: const Value(20250104),
-          assetId: Value(assetOne.id),
-          sendingAccountId: Value(portfolio1.id),
-          receivingAccountId: Value(portfolio2.id),
-          shares: const Value(1),
-        ));
+        await db.transfersDao.createTransfer(
+            TransfersCompanion(
+              date: const Value(20250104),
+              assetId: Value(assetOne.id),
+              sendingAccountId: Value(portfolio1.id),
+              receivingAccountId: Value(portfolio2.id),
+              shares: const Value(1),
+            ),
+            l10n);
 
         // Transfer 1 share from portfolio 2 to portfolio 3
-        await db.transfersDao.createTransfer(TransfersCompanion(
-          date: const Value(20250105),
-          assetId: Value(assetOne.id),
-          sendingAccountId: Value(portfolio2.id),
-          receivingAccountId: Value(portfolio3.id),
-          shares: const Value(1),
-        ));
+        await db.transfersDao.createTransfer(
+            TransfersCompanion(
+              date: const Value(20250105),
+              assetId: Value(assetOne.id),
+              sendingAccountId: Value(portfolio2.id),
+              receivingAccountId: Value(portfolio3.id),
+              shares: const Value(1),
+            ),
+            l10n);
 
         // Withdraw 1 share from portfolio 3
-        await db.bookingsDao.createBooking(BookingsCompanion(
-          date: const Value(20250106),
-          assetId: Value(assetOne.id),
-          accountId: Value(portfolio3.id),
-          category: const Value('B'),
-          shares: const Value(-1),
-        ));
+        await db.bookingsDao.createBooking(
+            BookingsCompanion(
+              date: const Value(20250106),
+              assetId: Value(assetOne.id),
+              accountId: Value(portfolio3.id),
+              category: const Value('B'),
+              shares: const Value(-1),
+            ),
+            l10n);
 
         // Prechecks
         var transfer2 = await db.transfersDao.getTransfer(2);
@@ -1925,7 +2017,8 @@ void main() {
               sendingAccountId: Value(portfolio1.id),
               receivingAccountId: Value(portfolio2.id),
               shares: const Value(0.5),
-            ));
+            ),
+            l10n);
 
         // Postchecks
         var transfer1 = await db.transfersDao.getTransfer(1);
@@ -1977,46 +2070,54 @@ void main() {
 
       test('delete transfer recalculates subsequent trade correctly', () async {
         // Inflow: 1 @ 50 on portfolio 1
-        await db.bookingsDao.createBooking(BookingsCompanion(
-            date: const Value(20250101),
-            assetId: Value(assetOne.id),
-            accountId: Value(portfolio1.id),
-            category: const Value('B'),
-            shares: const Value(1),
-            costBasis: const Value(50),
-            value: const Value(50)));
+        await db.bookingsDao.createBooking(
+            BookingsCompanion(
+                date: const Value(20250101),
+                assetId: Value(assetOne.id),
+                accountId: Value(portfolio1.id),
+                category: const Value('B'),
+                shares: const Value(1),
+                costBasis: const Value(50),
+                value: const Value(50)),
+            l10n);
 
         // Transfer 1 @ 50 to portfolio 2
-        await db.transfersDao.createTransfer(TransfersCompanion(
-          date: const Value(20250102),
-          assetId: Value(assetOne.id),
-          sendingAccountId: Value(portfolio1.id),
-          receivingAccountId: Value(portfolio2.id),
-          shares: const Value(1),
-        ));
+        await db.transfersDao.createTransfer(
+            TransfersCompanion(
+              date: const Value(20250102),
+              assetId: Value(assetOne.id),
+              sendingAccountId: Value(portfolio1.id),
+              receivingAccountId: Value(portfolio2.id),
+              shares: const Value(1),
+            ),
+            l10n);
 
         // Inflow: 1 @ 100 on portfolio 2
-        await db.bookingsDao.createBooking(BookingsCompanion(
-            date: const Value(20250103),
-            assetId: Value(assetOne.id),
-            accountId: Value(portfolio2.id),
-            category: const Value('B'),
-            shares: const Value(1),
-            costBasis: const Value(100),
-            value: const Value(100)));
+        await db.bookingsDao.createBooking(
+            BookingsCompanion(
+                date: const Value(20250103),
+                assetId: Value(assetOne.id),
+                accountId: Value(portfolio2.id),
+                category: const Value('B'),
+                shares: const Value(1),
+                costBasis: const Value(100),
+                value: const Value(100)),
+            l10n);
 
         // Sell 1 @ 200
-        await db.tradesDao.insertTrade(TradesCompanion(
-          datetime: const Value(20250202222222),
-          assetId: Value(assetOne.id),
-          type: const Value(TradeTypes.sell),
-          shares: const Value(1),
-          costBasis: const Value(200),
-          fee: const Value(0),
-          tax: const Value(0),
-          sourceAccountId: Value(bankAccount.id),
-          targetAccountId: Value(portfolio2.id),
-        ));
+        await db.tradesDao.insertTrade(
+            TradesCompanion(
+              datetime: const Value(20250202222222),
+              assetId: Value(assetOne.id),
+              type: const Value(TradeTypes.sell),
+              shares: const Value(1),
+              costBasis: const Value(200),
+              fee: const Value(0),
+              tax: const Value(0),
+              sourceAccountId: Value(bankAccount.id),
+              targetAccountId: Value(portfolio2.id),
+            ),
+            l10n);
 
         // Prechecks
         var subsequentTrade = await db.tradesDao.getTrade(1);
@@ -2046,7 +2147,7 @@ void main() {
         expect(aOne.buyFeeTotal, closeTo(0, 1e-9));
 
         // Delete transfer, this should recalculate subsequent trade
-        await db.transfersDao.deleteTransfer(1);
+        await db.transfersDao.deleteTransfer(1, l10n);
 
         // Postchecks
         subsequentTrade = await db.tradesDao.getTrade(1);
@@ -2080,51 +2181,61 @@ void main() {
           'delete transfer recalculates subsequent transfer and withdrawal correctly',
           () async {
         // Inflow: 1 @ 50 on portfolio 1
-        await db.bookingsDao.createBooking(BookingsCompanion(
-            date: const Value(20250102),
-            assetId: Value(assetOne.id),
-            accountId: Value(portfolio1.id),
-            category: const Value('B'),
-            shares: const Value(1),
-            costBasis: const Value(50),
-            value: const Value(50)));
+        await db.bookingsDao.createBooking(
+            BookingsCompanion(
+                date: const Value(20250102),
+                assetId: Value(assetOne.id),
+                accountId: Value(portfolio1.id),
+                category: const Value('B'),
+                shares: const Value(1),
+                costBasis: const Value(50),
+                value: const Value(50)),
+            l10n);
 
         // Transfer 1 @ 50 from portfolio 1 to portfolio 2
-        await db.transfersDao.createTransfer(TransfersCompanion(
-          date: const Value(20250103),
-          assetId: Value(assetOne.id),
-          sendingAccountId: Value(portfolio1.id),
-          receivingAccountId: Value(portfolio2.id),
-          shares: const Value(1),
-        ));
+        await db.transfersDao.createTransfer(
+            TransfersCompanion(
+              date: const Value(20250103),
+              assetId: Value(assetOne.id),
+              sendingAccountId: Value(portfolio1.id),
+              receivingAccountId: Value(portfolio2.id),
+              shares: const Value(1),
+            ),
+            l10n);
 
         // Inflow: 1 @ 100 on portfolio 2
-        await db.bookingsDao.createBooking(BookingsCompanion(
-            date: const Value(20250104),
-            assetId: Value(assetOne.id),
-            accountId: Value(portfolio2.id),
-            category: const Value('B'),
-            shares: const Value(1),
-            costBasis: const Value(100),
-            value: const Value(100)));
+        await db.bookingsDao.createBooking(
+            BookingsCompanion(
+                date: const Value(20250104),
+                assetId: Value(assetOne.id),
+                accountId: Value(portfolio2.id),
+                category: const Value('B'),
+                shares: const Value(1),
+                costBasis: const Value(100),
+                value: const Value(100)),
+            l10n);
 
         // Transfer 1 share from portfolio 2 to portfolio 3
-        await db.transfersDao.createTransfer(TransfersCompanion(
-          date: const Value(20250105),
-          assetId: Value(assetOne.id),
-          sendingAccountId: Value(portfolio2.id),
-          receivingAccountId: Value(portfolio3.id),
-          shares: const Value(1),
-        ));
+        await db.transfersDao.createTransfer(
+            TransfersCompanion(
+              date: const Value(20250105),
+              assetId: Value(assetOne.id),
+              sendingAccountId: Value(portfolio2.id),
+              receivingAccountId: Value(portfolio3.id),
+              shares: const Value(1),
+            ),
+            l10n);
 
         // Withdraw 1 share from portfolio 3
-        await db.bookingsDao.createBooking(BookingsCompanion(
-          date: const Value(20250106),
-          assetId: Value(assetOne.id),
-          accountId: Value(portfolio3.id),
-          category: const Value('B'),
-          shares: const Value(-1),
-        ));
+        await db.bookingsDao.createBooking(
+            BookingsCompanion(
+              date: const Value(20250106),
+              assetId: Value(assetOne.id),
+              accountId: Value(portfolio3.id),
+              category: const Value('B'),
+              shares: const Value(-1),
+            ),
+            l10n);
 
         // Prechecks
         var transfer2 = await db.transfersDao.getTransfer(2);
@@ -2171,7 +2282,7 @@ void main() {
 
         /// Delete transfer 1:
         /// - this should consume 1@100 in transfer 2 and withdrawal now instead of the 1 @ 50
-        await db.transfersDao.deleteTransfer(1);
+        await db.transfersDao.deleteTransfer(1, l10n);
 
         // Postchecks
         transfer2 = await db.transfersDao.getTransfer(2);
@@ -2221,30 +2332,34 @@ void main() {
     group('Insert/Update/Delete Trade', () {
       test('insert trade recalculates subsequent trade correctly', () async {
         // Buy 1 @ 100
-        await db.tradesDao.insertTrade(TradesCompanion(
-          datetime: const Value(20250101111111),
-          assetId: Value(assetOne.id),
-          type: const Value(TradeTypes.buy),
-          shares: const Value(1),
-          costBasis: const Value(100),
-          fee: const Value(0),
-          tax: const Value(0),
-          sourceAccountId: Value(bankAccount.id),
-          targetAccountId: Value(portfolio1.id),
-        ));
+        await db.tradesDao.insertTrade(
+            TradesCompanion(
+              datetime: const Value(20250101111111),
+              assetId: Value(assetOne.id),
+              type: const Value(TradeTypes.buy),
+              shares: const Value(1),
+              costBasis: const Value(100),
+              fee: const Value(0),
+              tax: const Value(0),
+              sourceAccountId: Value(bankAccount.id),
+              targetAccountId: Value(portfolio1.id),
+            ),
+            l10n);
 
         // Sell 1 @ 200
-        await db.tradesDao.insertTrade(TradesCompanion(
-          datetime: const Value(20250202222222),
-          assetId: Value(assetOne.id),
-          type: const Value(TradeTypes.sell),
-          shares: const Value(1),
-          costBasis: const Value(200),
-          fee: const Value(0),
-          tax: const Value(0),
-          sourceAccountId: Value(bankAccount.id),
-          targetAccountId: Value(portfolio1.id),
-        ));
+        await db.tradesDao.insertTrade(
+            TradesCompanion(
+              datetime: const Value(20250202222222),
+              assetId: Value(assetOne.id),
+              type: const Value(TradeTypes.sell),
+              shares: const Value(1),
+              costBasis: const Value(200),
+              fee: const Value(0),
+              tax: const Value(0),
+              sourceAccountId: Value(bankAccount.id),
+              targetAccountId: Value(portfolio1.id),
+            ),
+            l10n);
 
         // Prechecks
         var secondTrade = await db.tradesDao.getTrade(2);
@@ -2282,17 +2397,19 @@ void main() {
         /// Insert new trade before first trade
         /// The first trade should be unaffected since its a buy
         /// The second trade should be recalculated since its a sell
-        await db.tradesDao.insertTrade(TradesCompanion(
-          datetime: const Value(20250101000000),
-          assetId: Value(assetOne.id),
-          type: const Value(TradeTypes.buy),
-          shares: const Value(0.5),
-          costBasis: const Value(50),
-          fee: const Value(0),
-          tax: const Value(0),
-          sourceAccountId: Value(bankAccount.id),
-          targetAccountId: Value(portfolio1.id),
-        ));
+        await db.tradesDao.insertTrade(
+            TradesCompanion(
+              datetime: const Value(20250101000000),
+              assetId: Value(assetOne.id),
+              type: const Value(TradeTypes.buy),
+              shares: const Value(0.5),
+              costBasis: const Value(50),
+              fee: const Value(0),
+              tax: const Value(0),
+              sourceAccountId: Value(bankAccount.id),
+              targetAccountId: Value(portfolio1.id),
+            ),
+            l10n);
 
         // Postchecks
         var firstTrade = await db.tradesDao.getTrade(1);
@@ -2337,35 +2454,41 @@ void main() {
           'insert trade recalculates subsequent transfer and withdrawal correctly',
           () async {
         // Buy 1 @ 100
-        await db.tradesDao.insertTrade(TradesCompanion(
-          datetime: const Value(20250101111111),
-          assetId: Value(assetOne.id),
-          type: const Value(TradeTypes.buy),
-          shares: const Value(1),
-          costBasis: const Value(100),
-          fee: const Value(0),
-          tax: const Value(0),
-          sourceAccountId: Value(bankAccount.id),
-          targetAccountId: Value(portfolio1.id),
-        ));
+        await db.tradesDao.insertTrade(
+            TradesCompanion(
+              datetime: const Value(20250101111111),
+              assetId: Value(assetOne.id),
+              type: const Value(TradeTypes.buy),
+              shares: const Value(1),
+              costBasis: const Value(100),
+              fee: const Value(0),
+              tax: const Value(0),
+              sourceAccountId: Value(bankAccount.id),
+              targetAccountId: Value(portfolio1.id),
+            ),
+            l10n);
 
         // Transfer 1 share to portfolio 2
-        await db.transfersDao.createTransfer(TransfersCompanion(
-          date: const Value(20250102),
-          assetId: Value(assetOne.id),
-          sendingAccountId: Value(portfolio1.id),
-          receivingAccountId: Value(portfolio2.id),
-          shares: const Value(1),
-        ));
+        await db.transfersDao.createTransfer(
+            TransfersCompanion(
+              date: const Value(20250102),
+              assetId: Value(assetOne.id),
+              sendingAccountId: Value(portfolio1.id),
+              receivingAccountId: Value(portfolio2.id),
+              shares: const Value(1),
+            ),
+            l10n);
 
         // Withdraw 1 share from portfolio 2
-        await db.bookingsDao.createBooking(BookingsCompanion(
-          date: const Value(20250103),
-          assetId: Value(assetOne.id),
-          accountId: Value(portfolio2.id),
-          category: const Value('B'),
-          shares: const Value(-1),
-        ));
+        await db.bookingsDao.createBooking(
+            BookingsCompanion(
+              date: const Value(20250103),
+              assetId: Value(assetOne.id),
+              accountId: Value(portfolio2.id),
+              category: const Value('B'),
+              shares: const Value(-1),
+            ),
+            l10n);
 
         // Prechecks
         var transfer = await db.transfersDao.getTransfer(1);
@@ -2404,17 +2527,19 @@ void main() {
         /// Insert new trade before first trade
         /// The trade should be unaffected since its a buy
         /// The transfer and withdrawal should be recalculated
-        await db.tradesDao.insertTrade(TradesCompanion(
-          datetime: const Value(20250101000000),
-          assetId: Value(assetOne.id),
-          type: const Value(TradeTypes.buy),
-          shares: const Value(0.5),
-          costBasis: const Value(50),
-          fee: const Value(0),
-          tax: const Value(0),
-          sourceAccountId: Value(bankAccount.id),
-          targetAccountId: Value(portfolio1.id),
-        ));
+        await db.tradesDao.insertTrade(
+            TradesCompanion(
+              datetime: const Value(20250101000000),
+              assetId: Value(assetOne.id),
+              type: const Value(TradeTypes.buy),
+              shares: const Value(0.5),
+              costBasis: const Value(50),
+              fee: const Value(0),
+              tax: const Value(0),
+              sourceAccountId: Value(bankAccount.id),
+              targetAccountId: Value(portfolio1.id),
+            ),
+            l10n);
 
         // Postchecks
         transfer = await db.transfersDao.getTransfer(1);
@@ -2453,43 +2578,49 @@ void main() {
 
       test('update trade recalculates subsequent trade correctly', () async {
         // Buy 0.5 @ 100
-        await db.tradesDao.insertTrade(TradesCompanion(
-          datetime: const Value(20250101111111),
-          assetId: Value(assetOne.id),
-          type: const Value(TradeTypes.buy),
-          shares: const Value(0.5),
-          costBasis: const Value(100),
-          fee: const Value(0),
-          tax: const Value(0),
-          sourceAccountId: Value(bankAccount.id),
-          targetAccountId: Value(portfolio1.id),
-        ));
+        await db.tradesDao.insertTrade(
+            TradesCompanion(
+              datetime: const Value(20250101111111),
+              assetId: Value(assetOne.id),
+              type: const Value(TradeTypes.buy),
+              shares: const Value(0.5),
+              costBasis: const Value(100),
+              fee: const Value(0),
+              tax: const Value(0),
+              sourceAccountId: Value(bankAccount.id),
+              targetAccountId: Value(portfolio1.id),
+            ),
+            l10n);
 
         // Buy 0.5 @ 50
-        await db.tradesDao.insertTrade(TradesCompanion(
-          datetime: const Value(20250102000000),
-          assetId: Value(assetOne.id),
-          type: const Value(TradeTypes.buy),
-          shares: const Value(0.5),
-          costBasis: const Value(50),
-          fee: const Value(0),
-          tax: const Value(0),
-          sourceAccountId: Value(bankAccount.id),
-          targetAccountId: Value(portfolio1.id),
-        ));
+        await db.tradesDao.insertTrade(
+            TradesCompanion(
+              datetime: const Value(20250102000000),
+              assetId: Value(assetOne.id),
+              type: const Value(TradeTypes.buy),
+              shares: const Value(0.5),
+              costBasis: const Value(50),
+              fee: const Value(0),
+              tax: const Value(0),
+              sourceAccountId: Value(bankAccount.id),
+              targetAccountId: Value(portfolio1.id),
+            ),
+            l10n);
 
         // Sell 1 @ 200
-        await db.tradesDao.insertTrade(TradesCompanion(
-          datetime: const Value(20250202222222),
-          assetId: Value(assetOne.id),
-          type: const Value(TradeTypes.sell),
-          shares: const Value(1),
-          costBasis: const Value(200),
-          fee: const Value(0),
-          tax: const Value(0),
-          sourceAccountId: Value(bankAccount.id),
-          targetAccountId: Value(portfolio1.id),
-        ));
+        await db.tradesDao.insertTrade(
+            TradesCompanion(
+              datetime: const Value(20250202222222),
+              assetId: Value(assetOne.id),
+              type: const Value(TradeTypes.sell),
+              shares: const Value(1),
+              costBasis: const Value(200),
+              fee: const Value(0),
+              tax: const Value(0),
+              sourceAccountId: Value(bankAccount.id),
+              targetAccountId: Value(portfolio1.id),
+            ),
+            l10n);
 
         // Prechecks
         var subsequentTrade = await db.tradesDao.getTrade(3);
@@ -2571,35 +2702,41 @@ void main() {
           'update trade recalculates subsequent transfer and withdrawal correctly',
           () async {
         // Buy 1 @ 100
-        await db.tradesDao.insertTrade(TradesCompanion(
-          datetime: const Value(20250101000000),
-          assetId: Value(assetOne.id),
-          type: const Value(TradeTypes.buy),
-          shares: const Value(1),
-          costBasis: const Value(100),
-          fee: const Value(0),
-          tax: const Value(0),
-          sourceAccountId: Value(bankAccount.id),
-          targetAccountId: Value(portfolio1.id),
-        ));
+        await db.tradesDao.insertTrade(
+            TradesCompanion(
+              datetime: const Value(20250101000000),
+              assetId: Value(assetOne.id),
+              type: const Value(TradeTypes.buy),
+              shares: const Value(1),
+              costBasis: const Value(100),
+              fee: const Value(0),
+              tax: const Value(0),
+              sourceAccountId: Value(bankAccount.id),
+              targetAccountId: Value(portfolio1.id),
+            ),
+            l10n);
 
         // Transfer 1 share to portfolio 2
-        await db.transfersDao.createTransfer(TransfersCompanion(
-          date: const Value(20250102),
-          assetId: Value(assetOne.id),
-          sendingAccountId: Value(portfolio1.id),
-          receivingAccountId: Value(portfolio2.id),
-          shares: const Value(1),
-        ));
+        await db.transfersDao.createTransfer(
+            TransfersCompanion(
+              date: const Value(20250102),
+              assetId: Value(assetOne.id),
+              sendingAccountId: Value(portfolio1.id),
+              receivingAccountId: Value(portfolio2.id),
+              shares: const Value(1),
+            ),
+            l10n);
 
         // Withdraw 1 share from portfolio 2
-        await db.bookingsDao.createBooking(BookingsCompanion(
-          date: const Value(20250103),
-          assetId: Value(assetOne.id),
-          accountId: Value(portfolio2.id),
-          category: const Value('B'),
-          shares: const Value(-1),
-        ));
+        await db.bookingsDao.createBooking(
+            BookingsCompanion(
+              date: const Value(20250103),
+              assetId: Value(assetOne.id),
+              accountId: Value(portfolio2.id),
+              category: const Value('B'),
+              shares: const Value(-1),
+            ),
+            l10n);
 
         // Prechecks
         var transfer = await db.transfersDao.getTransfer(1);
@@ -2677,43 +2814,49 @@ void main() {
 
       test('delete trade recalculates subsequent trade correctly', () async {
         // Buy 0.5 @ 50
-        await db.tradesDao.insertTrade(TradesCompanion(
-          datetime: const Value(20250101000000),
-          assetId: Value(assetOne.id),
-          type: const Value(TradeTypes.buy),
-          shares: const Value(0.5),
-          costBasis: const Value(50),
-          fee: const Value(0),
-          tax: const Value(0),
-          sourceAccountId: Value(bankAccount.id),
-          targetAccountId: Value(portfolio1.id),
-        ));
+        await db.tradesDao.insertTrade(
+            TradesCompanion(
+              datetime: const Value(20250101000000),
+              assetId: Value(assetOne.id),
+              type: const Value(TradeTypes.buy),
+              shares: const Value(0.5),
+              costBasis: const Value(50),
+              fee: const Value(0),
+              tax: const Value(0),
+              sourceAccountId: Value(bankAccount.id),
+              targetAccountId: Value(portfolio1.id),
+            ),
+            l10n);
 
         // Buy 1 @ 100
-        await db.tradesDao.insertTrade(TradesCompanion(
-          datetime: const Value(20250101111111),
-          assetId: Value(assetOne.id),
-          type: const Value(TradeTypes.buy),
-          shares: const Value(1),
-          costBasis: const Value(100),
-          fee: const Value(0),
-          tax: const Value(0),
-          sourceAccountId: Value(bankAccount.id),
-          targetAccountId: Value(portfolio1.id),
-        ));
+        await db.tradesDao.insertTrade(
+            TradesCompanion(
+              datetime: const Value(20250101111111),
+              assetId: Value(assetOne.id),
+              type: const Value(TradeTypes.buy),
+              shares: const Value(1),
+              costBasis: const Value(100),
+              fee: const Value(0),
+              tax: const Value(0),
+              sourceAccountId: Value(bankAccount.id),
+              targetAccountId: Value(portfolio1.id),
+            ),
+            l10n);
 
         // Sell 1 @ 200
-        await db.tradesDao.insertTrade(TradesCompanion(
-          datetime: const Value(20250202222222),
-          assetId: Value(assetOne.id),
-          type: const Value(TradeTypes.sell),
-          shares: const Value(1),
-          costBasis: const Value(200),
-          fee: const Value(0),
-          tax: const Value(0),
-          sourceAccountId: Value(bankAccount.id),
-          targetAccountId: Value(portfolio1.id),
-        ));
+        await db.tradesDao.insertTrade(
+            TradesCompanion(
+              datetime: const Value(20250202222222),
+              assetId: Value(assetOne.id),
+              type: const Value(TradeTypes.sell),
+              shares: const Value(1),
+              costBasis: const Value(200),
+              fee: const Value(0),
+              tax: const Value(0),
+              sourceAccountId: Value(bankAccount.id),
+              targetAccountId: Value(portfolio1.id),
+            ),
+            l10n);
 
         // Prechecks
         var subsequentTrade = await db.tradesDao.getTrade(3);
@@ -2750,7 +2893,7 @@ void main() {
 
         /// Delete trade
         /// This should recalculate the sell trade
-        await db.tradesDao.deleteTrade(1);
+        await db.tradesDao.deleteTrade(1, l10n);
 
         // Postchecks
         var secondTrade = await db.tradesDao.getTrade(3);
@@ -2790,46 +2933,54 @@ void main() {
           'delete trade recalculates subsequent transfer and withdrawal correctly',
           () async {
         // Buy 0.5 @ 50
-        await db.tradesDao.insertTrade(TradesCompanion(
-          datetime: const Value(20250101000000),
-          assetId: Value(assetOne.id),
-          type: const Value(TradeTypes.buy),
-          shares: const Value(0.5),
-          costBasis: const Value(50),
-          fee: const Value(0),
-          tax: const Value(0),
-          sourceAccountId: Value(bankAccount.id),
-          targetAccountId: Value(portfolio1.id),
-        ));
+        await db.tradesDao.insertTrade(
+            TradesCompanion(
+              datetime: const Value(20250101000000),
+              assetId: Value(assetOne.id),
+              type: const Value(TradeTypes.buy),
+              shares: const Value(0.5),
+              costBasis: const Value(50),
+              fee: const Value(0),
+              tax: const Value(0),
+              sourceAccountId: Value(bankAccount.id),
+              targetAccountId: Value(portfolio1.id),
+            ),
+            l10n);
 
         // Buy 1 @ 100
-        await db.tradesDao.insertTrade(TradesCompanion(
-          datetime: const Value(20250101111111),
-          assetId: Value(assetOne.id),
-          type: const Value(TradeTypes.buy),
-          shares: const Value(1),
-          costBasis: const Value(100),
-          fee: const Value(0),
-          tax: const Value(0),
-          sourceAccountId: Value(bankAccount.id),
-          targetAccountId: Value(portfolio1.id),
-        ));
+        await db.tradesDao.insertTrade(
+            TradesCompanion(
+              datetime: const Value(20250101111111),
+              assetId: Value(assetOne.id),
+              type: const Value(TradeTypes.buy),
+              shares: const Value(1),
+              costBasis: const Value(100),
+              fee: const Value(0),
+              tax: const Value(0),
+              sourceAccountId: Value(bankAccount.id),
+              targetAccountId: Value(portfolio1.id),
+            ),
+            l10n);
 
         // Transfer 1 share to portfolio 2
-        await db.transfersDao.createTransfer(TransfersCompanion(
-            date: const Value(20250102),
-            assetId: Value(assetOne.id),
-            sendingAccountId: Value(portfolio1.id),
-            receivingAccountId: Value(portfolio2.id),
-            shares: const Value(1)));
+        await db.transfersDao.createTransfer(
+            TransfersCompanion(
+                date: const Value(20250102),
+                assetId: Value(assetOne.id),
+                sendingAccountId: Value(portfolio1.id),
+                receivingAccountId: Value(portfolio2.id),
+                shares: const Value(1)),
+            l10n);
 
         // Withdraw 1 share from portfolio 2
-        await db.bookingsDao.createBooking(BookingsCompanion(
-            date: const Value(20250103),
-            assetId: Value(assetOne.id),
-            accountId: Value(portfolio2.id),
-            category: const Value('B'),
-            shares: const Value(-1)));
+        await db.bookingsDao.createBooking(
+            BookingsCompanion(
+                date: const Value(20250103),
+                assetId: Value(assetOne.id),
+                accountId: Value(portfolio2.id),
+                category: const Value('B'),
+                shares: const Value(-1)),
+            l10n);
 
         // Prechecks
         var transfer = await db.transfersDao.getTransfer(1);
@@ -2866,7 +3017,7 @@ void main() {
         expect(portAcc2.balance, closeTo(0, 1e-9));
 
         /// Delete trade
-        await db.tradesDao.deleteTrade(1);
+        await db.tradesDao.deleteTrade(1, l10n);
 
         // Postchecks
         transfer = await db.transfersDao.getTransfer(1);

@@ -178,9 +178,9 @@ class _TransferFormState extends State<TransferForm> {
 
     // Final save
     if (widget.transfer != null) {
-      await _db.transfersDao.updateTransfer(widget.transfer!, companion);
+      await _db.transfersDao.updateTransfer(widget.transfer!, companion, _l10n);
     } else {
-      await _db.transfersDao.createTransfer(companion);
+      await _db.transfersDao.createTransfer(companion, _l10n);
     }
 
     if (mounted) Navigator.of(context).pop();

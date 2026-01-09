@@ -18,6 +18,7 @@ void main() {
 
   late AppDatabase db;
   late BaseCurrencyProvider currencyProvider;
+  late AppLocalizations l10n;
 
   setUpAll(() {
     SharedPreferences.setMockInitialValues({});
@@ -26,7 +27,11 @@ void main() {
   setUp(() async {
     db = AppDatabase(NativeDatabase.memory());
     currencyProvider = BaseCurrencyProvider();
-    await currencyProvider.initialize(const Locale('en'));
+
+    const locale = Locale('en');
+    l10n = await AppLocalizations.delegate.load(locale);
+
+    await currencyProvider.initialize(locale);
 
     // Insert base currency asset (id=1)
     await db.into(db.assets).insert(AssetsCompanion.insert(
@@ -106,7 +111,7 @@ void main() {
         shares: 10,
         value: 10.0,
         date: 20250101,
-      ));
+      ), l10n);
     });
 
     testWidgets('displays transfer in list', (tester) => tester.runAsync(() async {

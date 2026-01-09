@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -6,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/daos/transfers_dao.dart';
 import 'package:xfin/database/tables.dart';
+import 'package:xfin/l10n/app_localizations.dart';
 
 void main() {
   late AppDatabase db;
@@ -15,8 +18,11 @@ void main() {
   late int accB;
   late Asset assetOne;
   late Account portfolio1, portfolio2;
+  late AppLocalizations l10n;
 
   setUp(() async {
+    const locale = Locale('en');
+    l10n = await AppLocalizations.delegate.load(locale);
     SharedPreferences.setMockInitialValues({});
 
     db = AppDatabase(NativeDatabase.memory());
@@ -106,7 +112,7 @@ void main() {
         assetId: Value(assetId),
         shares: 10.0,
         value: 10.0,
-      ));
+      ), l10n);
 
       // Create transfer where receiving account is archived (should be excluded)
       final accArchived =
@@ -132,7 +138,7 @@ void main() {
         assetId: Value(assetId),
         shares: 5.0,
         value: 5.0,
-      ));
+      ), l10n);
 
       final rows =
           await transfersDao.watchTransfersWithAccountsAndAsset().first;
@@ -167,7 +173,7 @@ void main() {
         assetId: Value(assetId),
         shares: 30.0,
         value: 30.0,
-      ));
+      ), l10n);
 
       // balances after
       final aAfter = await (db.select(db.accounts)
@@ -207,7 +213,7 @@ void main() {
         assetId: Value(assetId),
         shares: 20.0,
         value: 20.0,
-      ));
+      ), l10n);
 
       // fetch the stored transfer (there should be one)
       final transfers = await transfersDao.getAllTransfers();
@@ -232,7 +238,7 @@ void main() {
           .getSingle();
 
       // perform the update
-      await transfersDao.updateTransfer(old, updatedCompanion);
+      await transfersDao.updateTransfer(old, updatedCompanion, l10n);
 
       // balances after:
       final aAfter = await (db.select(db.accounts)
@@ -287,7 +293,7 @@ void main() {
         assetId: Value(assetId),
         shares: 25.0,
         value: 25.0,
-      ));
+      ), l10n);
 
       final all = await transfersDao.getAllTransfers();
       final t = all.last;
@@ -301,7 +307,7 @@ void main() {
       expect(bNow.balance, closeTo(225.0, 1e-9));
 
       // delete
-      await transfersDao.deleteTransfer(t.id);
+      await transfersDao.deleteTransfer(t.id, l10n);
 
       // transfer row should be gone
       final remaining = await transfersDao.getAllTransfers();
@@ -340,7 +346,7 @@ void main() {
           category: const Value('Test'),
           shares: const Value(0.5),
           costBasis: const Value(100),
-          value: const Value(50)));
+          value: const Value(50)), l10n);
 
       await db.bookingsDao.createBooking(BookingsCompanion(
           date: const Value(20250102),
@@ -349,7 +355,7 @@ void main() {
           category: const Value('Test'),
           shares: const Value(0.5),
           costBasis: const Value(200),
-          value: const Value(100)));
+          value: const Value(100)), l10n);
 
       // Create SUT
       await db.transfersDao.createTransfer(TransfersCompanion(
@@ -357,7 +363,7 @@ void main() {
           assetId: Value(assetOne.id),
           sendingAccountId: Value(portfolio1.id),
           receivingAccountId: Value(portfolio2.id),
-          shares: const Value(1)));
+          shares: const Value(1)), l10n);
 
       // Post-create-checks
       var sut = await db.transfersDao.getTransfer(1);
@@ -372,7 +378,7 @@ void main() {
           sendingAccountId: Value(portfolio1.id),
           receivingAccountId: Value(portfolio2.id),
           shares: const Value(0.5));
-      db.transfersDao.updateTransfer(sut, updatedTransfer);
+      db.transfersDao.updateTransfer(sut, updatedTransfer, l10n);
 
       // Post-update-checks
       sut = await db.transfersDao.getTransfer(1);

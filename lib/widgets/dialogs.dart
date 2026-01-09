@@ -59,11 +59,11 @@ Future<void> showDeleteDialog(
     } else if (asset != null) {
       await db.assetsDao.deleteAsset(asset.id);
     } else if (booking != null) {
-      await db.bookingsDao.deleteBooking(booking.id);
+      await db.bookingsDao.deleteBooking(booking.id, l10n);
     } else if (trade != null) {
-      await db.tradesDao.deleteTrade(trade.id);
+      await db.tradesDao.deleteTrade(trade.id, l10n);
     } else if (transfer != null) {
-      await db.transfersDao.deleteTransfer(transfer.id);
+      await db.transfersDao.deleteTransfer(transfer.id, l10n);
     }
   }
 }

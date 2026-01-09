@@ -361,7 +361,7 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
     );
   }
 
-  Future<void> insertTrade(TradesCompanion newEntry) {
+  Future<void> insertTrade(TradesCompanion newEntry, AppLocalizations l10n) {
     return db.transaction(() async {
       final assetId = newEntry.assetId.value;
       final targetAccountId = newEntry.targetAccountId.value;
@@ -411,6 +411,7 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
       // (newDt, newTypeStr, insertedId + 1) so that events with (dt,type,id) < that key (i.e. the new trade)
       // are included in the prefix.
       await db.assetsOnAccountsDao.recalculateSubsequentEvents(
+        l10n: l10n,
         assetId: assetId,
         accountId: targetAccountId,
         upToDatetime: newDt,
@@ -556,6 +557,7 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
       // the prefix in the recalc and subsequent events are processed.
       final recalcUpToId = tradeId + 1;
       await db.assetsOnAccountsDao.recalculateSubsequentEvents(
+        l10n: l10n,
         assetId: originalTrade.assetId,
         accountId: originalTrade.targetAccountId,
         upToDatetime: dt2 < dt1 ? dt2 : dt1,
@@ -565,7 +567,7 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
     });
   }
 
-  Future<void> deleteTrade(int tradeId) {
+  Future<void> deleteTrade(int tradeId, AppLocalizations l10n) {
     return db.transaction(() async {
       // 1) Load original trade
       final original = await (select(trades)..where((t) => t.id.equals(tradeId)))
@@ -589,6 +591,7 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
       // 4) Recalculate everything that comes AFTER the original trade key.
       // Use the original trade key as the ordering cutoff so events with key < originalKey are part of the prefix.
       await db.assetsOnAccountsDao.recalculateSubsequentEvents(
+        l10n: l10n,
         assetId: assetId,
         accountId: accountId,
         upToDatetime: oldDt,

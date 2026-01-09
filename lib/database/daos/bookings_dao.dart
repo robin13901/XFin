@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import '../../l10n/app_localizations.dart';
 import '../app_database.dart';
 import '../tables.dart';
 
@@ -154,7 +155,7 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
     return booking.copyWith(costBasis: Value(costBasis), value: Value(value));
   }
 
-  Future<void> createBooking(BookingsCompanion booking) {
+  Future<void> createBooking(BookingsCompanion booking, AppLocalizations l10n) {
     return transaction(() async {
       if (!booking.costBasis.present) {
         booking = await calculateCostBasisAndValue(booking);
@@ -177,6 +178,7 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
           .updateBalance(booking.accountId.value, booking.value.value);
 
       await db.assetsOnAccountsDao.recalculateSubsequentEvents(
+        l10n: l10n,
         assetId: booking.assetId.value,
         accountId: booking.accountId.value,
         upToDatetime: booking.date.value * 1000000,
@@ -187,7 +189,7 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
   }
 
 // // NEW/EXPERIMENTAL version
-  Future<void> updateBooking(Booking oldBooking, BookingsCompanion newBooking) {
+  Future<void> updateBooking(Booking oldBooking, BookingsCompanion newBooking, AppLocalizations l10n) {
     return transaction(() async {
       newBooking = await calculateCostBasisAndValue(newBooking, oldBooking: oldBooking);
 
@@ -341,6 +343,7 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
         final dt = int.parse(parts[2]); // already yyyyMMddhhmmss
 
         await db.assetsOnAccountsDao.recalculateSubsequentEvents(
+          l10n: l10n,
           assetId: assetIdToRecalc,
           accountId: accountIdToRecalc,
           upToDatetime: dt,
@@ -351,7 +354,7 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
-  Future<void> deleteBooking(int id) {
+  Future<void> deleteBooking(int id, AppLocalizations l10n) {
     return transaction(() async {
       final booking = await getBooking(id);
       await _deleteBooking(id);
@@ -370,6 +373,7 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
       // --- NEW / EXPERIMENTAL ------------------------------------------------
       final keyDt = booking.date * 1000000;
       await db.assetsOnAccountsDao.recalculateSubsequentEvents(
+        l10n: l10n,
         assetId: booking.assetId,
         accountId: booking.accountId,
         upToDatetime: keyDt,
