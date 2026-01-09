@@ -261,7 +261,9 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
             remaining -= lot['shares']!;
             fifo.removeFirst();
           } else {
+            var originalLotShares = lot['shares']!;
             lot['shares'] = lot['shares']! - remaining;
+            lot['fee'] = lot['fee']! * (lot['shares']! / originalLotShares);
             remaining = 0;
           }
         }
