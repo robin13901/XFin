@@ -626,43 +626,43 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
         .get();
   }
 
-//   Future<void> insertFromCsv() async {
-//     int count = 1;
-//     List<String> rows = csv.split('\n');
-//     for (final row in rows) {
-//       final fields = row.split(';');
-//
-//       int datetime = int.parse(fields[0]);
-//       TradeTypes type = const TradeTypesConverter().fromSql(fields[1]);
-//       int sourceAccountId = int.parse(fields[2]);
-//       int targetAccountId = int.parse(fields[3]);
-//       int assetId = int.parse(fields[4]);
-//       double shares = double.parse(fields[5]);
-//       double costBasis = double.parse(fields[6]);
-//       double fee = double.parse(fields[7]);
-//
-//       TradesCompanion t = TradesCompanion(
-//           datetime: Value(datetime),
-//           type: Value(type),
-//           sourceAccountId: Value(sourceAccountId),
-//           targetAccountId: Value(targetAccountId),
-//           assetId: Value(assetId),
-//           shares: Value(shares),
-//           costBasis: Value(costBasis),
-//           fee: Value(fee),
-//           tax: const Value(0));
-//
-//       try {
-//         insertTrade(t);
-//         print('Trade ${count}/${rows.length} inserted successfully');
-//         count++;
-//       } catch (e) {
-//         print('Error at row ' + row.toString());
-//         print(e);
-//         break;
-//       }
-//     }
-//   }
+  // Future<void> insertFromCsv() async {
+  //   int count = 1;
+  //   List<String> rows = csv.split('\n');
+  //   for (final row in rows) {
+  //     final fields = row.split(';');
+  //
+  //     int datetime = int.parse(fields[0]);
+  //     TradeTypes type = const TradeTypesConverter().fromSql(fields[1]);
+  //     int sourceAccountId = int.parse(fields[2]);
+  //     int targetAccountId = int.parse(fields[3]);
+  //     int assetId = int.parse(fields[4]);
+  //     double shares = double.parse(fields[5]);
+  //     double costBasis = double.parse(fields[6]);
+  //     double fee = double.parse(fields[7]);
+  //
+  //     TradesCompanion t = TradesCompanion(
+  //         datetime: Value(datetime),
+  //         type: Value(type),
+  //         sourceAccountId: Value(sourceAccountId),
+  //         targetAccountId: Value(targetAccountId),
+  //         assetId: Value(assetId),
+  //         shares: Value(shares),
+  //         costBasis: Value(costBasis),
+  //         fee: Value(fee),
+  //         tax: const Value(0));
+  //
+  //     try {
+  //       insertTrade(t);
+  //       print('Trade ${count}/${rows.length} inserted successfully');
+  //       count++;
+  //     } catch (e) {
+  //       print('Error at row ' + row.toString());
+  //       print(e);
+  //       break;
+  //     }
+  //   }
+  // }
 //
 //   final String csv = """
 // 20250119150344;sell;11;11;58;1799999.999900000000;0.000020797660;0.000000000000

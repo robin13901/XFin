@@ -43,7 +43,7 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
 
     AssetOnAccount modifiedAOA = existingAOA.copyWith(
         shares: normalize(newShares),
-        value: normalize(newValue),
+        value: normalize(newValue),//newValue < 0 ? 0 : normalize(newValue),
         buyFeeTotal: normalize(newBuyFeeTotal),
         netCostBasis: normalize(newNetCostBasis),
         brokerCostBasis: normalize(newBrokerCostBasis));

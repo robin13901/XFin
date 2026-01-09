@@ -382,7 +382,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get actionCancelledDueToDataInconsistency =>
-      'Diese Aktion is nicht möglich, da sie zu Dateninkonsistenz führen würde';
+      'Diese Aktion ist nicht möglich, da sie zu Dateninkonsistenz führen würde';
 
   @override
   String get onlyCryptoCanBeBookedOnCryptoWallet =>

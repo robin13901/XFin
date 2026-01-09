@@ -277,54 +277,6 @@ void main() {
     });
   });
 
-  group('BookingsDao - watchBookingsWithAccountAndAsset', () {
-    test(
-        'emits bookings joined with account and asset for non-archived accounts',
-            () async {
-          // create two accounts, one archived
-          final acc1 = await db.into(db.accounts).insert(AccountsCompanion.insert(
-            name: 'Active',
-            type: AccountTypes.cash,
-            isArchived: const Value(false),
-          ));
-          final acc2 = await db.into(db.accounts).insert(AccountsCompanion.insert(
-            name: 'ArchivedAcc',
-            type: AccountTypes.cash,
-            isArchived: const Value(true),
-          ));
-
-          // booking for active account
-          await db.into(db.bookings).insert(BookingsCompanion.insert(
-            date: 20250101,
-            shares: 11.0,
-            category: 'J1',
-            accountId: acc1,
-            value: 11.0,
-            excludeFromAverage: const Value(false),
-          ));
-
-          // booking for archived account (should be excluded)
-          await db.into(db.bookings).insert(BookingsCompanion.insert(
-            date: 20250102,
-            shares: 22.0,
-            category: 'J2',
-            accountId: acc2,
-            value: 22.0,
-            excludeFromAverage: const Value(false),
-          ));
-
-          // Get first emission of the stream
-          final rows = await bookingsDao.watchBookingsWithAccountAndAsset().first;
-
-          // Should contain only the active booking
-          expect(rows.length, 1);
-          final row = rows.first;
-          expect(row.booking.accountId, acc1);
-          expect(row.account.id, acc1);
-          expect(row.asset.id, baseCurrencyAssetId);
-        });
-  });
-
   group('BookingsDao - watchBookingsPage (keyset pagination)', () {
     test('watchBookingsPage returns correct pages and respects keyset cursor',
             () async {

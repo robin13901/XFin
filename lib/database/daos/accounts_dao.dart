@@ -1,4 +1,6 @@
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
+import 'package:xfin/l10n/app_localizations.dart';
 import '../../utils/global_constants.dart';
 import '../app_database.dart';
 import '../tables.dart';
@@ -18,6 +20,24 @@ part 'accounts_dao.g.dart';
 class AccountsDao extends DatabaseAccessor<AppDatabase>
     with _$AccountsDaoMixin {
   AccountsDao(super.db);
+
+  Future<void> createAccount(
+      AccountsCompanion account, List<AssetOnAccount> pendingAOAs) {
+    return transaction(() async {
+      final initialBalance =
+          pendingAOAs.fold<double>(0.0, (sum, pa) => sum + pa.value);
+      account = account.copyWith(
+          initialBalance: Value(normalize(initialBalance)),
+          balance: Value(normalize(initialBalance)));
+      final accountId = await insert(account);
+
+      for (var aoa in pendingAOAs) {
+        aoa = aoa.copyWith(accountId: accountId);
+        await db.assetsOnAccountsDao.updateAOA(aoa);
+        await db.assetsDao.updateAsset(aoa.assetId, aoa.shares, aoa.value);
+      }
+    });
+  }
 
   Future<int> insert(AccountsCompanion entry) => into(accounts).insert(entry);
 
@@ -115,8 +135,7 @@ class AccountsDao extends DatabaseAccessor<AppDatabase>
           await db.assetsOnAccountsDao.getAOAsForAccount(id);
 
       for (var aoa in allAOAs) {
-        await db.assetsDao
-            .updateAsset(aoa.assetId, -aoa.shares, -aoa.value);
+        await db.assetsDao.updateAsset(aoa.assetId, -aoa.shares, -aoa.value);
         await db.assetsOnAccountsDao.deleteAOA(aoa);
       }
     });
@@ -156,15 +175,19 @@ class AccountsDao extends DatabaseAccessor<AppDatabase>
       // Launch DB queries in parallel
       final accountFuture = getAccount(accountId);
       final bookingsFuture =
-      (select(bookings)..where((b) => b.accountId.equals(accountId))).get();
-      final sendingTransfersFuture =
-      (select(transfers)..where((t) => t.sendingAccountId.equals(accountId))).get();
-      final receivingTransfersFuture =
-      (select(transfers)..where((t) => t.receivingAccountId.equals(accountId))).get();
-      final clearingTradesFuture =
-      (select(trades)..where((t) => t.sourceAccountId.equals(accountId))).get();
-      final portfolioTradesFuture =
-      (select(trades)..where((t) => t.targetAccountId.equals(accountId))).get();
+          (select(bookings)..where((b) => b.accountId.equals(accountId))).get();
+      final sendingTransfersFuture = (select(transfers)
+            ..where((t) => t.sendingAccountId.equals(accountId)))
+          .get();
+      final receivingTransfersFuture = (select(transfers)
+            ..where((t) => t.receivingAccountId.equals(accountId)))
+          .get();
+      final clearingTradesFuture = (select(trades)
+            ..where((t) => t.sourceAccountId.equals(accountId)))
+          .get();
+      final portfolioTradesFuture = (select(trades)
+            ..where((t) => t.targetAccountId.equals(accountId)))
+          .get();
 
       final results = await Future.wait([
         accountFuture,
@@ -245,8 +268,10 @@ class AccountsDao extends DatabaseAccessor<AppDatabase>
       if (newTrade != null) {
         final newDate = newTrade.datetime.value ~/ 1000000;
         if (accountId == newTrade.sourceAccountId.value) {
-          final sourceAccountValueDelta = newTrade.sourceAccountValueDelta.value;
-          sumsByDate[newDate] = (sumsByDate[newDate] ?? 0) + sourceAccountValueDelta;
+          final sourceAccountValueDelta =
+              newTrade.sourceAccountValueDelta.value;
+          sumsByDate[newDate] =
+              (sumsByDate[newDate] ?? 0) + sourceAccountValueDelta;
         }
         // if (accountId == newTrade.targetAccountId.value) { // TODO figure out
         //   final targetAccountValueDelta = newTrade.targetAccountValueDelta.value;
@@ -268,4 +293,204 @@ class AccountsDao extends DatabaseAccessor<AppDatabase>
     return false;
   }
 
+// --- TEMP: DB REBUILD --------------------------------------------------------
+  Future<void> insertAllEventsFromCsv(AppLocalizations l10n) {
+    return transaction(() async {
+      List<BookingsCompanion> bookings = parseBookings();
+      List<TransfersCompanion> transfers = parseTransfers();
+      List<TradesCompanion> trades = parseTrades();
+
+      int totalEvents = bookings.length + transfers.length + trades.length;
+      int successfulEvents = 0;
+
+      while (bookings.isNotEmpty || transfers.isNotEmpty || trades.isNotEmpty) {
+        int nextBookingDatetime = bookings.isNotEmpty
+            ? bookings.first.date.value * 1000000
+            : 99999999999999;
+        int nextTransferDatetime = transfers.isNotEmpty
+            ? transfers.first.date.value * 1000000
+            : 99999999999999;
+        int nextTradeDatetime =
+            trades.isNotEmpty ? trades.first.datetime.value : 99999999999999;
+
+        int nextKey = nextBookingDatetime <= nextTransferDatetime &&
+                nextBookingDatetime <= nextTradeDatetime
+            ? 1
+            : nextTransferDatetime <= nextTradeDatetime
+                ? 2
+                : 3;
+
+        if (nextKey == 1) {
+          BookingsCompanion bookingToInsert = bookings.removeAt(0);
+          await db.bookingsDao.createBooking(bookingToInsert, l10n);
+        } else if (nextKey == 2) {
+          TransfersCompanion transferToInsert = transfers.removeAt(0);
+          await db.transfersDao.createTransfer(transferToInsert, l10n);
+        } else {
+          TradesCompanion tradeToInsert = trades.removeAt(0);
+          await db.tradesDao.insertTrade(tradeToInsert, l10n);
+        }
+        successfulEvents++;
+        if (kDebugMode) {
+          print('Successfully inserted $successfulEvents/$totalEvents events.');
+        }
+      }
+    });
+  }
+
+  Future<void> insertAssetsFromCsv() {
+    return transaction(() async {
+      List<String> rows = assetsCsv.split('\n');
+      rows.removeLast();
+      for (final row in rows) {
+        final fields = row.split(';');
+        db.assetsDao.insert(AssetsCompanion(
+            name: Value(fields[0]),
+            type: Value(const AssetTypesConverter().fromSql(fields[1])),
+            tickerSymbol:
+                fields[2] == "" ? const Value.absent() : Value(fields[2]),
+            currencySymbol: Value(fields[3])));
+      }
+    });
+  }
+
+  Future<void> insertAccountsFromCsv(String accountsCsv) {
+    return transaction(() async {
+      List<String> rows = accountsCsv.split('\n');
+      rows.removeLast();
+      for (final row in rows) {
+        final fields = row.split(';');
+        AccountsCompanion account = AccountsCompanion(
+            name: Value(fields[0]),
+            type: Value(const AccountTypesConverter().fromSql(fields[1])),
+            isArchived: Value(fields[3] == "1"));
+        List<AssetOnAccount> pendingAOAs = [
+          AssetOnAccount(
+            accountId: 0,
+            assetId: 1,
+            value: normalize(double.parse(fields[2])),
+            shares: normalize(double.parse(fields[2])),
+            netCostBasis: 1,
+            brokerCostBasis: 1,
+            buyFeeTotal: 0,
+          )
+        ];
+        db.accountsDao.createAccount(account, pendingAOAs);
+      }
+    });
+  }
+
+  List<BookingsCompanion> parseBookings() {
+    List<BookingsCompanion> bookings = [];
+    List<String> rows = bookingsCsv.split('\n');
+    rows.removeLast();
+    for (final row in rows) {
+      final fields = row.split(';');
+      bookings.add(BookingsCompanion(
+        date: Value(int.parse(fields[0])),
+        assetId: Value(int.parse(fields[1])),
+        accountId: Value(int.parse(fields[2])),
+        category: Value(fields[3]),
+        shares: Value(normalize(double.parse(fields[4]))),
+        costBasis: double.parse(fields[4]) < 0
+            ? const Value.absent()
+            : Value(normalize(double.parse(fields[5]))),
+        // we want to recalculate this for withdrawals
+        value: Value(normalize(double.parse(fields[6]))),
+        notes: fields[7] == "" ? const Value.absent() : Value(fields[7]),
+        excludeFromAverage: Value(fields[8] == '1'),
+        isGenerated: Value(fields[9] == '1'),
+      ));
+    }
+    return bookings;
+  }
+
+  List<TransfersCompanion> parseTransfers() {
+    List<TransfersCompanion> transfers = [];
+    List<String> rows = transfersCsv.split('\n');
+    rows.removeLast();
+    for (final row in rows) {
+      final fields = row.split(';');
+      transfers.add(TransfersCompanion(
+        date: Value(int.parse(fields[0])),
+        sendingAccountId: Value(int.parse(fields[1])),
+        receivingAccountId: Value(int.parse(fields[2])),
+        assetId: Value(int.parse(fields[3])),
+        shares: Value(normalize(double.parse(fields[4]))),
+        costBasis: const Value.absent(),
+        // we want to recalculate this
+        value: const Value.absent(),
+        // we want to recalculate this
+        notes: fields[7] == "" ? const Value.absent() : Value(fields[7]),
+        isGenerated: Value(fields[8] == '1'),
+      ));
+    }
+    return transfers;
+  }
+
+  List<TradesCompanion> parseTrades() {
+    List<TradesCompanion> trades = [];
+    List<String> rows = tradesCsv.split('\n');
+    rows.removeLast();
+    for (final row in rows) {
+      final fields = row.split(';');
+      trades.add(TradesCompanion(
+        datetime: Value(int.parse(fields[0])),
+        type: Value(const TradeTypesConverter().fromSql(fields[1])),
+        sourceAccountId: Value(int.parse(fields[2])),
+        targetAccountId: Value(int.parse(fields[3])),
+        assetId: Value(int.parse(fields[4])),
+        shares: Value(normalize(double.parse(fields[5]))),
+        costBasis: Value(normalize(double.parse(fields[6]))),
+        fee: Value(normalize(double.parse(fields[7]))),
+        tax: Value(normalize(double.parse(fields[8]))),
+        // recalculate all other fields
+      ));
+    }
+    return trades;
+  }
+
+  static const assetsCsv = '''
+''';
+  static const accountsCsv1 = '''
+Portemonnaie;cash;4.0;0
+Kiste;cash;1020.0;0
+Sparkassenkonto;bankAccount;1122.85;0
+Flasche;cash;875.25;0
+Geburtstagsgeschenk;bankAccount;6371.57;0
+DiBa Konto;bankAccount;12049.26;0
+Trade Republic Konto;bankAccount;0.0;0
+Trade Republic Depot;portfolio;0.0;0
+Deka Depot;portfolio;0.0;0
+EquatePlus;portfolio;0.0;0
+Bitget Spot;portfolio;0.0;0
+C24 Girokonto;bankAccount;0.0;0
+Scalable Capital;portfolio;0.0;0
+''';
+  static const accountsCsv2 = '''
+Ledger Nano X;cryptoWallet;0.0;0
+''';
+  static const bookingsCsv = '''
+''';
+  static const transfersCsv = '''
+''';
+  static const tradesCsv = '''
+''';
+
+  static const assetsQuery = '''
+  select name, type, ticker_symbol, currency_symbol from assets where id <> 1;
+''';
+  static const accountsQuery = '''
+  select name, type, initial_balance, is_archived from accounts where name <> 'Währungssammlung';
+''';
+  static const bookingsQuery = '''
+  select date, asset_id, account_id, category, shares, cost_basis, value, notes, exclude_from_average, is_generated from bookings order by date, value;
+''';
+  static const transfersQuery = '''
+  select date, sending_account_id, receiving_account_id, asset_id, shares, cost_basis, value, notes, is_generated from transfers order by date, value;
+''';
+  static const tradesQuery = '''
+  select datetime, type, source_account_id, target_account_id, asset_id, shares, cost_basis, fee, tax from trades order by datetime, type, shares*cost_basis;
+''';
+// -----------------------------------------------------------------------------
 }

@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import '../../l10n/app_localizations.dart';
+import '../../utils/global_constants.dart';
 import '../app_database.dart';
 import '../tables.dart';
 
@@ -9,21 +10,6 @@ part 'bookings_dao.g.dart';
 class BookingsDao extends DatabaseAccessor<AppDatabase>
     with _$BookingsDaoMixin {
   BookingsDao(super.db);
-
-  Stream<List<BookingWithAccountAndAsset>> watchBookingsWithAccountAndAsset() {
-    final query = select(bookings).join([
-      leftOuterJoin(accounts, accounts.id.equalsExp(bookings.accountId)),
-      leftOuterJoin(assets, assets.id.equalsExp(bookings.assetId)),
-    ]);
-
-    query.where(accounts.isArchived.equals(false));
-    query.orderBy([
-      OrderingTerm.desc(bookings.date),
-      OrderingTerm.desc(bookings.shares),
-    ]);
-
-    return query.watch().map(_mapRows);
-  }
 
   List<BookingWithAccountAndAsset> _mapRows(
     List<TypedResult> rows,
@@ -152,7 +138,7 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
       costBasis = value / shares.abs();
     }
     value = shares * costBasis;
-    return booking.copyWith(costBasis: Value(costBasis), value: Value(value));
+    return booking.copyWith(costBasis: Value(normalize(costBasis)), value: Value(normalize(value)));
   }
 
   Future<void> createBooking(BookingsCompanion booking, AppLocalizations l10n) {

@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import '../../l10n/app_localizations.dart';
+import '../../utils/global_constants.dart';
 import '../app_database.dart';
 import '../tables.dart';
 
@@ -88,7 +89,7 @@ class TransfersDao extends DatabaseAccessor<AppDatabase> with _$TransfersDaoMixi
       }
       costBasis = value / shares.abs();
     }
-    return transfer.copyWith(costBasis: Value(costBasis), value: Value(value));
+    return transfer.copyWith(costBasis: Value(normalize(costBasis)), value: Value(normalize(value)));
   }
 
   /// Create a transfer and apply its effects:

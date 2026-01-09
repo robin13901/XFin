@@ -56,7 +56,7 @@ class AssetsDao extends DatabaseAccessor<AppDatabase> with _$AssetsDaoMixin {
     await (update(assets)..where((a) => a.id.equals(assetId))).write(
       AssetsCompanion(
         shares: Value(normalize(newShares)),
-        value: Value(normalize(newValue)),
+        value: Value(normalize(newValue)),//newValue < 0 ? 0 : normalize(newValue)),
         netCostBasis: Value(normalize(newNetCostBasis)),
         brokerCostBasis: Value(normalize(newBrokerCostBasis)),
       ),

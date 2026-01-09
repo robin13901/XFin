@@ -28,7 +28,7 @@ class _AccountFormState extends State<AccountForm> {
   late TextEditingController _sharesController;
   late TextEditingController _pricePerShareController;
   int? _selectedAssetId;
-  final List<AssetOnAccount> _pendingAssets = [];
+  final List<AssetOnAccount> _pendingAOAs = [];
   List<Asset> _allAssets = [];
   Map<int, Asset> _assetMap = {};
 
@@ -117,7 +117,7 @@ class _AccountFormState extends State<AccountForm> {
       final value = shares * pricePerShare;
 
       setState(() {
-        _pendingAssets.add(AssetOnAccount(
+        _pendingAOAs.add(AssetOnAccount(
           accountId: 0,
           assetId: _selectedAssetId!,
           value: value,
@@ -137,30 +137,26 @@ class _AccountFormState extends State<AccountForm> {
 
   void _removeAssetFromBuffer(int index) {
     setState(() {
-      _pendingAssets.removeAt(index);
+      _pendingAOAs.removeAt(index);
     });
   }
 
   Future<void> _saveForm() async {
     final db = _db;
+
+    // AppLocalizations l10n = AppLocalizations.of(context)!;
+    // await _db.accountsDao.insertAccountsFromCsv(AccountsDao.accountsCsv2);
+    // await _db.accountsDao.insertAllEventsFromCsv(l10n);
+    // return;
+
     final name = _nameController.text.trim();
 
-    await db.transaction(() async {
-      final initialBalance =
-      _pendingAssets.fold<double>(0.0, (sum, pa) => sum + pa.value);
-      final accountId = await db.accountsDao.insert(AccountsCompanion.insert(
-        name: name,
-        type: _type,
-        balance: drift.Value(initialBalance),
-        initialBalance: drift.Value(initialBalance),
-      ));
+    AccountsCompanion account = AccountsCompanion(
+      name: drift.Value(name),
+      type: drift.Value(_type),
+    );
 
-      for (var pa in _pendingAssets) {
-        AssetOnAccount aoa = pa.copyWith(accountId: accountId);
-        await db.assetsOnAccountsDao.updateAOA(aoa);
-        await db.assetsDao.updateAsset(aoa.assetId, aoa.shares, aoa.value);
-      }
-    });
+    await db.accountsDao.createAccount(account, _pendingAOAs);
 
     if (mounted) Navigator.of(context).pop();
   }
@@ -387,13 +383,13 @@ class _AccountFormState extends State<AccountForm> {
         ),
 
         // List of added assets (one-liners)
-        if (_pendingAssets.isNotEmpty)
+        if (_pendingAOAs.isNotEmpty)
           ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: _pendingAssets.length,
+            itemCount: _pendingAOAs.length,
             itemBuilder: (context, index) {
-              final item = _pendingAssets[index];
+              final item = _pendingAOAs[index];
               final asset = _assetMap[item.assetId];
               final oneLine =
                   '${item.shares} ${asset?.tickerSymbol ?? ''} @ ${item.netCostBasis} ${currencyProvider.symbol} ≈ ${currencyProvider.format.format(item.value)}';
@@ -455,7 +451,7 @@ class _AccountFormState extends State<AccountForm> {
                 validator: (value) {
                   if (value == null) return l10n.requiredField;
                   final isAlreadyAdded =
-                  _pendingAssets.any((pa) => pa.assetId == value);
+                  _pendingAOAs.any((pa) => pa.assetId == value);
                   if (isAlreadyAdded) return l10n.assetAlreadyAdded;
                   return null;
                 },
