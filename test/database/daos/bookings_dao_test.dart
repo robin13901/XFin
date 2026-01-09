@@ -13,6 +13,8 @@ void main() {
   late BookingsDao bookingsDao;
   late int baseCurrencyAssetId;
   late int accountId;
+  late Asset assetOne;
+  late Account portfolio1;
 
   setUp(() async {
     // Make sure prefs are clean (some DAOs/tests rely on SharedPreferences)
@@ -29,6 +31,27 @@ void main() {
       tickerSymbol: 'EUR',
     ));
 
+    assetOne = const Asset(
+        id: 2,
+        name: 'Asset One',
+        type: AssetTypes.stock,
+        tickerSymbol: 'ONE',
+        currencySymbol: '',
+        value: 0,
+        shares: 0,
+        netCostBasis: 0,
+        brokerCostBasis: 0,
+        buyFeeTotal: 0,
+        isArchived: false);
+
+    portfolio1 = const Account(
+        id: 2,
+        name: 'Portfolio Account',
+        balance: 0,
+        initialBalance: 0,
+        type: AccountTypes.portfolio,
+        isArchived: false);
+
     accountId = await db.into(db.accounts).insert(AccountsCompanion.insert(
       name: 'Test Account',
       type: AccountTypes.cash,
@@ -36,6 +59,9 @@ void main() {
 
     await db.into(db.assetsOnAccounts).insert(AssetsOnAccountsCompanion.insert(
         accountId: accountId, assetId: baseCurrencyAssetId));
+
+    await db.into(db.assets).insert(assetOne.toCompanion(false));
+    await db.into(db.accounts).insert(portfolio1.toCompanion(false));
   });
 
   tearDown(() async {
@@ -122,6 +148,56 @@ void main() {
       // Should contain X and Y exactly once (ordering is not guaranteed)
       expect(categories.toSet(), equals({'X', 'Y'}));
     });
+
+    test('costBasis correctly calculated in createBooking and updateBooking',
+            () async {
+          await db.bookingsDao.createBooking(BookingsCompanion(
+              date: const Value(20250101),
+              assetId: Value(assetOne.id),
+              accountId: Value(portfolio1.id),
+              category: const Value('Test'),
+              shares: const Value(0.5),
+              costBasis: const Value(100),
+              value: const Value(50)));
+          await db.bookingsDao.createBooking(BookingsCompanion(
+              date: const Value(20250102),
+              assetId: Value(assetOne.id),
+              accountId: Value(portfolio1.id),
+              category: const Value('Test'),
+              shares: const Value(0.5),
+              costBasis: const Value(200),
+              value: const Value(100)));
+
+          // Create SUT
+          await db.bookingsDao.createBooking(BookingsCompanion(
+              date: const Value(20250103),
+              assetId: Value(assetOne.id),
+              accountId: Value(portfolio1.id),
+              category: const Value('Test'),
+              shares: const Value(-1)));
+
+          // Post-create-checks
+          var sut = await db.bookingsDao.getBooking(3);
+          expect(sut.shares, closeTo(-1, 1e-9));
+          expect(sut.costBasis, closeTo(150, 1e-9));
+          expect(sut.value, closeTo(-150, 1e-9));
+
+          // Update SUT
+          var updatedBooking = BookingsCompanion(
+              id: Value(sut.id),
+              date: const Value(20250103),
+              assetId: Value(assetOne.id),
+              accountId: Value(portfolio1.id),
+              category: const Value('Test'),
+              shares: const Value(-0.5));
+          db.bookingsDao.updateBooking(sut, updatedBooking);
+
+          // Post-update-checks
+          sut = await db.bookingsDao.getBooking(3);
+          expect(sut.shares, closeTo(-0.5, 1e-9));
+          expect(sut.costBasis, closeTo(100, 1e-9));
+          expect(sut.value, closeTo(-50, 1e-9));
+        });
   });
 
   group('BookingsDao - findMergeableBooking', () {
@@ -620,4 +696,5 @@ void main() {
       expect(acc.balance, closeTo(475.0, 1e-9));
     });
   });
+
 }

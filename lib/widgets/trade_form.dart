@@ -151,6 +151,7 @@ class _TradeFormState extends State<TradeForm> {
 
     final db = Provider.of<AppDatabase>(context, listen: false);
     // await db.tradesDao.insertFromCsv();
+    // return;
 
     final trade = TradesCompanion(
       datetime: drift.Value(

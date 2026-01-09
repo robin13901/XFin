@@ -25,8 +25,8 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
   }
 
   List<BookingWithAccountAndAsset> _mapRows(
-      List<TypedResult> rows,
-      ) {
+    List<TypedResult> rows,
+  ) {
     return rows.map((row) {
       return BookingWithAccountAndAsset(
         booking: row.readTable(bookings),
@@ -53,8 +53,8 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
     if (lastDate != null && lastValue != null) {
       query.where(
         bookings.date.isSmallerThanValue(lastDate) |
-        (bookings.date.equals(lastDate) &
-        bookings.value.isSmallerThanValue(lastValue)),
+            (bookings.date.equals(lastDate) &
+                bookings.value.isSmallerThanValue(lastValue)),
       );
     }
 
@@ -73,14 +73,14 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
     final newShares = newBooking.shares.value;
     final query = select(bookings)
       ..where((tbl) =>
-      tbl.date.equals(newBooking.date.value) &
-      tbl.category.equals(newBooking.category.value) &
-      tbl.accountId.equals(newBooking.accountId.value) &
-      tbl.assetId.equals(newBooking.assetId.value) &
-      tbl.excludeFromAverage.equals(newBooking.excludeFromAverage.value) &
-      tbl.notes.isNull() &
-      ((tbl.shares.isBiggerThanValue(0) & Constant(newShares > 0)) |
-      (tbl.shares.isSmallerThanValue(0) & Constant(newShares < 0))));
+          tbl.date.equals(newBooking.date.value) &
+          tbl.category.equals(newBooking.category.value) &
+          tbl.accountId.equals(newBooking.accountId.value) &
+          tbl.assetId.equals(newBooking.assetId.value) &
+          tbl.excludeFromAverage.equals(newBooking.excludeFromAverage.value) &
+          tbl.notes.isNull() &
+          ((tbl.shares.isBiggerThanValue(0) & Constant(newShares > 0)) |
+              (tbl.shares.isSmallerThanValue(0) & Constant(newShares < 0))));
     return await query.getSingleOrNull();
   }
 
@@ -88,7 +88,7 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
     final query = selectOnly(bookings, distinct: true)
       ..addColumns([bookings.category]);
     return query.watch().map(
-            (rows) => rows.map((row) => row.read(bookings.category)!).toList());
+        (rows) => rows.map((row) => row.read(bookings.category)!).toList());
   }
 
   Future<List<String>> getDistinctCategories() async {
@@ -96,11 +96,8 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
       ..addColumns([bookings.category]);
 
     final rows = await query.get();
-    return rows
-        .map((row) => row.read(bookings.category)!)
-        .toList();
+    return rows.map((row) => row.read(bookings.category)!).toList();
   }
-
 
   // Methods that are not transactional
   Future<int> _addBooking(BookingsCompanion entry) =>
@@ -110,51 +107,57 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
       update(bookings).replace(entry);
 
   Future<int> _deleteBooking(int id) =>
-      (delete(bookings)
-        ..where((tbl) => tbl.id.equals(id))).go();
+      (delete(bookings)..where((tbl) => tbl.id.equals(id))).go();
 
   Future<Booking> getBooking(int id) =>
-      (select(bookings)
-        ..where((tbl) => tbl.id.equals(id))).getSingle();
+      (select(bookings)..where((tbl) => tbl.id.equals(id))).getSingle();
 
   Future<List<Booking>> getAllBookings() => select(bookings).get();
 
-  Future<double> _calculateCostBasis(BookingsCompanion booking) async {
+  Future<BookingsCompanion> calculateCostBasisAndValue(BookingsCompanion booking,
+      {Booking? oldBooking}) async {
     final assetId = booking.assetId.value;
     final accountId = booking.accountId.value;
     final shares = booking.shares.value;
     final datetime = booking.date.value * 1000000;
+    double costBasis, value = 0.0;
 
-    if (assetId == 1) return 1;
-    // if (shares > 0) return double.parse(_costBasisCtrl.text.replaceAll(',', '.'));
-    final fifo = await db.assetsOnAccountsDao.buildFiFoQueue(assetId, accountId, upToDatetime: datetime);
+    // Only recalculate if booking is a withdrawal
+    if (shares > 0) return booking;
 
-    double sharesToConsume = shares.abs();
-    double value = 0.0;
-    while (sharesToConsume > 0 && fifo.isNotEmpty) {
-      final currentLot = fifo.first;
-      final lotShares = currentLot['shares']!;
-      final lotCostBasis = currentLot['costBasis']!;
+    if (assetId == 1) {
+      costBasis = 1;
+    } else {
+      final fifo = await db.assetsOnAccountsDao.buildFiFoQueue(
+          assetId, accountId,
+          upToDatetime: datetime, oldBooking: oldBooking);
 
-      if (lotShares <= sharesToConsume + 1e-12) {
-        sharesToConsume -= lotShares;
-        value += lotShares * lotCostBasis;
-        fifo.removeFirst();
-      } else {
-        currentLot['shares'] = lotShares - sharesToConsume;
-        value += sharesToConsume * lotCostBasis;
-        sharesToConsume = 0;
+      double sharesToConsume = shares.abs();
+      while (sharesToConsume > 0 && fifo.isNotEmpty) {
+        final currentLot = fifo.first;
+        final lotShares = currentLot['shares']!;
+        final lotCostBasis = currentLot['costBasis']!;
+
+        if (lotShares <= sharesToConsume + 1e-12) {
+          sharesToConsume -= lotShares;
+          value += lotShares * lotCostBasis;
+          fifo.removeFirst();
+        } else {
+          currentLot['shares'] = lotShares - sharesToConsume;
+          value += sharesToConsume * lotCostBasis;
+          sharesToConsume = 0;
+        }
       }
+      costBasis = value / shares.abs();
     }
-    return value / shares.abs();
+    value = shares * costBasis;
+    return booking.copyWith(costBasis: Value(costBasis), value: Value(value));
   }
 
   Future<void> createBooking(BookingsCompanion booking) {
     return transaction(() async {
       if (!booking.costBasis.present) {
-        final costBasis = await _calculateCostBasis(booking);
-        final value = booking.shares.value * costBasis;
-        booking = booking.copyWith(costBasis: Value(costBasis), value: Value(value));
+        booking = await calculateCostBasisAndValue(booking);
       }
 
       final bookingId = await _addBooking(booking);
@@ -167,11 +170,11 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
           netCostBasis: 0,
           brokerCostBasis: 0,
           buyFeeTotal: 0));
-      await db.assetsDao.updateAsset(booking.assetId.value,
-          booking.shares.value, booking.value.value);
+      await db.assetsDao.updateAsset(
+          booking.assetId.value, booking.shares.value, booking.value.value);
 
-      await db.accountsDao.updateBalance(
-          booking.accountId.value, booking.value.value);
+      await db.accountsDao
+          .updateBalance(booking.accountId.value, booking.value.value);
 
       await db.assetsOnAccountsDao.recalculateSubsequentEvents(
         assetId: booking.assetId.value,
@@ -183,9 +186,11 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
-  // // NEW/EXPERIMENTAL version
+// // NEW/EXPERIMENTAL version
   Future<void> updateBooking(Booking oldBooking, BookingsCompanion newBooking) {
     return transaction(() async {
+      newBooking = await calculateCostBasisAndValue(newBooking, oldBooking: oldBooking);
+
       // Persist the new booking row first (you already had this).
       await _updateBooking(newBooking);
 
@@ -220,7 +225,8 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
       addRecalcTask(oldAssetId, oldAccountId, oldKeyDt);
 
       // New booking (after update) affects newAssetId/newAccountId at newBooking.date
-      final newKeyDt = newBooking.date.value * 1000000; // defensive; normally newBooking.date is present
+      final newKeyDt = newBooking.date.value *
+          1000000; // defensive; normally newBooking.date is present
       addRecalcTask(newAssetId, newAccountId, newKeyDt);
 
       // Now apply the immediate numeric changes you already had in your code
@@ -349,8 +355,7 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
     return transaction(() async {
       final booking = await getBooking(id);
       await _deleteBooking(id);
-      await db.accountsDao.updateBalance(
-          booking.accountId, -booking.value);
+      await db.accountsDao.updateBalance(booking.accountId, -booking.value);
       await db.assetsOnAccountsDao.updateAOA(AssetOnAccount(
           accountId: booking.accountId,
           assetId: booking.assetId,
@@ -359,8 +364,8 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
           netCostBasis: 0,
           brokerCostBasis: 0,
           buyFeeTotal: 0));
-      await db.assetsDao.updateAsset(
-          booking.assetId, -booking.shares, -booking.value);
+      await db.assetsDao
+          .updateAsset(booking.assetId, -booking.shares, -booking.value);
 
       // --- NEW / EXPERIMENTAL ------------------------------------------------
       final keyDt = booking.date * 1000000;

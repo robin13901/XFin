@@ -13,6 +13,8 @@ void main() {
   late int assetId;
   late int accA;
   late int accB;
+  late Asset assetOne;
+  late Account portfolio1, portfolio2;
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
@@ -22,37 +24,70 @@ void main() {
 
     // create one asset (base currency) and two accounts
     assetId = await db.into(db.assets).insert(AssetsCompanion.insert(
-      name: 'EUR',
-      type: AssetTypes.fiat,
-      tickerSymbol: 'EUR',
-    ));
+          name: 'EUR',
+          type: AssetTypes.fiat,
+          tickerSymbol: 'EUR',
+        ));
 
     accA = await db.into(db.accounts).insert(AccountsCompanion.insert(
-      name: 'AccountA',
-      type: AccountTypes.cash,
-      balance: const Value(100.0),
-    ));
+          name: 'AccountA',
+          type: AccountTypes.cash,
+          balance: const Value(100.0),
+        ));
 
     accB = await db.into(db.accounts).insert(AccountsCompanion.insert(
-      name: 'AccountB',
-      type: AccountTypes.cash,
-      balance: const Value(200.0),
-    ));
+          name: 'AccountB',
+          type: AccountTypes.cash,
+          balance: const Value(200.0),
+        ));
+
+    assetOne = const Asset(
+        id: 2,
+        name: 'Asset One',
+        type: AssetTypes.stock,
+        tickerSymbol: 'ONE',
+        currencySymbol: '',
+        value: 0,
+        shares: 0,
+        netCostBasis: 0,
+        brokerCostBasis: 0,
+        buyFeeTotal: 0,
+        isArchived: false);
+
+    portfolio1 = const Account(
+        id: 3,
+        name: 'Portfolio 1',
+        balance: 0,
+        initialBalance: 0,
+        type: AccountTypes.portfolio,
+        isArchived: false);
+
+    portfolio2 = const Account(
+        id: 4,
+        name: 'Portfolio 2',
+        balance: 0,
+        initialBalance: 0,
+        type: AccountTypes.portfolio,
+        isArchived: false);
 
     // Ensure both accounts have an AssetsOnAccounts row for the asset
     await db.into(db.assetsOnAccounts).insert(AssetsOnAccountsCompanion.insert(
-      accountId: accA,
-      assetId: assetId,
-      value: const Value(100.0),
-      shares: const Value(100.0),
-    ));
+          accountId: accA,
+          assetId: assetId,
+          value: const Value(100.0),
+          shares: const Value(100.0),
+        ));
 
     await db.into(db.assetsOnAccounts).insert(AssetsOnAccountsCompanion.insert(
-      accountId: accB,
-      assetId: assetId,
-      value: const Value(200.0),
-      shares: const Value(200.0),
-    ));
+          accountId: accB,
+          assetId: assetId,
+          value: const Value(200.0),
+          shares: const Value(200.0),
+        ));
+
+    await db.into(db.assets).insert(assetOne.toCompanion(false));
+    await db.into(db.accounts).insert(portfolio1.toCompanion(false));
+    await db.into(db.accounts).insert(portfolio2.toCompanion(false));
   });
 
   tearDown(() async {
@@ -60,7 +95,9 @@ void main() {
   });
 
   group('TransfersDao basic behavior', () {
-    test('watchTransfersWithAccountsAndAsset emits only transfers where both accounts not archived', () async {
+    test(
+        'watchTransfersWithAccountsAndAsset emits only transfers where both accounts not archived',
+        () async {
       // Create a transfer between accA -> accB
       await transfersDao.createTransfer(TransfersCompanion.insert(
         date: 20250101,
@@ -72,18 +109,21 @@ void main() {
       ));
 
       // Create transfer where receiving account is archived (should be excluded)
-      final accArchived = await db.into(db.accounts).insert(AccountsCompanion.insert(
-        name: 'Archived',
-        type: AccountTypes.cash,
-        isArchived: const Value(true),
-      ));
+      final accArchived =
+          await db.into(db.accounts).insert(AccountsCompanion.insert(
+                name: 'Archived',
+                type: AccountTypes.cash,
+                isArchived: const Value(true),
+              ));
 
-      await db.into(db.assetsOnAccounts).insert(AssetsOnAccountsCompanion.insert(
-        accountId: accArchived,
-        assetId: assetId,
-        value: const Value(0.0),
-        shares: const Value(0.0),
-      ));
+      await db
+          .into(db.assetsOnAccounts)
+          .insert(AssetsOnAccountsCompanion.insert(
+            accountId: accArchived,
+            assetId: assetId,
+            value: const Value(0.0),
+            shares: const Value(0.0),
+          ));
 
       await transfersDao.createTransfer(TransfersCompanion.insert(
         date: 20250102,
@@ -94,7 +134,8 @@ void main() {
         value: 5.0,
       ));
 
-      final rows = await transfersDao.watchTransfersWithAccountsAndAsset().first;
+      final rows =
+          await transfersDao.watchTransfersWithAccountsAndAsset().first;
 
       // Only the first transfer (accA -> accB) should be present
       expect(rows.length, 1);
@@ -106,10 +147,15 @@ void main() {
       expect(t.asset.id, assetId);
     });
 
-    test('createTransfer updates balances and assetsOnAccounts correctly', () async {
+    test('createTransfer updates balances and assetsOnAccounts correctly',
+        () async {
       // balances before
-      final aBefore = await (db.select(db.accounts)..where((t) => t.id.equals(accA))).getSingle();
-      final bBefore = await (db.select(db.accounts)..where((t) => t.id.equals(accB))).getSingle();
+      final aBefore = await (db.select(db.accounts)
+            ..where((t) => t.id.equals(accA)))
+          .getSingle();
+      final bBefore = await (db.select(db.accounts)
+            ..where((t) => t.id.equals(accB)))
+          .getSingle();
       expect(aBefore.balance, closeTo(100.0, 1e-9));
       expect(bBefore.balance, closeTo(200.0, 1e-9));
 
@@ -124,17 +170,23 @@ void main() {
       ));
 
       // balances after
-      final aAfter = await (db.select(db.accounts)..where((t) => t.id.equals(accA))).getSingle();
-      final bAfter = await (db.select(db.accounts)..where((t) => t.id.equals(accB))).getSingle();
+      final aAfter = await (db.select(db.accounts)
+            ..where((t) => t.id.equals(accA)))
+          .getSingle();
+      final bAfter = await (db.select(db.accounts)
+            ..where((t) => t.id.equals(accB)))
+          .getSingle();
       expect(aAfter.balance, closeTo(70.0, 1e-9)); // 100 - 30
       expect(bAfter.balance, closeTo(230.0, 1e-9)); // 200 + 30
 
       // assetsOnAccounts updated: A decreased by 30, B increased by 30
       final aoaA = await (db.select(db.assetsOnAccounts)
-        ..where((t) => t.accountId.equals(accA) & t.assetId.equals(assetId)))
+            ..where(
+                (t) => t.accountId.equals(accA) & t.assetId.equals(assetId)))
           .getSingle();
       final aoaB = await (db.select(db.assetsOnAccounts)
-        ..where((t) => t.accountId.equals(accB) & t.assetId.equals(assetId)))
+            ..where(
+                (t) => t.accountId.equals(accB) & t.assetId.equals(assetId)))
           .getSingle();
 
       expect(aoaA.value, closeTo(70.0, 1e-9)); // 100 - 30
@@ -144,7 +196,9 @@ void main() {
       expect(aoaB.shares, closeTo(230.0, 1e-9));
     });
 
-    test('updateTransfer reverses old transfer and applies new transfer correctly', () async {
+    test(
+        'updateTransfer reverses old transfer and applies new transfer correctly',
+        () async {
       // create an initial transfer A -> B, value 20
       await transfersDao.createTransfer(TransfersCompanion.insert(
         date: 20250301,
@@ -172,15 +226,21 @@ void main() {
       );
 
       // balances before the update
-      await (db.select(db.accounts)..where((t) => t.id.equals(accA))).getSingle();
-      await (db.select(db.accounts)..where((t) => t.id.equals(accB))).getSingle();
+      await (db.select(db.accounts)..where((t) => t.id.equals(accA)))
+          .getSingle();
+      await (db.select(db.accounts)..where((t) => t.id.equals(accB)))
+          .getSingle();
 
       // perform the update
       await transfersDao.updateTransfer(old, updatedCompanion);
 
       // balances after:
-      final aAfter = await (db.select(db.accounts)..where((t) => t.id.equals(accA))).getSingle();
-      final bAfter = await (db.select(db.accounts)..where((t) => t.id.equals(accB))).getSingle();
+      final aAfter = await (db.select(db.accounts)
+            ..where((t) => t.id.equals(accA)))
+          .getSingle();
+      final bAfter = await (db.select(db.accounts)
+            ..where((t) => t.id.equals(accB)))
+          .getSingle();
 
       // Explanation:
       // Initially we had A:100, B:200.
@@ -192,10 +252,12 @@ void main() {
 
       // assetsOnAccounts should reflect same net changes
       final aoaA = await (db.select(db.assetsOnAccounts)
-        ..where((t) => t.accountId.equals(accA) & t.assetId.equals(assetId)))
+            ..where(
+                (t) => t.accountId.equals(accA) & t.assetId.equals(assetId)))
           .getSingle();
       final aoaB = await (db.select(db.assetsOnAccounts)
-        ..where((t) => t.accountId.equals(accB) & t.assetId.equals(assetId)))
+            ..where(
+                (t) => t.accountId.equals(accB) & t.assetId.equals(assetId)))
           .getSingle();
 
       // After the sequence above the expected AoA values:
@@ -231,8 +293,10 @@ void main() {
       final t = all.last;
 
       // balances after creation: A=75, B=225
-      var aNow = await (db.select(db.accounts)..where((q) => q.id.equals(accA))).getSingle();
-      var bNow = await (db.select(db.accounts)..where((q) => q.id.equals(accB))).getSingle();
+      var aNow = await (db.select(db.accounts)..where((q) => q.id.equals(accA)))
+          .getSingle();
+      var bNow = await (db.select(db.accounts)..where((q) => q.id.equals(accB)))
+          .getSingle();
       expect(aNow.balance, closeTo(75.0, 1e-9));
       expect(bNow.balance, closeTo(225.0, 1e-9));
 
@@ -244,23 +308,77 @@ void main() {
       expect(remaining.where((r) => r.id == t.id), isEmpty);
 
       // balances reversed: A back to 100, B back to 200
-      aNow = await (db.select(db.accounts)..where((q) => q.id.equals(accA))).getSingle();
-      bNow = await (db.select(db.accounts)..where((q) => q.id.equals(accB))).getSingle();
+      aNow = await (db.select(db.accounts)..where((q) => q.id.equals(accA)))
+          .getSingle();
+      bNow = await (db.select(db.accounts)..where((q) => q.id.equals(accB)))
+          .getSingle();
       expect(aNow.balance, closeTo(100.0, 1e-9));
       expect(bNow.balance, closeTo(200.0, 1e-9));
 
       // assetsOnAccounts reversed as well
       final aoaA = await (db.select(db.assetsOnAccounts)
-        ..where((q) => q.accountId.equals(accA) & q.assetId.equals(assetId)))
+            ..where(
+                (q) => q.accountId.equals(accA) & q.assetId.equals(assetId)))
           .getSingle();
       final aoaB = await (db.select(db.assetsOnAccounts)
-        ..where((q) => q.accountId.equals(accB) & q.assetId.equals(assetId)))
+            ..where(
+                (q) => q.accountId.equals(accB) & q.assetId.equals(assetId)))
           .getSingle();
 
       expect(aoaA.value, closeTo(100.0, 1e-9));
       expect(aoaA.shares, closeTo(100.0, 1e-9));
       expect(aoaB.value, closeTo(200.0, 1e-9));
       expect(aoaB.shares, closeTo(200.0, 1e-9));
+    });
+
+    test('costBasis correctly calculated in createTransfer and updateTransfer',
+        () async {
+      await db.bookingsDao.createBooking(BookingsCompanion(
+          date: const Value(20250101),
+          assetId: Value(assetOne.id),
+          accountId: Value(portfolio1.id),
+          category: const Value('Test'),
+          shares: const Value(0.5),
+          costBasis: const Value(100),
+          value: const Value(50)));
+
+      await db.bookingsDao.createBooking(BookingsCompanion(
+          date: const Value(20250102),
+          assetId: Value(assetOne.id),
+          accountId: Value(portfolio1.id),
+          category: const Value('Test'),
+          shares: const Value(0.5),
+          costBasis: const Value(200),
+          value: const Value(100)));
+
+      // Create SUT
+      await db.transfersDao.createTransfer(TransfersCompanion(
+          date: const Value(20250103),
+          assetId: Value(assetOne.id),
+          sendingAccountId: Value(portfolio1.id),
+          receivingAccountId: Value(portfolio2.id),
+          shares: const Value(1)));
+
+      // Post-create-checks
+      var sut = await db.transfersDao.getTransfer(1);
+      expect(sut.shares, closeTo(1, 1e-9));
+      expect(sut.costBasis, closeTo(150, 1e-9));
+      expect(sut.value, closeTo(150, 1e-9));
+
+      // Update SUT
+      var updatedTransfer = TransfersCompanion(
+          date: const Value(20250103),
+          assetId: Value(assetOne.id),
+          sendingAccountId: Value(portfolio1.id),
+          receivingAccountId: Value(portfolio2.id),
+          shares: const Value(0.5));
+      db.transfersDao.updateTransfer(sut, updatedTransfer);
+
+      // Post-update-checks
+      sut = await db.transfersDao.getTransfer(1);
+      expect(sut.shares, closeTo(0.5, 1e-9));
+      expect(sut.costBasis, closeTo(100, 1e-9));
+      expect(sut.value, closeTo(50, 1e-9));
     });
   });
 }

@@ -82,6 +82,43 @@ class TransfersDao extends DatabaseAccessor<AppDatabase> with _$TransfersDaoMixi
     return value / shares.abs();
   }
 
+  Future<TransfersCompanion> calculateCostBasisAndValue(TransfersCompanion transfer,
+      {Transfer? oldTransfer}) async {
+    final assetId = transfer.assetId.value;
+    final accountId = transfer.sendingAccountId.value;
+    final shares = transfer.shares.value;
+    final datetime = transfer.date.value * 1000000;
+    double costBasis, value = 0.0;
+
+    if (assetId == 1) {
+      costBasis = 1;
+      value = shares * costBasis;
+    } else {
+      final fifo = await db.assetsOnAccountsDao.buildFiFoQueue(
+          assetId, accountId,
+          upToDatetime: datetime, oldTransfer: oldTransfer);
+
+      double sharesToConsume = shares.abs();
+      while (sharesToConsume > 0 && fifo.isNotEmpty) {
+        final currentLot = fifo.first;
+        final lotShares = currentLot['shares']!;
+        final lotCostBasis = currentLot['costBasis']!;
+
+        if (lotShares <= sharesToConsume + 1e-12) {
+          sharesToConsume -= lotShares;
+          value += lotShares * lotCostBasis;
+          fifo.removeFirst();
+        } else {
+          currentLot['shares'] = lotShares - sharesToConsume;
+          value += sharesToConsume * lotCostBasis;
+          sharesToConsume = 0;
+        }
+      }
+      costBasis = value / shares.abs();
+    }
+    return transfer.copyWith(costBasis: Value(costBasis), value: Value(value));
+  }
+
   /// Create a transfer and apply its effects:
   /// - subtract value from sending account balance
   /// - add value to receiving account balance
@@ -89,9 +126,7 @@ class TransfersDao extends DatabaseAccessor<AppDatabase> with _$TransfersDaoMixi
   Future<void> createTransfer(TransfersCompanion transfer) {
     return transaction(() async {
       if (!transfer.costBasis.present) {
-        final costBasis = await _calculateCostBasis(transfer);
-        final value = transfer.shares.value * costBasis;
-        transfer = transfer.copyWith(costBasis: Value(costBasis), value: Value(value));
+        transfer = await calculateCostBasisAndValue(transfer);
       }
 
       final transferId = await _addTransfer(transfer);
@@ -155,11 +190,12 @@ class TransfersDao extends DatabaseAccessor<AppDatabase> with _$TransfersDaoMixi
   /// Doing it this way keeps logic simple and correct for all cases (changed accounts, changed asset, changed amount).
   Future<void> updateTransfer(Transfer oldTransfer, TransfersCompanion newTransfer) {
     return transaction(() async {
-      if (!newTransfer.costBasis.present) {
-        final costBasis = await _calculateCostBasis(newTransfer, oldTransfer: oldTransfer);
-        final value = newTransfer.shares.value * costBasis;
-        newTransfer = newTransfer.copyWith(costBasis: Value(costBasis), value: Value(value));
-      }
+      newTransfer = await calculateCostBasisAndValue(newTransfer, oldTransfer: oldTransfer);
+      // if (!newTransfer.costBasis.present) {
+      //   final costBasis = await _calculateCostBasis(newTransfer, oldTransfer: oldTransfer);
+      //   final value = newTransfer.shares.value * costBasis;
+      //   newTransfer = newTransfer.copyWith(costBasis: Value(costBasis), value: Value(value));
+      // }
       newTransfer = newTransfer.copyWith(id: Value(oldTransfer.id));
 
 

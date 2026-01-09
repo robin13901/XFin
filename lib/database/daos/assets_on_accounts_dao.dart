@@ -101,6 +101,7 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
   Future<ListQueue<Map<String, double>>> buildFiFoQueue(
     int assetId,
     int accountId, {
+    Booking? oldBooking,
     Transfer? oldTransfer,
     int? upToDatetime,
     String? upToType,
@@ -115,7 +116,8 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
     }
 
     // 0) Current aggregated AOA row
-    final initialAOA = await ensureAssetOnAccountExists(assetId, accountId);//await getAOA(accountId, assetId);
+    final initialAOA = await ensureAssetOnAccountExists(
+        assetId, accountId); //await getAOA(accountId, assetId);
     double initialShares = initialAOA.shares;
     double initialValue = initialAOA.value;
     double initialBuyFeeTotal = initialAOA.buyFeeTotal;
@@ -162,6 +164,7 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
     for (final b in bookingRows) {
       initialShares -= b.shares;
       initialValue -= b.value;
+      if (oldBooking != null && b.id == oldBooking.id) continue;
       final datetime = b.date * 1000000;
       events.add({
         'datetime': datetime,
@@ -318,7 +321,8 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
     required String upToType,
     required int upToId,
     required Set<String> visited,
-    ListQueue<Map<String, double>>? initialFifo, // optional pre-built FIFO for receiver recursion
+    ListQueue<Map<String, double>>?
+        initialFifo, // optional pre-built FIFO for receiver recursion
   }) async {
     // No need to recalculate base currency events
     if (assetId == 1) return;
@@ -344,39 +348,42 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
     // bookings candidate: date >= upToDate (coarse)
     final upToDate = upToDatetime ~/ 1000000;
     final bookingsCandidates = await (select(bookings)
-      ..where((b) =>
-      b.assetId.equals(assetId) &
-      b.accountId.equals(accountId) &
-      b.date.isBiggerOrEqualValue(upToDate)))
+          ..where((b) =>
+              b.assetId.equals(assetId) &
+              b.accountId.equals(accountId) &
+              b.date.isBiggerOrEqualValue(upToDate)))
         .get();
     for (final b in bookingsCandidates) {
       final e = _RecalcEvent.booking(b);
-      if (cmpKey(e.datetime, e.typeStr, e.id, upToDatetime, upToType, upToId) > 0) {
+      if (cmpKey(e.datetime, e.typeStr, e.id, upToDatetime, upToType, upToId) >
+          0) {
         events.add(e);
       }
     }
 
     // transfers candidate: date >= upToDate (coarse)
     final transfersCandidates = await (select(transfers)
-      ..where((t) =>
-      t.assetId.equals(assetId) &
-      (t.sendingAccountId.equals(accountId) |
-      t.receivingAccountId.equals(accountId)) &
-      t.date.isBiggerOrEqualValue(upToDate)))
+          ..where((t) =>
+              t.assetId.equals(assetId) &
+              (t.sendingAccountId.equals(accountId) |
+                  t.receivingAccountId.equals(accountId)) &
+              t.date.isBiggerOrEqualValue(upToDate)))
         .get();
     for (final t in transfersCandidates) {
       final e = _RecalcEvent.transfer(t);
-      if (cmpKey(e.datetime, e.typeStr, e.id, upToDatetime, upToType, upToId) > 0) {
+      if (cmpKey(e.datetime, e.typeStr, e.id, upToDatetime, upToType, upToId) >
+          0) {
         events.add(e);
       }
     }
 
     // trades candidate: load chronological full list for asset/account and filter
     final allTradesAsc =
-    await db.tradesDao.loadTradesForAssetAndAccount(assetId, accountId);
+        await db.tradesDao.loadTradesForAssetAndAccount(assetId, accountId);
     for (final t in allTradesAsc) {
       final e = _RecalcEvent.trade(t);
-      if (cmpKey(e.datetime, e.typeStr, e.id, upToDatetime, upToType, upToId) > 0) {
+      if (cmpKey(e.datetime, e.typeStr, e.id, upToDatetime, upToType, upToId) >
+          0) {
         events.add(e);
       }
     }
@@ -404,7 +411,8 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
       if (event.type == _RecalcEventType.booking) {
         final b = event.booking!;
         // Check key again here, because we might have already recalculated this one in a previous recursion
-        final visitKey = '$assetId|$accountId|${b.date*1000000}|_booking|${b.id}';
+        final visitKey =
+            '$assetId|$accountId|${b.date * 1000000}|_booking|${b.id}';
         if (visited.contains(visitKey)) return;
         visited.add(visitKey);
         final shares = b.shares;
@@ -428,10 +436,12 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
             remaining -= take;
           }
 
-          final newCostBasis = removedShares > 1e-12 ? removedCost / removedShares : b.costBasis;
+          final newCostBasis =
+              removedShares > 1e-12 ? removedCost / removedShares : b.costBasis;
 
           if ((b.costBasis - newCostBasis).abs() > 1e-9) {
-            final oldValue = (await db.bookingsDao.getBooking(b.id)).value;//b.value;
+            final oldValue =
+                (await db.bookingsDao.getBooking(b.id)).value; //b.value;
             final newValue = newCostBasis * b.shares;
 
             // Persist booking with new computed values
@@ -469,14 +479,16 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
       } else if (event.type == _RecalcEventType.transfer) {
         final tr = event.transfer!;
         // Check key again here, because we might have already recalculated this one in a previous recursion
-        final visitKey = '$assetId|$accountId|${tr.date*1000000}|_transfer|${tr.id}';
+        final visitKey =
+            '$assetId|$accountId|${tr.date * 1000000}|_transfer|${tr.id}';
         if (visited.contains(visitKey)) return;
         visited.add(visitKey);
         final isInflow = tr.receivingAccountId == accountId;
         if (isInflow) {
           // incoming transfer: rely on transfer.costBasis (should have been set by sending-side),
           // but if zero/fallback, still add with stored costBasis.
-          fifo.add({'shares': tr.shares, 'costBasis': tr.costBasis, 'fee': 0.0});
+          fifo.add(
+              {'shares': tr.shares, 'costBasis': tr.costBasis, 'fee': 0.0});
         } else {
           // sending side: consume FIFO and write transfer.costBasis, then propagate to receiver
           var remaining = tr.shares;
@@ -496,13 +508,17 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
             remaining -= take;
           }
 
-          final newCostBasis = removedShares > 1e-12 ? removedCost / removedShares : tr.costBasis;
+          final newCostBasis = removedShares > 1e-12
+              ? removedCost / removedShares
+              : tr.costBasis;
 
           if ((tr.costBasis - newCostBasis).abs() > 1e-9) {
-            final oldValue = (await db.transfersDao.getTransfer(tr.id)).value;//tr.value;
+            final oldValue =
+                (await db.transfersDao.getTransfer(tr.id)).value; //tr.value;
             final newValue = newCostBasis * tr.shares;
 
-            await (update(transfers)..where((tbl) => tbl.id.equals(tr.id))).write(
+            await (update(transfers)..where((tbl) => tbl.id.equals(tr.id)))
+                .write(
               TransfersCompanion(
                 costBasis: Value(newCostBasis),
                 value: Value(newValue),
@@ -510,7 +526,8 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
             );
 
             // Apply deltas to snapshot rows:
-            final valueDelta = newValue - oldValue; // positive if newValue > oldValue
+            final valueDelta =
+                newValue - oldValue; // positive if newValue > oldValue
 
             final sendingId = tr.sendingAccountId;
             final receivingId = tr.receivingAccountId;
@@ -558,7 +575,8 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
             upToId: tr.id,
           );
           // add incoming lot
-          recvFifo.add({'shares': tr.shares, 'costBasis': newCostBasis, 'fee': 0.0});
+          recvFifo.add(
+              {'shares': tr.shares, 'costBasis': newCostBasis, 'fee': 0.0});
 
           // recurse for receiver, starting at this transfer's key (so receiver will process events after transfer)
           await _recalculateInternal(
@@ -604,7 +622,6 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
       }
     } // end for events
   }
-
 }
 
 // --- small helper types for unified event handling ---

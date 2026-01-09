@@ -313,31 +313,6 @@ class _BookingFormState extends State<BookingForm> {
     }
   }
 
-  Future<double> _calculateCostBasis(double shares, int upToDatetimeForFiFo) async {
-    if (_assetId == 1) return 1;
-    if (shares > 0) return double.parse(_costBasisCtrl.text.replaceAll(',', '.'));
-    final fifo = await _db.assetsOnAccountsDao.buildFiFoQueue(_assetId!, _accountId!, upToDatetime: upToDatetimeForFiFo);
-
-    double sharesToConsume = shares.abs();
-    double value = 0.0;
-    while (sharesToConsume > 0 && fifo.isNotEmpty) {
-      final currentLot = fifo.first;
-      final lotShares = currentLot['shares']!;
-      final lotCostBasis = currentLot['costBasis']!;
-
-      if (lotShares <= sharesToConsume + 1e-12) {
-        sharesToConsume -= lotShares;
-        value += lotShares * lotCostBasis;
-        fifo.removeFirst();
-      } else {
-        currentLot['shares'] = lotShares - sharesToConsume;
-        value += sharesToConsume * lotCostBasis;
-        sharesToConsume = 0;
-      }
-    }
-    return value / shares.abs();
-  }
-
   Future<void> _saveForm() async {
     if (!_formKey.currentState!.validate()) return;
     final dateInt = int.parse(DateFormat('yyyyMMdd').format(_date));
@@ -376,9 +351,6 @@ class _BookingFormState extends State<BookingForm> {
       }
     }
 
-    final costBasis = await _calculateCostBasis(shares, dateInt * 1000000);
-    final value = shares * costBasis;
-
     // --- Companion Construction ---
     var companion = BookingsCompanion(
       date: drift.Value(dateInt),
@@ -387,11 +359,11 @@ class _BookingFormState extends State<BookingForm> {
       excludeFromAverage: drift.Value(_excludeFromAverage),
       isGenerated: drift.Value(_isGenerated),
       shares: drift.Value(shares),
-      costBasis: drift.Value(costBasis),
-      value: drift.Value(value),
       assetId: drift.Value(_assetId!),
       accountId: drift.Value(_accountId!),
     );
+    companion = await _db.bookingsDao.calculateCostBasisAndValue(companion);
+    final value = companion.value.value;
 
     Booking? original = widget.booking;
     bool checkedSafe = false;

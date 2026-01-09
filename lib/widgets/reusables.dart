@@ -111,7 +111,8 @@ class Reusables {
                   signed: signedShares, decimal: true),
               validator: (value) => selectedAsset?.type == AssetTypes.fiat
                   ? validator.validateMaxTwoDecimalsNotZero(value)
-                  : validator.validateDecimalNotZero(value)),
+                  : validator.validateDecimalNotZero(value)
+          ),
         ),
         if (selectedAsset?.id != 1 && !hideCostBasis) ...[
           const SizedBox(width: 16),
