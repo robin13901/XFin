@@ -19,3 +19,11 @@ String preciseDecimal(double d) {
   // - If there are meaningful fractional digits they are preserved.
   return s.replaceFirst(RegExp(r'\.?0+$'), '').replaceAll('.', ',');
 }
+
+int cmpKey(int dtA, String typeA, int idA, int dtB, String typeB, int idB) {
+  if (dtA != dtB) return dtA < dtB ? -1 : 1;
+  final tc = typeA.compareTo(typeB);
+  if (tc != 0) return tc < 0 ? -1 : 1;
+  if (idA != idB) return idA < idB ? -1 : 1;
+  return 0;
+}

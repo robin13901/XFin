@@ -7,22 +7,26 @@ import '../tables.dart';
 part 'transfers_dao.g.dart';
 
 @DriftAccessor(tables: [Transfers, Accounts, Assets, AssetsOnAccounts])
-class TransfersDao extends DatabaseAccessor<AppDatabase> with _$TransfersDaoMixin {
+class TransfersDao extends DatabaseAccessor<AppDatabase>
+    with _$TransfersDaoMixin {
   TransfersDao(super.db);
 
   /// Watch transfers together with sending + receiving accounts and the asset.
-  Stream<List<TransferWithAccountsAndAsset>> watchTransfersWithAccountsAndAsset() {
+  Stream<List<TransferWithAccountsAndAsset>>
+      watchTransfersWithAccountsAndAsset() {
     final sending = alias(accounts, 'sending');
     final receiving = alias(accounts, 'receiving');
 
     final query = select(transfers).join([
       leftOuterJoin(sending, sending.id.equalsExp(transfers.sendingAccountId)),
-      leftOuterJoin(receiving, receiving.id.equalsExp(transfers.receivingAccountId)),
+      leftOuterJoin(
+          receiving, receiving.id.equalsExp(transfers.receivingAccountId)),
       leftOuterJoin(assets, assets.id.equalsExp(transfers.assetId)),
     ]);
 
     // Only show transfers where both accounts are not archived
-    query.where(sending.isArchived.equals(false) & receiving.isArchived.equals(false));
+    query.where(
+        sending.isArchived.equals(false) & receiving.isArchived.equals(false));
 
     query.orderBy([
       OrderingTerm.desc(transfers.date),
@@ -42,9 +46,11 @@ class TransfersDao extends DatabaseAccessor<AppDatabase> with _$TransfersDaoMixi
   }
 
   // Simple helpers (non-transactional)
-  Future<int> _addTransfer(TransfersCompanion entry) => into(transfers).insert(entry);
+  Future<int> _addTransfer(TransfersCompanion entry) =>
+      into(transfers).insert(entry);
 
-  Future<bool> _updateTransfer(TransfersCompanion entry) => update(transfers).replace(entry);
+  Future<bool> _updateTransfer(TransfersCompanion entry) =>
+      update(transfers).replace(entry);
 
   Future<int> _deleteTransfer(int id) =>
       (delete(transfers)..where((t) => t.id.equals(id))).go();
@@ -54,8 +60,16 @@ class TransfersDao extends DatabaseAccessor<AppDatabase> with _$TransfersDaoMixi
 
   Future<List<Transfer>> getAllTransfers() => select(transfers).get();
 
+  Future<List<Transfer>> getTransfersForAccount(
+          int accountId) =>
+      (select(transfers)
+            ..where((t) =>
+                t.sendingAccountId.equals(accountId) |
+                t.receivingAccountId.equals(accountId)))
+          .get();
 
-  Future<TransfersCompanion> calculateCostBasisAndValue(TransfersCompanion transfer,
+  Future<TransfersCompanion> calculateCostBasisAndValue(
+      TransfersCompanion transfer,
       {Transfer? oldTransfer}) async {
     final assetId = transfer.assetId.value;
     final accountId = transfer.sendingAccountId.value;
@@ -89,14 +103,16 @@ class TransfersDao extends DatabaseAccessor<AppDatabase> with _$TransfersDaoMixi
       }
       costBasis = value / shares.abs();
     }
-    return transfer.copyWith(costBasis: Value(normalize(costBasis)), value: Value(normalize(value)));
+    return transfer.copyWith(
+        costBasis: Value(normalize(costBasis)), value: Value(normalize(value)));
   }
 
   /// Create a transfer and apply its effects:
   /// - subtract value from sending account balance
   /// - add value to receiving account balance
   /// - adjust AssetsOnAccounts: subtract shares/value from sending account, add shares/value to receiving account
-  Future<void> createTransfer(TransfersCompanion transfer, AppLocalizations l10n) {
+  Future<void> createTransfer(
+      TransfersCompanion transfer, AppLocalizations l10n) {
     return transaction(() async {
       if (!transfer.costBasis.present) {
         transfer = await calculateCostBasisAndValue(transfer);
@@ -162,16 +178,17 @@ class TransfersDao extends DatabaseAccessor<AppDatabase> with _$TransfersDaoMixi
   /// - reverse the effects of the old transfer (restore sending account, remove from receiving)
   /// - apply the effects of the new transfer
   /// Doing it this way keeps logic simple and correct for all cases (changed accounts, changed asset, changed amount).
-  Future<void> updateTransfer(Transfer oldTransfer, TransfersCompanion newTransfer, AppLocalizations l10n) {
+  Future<void> updateTransfer(Transfer oldTransfer,
+      TransfersCompanion newTransfer, AppLocalizations l10n) {
     return transaction(() async {
-      newTransfer = await calculateCostBasisAndValue(newTransfer, oldTransfer: oldTransfer);
+      newTransfer = await calculateCostBasisAndValue(newTransfer,
+          oldTransfer: oldTransfer);
       // if (!newTransfer.costBasis.present) {
       //   final costBasis = await _calculateCostBasis(newTransfer, oldTransfer: oldTransfer);
       //   final value = newTransfer.shares.value * costBasis;
       //   newTransfer = newTransfer.copyWith(costBasis: Value(costBasis), value: Value(value));
       // }
       newTransfer = newTransfer.copyWith(id: Value(oldTransfer.id));
-
 
       // We'll collect recalc tasks in this set (avoid duplicates).
       // Each entry is a tuple (assetId, accountId, datetime)
@@ -274,7 +291,6 @@ class TransfersDao extends DatabaseAccessor<AppDatabase> with _$TransfersDaoMixi
           upToId: oldTransfer.id, // existing transfer id (same for update)
         );
       }
-
     });
   }
 
@@ -284,8 +300,10 @@ class TransfersDao extends DatabaseAccessor<AppDatabase> with _$TransfersDaoMixi
       final transfer = await getTransfer(id);
 
       // Reverse effects
-      await db.accountsDao.updateBalance(transfer.sendingAccountId, transfer.value);
-      await db.accountsDao.updateBalance(transfer.receivingAccountId, -transfer.value);
+      await db.accountsDao
+          .updateBalance(transfer.sendingAccountId, transfer.value);
+      await db.accountsDao
+          .updateBalance(transfer.receivingAccountId, -transfer.value);
 
       await db.assetsOnAccountsDao.updateAOA(AssetOnAccount(
         accountId: transfer.sendingAccountId,
@@ -313,12 +331,12 @@ class TransfersDao extends DatabaseAccessor<AppDatabase> with _$TransfersDaoMixi
       await db.assetsOnAccountsDao.recalculateSubsequentEvents(
         l10n: l10n,
         assetId: transfer.assetId,
-        accountId: transfer.receivingAccountId, // call on sending account; recursion handles receiver
+        accountId: transfer.receivingAccountId,
+        // call on sending account; recursion handles receiver
         upToDatetime: transfer.date * 1000000 + 1,
         upToType: '_transfer',
         upToId: id,
       );
-
     });
   }
 }

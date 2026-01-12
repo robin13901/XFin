@@ -153,7 +153,7 @@ class _TradeFormState extends State<TradeForm> {
     // await db.tradesDao.insertFromCsv();
     // return;
 
-    final trade = TradesCompanion(
+    var trade = TradesCompanion(
       datetime: drift.Value(
           int.parse(DateFormat('yyyyMMddHHmmss').format(_datetime))),
       assetId: drift.Value(_selectedAsset!.id),
@@ -171,7 +171,8 @@ class _TradeFormState extends State<TradeForm> {
     try {
       // NOTE: DAO enforces balance-history checks; UI validators should handle form-level validation.
       if (_isEditing) {
-        await db.tradesDao.updateTrade(widget.trade!.id, trade, l10n);
+        trade = trade.copyWith(id: drift.Value(widget.trade!.id));
+        await db.tradesDao.updateTrade(trade, l10n);
       } else {
         await db.tradesDao.insertTrade(trade, l10n);
       }

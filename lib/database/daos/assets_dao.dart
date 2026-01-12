@@ -45,13 +45,14 @@ class AssetsDao extends DatabaseAccessor<AppDatabase> with _$AssetsDaoMixin {
     return result.isNotEmpty;
   }
 
-  Future<void> updateAsset(int assetId, double sharesDelta, double valueDelta) async {
+  Future<void> updateAsset(int assetId, double sharesDelta, double valueDelta, buyFeeTotalDelta) async {
     Asset asset = await getAsset(assetId);
 
-    double newShares = asset.shares + sharesDelta;
-    double newValue = asset.value + valueDelta;
-    double newNetCostBasis = newShares == 0 ? 1 : newValue / newShares;
-    double newBrokerCostBasis = newShares == 0 ? 1 : (newValue + asset.buyFeeTotal) / newShares;
+    final newShares = asset.shares + sharesDelta;
+    final newValue = asset.value + valueDelta;
+    final newBuyFeeTotal = asset.buyFeeTotal + buyFeeTotalDelta;
+    final newNetCostBasis = newShares == 0 ? 1 : newValue / newShares;
+    final newBrokerCostBasis = newShares == 0 ? 1 : (newValue + newBuyFeeTotal) / newShares;
 
     await (update(assets)..where((a) => a.id.equals(assetId))).write(
       AssetsCompanion(
@@ -59,6 +60,7 @@ class AssetsDao extends DatabaseAccessor<AppDatabase> with _$AssetsDaoMixin {
         value: Value(normalize(newValue)),//newValue < 0 ? 0 : normalize(newValue)),
         netCostBasis: Value(normalize(newNetCostBasis)),
         brokerCostBasis: Value(normalize(newBrokerCostBasis)),
+        buyFeeTotal: Value(normalize(newBuyFeeTotal))
       ),
     );
   }

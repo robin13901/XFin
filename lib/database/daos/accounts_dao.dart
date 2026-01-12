@@ -34,7 +34,7 @@ class AccountsDao extends DatabaseAccessor<AppDatabase>
       for (var aoa in pendingAOAs) {
         aoa = aoa.copyWith(accountId: accountId);
         await db.assetsOnAccountsDao.updateAOA(aoa);
-        await db.assetsDao.updateAsset(aoa.assetId, aoa.shares, aoa.value);
+        await db.assetsDao.updateAsset(aoa.assetId, aoa.shares, aoa.value, 0);
       }
     });
   }
@@ -135,162 +135,77 @@ class AccountsDao extends DatabaseAccessor<AppDatabase>
           await db.assetsOnAccountsDao.getAOAsForAccount(id);
 
       for (var aoa in allAOAs) {
-        await db.assetsDao.updateAsset(aoa.assetId, -aoa.shares, -aoa.value);
+        await db.assetsDao.updateAsset(aoa.assetId, -aoa.shares, -aoa.value, 0);
         await db.assetsOnAccountsDao.deleteAOA(aoa);
       }
     });
   }
 
-  Future<bool> leadsToInconsistentBalanceHistory({
-    int? accountId,
-    Booking? originalBooking,
-    BookingsCompanion? newBooking,
-    Trade? originalTrade,
-    TradesCompanion? newTrade,
-    Transfer? originalTransfer,
-    TransfersCompanion? newTransfer,
-  }) async {
-    Set<int> accountIds = {};
-    if (accountId != null) accountIds.add(accountId);
-    if (originalBooking != null) accountIds.add(originalBooking.accountId);
-    if (newBooking != null) accountIds.add(newBooking.accountId.value);
-    if (originalTrade != null) {
-      accountIds.add(originalTrade.sourceAccountId);
-      accountIds.add(originalTrade.targetAccountId);
-    }
-    if (newTrade != null) {
-      accountIds.add(newTrade.sourceAccountId.value);
-      accountIds.add(newTrade.targetAccountId.value);
-    }
-    if (originalTransfer != null) {
-      accountIds.add(originalTransfer.sendingAccountId);
-      accountIds.add(originalTransfer.receivingAccountId);
-    }
-    if (newTransfer != null) {
-      accountIds.add(newTransfer.sendingAccountId.value);
-      accountIds.add(newTransfer.receivingAccountId.value);
-    }
+  Future<List<(int date, double delta)>> getBalanceDeltasByDate(int accountId) {
+    return customSelect(
+      '''
+    SELECT date, SUM(delta) AS delta
+    FROM (
+      SELECT date, value AS delta
+      FROM bookings
+      WHERE account_id = ?
 
-    for (var accountId in accountIds) {
-      // Launch DB queries in parallel
-      final accountFuture = getAccount(accountId);
-      final bookingsFuture =
-          (select(bookings)..where((b) => b.accountId.equals(accountId))).get();
-      final sendingTransfersFuture = (select(transfers)
-            ..where((t) => t.sendingAccountId.equals(accountId)))
-          .get();
-      final receivingTransfersFuture = (select(transfers)
-            ..where((t) => t.receivingAccountId.equals(accountId)))
-          .get();
-      final clearingTradesFuture = (select(trades)
-            ..where((t) => t.sourceAccountId.equals(accountId)))
-          .get();
-      final portfolioTradesFuture = (select(trades)
-            ..where((t) => t.targetAccountId.equals(accountId)))
-          .get();
+      UNION ALL
 
-      final results = await Future.wait([
-        accountFuture,
-        bookingsFuture,
-        sendingTransfersFuture,
-        receivingTransfersFuture,
-        clearingTradesFuture,
-        portfolioTradesFuture
-      ]);
+      SELECT date,
+             CASE
+               WHEN sending_account_id = ? THEN -value
+               ELSE value
+             END
+      FROM transfers
+      WHERE sending_account_id = ?
+         OR receiving_account_id = ?
 
-      final account = results[0] as Account;
-      final accountBookings = results[1] as List<Booking>;
-      final sendingTransfers = results[2] as List<Transfer>;
-      final receivingTransfers = results[3] as List<Transfer>;
-      final clearingTrades = results[4] as List<Trade>;
-      final portfolioTrades = results[5] as List<Trade>;
+      UNION ALL
+
+      SELECT datetime / 1000000 AS date,
+             CASE
+               WHEN source_account_id = ?
+                 THEN source_account_value_delta
+               ELSE target_account_value_delta
+             END
+      FROM trades
+      WHERE source_account_id = ?
+         OR target_account_id = ?
+    )
+    GROUP BY date
+    ORDER BY date
+    ''',
+      variables: [
+        Variable.withInt(accountId),
+        Variable.withInt(accountId),
+        Variable.withInt(accountId),
+        Variable.withInt(accountId),
+        Variable.withInt(accountId),
+        Variable.withInt(accountId),
+        Variable.withInt(accountId),
+      ],
+      readsFrom: {bookings, transfers, trades},
+    ).map((row) {
+      return (row.read<int>('date'), row.read<double>('delta'));
+    }).get();
+  }
+
+  Future<bool> isInconsistent(int accountId) {
+    return transaction(() async {
+      final account = await getAccount(accountId);
+      final deltas = await db.accountsDao.getBalanceDeltasByDate(accountId);
 
       var runningBalance = account.initialBalance;
-
-      // Aggregation map keyed by date-int (yyyyMMdd for bookings/transfers, truncated for trades)
-      final Map<int, double> sumsByDate = {};
-
-      // Bookings
-      for (final b in accountBookings) {
-        if (originalBooking != null && b.id == originalBooking.id) continue;
-        final date = b.date;
-        sumsByDate[date] = (sumsByDate[date] ?? 0) + b.value;
-      }
-
-      // Transfers (sending) — subtract
-      for (final t in sendingTransfers) {
-        if (originalTransfer != null && t.id == originalTransfer.id) continue;
-        final date = t.date;
-        sumsByDate[date] = (sumsByDate[date] ?? 0) - t.value;
-      }
-
-      // Transfers (receiving) — add
-      for (final t in receivingTransfers) {
-        if (originalTransfer != null && t.id == originalTransfer.id) continue;
-        final date = t.date;
-        sumsByDate[date] = (sumsByDate[date] ?? 0) + t.value;
-      }
-
-      // Trades (regarding clearing account)
-      for (final t in clearingTrades) {
-        if (originalTrade != null && t.id == originalTrade.id) continue;
-        final date = t.datetime ~/ 1000000;
-        sumsByDate[date] = (sumsByDate[date] ?? 0) + t.sourceAccountValueDelta;
-      }
-
-      // Trades (regarding portfolio account)
-      for (final t in portfolioTrades) {
-        // if (originalTrade != null && t.id == originalTrade.id) continue; // TODO figure out
-        final date = t.datetime ~/ 1000000;
-        sumsByDate[date] = (sumsByDate[date] ?? 0) + t.targetAccountValueDelta;
-      }
-
-      // New/updated booking
-      if (newBooking != null && accountId == newBooking.accountId.value) {
-        final newDate = newBooking.date.value;
-        sumsByDate[newDate] =
-            (sumsByDate[newDate] ?? 0) + newBooking.value.value;
-      }
-
-      // New/updated transfer — apply to sending (subtract) and receiving (add)
-      if (newTransfer != null) {
-        final newDate = newTransfer.date.value;
-        final newBase = newTransfer.value.value;
-        if (accountId == newTransfer.sendingAccountId.value) {
-          sumsByDate[newDate] = (sumsByDate[newDate] ?? 0) - newBase;
-        }
-        if (accountId == newTransfer.receivingAccountId.value) {
-          sumsByDate[newDate] = (sumsByDate[newDate] ?? 0) + newBase;
-        }
-      }
-
-      // New trade — apply to clearing and portfolio
-      if (newTrade != null) {
-        final newDate = newTrade.datetime.value ~/ 1000000;
-        if (accountId == newTrade.sourceAccountId.value) {
-          final sourceAccountValueDelta =
-              newTrade.sourceAccountValueDelta.value;
-          sumsByDate[newDate] =
-              (sumsByDate[newDate] ?? 0) + sourceAccountValueDelta;
-        }
-        // if (accountId == newTrade.targetAccountId.value) { // TODO figure out
-        //   final targetAccountValueDelta = newTrade.targetAccountValueDelta.value;
-        //   sumsByDate[newDate] = (sumsByDate[newDate] ?? 0) + targetAccountValueDelta;
-        // }
-      }
-
-      // Process sorted dates
-      final sortedDates = sumsByDate.keys.toList()..sort();
-
-      for (final date in sortedDates) {
-        runningBalance += sumsByDate[date]!;
-        if (runningBalance < -0.00001) {
+      for (final (_, delta) in deltas) {
+        runningBalance += delta;
+        if (runningBalance < -1e-9) {
           return true;
         }
       }
-    }
 
-    return false;
+      return false;
+    });
   }
 
 // --- TEMP: DB REBUILD --------------------------------------------------------

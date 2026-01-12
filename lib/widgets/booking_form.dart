@@ -362,76 +362,67 @@ class _BookingFormState extends State<BookingForm> {
       assetId: drift.Value(_assetId!),
       accountId: drift.Value(_accountId!),
     );
-    companion = await _db.bookingsDao.calculateCostBasisAndValue(companion);
+
+    if (shares > 0) {
+      double costBasis = _assetId == 1 ? 1 : double.parse(_costBasisCtrl.text.replaceAll(',', '.'));
+      companion = companion.copyWith(costBasis: drift.Value(costBasis), value: drift.Value(shares * costBasis));
+    } else {
+      companion = await _db.bookingsDao.calculateCostBasisAndValue(companion);
+    }
+
     final value = companion.value.value;
 
-    Booking? original = widget.booking;
-    bool checkedSafe = false;
+      Booking? original = widget.booking;
 
-    // --- Merge Logic ---
-    if (original == null && _notesCtrl.text.isEmpty) {
-      final mergeCandidate =
-          await _db.bookingsDao.findMergeableBooking(companion);
+      // --- Merge Logic ---
+      if (original == null && _notesCtrl.text.isEmpty) {
+        final mergeCandidate =
+        await _db.bookingsDao.findMergeableBooking(companion);
 
-      if (mergeCandidate != null && mounted) {
-        final mergedShares = mergeCandidate.shares + shares;
-        final mergedValue = mergeCandidate.value + value;
-        final mergedCostBasis = mergedValue / mergedShares;
-        final mergedComp = mergeCandidate.toCompanion(false).copyWith(
+        if (mergeCandidate != null && mounted) {
+          final mergedShares = mergeCandidate.shares + shares;
+          final mergedValue = mergeCandidate.value + value;
+          final mergedCostBasis = mergedValue / mergedShares;
+          final mergedComp = mergeCandidate.toCompanion(false).copyWith(
               shares: drift.Value(mergedShares),
               value: drift.Value(mergedValue),
               costBasis: drift.Value(mergedCostBasis)
-            );
-
-        final isMergeSafe =
-            !(await _db.accountsDao.leadsToInconsistentBalanceHistory(
-          originalBooking: mergeCandidate,
-          newBooking: mergedComp,
-        ));
-
-        if (isMergeSafe && mounted) {
-          final confirm = await showDialog<bool>(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              title: Text(_l10n.mergeBookings),
-              content: Text(_l10n.mergeBookingsQuestion),
-              actions: [
-                TextButton(
-                    onPressed: () => Navigator.pop(ctx, false),
-                    child: Text(_l10n.createNew)),
-                TextButton(
-                    onPressed: () => Navigator.pop(ctx, true),
-                    child: Text(_l10n.merge)),
-              ],
-            ),
           );
 
-          if (confirm == true) {
-            original = mergeCandidate;
-            companion = mergedComp;
-            checkedSafe = true;
+          if (mounted) {
+            final confirm = await showDialog<bool>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: Text(_l10n.mergeBookings),
+                content: Text(_l10n.mergeBookingsQuestion),
+                actions: [
+                  TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: Text(_l10n.createNew)),
+                  TextButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: Text(_l10n.merge)),
+                ],
+              ),
+            );
+
+            if (confirm == true) {
+              original = mergeCandidate;
+              companion = mergedComp;
+            }
           }
         }
       }
-    }
 
-    if (original != null) {
-      companion = companion.copyWith(id: drift.Value(original.id));
-    }
-
-    // --- Final Save ---
-    if (!checkedSafe) {
-      if (await _db.accountsDao.leadsToInconsistentBalanceHistory(
-          originalBooking: original, newBooking: companion)) {
-        if (mounted) showToast(_l10n.actionCancelledDueToDataInconsistency);
-        return;
+      if (original != null) {
+        companion = companion.copyWith(id: drift.Value(original.id));
       }
+
+      original != null
+          ? await _db.bookingsDao.updateBooking(original, companion, _l10n)
+          : await _db.bookingsDao.createBooking(companion, _l10n);
+
+      if (mounted) Navigator.of(context).pop();
     }
-
-    original != null
-        ? await _db.bookingsDao.updateBooking(original, companion, _l10n)
-        : await _db.bookingsDao.createBooking(companion, _l10n);
-
-    if (mounted) Navigator.of(context).pop();
   }
-}
+

@@ -35,7 +35,8 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
         aoaWithDeltas.assetId, aoaWithDeltas.accountId);
 
     double newShares = existingAOA.shares + aoaWithDeltas.shares;
-    double newValue = existingAOA.value + aoaWithDeltas.value;
+    double newValue =
+        existingAOA.value + aoaWithDeltas.value;
     double newBuyFeeTotal = existingAOA.buyFeeTotal + aoaWithDeltas.buyFeeTotal;
     double newNetCostBasis = newShares == 0 ? 1 : newValue / newShares;
     double newBrokerCostBasis =
@@ -43,7 +44,7 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
 
     AssetOnAccount modifiedAOA = existingAOA.copyWith(
         shares: normalize(newShares),
-        value: normalize(newValue),//newValue < 0 ? 0 : normalize(newValue),
+        value: normalize(newValue),
         buyFeeTotal: normalize(newBuyFeeTotal),
         netCostBasis: normalize(newNetCostBasis),
         brokerCostBasis: normalize(newBrokerCostBasis));
@@ -70,16 +71,16 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
     return assetOnAccount;
   }
 
-  Future<void> updateBaseCurrencyAssetOnAccount(
-      int accountId, double amount) async {
-    AssetOnAccount baseCurrencyAssetOnAccount = await getAOA(accountId, 1);
-    await (update(assetsOnAccounts)
-          ..where((a) => a.assetId.equals(1) & a.accountId.equals(accountId)))
-        .write(
-      AssetsOnAccountsCompanion(
-          shares: Value(normalize(baseCurrencyAssetOnAccount.shares + amount)),
-          value: Value(normalize(baseCurrencyAssetOnAccount.value + amount))),
-    );
+  Future<void> updateBaseCurrencyAOA(int accountId, double amountDelta) async {
+    await updateAOA(AssetOnAccount(
+      accountId: accountId,
+      assetId: 1,
+      value: amountDelta,
+      shares: amountDelta,
+      netCostBasis: 0,
+      brokerCostBasis: 0,
+      buyFeeTotal: 0,
+    ));
   }
 
   Future<List<AssetOnAccount>> getAOAsForAccount(int accountId) async {
@@ -303,7 +304,7 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
   }) {
     return transaction(() async {
       final visited = <String>{};
-      await _recalculateInternal(
+      final accounts = await _recalculateInternal(
         l10n: l10n,
         assetId: assetId,
         accountId: accountId,
@@ -311,15 +312,23 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
         upToType: upToType,
         upToId: upToId,
         visited: visited,
+        accounts: {},
         initialFifo: null,
       );
+
+      for (final accountId in accounts) {
+        final inconsistent = await db.accountsDao.isInconsistent(accountId);
+        if (inconsistent) {
+          throw Exception(l10n.actionCancelledDueToDataInconsistency);
+        }
+      }
     });
   }
 
 // ----------------------------
 // Core recursive worker
 // ----------------------------
-  Future<void> _recalculateInternal({
+  Future<Set<int>> _recalculateInternal({
     required AppLocalizations l10n,
     required int assetId,
     required int accountId,
@@ -327,16 +336,18 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
     required String upToType,
     required int upToId,
     required Set<String> visited,
+    required Set<int> accounts,
     ListQueue<Map<String, double>>?
         initialFifo, // optional pre-built FIFO for receiver recursion
   }) async {
     // No need to recalculate base currency events
-    if (assetId == 1) return;
+    if (assetId == 1) accounts;
 
     // visited key should include the ordering key to prevent reprocessing same startpoint
     final visitKey = '$assetId|$accountId|$upToDatetime|$upToType|$upToId';
-    if (visited.contains(visitKey)) return;
+    if (visited.contains(visitKey)) return accounts;
     visited.add(visitKey);
+    accounts.add(accountId);
 
     // 1) Build or use provided FIFO prefix
     final fifo = initialFifo ??
@@ -405,10 +416,8 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
     tradesToUndo.sort((a, b) => b.datetime.compareTo(a.datetime));
 
     if (tradesToUndo.isNotEmpty) {
-      // use allTradesAsc for fee computations as _undoTradeFromDb expects it
-      // Note: we already loaded allTradesAsc above; reuse it.
       for (final t in tradesToUndo) {
-        await db.tradesDao.undoTradeFromDb(t, allTradesAsc);
+        await db.tradesDao.undoTradeFromDb(t);
       }
     }
 
@@ -419,11 +428,16 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
         // Check key again here, because we might have already recalculated this one in a previous recursion
         final visitKey =
             '$assetId|$accountId|${b.date * 1000000}|_booking|${b.id}';
-        if (visited.contains(visitKey)) return;
+        if (visited.contains(visitKey)) return accounts;
         visited.add(visitKey);
+        accounts.add(accountId);
         final shares = b.shares;
         if (shares > 0) {
-          fifo.add({'shares': shares, 'costBasis': b.costBasis, 'fee': 0.0});
+          fifo.add({
+            'shares': shares,
+            'costBasis': b.costBasis,
+            'fee': 0.0
+          }); // TODO: ich glaub hier muss noch updateAOA gecallt werden...
         } else if (shares < 0) {
           var remaining = -shares;
           double removedShares = 0.0;
@@ -465,7 +479,7 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
             await db.accountsDao.updateBalance(b.accountId, valueDelta);
 
             // 2) assetsOnAccounts: adjust the value (shares are unchanged for a booking that only changed costBasis)
-            await db.assetsOnAccountsDao.updateAOA(AssetOnAccount(
+            await updateAOA(AssetOnAccount(
               accountId: b.accountId,
               assetId: assetId,
               value: valueDelta,
@@ -476,7 +490,7 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
             ));
 
             // 3) global asset totals must also reflect booking value change
-            await db.assetsDao.updateAsset(assetId, 0, valueDelta);
+            await db.assetsDao.updateAsset(assetId, 0, valueDelta, 0);
 
             // Update the in-memory event object so later code in this loop sees updated values
             // b = b.copyWith(costBasis: newCostBasis, value: newValue);
@@ -487,8 +501,9 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
         // Check key again here, because we might have already recalculated this one in a previous recursion
         final visitKey =
             '$assetId|$accountId|${tr.date * 1000000}|_transfer|${tr.id}';
-        if (visited.contains(visitKey)) return;
+        if (visited.contains(visitKey)) return accounts;
         visited.add(visitKey);
+        accounts.add(accountId);
         final isInflow = tr.receivingAccountId == accountId;
         if (isInflow) {
           // incoming transfer: rely on transfer.costBasis (should have been set by sending-side),
@@ -593,6 +608,7 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
             upToType: '_transfer',
             upToId: tr.id,
             visited: visited,
+            accounts: accounts,
             initialFifo: recvFifo,
           );
 
@@ -604,33 +620,19 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
 
         // Check key again here, because we might have already recalculated this one in a previous recursion
         final visitKey = '$assetId|$accountId|${t.datetime}|_trade|${t.id}';
-        if (visited.contains(visitKey)) return;
+        if (visited.contains(visitKey)) return accounts;
         visited.add(visitKey);
+        accounts.add(t.sourceAccountId);
+        accounts.add(t.targetAccountId);
 
-        final companion = TradesCompanion(
-          datetime: Value(t.datetime),
-          type: Value(t.type),
-          sourceAccountId: Value(t.sourceAccountId),
-          targetAccountId: Value(t.targetAccountId),
-          assetId: Value(t.assetId),
-          shares: Value(t.shares),
-          costBasis: Value(t.costBasis),
-          fee: Value(t.fee),
-          tax: Value(t.tax),
-        );
+        final companion = t.toCompanion(false);
 
         // Re-apply trade (update existing row). This will mutate FIFO and update aggregates.
-        await db.tradesDao.applyTradeToDb(
-          companion,
-          insertNew: false,
-          updateTradeId: t.id,
-          fifo: fifo,
-        );
+        await db.tradesDao.applyTradeToDb(companion, fifo,);
       }
+      accounts.add(accountId);
     } // end for events
-    if (await db.accountsDao.leadsToInconsistentBalanceHistory(accountId: accountId)) {
-      throw Exception(l10n.actionCancelledDueToDataInconsistency);
-    }
+    return accounts;
   }
 }
 

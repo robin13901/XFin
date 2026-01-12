@@ -168,14 +168,6 @@ class _TransferFormState extends State<TransferForm> {
       companion = companion.copyWith(id: drift.Value(widget.transfer!.id));
     }
 
-    if (await _db.accountsDao.leadsToInconsistentBalanceHistory(
-      originalTransfer: widget.transfer,
-      newTransfer: companion,
-    )) {
-      showToast(_l10n.actionCancelledDueToDataInconsistency);
-      return;
-    }
-
     // Final save
     if (widget.transfer != null) {
       await _db.transfersDao.updateTransfer(widget.transfer!, companion, _l10n);

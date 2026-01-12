@@ -108,114 +108,114 @@ void main() {
               .having((list) => list.first.name, 'name', 'Archived Account')));
     });
 
-    group('test leadsToInconsistentBalanceHistory', () {
-      late Booking booking1, booking2;
-      late int accountId2;
-
-      setUp(() async {
-        accountId2 = await db.into(db.accounts).insert(
-            AccountsCompanion.insert(name: 'B', type: AccountTypes.cash));
-
-        booking1 = Booking(
-            id: 1,
-            date: 20250105,
-            shares: 5,
-            costBasis: 1,
-            value: 5,
-            assetId: 1,
-            category: 'T',
-            accountId: accountId,
-            excludeFromAverage: false,
-            isGenerated: false);
-        booking2 = Booking(
-            id: 2,
-            date: 20250109,
-            shares: -1,
-            costBasis: 1,
-            assetId: 1,
-            value: -1,
-            category: 'T',
-            accountId: accountId,
-            excludeFromAverage: false,
-            isGenerated: false);
-        await db.into(db.bookings).insert(booking1.toCompanion(false));
-        await db.into(db.bookings).insert(booking2.toCompanion(false));
-      });
-
-      test('create booking', () async {
-        expect(
-            await accountsDao.leadsToInconsistentBalanceHistory(
-              newBooking: BookingsCompanion.insert(
-                  date: 20250104,
-                  shares: -1,
-                  value: -1,
-                  category: 'Test',
-                  accountId: accountId),
-            ),
-            isTrue);
-        expect(
-            await accountsDao.leadsToInconsistentBalanceHistory(
-              newBooking: BookingsCompanion.insert(
-                  date: 20250105,
-                  shares: -1,
-                  value: -1,
-                  category: 'Test',
-                  accountId: accountId),
-            ),
-            isFalse);
-        expect(
-            await accountsDao.leadsToInconsistentBalanceHistory(
-              newBooking: BookingsCompanion.insert(
-                  date: 20250106,
-                  shares: -1,
-                  value: -1,
-                  category: 'Test',
-                  accountId: accountId),
-            ),
-            isFalse);
-      });
-
-      test('delete booking', () async {
-        expect(
-            await accountsDao.leadsToInconsistentBalanceHistory(
-                originalBooking: booking1),
-            isTrue);
-        expect(
-            await accountsDao.leadsToInconsistentBalanceHistory(
-                originalBooking: booking2),
-            isFalse);
-      });
-
-      test('update booking', () async {
-        expect(
-            await accountsDao.leadsToInconsistentBalanceHistory(
-                originalBooking: booking1,
-                newBooking: booking1
-                    .toCompanion(false)
-                    .copyWith(accountId: Value(accountId2))),
-            isTrue);
-        expect(
-            await accountsDao.leadsToInconsistentBalanceHistory(
-                originalBooking: booking2,
-                newBooking: booking2
-                    .toCompanion(false)
-                    .copyWith(accountId: Value(accountId2))),
-            isTrue);
-        expect(
-            await accountsDao.leadsToInconsistentBalanceHistory(
-                originalBooking: booking1,
-                newBooking: booking1
-                    .toCompanion(false)
-                    .copyWith(date: const Value(20250110))),
-            isTrue);
-        expect(
-            await accountsDao.leadsToInconsistentBalanceHistory(
-                originalBooking: booking2,
-                newBooking: booking2.toCompanion(false).copyWith(
-                    accountId: Value(accountId2), shares: const Value(1), value: const Value(1))),
-            isFalse);
-      });
-    });
+    // group('test leadsToInconsistentBalanceHistory', () {
+    //   late Booking booking1, booking2;
+    //   late int accountId2;
+    //
+    //   setUp(() async {
+    //     accountId2 = await db.into(db.accounts).insert(
+    //         AccountsCompanion.insert(name: 'B', type: AccountTypes.cash));
+    //
+    //     booking1 = Booking(
+    //         id: 1,
+    //         date: 20250105,
+    //         shares: 5,
+    //         costBasis: 1,
+    //         value: 5,
+    //         assetId: 1,
+    //         category: 'T',
+    //         accountId: accountId,
+    //         excludeFromAverage: false,
+    //         isGenerated: false);
+    //     booking2 = Booking(
+    //         id: 2,
+    //         date: 20250109,
+    //         shares: -1,
+    //         costBasis: 1,
+    //         assetId: 1,
+    //         value: -1,
+    //         category: 'T',
+    //         accountId: accountId,
+    //         excludeFromAverage: false,
+    //         isGenerated: false);
+    //     await db.into(db.bookings).insert(booking1.toCompanion(false));
+    //     await db.into(db.bookings).insert(booking2.toCompanion(false));
+    //   });
+    //
+    //   test('create booking', () async {
+    //     expect(
+    //         await accountsDao.leadsToInconsistentBalanceHistory(
+    //           newBooking: BookingsCompanion.insert(
+    //               date: 20250104,
+    //               shares: -1,
+    //               value: -1,
+    //               category: 'Test',
+    //               accountId: accountId),
+    //         ),
+    //         isTrue);
+    //     expect(
+    //         await accountsDao.leadsToInconsistentBalanceHistory(
+    //           newBooking: BookingsCompanion.insert(
+    //               date: 20250105,
+    //               shares: -1,
+    //               value: -1,
+    //               category: 'Test',
+    //               accountId: accountId),
+    //         ),
+    //         isFalse);
+    //     expect(
+    //         await accountsDao.leadsToInconsistentBalanceHistory(
+    //           newBooking: BookingsCompanion.insert(
+    //               date: 20250106,
+    //               shares: -1,
+    //               value: -1,
+    //               category: 'Test',
+    //               accountId: accountId),
+    //         ),
+    //         isFalse);
+    //   });
+    //
+    //   test('delete booking', () async {
+    //     expect(
+    //         await accountsDao.leadsToInconsistentBalanceHistory(
+    //             originalBooking: booking1),
+    //         isTrue);
+    //     expect(
+    //         await accountsDao.leadsToInconsistentBalanceHistory(
+    //             originalBooking: booking2),
+    //         isFalse);
+    //   });
+    //
+    //   test('update booking', () async {
+    //     expect(
+    //         await accountsDao.leadsToInconsistentBalanceHistory(
+    //             originalBooking: booking1,
+    //             newBooking: booking1
+    //                 .toCompanion(false)
+    //                 .copyWith(accountId: Value(accountId2))),
+    //         isTrue);
+    //     expect(
+    //         await accountsDao.leadsToInconsistentBalanceHistory(
+    //             originalBooking: booking2,
+    //             newBooking: booking2
+    //                 .toCompanion(false)
+    //                 .copyWith(accountId: Value(accountId2))),
+    //         isTrue);
+    //     expect(
+    //         await accountsDao.leadsToInconsistentBalanceHistory(
+    //             originalBooking: booking1,
+    //             newBooking: booking1
+    //                 .toCompanion(false)
+    //                 .copyWith(date: const Value(20250110))),
+    //         isTrue);
+    //     expect(
+    //         await accountsDao.leadsToInconsistentBalanceHistory(
+    //             originalBooking: booking2,
+    //             newBooking: booking2.toCompanion(false).copyWith(
+    //                 accountId: Value(accountId2), shares: const Value(1), value: const Value(1))),
+    //         isFalse);
+    //   });
+    // });
   });
 
   group('Has references tests', () {

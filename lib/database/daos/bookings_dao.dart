@@ -101,7 +101,11 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
 
   Future<List<Booking>> getAllBookings() => select(bookings).get();
 
-  Future<BookingsCompanion> calculateCostBasisAndValue(BookingsCompanion booking,
+  Future<List<Booking>> getBookingsForAccount(int accountId) =>
+      (select(bookings)..where((b) => b.accountId.equals(accountId))).get();
+
+  Future<BookingsCompanion> calculateCostBasisAndValue(
+      BookingsCompanion booking,
       {Booking? oldBooking}) async {
     final assetId = booking.assetId.value;
     final accountId = booking.accountId.value;
@@ -109,12 +113,9 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
     final datetime = booking.date.value * 1000000;
     double costBasis, value = 0.0;
 
-    // Only recalculate if booking is a withdrawal
-    if (shares > 0) return booking;
-
     if (assetId == 1) {
       costBasis = 1;
-    } else {
+    } else if (shares < 0) {
       final fifo = await db.assetsOnAccountsDao.buildFiFoQueue(
           assetId, accountId,
           upToDatetime: datetime, oldBooking: oldBooking);
@@ -136,15 +137,21 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
         }
       }
       costBasis = value / shares.abs();
+    } else {
+      costBasis = booking.costBasis.value;
     }
     value = shares * costBasis;
-    return booking.copyWith(costBasis: Value(normalize(costBasis)), value: Value(normalize(value)));
+    return booking.copyWith(
+        costBasis: Value(normalize(costBasis)), value: Value(normalize(value)));
   }
 
   Future<void> createBooking(BookingsCompanion booking, AppLocalizations l10n) {
     return transaction(() async {
       if (!booking.costBasis.present) {
         booking = await calculateCostBasisAndValue(booking);
+      } else if (!booking.value.present) {
+        booking = booking.copyWith(
+            value: Value(booking.shares.value * booking.costBasis.value));
       }
 
       final bookingId = await _addBooking(booking);
@@ -158,7 +165,7 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
           brokerCostBasis: 0,
           buyFeeTotal: 0));
       await db.assetsDao.updateAsset(
-          booking.assetId.value, booking.shares.value, booking.value.value);
+          booking.assetId.value, booking.shares.value, booking.value.value, 0);
 
       await db.accountsDao
           .updateBalance(booking.accountId.value, booking.value.value);
@@ -175,9 +182,11 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
   }
 
 // // NEW/EXPERIMENTAL version
-  Future<void> updateBooking(Booking oldBooking, BookingsCompanion newBooking, AppLocalizations l10n) {
+  Future<void> updateBooking(
+      Booking oldBooking, BookingsCompanion newBooking, AppLocalizations l10n) {
     return transaction(() async {
-      newBooking = await calculateCostBasisAndValue(newBooking, oldBooking: oldBooking);
+      newBooking =
+          await calculateCostBasisAndValue(newBooking, oldBooking: oldBooking);
 
       // Persist the new booking row first (you already had this).
       await _updateBooking(newBooking);
@@ -226,7 +235,7 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
         // CASE 1A — Same Account, Same Asset
         if (oldAssetId == newAssetId) {
           // direct adjustment by deltas
-          await db.assetsDao.updateAsset(oldAssetId, sharesDelta, valueDelta);
+          await db.assetsDao.updateAsset(oldAssetId, sharesDelta, valueDelta, 0);
           await db.assetsOnAccountsDao.updateAOA(AssetOnAccount(
               accountId: oldAccountId,
               assetId: oldAssetId,
@@ -238,7 +247,7 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
         } else {
           // CASE 1B — Same Account, Different Assets
           // remove old asset effect
-          await db.assetsDao.updateAsset(oldAssetId, -oldShares, -oldValue);
+          await db.assetsDao.updateAsset(oldAssetId, -oldShares, -oldValue, 0);
           await db.assetsOnAccountsDao.updateAOA(AssetOnAccount(
               accountId: oldAccountId,
               assetId: oldAssetId,
@@ -249,7 +258,7 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
               buyFeeTotal: 0));
 
           // add new asset effect
-          await db.assetsDao.updateAsset(newAssetId, newShares, newValue);
+          await db.assetsDao.updateAsset(newAssetId, newShares, newValue, 0);
           await db.assetsOnAccountsDao.updateAOA(AssetOnAccount(
               accountId: oldAccountId,
               assetId: newAssetId,
@@ -270,7 +279,7 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
         // CASE 2A — Different Accounts, Same Asset
         if (oldAssetId == newAssetId) {
           // Update asset with deltas
-          await db.assetsDao.updateAsset(oldAssetId, sharesDelta, valueDelta);
+          await db.assetsDao.updateAsset(oldAssetId, sharesDelta, valueDelta, 0);
 
           // Update asset on old account (remove old)
           await db.assetsOnAccountsDao.updateAOA(AssetOnAccount(
@@ -294,9 +303,9 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
         } else {
           // CASE 2B — Different Accounts, Different Assets
           // Update old asset (remove)
-          await db.assetsDao.updateAsset(oldAssetId, -oldShares, -oldValue);
+          await db.assetsDao.updateAsset(oldAssetId, -oldShares, -oldValue, 0);
           // Update new asset (add)
-          await db.assetsDao.updateAsset(newAssetId, newShares, newValue);
+          await db.assetsDao.updateAsset(newAssetId, newShares, newValue, 0);
 
           // Remove old asset from old account
           await db.assetsOnAccountsDao.updateAOA(AssetOnAccount(
@@ -354,7 +363,7 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
           brokerCostBasis: 0,
           buyFeeTotal: 0));
       await db.assetsDao
-          .updateAsset(booking.assetId, -booking.shares, -booking.value);
+          .updateAsset(booking.assetId, -booking.shares, -booking.value, 0);
 
       // --- NEW / EXPERIMENTAL ------------------------------------------------
       final keyDt = booking.date * 1000000;

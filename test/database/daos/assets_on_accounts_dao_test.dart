@@ -151,7 +151,7 @@ void main() {
       final before = await aoaDao.getAOA(accountId, 1);
       expect(before.assetId, 1);
 
-      await aoaDao.updateBaseCurrencyAssetOnAccount(accountId, 50.0);
+      await aoaDao.updateBaseCurrencyAOA(accountId, 50.0);
 
       final after = await aoaDao.getAOA(accountId, 1);
       expect(after.shares, closeTo(before.shares + 50.0, 1e-9));
@@ -761,7 +761,7 @@ void main() {
           .into(db.assetsOnAccounts)
           .insert(baseCurrencyAssetOnBankAccount.toCompanion(false));
       await db.assetsDao.updateAsset(baseCurrencyAsset.id,
-          bankAccount.initialBalance, bankAccount.initialBalance);
+          bankAccount.initialBalance, bankAccount.initialBalance, 0);
     });
 
     group('Insert/Update/Delete Booking', () {
@@ -813,8 +813,8 @@ void main() {
             await db.assetsOnAccountsDao.getAOA(portfolio1.id, assetOne.id);
         expect(aoPortfolioAccount.shares, closeTo(0, 1e-9));
         expect(aoPortfolioAccount.value, closeTo(0, 1e-9));
-        expect(aoPortfolioAccount.netCostBasis, closeTo(0, 1e-9));
-        expect(aoPortfolioAccount.brokerCostBasis, closeTo(0, 1e-9));
+        expect(aoPortfolioAccount.netCostBasis, closeTo(1, 1e-9));
+        expect(aoPortfolioAccount.brokerCostBasis, closeTo(1, 1e-9));
         expect(aoPortfolioAccount.buyFeeTotal, closeTo(0, 1e-9));
         var aBaseCurrency = await db.assetsDao.getAsset(baseCurrencyAsset.id);
         expect(aBaseCurrency.shares, closeTo(1100, 1e-9));
@@ -825,8 +825,8 @@ void main() {
         var aOne = await db.assetsDao.getAsset(assetOne.id);
         expect(aOne.shares, closeTo(0, 1e-9));
         expect(aOne.value, closeTo(0, 1e-9));
-        expect(aOne.netCostBasis, closeTo(0, 1e-9));
-        expect(aOne.brokerCostBasis, closeTo(0, 1e-9));
+        expect(aOne.netCostBasis, closeTo(1, 1e-9));
+        expect(aOne.brokerCostBasis, closeTo(1, 1e-9));
         expect(aOne.buyFeeTotal, closeTo(0, 1e-9));
 
         /// Insert booking before first trade
@@ -1065,8 +1065,8 @@ void main() {
             await db.assetsOnAccountsDao.getAOA(portfolio1.id, assetOne.id);
         expect(aoPortfolioAccount.shares, closeTo(0, 1e-9));
         expect(aoPortfolioAccount.value, closeTo(0, 1e-9));
-        expect(aoPortfolioAccount.netCostBasis, closeTo(0, 1e-9));
-        expect(aoPortfolioAccount.brokerCostBasis, closeTo(0, 1e-9));
+        expect(aoPortfolioAccount.netCostBasis, closeTo(1, 1e-9));
+        expect(aoPortfolioAccount.brokerCostBasis, closeTo(1, 1e-9));
         expect(aoPortfolioAccount.buyFeeTotal, closeTo(0, 1e-9));
         var aBaseCurrency = await db.assetsDao.getAsset(baseCurrencyAsset.id);
         expect(aBaseCurrency.shares, closeTo(1150, 1e-9));
@@ -1077,8 +1077,8 @@ void main() {
         var aOne = await db.assetsDao.getAsset(assetOne.id);
         expect(aOne.shares, closeTo(0, 1e-9));
         expect(aOne.value, closeTo(0, 1e-9));
-        expect(aOne.netCostBasis, closeTo(0, 1e-9));
-        expect(aOne.brokerCostBasis, closeTo(0, 1e-9));
+        expect(aOne.netCostBasis, closeTo(1, 1e-9));
+        expect(aOne.brokerCostBasis, closeTo(1, 1e-9));
         expect(aOne.buyFeeTotal, closeTo(0, 1e-9));
 
         // Update booking, this should recalculate subsequent events
@@ -1119,8 +1119,8 @@ void main() {
             await db.assetsOnAccountsDao.getAOA(portfolio1.id, assetOne.id);
         expect(aoPortfolioAccount.shares, closeTo(0, 1e-9));
         expect(aoPortfolioAccount.value, closeTo(0, 1e-9));
-        expect(aoPortfolioAccount.netCostBasis, closeTo(0, 1e-9));
-        expect(aoPortfolioAccount.brokerCostBasis, closeTo(0, 1e-9));
+        expect(aoPortfolioAccount.netCostBasis, closeTo(1, 1e-9));
+        expect(aoPortfolioAccount.brokerCostBasis, closeTo(1, 1e-9));
         expect(aoPortfolioAccount.buyFeeTotal, closeTo(0, 1e-9));
         aBaseCurrency = await db.assetsDao.getAsset(baseCurrencyAsset.id);
         expect(aBaseCurrency.shares, closeTo(1150, 1e-9));
@@ -1131,8 +1131,8 @@ void main() {
         aOne = await db.assetsDao.getAsset(assetOne.id);
         expect(aOne.shares, closeTo(0, 1e-9));
         expect(aOne.value, closeTo(0, 1e-9));
-        expect(aOne.netCostBasis, closeTo(0, 1e-9));
-        expect(aOne.brokerCostBasis, closeTo(0, 1e-9));
+        expect(aOne.netCostBasis, closeTo(1, 1e-9));
+        expect(aOne.brokerCostBasis, closeTo(1, 1e-9));
         expect(aOne.buyFeeTotal, closeTo(0, 1e-9));
       });
 
@@ -1357,8 +1357,8 @@ void main() {
             await db.assetsOnAccountsDao.getAOA(portfolio1.id, assetOne.id);
         expect(aoPortfolioAccount.shares, closeTo(0, 1e-9));
         expect(aoPortfolioAccount.value, closeTo(0, 1e-9));
-        expect(aoPortfolioAccount.netCostBasis, closeTo(0, 1e-9));
-        expect(aoPortfolioAccount.brokerCostBasis, closeTo(0, 1e-9));
+        expect(aoPortfolioAccount.netCostBasis, closeTo(1, 1e-9));
+        expect(aoPortfolioAccount.brokerCostBasis, closeTo(1, 1e-9));
         expect(aoPortfolioAccount.buyFeeTotal, closeTo(0, 1e-9));
         aBaseCurrency = await db.assetsDao.getAsset(baseCurrencyAsset.id);
         expect(aBaseCurrency.shares, closeTo(1100, 1e-9));
@@ -1369,8 +1369,8 @@ void main() {
         aOne = await db.assetsDao.getAsset(assetOne.id);
         expect(aOne.shares, closeTo(0, 1e-9));
         expect(aOne.value, closeTo(0, 1e-9));
-        expect(aOne.netCostBasis, closeTo(0, 1e-9));
-        expect(aOne.brokerCostBasis, closeTo(0, 1e-9));
+        expect(aOne.netCostBasis, closeTo(1, 1e-9));
+        expect(aOne.brokerCostBasis, closeTo(1, 1e-9));
         expect(aOne.buyFeeTotal, closeTo(0, 1e-9));
       });
 
@@ -1546,8 +1546,8 @@ void main() {
             await db.assetsOnAccountsDao.getAOA(portfolio1.id, assetOne.id);
         expect(aoPortfolioAccount.shares, closeTo(0, 1e-9));
         expect(aoPortfolioAccount.value, closeTo(0, 1e-9));
-        expect(aoPortfolioAccount.netCostBasis, closeTo(0, 1e-9));
-        expect(aoPortfolioAccount.brokerCostBasis, closeTo(0, 1e-9));
+        expect(aoPortfolioAccount.netCostBasis, closeTo(1, 1e-9));
+        expect(aoPortfolioAccount.brokerCostBasis, closeTo(1, 1e-9));
         expect(aoPortfolioAccount.buyFeeTotal, closeTo(0, 1e-9));
         var aBaseCurrency = await db.assetsDao.getAsset(baseCurrencyAsset.id);
         expect(aBaseCurrency.shares, closeTo(1100, 1e-9));
@@ -1558,8 +1558,8 @@ void main() {
         var aOne = await db.assetsDao.getAsset(assetOne.id);
         expect(aOne.shares, closeTo(0, 1e-9));
         expect(aOne.value, closeTo(0, 1e-9));
-        expect(aOne.netCostBasis, closeTo(0, 1e-9));
-        expect(aOne.brokerCostBasis, closeTo(0, 1e-9));
+        expect(aOne.netCostBasis, closeTo(1, 1e-9));
+        expect(aOne.brokerCostBasis, closeTo(1, 1e-9));
         expect(aOne.buyFeeTotal, closeTo(0, 1e-9));
 
         /// Insert booking on other account and transfer to portfolio 1 before first trade
@@ -2166,8 +2166,8 @@ void main() {
             await db.assetsOnAccountsDao.getAOA(portfolio2.id, assetOne.id);
         expect(aoPortfolioAccount2.shares, closeTo(0, 1e-9));
         expect(aoPortfolioAccount2.value, closeTo(0, 1e-9));
-        expect(aoPortfolioAccount2.netCostBasis, closeTo(0, 1e-9));
-        expect(aoPortfolioAccount2.brokerCostBasis, closeTo(0, 1e-9));
+        expect(aoPortfolioAccount2.netCostBasis, closeTo(1, 1e-9));
+        expect(aoPortfolioAccount2.brokerCostBasis, closeTo(1, 1e-9));
         expect(aoPortfolioAccount2.buyFeeTotal, closeTo(0, 1e-9));
         aOne = await db.assetsDao.getAsset(assetOne.id);
         expect(aOne.shares, closeTo(1, 1e-9));
@@ -2378,8 +2378,8 @@ void main() {
             await db.assetsOnAccountsDao.getAOA(portfolio1.id, assetOne.id);
         expect(aoPortfolioAccount.shares, closeTo(0, 1e-9));
         expect(aoPortfolioAccount.value, closeTo(0, 1e-9));
-        expect(aoPortfolioAccount.netCostBasis, closeTo(0, 1e-9));
-        expect(aoPortfolioAccount.brokerCostBasis, closeTo(0, 1e-9));
+        expect(aoPortfolioAccount.netCostBasis, closeTo(1, 1e-9));
+        expect(aoPortfolioAccount.brokerCostBasis, closeTo(1, 1e-9));
         expect(aoPortfolioAccount.buyFeeTotal, closeTo(0, 1e-9));
         var aBaseCurrency = await db.assetsDao.getAsset(baseCurrencyAsset.id);
         expect(aBaseCurrency.shares, closeTo(1100, 1e-9));
@@ -2390,8 +2390,8 @@ void main() {
         var aOne = await db.assetsDao.getAsset(assetOne.id);
         expect(aOne.shares, closeTo(0, 1e-9));
         expect(aOne.value, closeTo(0, 1e-9));
-        expect(aOne.netCostBasis, closeTo(0, 1e-9));
-        expect(aOne.brokerCostBasis, closeTo(0, 1e-9));
+        expect(aOne.netCostBasis, closeTo(1, 1e-9));
+        expect(aOne.brokerCostBasis, closeTo(1, 1e-9));
         expect(aOne.buyFeeTotal, closeTo(0, 1e-9));
 
         /// Insert new trade before first trade
@@ -2639,8 +2639,8 @@ void main() {
             await db.assetsOnAccountsDao.getAOA(portfolio1.id, assetOne.id);
         expect(aoPortfolioAccount.shares, closeTo(0, 1e-9));
         expect(aoPortfolioAccount.value, closeTo(0, 1e-9));
-        expect(aoPortfolioAccount.netCostBasis, closeTo(0, 1e-9));
-        expect(aoPortfolioAccount.brokerCostBasis, closeTo(0, 1e-9));
+        expect(aoPortfolioAccount.netCostBasis, closeTo(1, 1e-9));
+        expect(aoPortfolioAccount.brokerCostBasis, closeTo(1, 1e-9));
         expect(aoPortfolioAccount.buyFeeTotal, closeTo(0, 1e-9));
         var aBaseCurrency = await db.assetsDao.getAsset(baseCurrencyAsset.id);
         expect(aBaseCurrency.shares, closeTo(1125, 1e-9));
@@ -2651,13 +2651,13 @@ void main() {
         var aOne = await db.assetsDao.getAsset(assetOne.id);
         expect(aOne.shares, closeTo(0, 1e-9));
         expect(aOne.value, closeTo(0, 1e-9));
-        expect(aOne.netCostBasis, closeTo(0, 1e-9));
-        expect(aOne.brokerCostBasis, closeTo(0, 1e-9));
+        expect(aOne.netCostBasis, closeTo(1, 1e-9));
+        expect(aOne.brokerCostBasis, closeTo(1, 1e-9));
         expect(aOne.buyFeeTotal, closeTo(0, 1e-9));
 
         // Update trade, this should recalculate subsequent events
         await db.tradesDao
-            .updateTrade(2, const TradesCompanion(costBasis: Value(40)), l10n);
+            .updateTrade(const TradesCompanion(id: Value(2), costBasis: Value(40)), l10n);
 
         // Postchecks
         var updatedTrade = await db.tradesDao.getTrade(2);
@@ -2681,8 +2681,8 @@ void main() {
             await db.assetsOnAccountsDao.getAOA(portfolio1.id, assetOne.id);
         expect(aoPortfolioAccount.shares, closeTo(0, 1e-9));
         expect(aoPortfolioAccount.value, closeTo(0, 1e-9));
-        expect(aoPortfolioAccount.netCostBasis, closeTo(0, 1e-9));
-        expect(aoPortfolioAccount.brokerCostBasis, closeTo(0, 1e-9));
+        expect(aoPortfolioAccount.netCostBasis, closeTo(1, 1e-9));
+        expect(aoPortfolioAccount.brokerCostBasis, closeTo(1, 1e-9));
         expect(aoPortfolioAccount.buyFeeTotal, closeTo(0, 1e-9));
         aBaseCurrency = await db.assetsDao.getAsset(baseCurrencyAsset.id);
         expect(aBaseCurrency.shares, closeTo(1130, 1e-9));
@@ -2693,8 +2693,8 @@ void main() {
         aOne = await db.assetsDao.getAsset(assetOne.id);
         expect(aOne.shares, closeTo(0, 1e-9));
         expect(aOne.value, closeTo(0, 1e-9));
-        expect(aOne.netCostBasis, closeTo(0, 1e-9));
-        expect(aOne.brokerCostBasis, closeTo(0, 1e-9));
+        expect(aOne.netCostBasis, closeTo(1, 1e-9));
+        expect(aOne.brokerCostBasis, closeTo(1, 1e-9));
         expect(aOne.buyFeeTotal, closeTo(0, 1e-9));
       });
 
@@ -2775,7 +2775,7 @@ void main() {
         /// Update trade
         /// The transfer and withdrawal should be recalculated
         await db.tradesDao
-            .updateTrade(1, const TradesCompanion(costBasis: Value(40)), l10n);
+            .updateTrade(const TradesCompanion(id: Value(1), costBasis: Value(40)), l10n);
 
         // Postchecks
         transfer = await db.transfersDao.getTransfer(1);
@@ -2912,8 +2912,8 @@ void main() {
             await db.assetsOnAccountsDao.getAOA(portfolio1.id, assetOne.id);
         expect(aoPortfolioAccount.shares, closeTo(0, 1e-9));
         expect(aoPortfolioAccount.value, closeTo(0, 1e-9));
-        expect(aoPortfolioAccount.netCostBasis, closeTo(0, 1e-9));
-        expect(aoPortfolioAccount.brokerCostBasis, closeTo(0, 1e-9));
+        expect(aoPortfolioAccount.netCostBasis, closeTo(1, 1e-9));
+        expect(aoPortfolioAccount.brokerCostBasis, closeTo(1, 1e-9));
         expect(aoPortfolioAccount.buyFeeTotal, closeTo(0, 1e-9));
         aBaseCurrency = await db.assetsDao.getAsset(baseCurrencyAsset.id);
         expect(aBaseCurrency.shares, closeTo(1100, 1e-9));
@@ -2924,8 +2924,8 @@ void main() {
         aOne = await db.assetsDao.getAsset(assetOne.id);
         expect(aOne.shares, closeTo(0, 1e-9));
         expect(aOne.value, closeTo(0, 1e-9));
-        expect(aOne.netCostBasis, closeTo(0, 1e-9));
-        expect(aOne.brokerCostBasis, closeTo(0, 1e-9));
+        expect(aOne.netCostBasis, closeTo(1, 1e-9));
+        expect(aOne.brokerCostBasis, closeTo(1, 1e-9));
         expect(aOne.buyFeeTotal, closeTo(0, 1e-9));
       });
 

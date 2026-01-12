@@ -381,7 +381,8 @@ void main() {
           type: const drift.Value(TradeTypes.sell),
           shares: const drift.Value(1.5),
           costBasis: const drift.Value(100),
-          fee: const drift.Value(1.5), // should not have any influence
+          fee: const drift.Value(1.5),
+          // should not have any influence
           tax: const drift.Value(0),
           sourceAccountId: drift.Value(sourceAccount.id),
           targetAccountId: drift.Value(targetAccount.id),
@@ -400,7 +401,8 @@ void main() {
           type: const drift.Value(TradeTypes.sell),
           shares: const drift.Value(1),
           costBasis: const drift.Value(100),
-          fee: const drift.Value(1), // should not have any influence
+          fee: const drift.Value(1),
+          // should not have any influence
           tax: const drift.Value(0),
           sourceAccountId: drift.Value(sourceAccount.id),
           targetAccountId: drift.Value(targetAccount.id),
@@ -419,7 +421,8 @@ void main() {
           type: const drift.Value(TradeTypes.sell),
           shares: const drift.Value(0.5),
           costBasis: const drift.Value(100),
-          fee: const drift.Value(0.5), // should not have any influence
+          fee: const drift.Value(0.5),
+          // should not have any influence
           tax: const drift.Value(0),
           sourceAccountId: drift.Value(sourceAccount.id),
           targetAccountId: drift.Value(targetAccount.id),
@@ -671,8 +674,8 @@ void main() {
       expect(aoaOne5.shares, closeTo(0, 1e-9));
       expect(aoaOne5.value, closeTo(0, 1e-9));
       expect(aoaOne5.buyFeeTotal, closeTo(0, 1e-9));
-      expect(aoaOne5.brokerCostBasis, closeTo(0, 1e-9));
-      expect(aoaOne5.netCostBasis, closeTo(0, 1e-9));
+      expect(aoaOne5.brokerCostBasis, closeTo(1, 1e-9));
+      expect(aoaOne5.netCostBasis, closeTo(1, 1e-9));
 
       final assetOne5 = await (db.select(db.assets)
             ..where((a) => a.id.equals(assetOne.id)))
@@ -680,8 +683,8 @@ void main() {
       expect(assetOne5.shares, closeTo(0, 1e-9));
       expect(assetOne5.value, closeTo(0, 1e-9));
       expect(assetOne5.buyFeeTotal, closeTo(0, 1e-9));
-      expect(assetOne5.brokerCostBasis, closeTo(0, 1e-9));
-      expect(assetOne5.netCostBasis, closeTo(0, 1e-9));
+      expect(assetOne5.brokerCostBasis, closeTo(1, 1e-9));
+      expect(assetOne5.netCostBasis, closeTo(1, 1e-9));
 
       final source5 = await (db.select(db.accounts)
             ..where((a) => a.id.equals(sourceAccount.id)))
@@ -785,8 +788,8 @@ void main() {
       expect(aoaTwo7.shares, closeTo(0, 1e-9));
       expect(aoaTwo7.value, closeTo(0, 1e-9));
       expect(aoaTwo7.buyFeeTotal, closeTo(0, 1e-9));
-      expect(aoaTwo7.brokerCostBasis, closeTo(0, 1e-9));
-      expect(aoaTwo7.netCostBasis, closeTo(0, 1e-9));
+      expect(aoaTwo7.brokerCostBasis, closeTo(1, 1e-9));
+      expect(aoaTwo7.netCostBasis, closeTo(1, 1e-9));
 
       final aoaTwo2_7 = await (db.select(db.assetsOnAccounts)
             ..where((a) =>
@@ -1266,11 +1269,12 @@ void main() {
 
       // Now move buy1 to 2025-01-05 (after the sell) via updateTrade -> the sell should now consume buy2 (20) => profit 10
       const updateComp = TradesCompanion(
+        id: drift.Value(1),
         datetime: drift.Value(20250105000000),
       );
 
       // original buy1 has id 1
-      await tradesDao.updateTrade(1, updateComp, l10n);
+      await tradesDao.updateTrade(updateComp, l10n);
 
       final sellAfter = await (db.select(db.trades)
             ..where((t) =>
@@ -1311,8 +1315,8 @@ void main() {
       expect(preUpdateTrade.targetAccountValueDelta, 10);
 
       await tradesDao.updateTrade(
-          1,
           const TradesCompanion(
+              id: drift.Value(1),
               datetime: drift.Value(20250102000000),
               shares: drift.Value(1.5),
               costBasis: drift.Value(12.0),
@@ -1406,13 +1410,13 @@ void main() {
         () async {
       // Create a booking that gives targetAccount 5 shares of assetOne at date 20250101
       await db.bookingsDao.createBooking(
-          BookingsCompanion.insert(
-            date: 20250101,
+          BookingsCompanion(
+            date: const drift.Value(20250101),
             assetId: drift.Value(assetOne.id),
-            accountId: targetAccount.id,
-            category: 'test-booking',
-            shares: 5.0,
-            value: 50.0,
+            accountId: drift.Value(targetAccount.id),
+            category: const drift.Value('test-booking'),
+            shares: const drift.Value(5.0),
+            costBasis: const drift.Value(10.0),
           ),
           l10n);
 
@@ -1546,11 +1550,11 @@ void main() {
 
       // Move buy (id=1) after the sell -> should make the sell invalid and updateTrade should throw
       const updateToAfterSell = TradesCompanion(
+        id: drift.Value(1),
         datetime: drift.Value(20250103000000),
       );
 
-      expect(
-          () async => await tradesDao.updateTrade(1, updateToAfterSell, l10n),
+      expect(() async => await tradesDao.updateTrade(updateToAfterSell, l10n),
           throwsA(isA<Exception>()));
     });
 
@@ -1698,7 +1702,9 @@ void main() {
 
       // Now change buy2's costBasis to 5 via updateTrade (id 2)
       await tradesDao.updateTrade(
-          2, const TradesCompanion(costBasis: drift.Value(5.0)), l10n);
+          const TradesCompanion(
+              id: drift.Value(2), costBasis: drift.Value(5.0)),
+          l10n);
 
       final sellAfter = await (db.select(db.trades)
             ..where((t) =>
@@ -1837,8 +1843,8 @@ void main() {
       // Try to move the existing SELL (id = 2) earlier than the buy -> should fail validation
       expect(
         () async => await tradesDao.updateTrade(
-            2,
             const TradesCompanion(
+              id: drift.Value(2),
               datetime: drift.Value(20250101000000), // earlier than the buy
             ),
             l10n),

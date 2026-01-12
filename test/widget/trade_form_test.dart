@@ -681,8 +681,8 @@ void main() {
       // stub tradesDao.processTrade to succeed
       when(() => mockTradesDao.insertTrade(any(), l10n)).thenAnswer((_) async => 1);
 
-      when(() => mockAccountsDao.leadsToInconsistentBalanceHistory(
-          newTrade: any(named: 'newTrade'))).thenAnswer((_) async => false);
+      // when(() => mockAccountsDao.leadsToInconsistentBalanceHistory(
+      //     newTrade: any(named: 'newTrade'))).thenAnswer((_) async => false);
 
       await openForm(tester);
 
@@ -794,8 +794,8 @@ void main() {
       when(() => mockTradesDao.insertTrade(any(), l10n))
           .thenThrow(Exception('boom'));
 
-      when(() => mockAccountsDao.leadsToInconsistentBalanceHistory(
-          newTrade: any(named: 'newTrade'))).thenAnswer((_) async => false);
+      // when(() => mockAccountsDao.leadsToInconsistentBalanceHistory(
+      //     newTrade: any(named: 'newTrade'))).thenAnswer((_) async => false);
 
       await openForm(tester);
 

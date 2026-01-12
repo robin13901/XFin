@@ -39,12 +39,14 @@ void main() {
           name: 'AccountA',
           type: AccountTypes.cash,
           balance: const Value(100.0),
+          initialBalance: const Value(100.0),
         ));
 
     accB = await db.into(db.accounts).insert(AccountsCompanion.insert(
           name: 'AccountB',
           type: AccountTypes.cash,
           balance: const Value(200.0),
+      initialBalance: const Value(200.0),
         ));
 
     assetOne = const Asset(
@@ -217,8 +219,8 @@ void main() {
 
       // fetch the stored transfer (there should be one)
       final transfers = await transfersDao.getAllTransfers();
-      expect(transfers.length, greaterThanOrEqualTo(1));
-      final old = transfers.last; // the one we inserted
+      expect(transfers.length, 1);
+      final old = transfers.last;
 
       // Now prepare a new transfer that moves money from B -> A with value 50 and different shares
       final updatedCompanion = TransfersCompanion(
@@ -232,29 +234,15 @@ void main() {
       );
 
       // balances before the update
-      await (db.select(db.accounts)..where((t) => t.id.equals(accA)))
-          .getSingle();
-      await (db.select(db.accounts)..where((t) => t.id.equals(accB)))
-          .getSingle();
+      await db.accountsDao.getAccount(accA).then((a) => expect(a.balance, 80));
+      await db.accountsDao.getAccount(accB).then((a) => expect(a.balance, 220));
 
       // perform the update
       await transfersDao.updateTransfer(old, updatedCompanion, l10n);
 
-      // balances after:
-      final aAfter = await (db.select(db.accounts)
-            ..where((t) => t.id.equals(accA)))
-          .getSingle();
-      final bAfter = await (db.select(db.accounts)
-            ..where((t) => t.id.equals(accB)))
-          .getSingle();
-
-      // Explanation:
-      // Initially we had A:100, B:200.
-      // After createTransfer(old: 20): A=80, B=220.
-      // updateTransfer reverses old: A += 20 => 100, B -= 20 => 200.
-      // then applies new (B->A value 50): B -= 50 => 150, A += 50 => 150.
-      expect(aAfter.balance, closeTo(150.0, 1e-9));
-      expect(bAfter.balance, closeTo(150.0, 1e-9));
+      // balances after the update
+      await db.accountsDao.getAccount(accA).then((a) => expect(a.balance, 150));
+      await db.accountsDao.getAccount(accB).then((a) => expect(a.balance, 150));
 
       // assetsOnAccounts should reflect same net changes
       final aoaA = await (db.select(db.assetsOnAccounts)
