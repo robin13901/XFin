@@ -65,10 +65,7 @@ void main() {
     });
 
     test('addAssetOnAccount and getAOA', () async {
-      final comp = AssetsOnAccountsCompanion.insert(
-          accountId: accountId, assetId: assetId);
-      await aoaDao.addAssetOnAccount(comp);
-      final aoa = await aoaDao.getAOA(accountId, assetId);
+      final aoa = await aoaDao.ensureAssetOnAccountExists(assetId, accountId);
       expect(aoa.accountId, accountId);
       expect(aoa.assetId, assetId);
       expect(aoa.shares, closeTo(0.0, 1e-12));
@@ -151,7 +148,14 @@ void main() {
       final before = await aoaDao.getAOA(accountId, 1);
       expect(before.assetId, 1);
 
-      await aoaDao.updateBaseCurrencyAOA(accountId, 50.0);
+      await aoaDao.updateAOA(AssetOnAccount(
+          accountId: accountId,
+          assetId: 1,
+          value: 50,
+          shares: 50,
+          netCostBasis: 0,
+          brokerCostBasis: 0,
+          buyFeeTotal: 0));
 
       final after = await aoaDao.getAOA(accountId, 1);
       expect(after.shares, closeTo(before.shares + 50.0, 1e-9));
@@ -2656,8 +2660,8 @@ void main() {
         expect(aOne.buyFeeTotal, closeTo(0, 1e-9));
 
         // Update trade, this should recalculate subsequent events
-        await db.tradesDao
-            .updateTrade(const TradesCompanion(id: Value(2), costBasis: Value(40)), l10n);
+        await db.tradesDao.updateTrade(
+            const TradesCompanion(id: Value(2), costBasis: Value(40)), l10n);
 
         // Postchecks
         var updatedTrade = await db.tradesDao.getTrade(2);
@@ -2774,8 +2778,8 @@ void main() {
 
         /// Update trade
         /// The transfer and withdrawal should be recalculated
-        await db.tradesDao
-            .updateTrade(const TradesCompanion(id: Value(1), costBasis: Value(40)), l10n);
+        await db.tradesDao.updateTrade(
+            const TradesCompanion(id: Value(1), costBasis: Value(40)), l10n);
 
         // Postchecks
         transfer = await db.transfersDao.getTransfer(1);

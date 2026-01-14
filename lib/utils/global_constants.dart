@@ -1,3 +1,5 @@
+import 'dart:collection';
+
 double normalize(num value) {
   const int decimals = 12;      // globally consistent, high precision
   const double epsilon = 1e-12; // treat anything below as zero
@@ -26,4 +28,29 @@ int cmpKey(int dtA, String typeA, int idA, int dtB, String typeB, int idB) {
   if (tc != 0) return tc < 0 ? -1 : 1;
   if (idA != idB) return idA < idB ? -1 : 1;
   return 0;
+}
+
+(double, double) consumeFiFo(ListQueue<Map<String, double>> fifo, shares) {
+  double consumedValue = 0, consumedFee = 0;
+  while (shares > 0 && fifo.isNotEmpty) {
+    final currentLot = fifo.first;
+    final lotShares = currentLot['shares']!;
+    final lotCostBasis = currentLot['costBasis']!;
+    final lotFee = currentLot['fee'] ?? 0.0;
+
+    if (lotShares <= shares + 1e-12) {
+      consumedValue -= lotShares * lotCostBasis;
+      consumedFee -= lotFee;
+      shares -= lotShares;
+      fifo.removeFirst();
+    } else {
+      consumedValue -= shares * lotCostBasis;
+      consumedFee -= (shares / lotShares) * lotFee;
+      currentLot['shares'] = lotShares - shares;
+      currentLot['fee'] = lotFee - (shares / lotShares) * lotFee;
+      shares = 0;
+    }
+  }
+
+  return (consumedValue, consumedFee);
 }

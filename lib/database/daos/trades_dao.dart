@@ -37,6 +37,27 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
             t.targetAccountId.equals(accountId)))
       .get();
 
+  Future<List<Trade>> getTradesForAOA(
+          int assetId, int accountId) =>
+      (select(trades)
+            ..where((t) =>
+                t.assetId.equals(assetId) &
+                ((t.targetAccountId.equals(accountId)) |
+                    (t.sourceAccountId.equals(accountId)))))
+          .get();
+
+  Future<List<Trade>> getTradesAfter(
+          int assetId, int accountId, int datetime) =>
+      (select(trades)
+            ..where((t) =>
+                t.assetId.equals(assetId) &
+                t.targetAccountId.equals(accountId) &
+                t.datetime.isBiggerOrEqualValue(datetime))
+            ..orderBy([
+              (t) => OrderingTerm(expression: t.datetime),
+            ]))
+          .get();
+
   Stream<List<TradeWithAsset>> watchAllTrades() {
     return (select(trades)
           ..orderBy([
@@ -53,45 +74,24 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
         });
   }
 
-  (double, double) _consumeFiFo(ListQueue<Map<String, double>> fifo, shares) {
-    double consumedValue = 0, consumedFee = 0;
-    while (shares > 0 && fifo.isNotEmpty) {
-      final currentLot = fifo.first;
-      final lotShares = currentLot['shares']!;
-      final lotCostBasis = currentLot['costBasis']!;
-      final lotFee = currentLot['fee'] ?? 0.0;
-
-      if (lotShares <= shares + 1e-12) {
-        consumedValue -= lotShares * lotCostBasis;
-        consumedFee -= lotFee;
-        shares -= lotShares;
-        fifo.removeFirst();
-      } else {
-        consumedValue -= shares * lotCostBasis;
-        consumedFee -= (shares / lotShares) * lotFee;
-        currentLot['shares'] = lotShares - shares;
-        shares = 0;
-      }
-    }
-
-    return (consumedValue, consumedFee);
-  }
-
   Future<double> _computeBuyFeeDeltaForTrade(Trade t) async {
     if (t.type == TradeTypes.buy) return t.fee;
     final fifo = await db.assetsOnAccountsDao.buildFiFoQueue(
         t.assetId, t.targetAccountId,
         upToDatetime: t.datetime, upToType: t.type.name, upToId: t.id);
 
-    final (_, consumedFee) = _consumeFiFo(fifo, t.shares);
+    final (_, consumedFee) = consumeFiFo(fifo, t.shares);
     return consumedFee;
   }
 
   /// Updates Assets, Accounts and AssetsOnAccounts db tables based on deltas
   Future<void> applyDbEffects(int assetId, int accountId, double sharesDelta,
-      double valueDelta, double buyFeeDelta) async {
-    await db.assetsDao
-        .updateAsset(assetId, sharesDelta, valueDelta, buyFeeDelta);
+      double valueDelta, double buyFeeDelta,
+      {bool updateAsset = true}) async {
+    if (updateAsset) {
+      await db.assetsDao
+          .updateAsset(assetId, sharesDelta, valueDelta, buyFeeDelta);
+    }
     await db.accountsDao.updateBalance(accountId, valueDelta);
     await db.assetsOnAccountsDao.updateAOA(AssetOnAccount(
       accountId: accountId,
@@ -140,7 +140,7 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
       if (fifo.fold(0.0, (sum, lot) => sum + lot['shares']!) < shares) {
         throw Exception('Not enough shares to process this sell.');
       }
-      (portfolioValueDelta, buyFeeTotalDelta) = _consumeFiFo(fifo, shares);
+      (portfolioValueDelta, buyFeeTotalDelta) = consumeFiFo(fifo, shares);
       pnl = clearingValueDelta + portfolioValueDelta - fee + tax;
       roi = (portfolioValueDelta + buyFeeTotalDelta).abs() < 1e-12
           ? 0.0
