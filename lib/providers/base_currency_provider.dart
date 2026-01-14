@@ -20,7 +20,7 @@ class BaseCurrencyProvider with ChangeNotifier {
     if (_tickerSymbol != null) {
       final format = NumberFormat.simpleCurrency(name: _tickerSymbol);
       _symbol = format.currencySymbol;
-      _format = NumberFormat.currency(locale: locale.toString(), symbol: _symbol);
+      _format = NumberFormat.currency(locale: 'de_DE', symbol: _symbol);
       notifyListeners();
     }
   }
