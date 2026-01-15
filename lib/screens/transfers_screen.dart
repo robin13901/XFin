@@ -93,10 +93,7 @@ class TransfersScreen extends StatelessWidget {
                                 ),
                                 TextSpan(
                                   text: currencyFormat.format(transfer.value),
-                                  style: TextStyle(
-                                      color: transfer.value < 0
-                                          ? Colors.red
-                                          : Colors.black),
+                                  style: const TextStyle(color: Colors.indigoAccent),
                                 ),
                               ],
                             ),
