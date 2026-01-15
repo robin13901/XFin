@@ -1,11 +1,21 @@
 import 'dart:collection';
 
+import 'package:intl/intl.dart';
+
 double normalize(num value) {
   const int decimals = 12;      // globally consistent, high precision
   const double epsilon = 1e-12; // treat anything below as zero
 
   if (value.abs() < epsilon) return 0.0;
   return double.parse(value.toStringAsFixed(decimals));
+}
+
+final percentFormat = NumberFormat.decimalPattern('de_DE')
+  ..minimumFractionDigits = 1
+  ..maximumFractionDigits = 1;
+
+String formatPercent(double value) {
+  return '${percentFormat.format(value * 100)} %';
 }
 
 String preciseDecimal(double d) {

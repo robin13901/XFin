@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:xfin/utils/global_constants.dart';
 import 'dart:math';
 
 import '../app_theme.dart';
@@ -49,6 +50,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   bool _showBb = false;
   bool _showInflows = true;
   bool _showAllCategories = false;
+  int _chartPointerCount = 0;
 
   final ScrollController _controller = ScrollController();
 
@@ -282,6 +284,9 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
 
           return SingleChildScrollView(
             controller: _controller,
+            physics: _chartPointerCount > 0
+                ? const NeverScrollableScrollPhysics()
+                : null,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(8, 56, 8, 16),
               child: Column(
@@ -310,7 +315,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                                     size: 16),
                                 const SizedBox(width: 4),
                                 Text(
-                                    '${currencyFormat.format(profit)} (${NumberFormat.percentPattern().format(profitPercent)})',
+                                    '${currencyFormat.format(profit)} (${formatPercent(profitPercent)})',
                                     style: TextStyle(
                                         color: profitColor, fontSize: 16)),
                               ],
@@ -329,19 +334,27 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                               onPressed: () => _onRangeSelected(range),
                               style: TextButton.styleFrom(
                                 backgroundColor: _selectedRange == range
-                                    ? Theme.of(context).colorScheme.secondary.withValues(alpha: 0.25)
+                                    ? Theme.of(context)
+                                        .colorScheme
+                                        .secondary
+                                        .withValues(alpha: 0.25)
                                     : Colors.transparent,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20), // pill / ellipse
+                                  borderRadius: BorderRadius.circular(
+                                      20), // pill / ellipse
                                 ),
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 8),
                               ),
                               child: Text(
                                 range,
                                 style: TextStyle(
                                   color: _selectedRange == range
                                       ? Theme.of(context).colorScheme.secondary
-                                      : Theme.of(context).textTheme.bodyLarge?.color,
+                                      : Theme.of(context)
+                                          .textTheme
+                                          .bodyLarge
+                                          ?.color,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -349,143 +362,164 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                           }).toList(),
                         ),
                         const SizedBox(height: 16),
-
-                        // Chart
-                        SizedBox(
-                          height: 400,
-                          child: LineChart(
-                            LineChartData(
-                              minY: minY,
-                              maxY: maxY,
-                              lineBarsData: lineBarsData,
-                              titlesData: FlTitlesData(
-                                leftTitles: AxisTitles(
-                                    sideTitles: SideTitles(
-                                        showTitles: true,
-                                        reservedSize: 38,
-                                        getTitlesWidget: (value, meta) {
-                                          // Hide first and last labels
-                                          if ((value - meta.min).abs() <
-                                                  0.001 ||
-                                              (value - meta.max).abs() <
-                                                  0.001) {
-                                            return const SizedBox.shrink();
-                                          }
-                                          String text;
-                                          if (value >= 1000000) {
-                                            text =
-                                                '${(value / 1000000).toStringAsFixed(0)}m';
-                                          } else if (value >= 1000) {
-                                            text =
-                                                '${(value / 1000).toStringAsFixed(2)}k';
-                                          } else {
-                                            text = value.toStringAsFixed(0);
-                                          }
-                                          return SideTitleWidget(
-                                            axisSide: meta.axisSide,
-                                            space: 10,
-                                            child: Text(text,
-                                                style: const TextStyle(
-                                                    fontSize: 8)),
-                                          );
-                                        })),
-                                bottomTitles: AxisTitles(
-                                    sideTitles: SideTitles(
-                                        showTitles: true,
-                                        getTitlesWidget: (value, meta) {
-                                          // Hide first and last labels
-                                          if (_selectedRange == '1W') {
-                                            if ((value - meta.min).abs() <
-                                                0.001) {
-                                              return const SizedBox.shrink();
-                                            }
-                                          } else {
+                        Listener(
+                          onPointerDown: (_) {
+                            setState(() => _chartPointerCount += 1);
+                          },
+                          onPointerUp: (_) {
+                            setState(() {
+                              _chartPointerCount =
+                                  max(0, _chartPointerCount - 1);
+                            });
+                          },
+                          onPointerCancel: (_) {
+                            setState(() {
+                              _chartPointerCount =
+                                  max(0, _chartPointerCount - 1);
+                            });
+                          },
+                          child: SizedBox(
+                            height: 400,
+                            child: LineChart(
+                              LineChartData(
+                                minY: minY,
+                                maxY: maxY,
+                                lineBarsData: lineBarsData,
+                                titlesData: FlTitlesData(
+                                  leftTitles: AxisTitles(
+                                      sideTitles: SideTitles(
+                                          showTitles: true,
+                                          reservedSize: 38,
+                                          getTitlesWidget: (value, meta) {
+                                            // Hide first and last labels
                                             if ((value - meta.min).abs() <
                                                     0.001 ||
                                                 (value - meta.max).abs() <
                                                     0.001) {
                                               return const SizedBox.shrink();
                                             }
-                                          }
-                                          final date = DateTime
-                                              .fromMillisecondsSinceEpoch(
-                                                  value.toInt());
-                                          String text;
-                                          switch (_selectedRange) {
-                                            case '1W':
-                                              text = DateFormat.E('de_DE')
-                                                  .format(date);
-                                              break;
-                                            case '1M':
-                                              text = DateFormat.d('de_DE')
-                                                  .format(date);
-                                              break;
-                                            case '1J':
-                                              text = DateFormat.MMM('de_DE')
-                                                  .format(date);
-                                              break;
-                                            case 'MAX':
-                                              text = DateFormat.yMMM('de_DE')
-                                                  .format(date);
-                                              break;
-                                            default:
-                                              text = '';
-                                          }
-                                          return SideTitleWidget(
+                                            String text;
+                                            if (value >= 1000000) {
+                                              text =
+                                                  '${(value / 1000000).toStringAsFixed(0)}m';
+                                            } else if (value >= 1000) {
+                                              text =
+                                                  '${(value / 1000).toStringAsFixed(2)}k';
+                                            } else {
+                                              text = value.toStringAsFixed(0);
+                                            }
+                                            return SideTitleWidget(
                                               axisSide: meta.axisSide,
+                                              space: 10,
                                               child: Text(text,
                                                   style: const TextStyle(
-                                                      fontSize: 12)));
-                                        },
-                                        interval: _getBottomTitleInterval(
-                                            currentData))),
-                                topTitles: const AxisTitles(
-                                    sideTitles: SideTitles(showTitles: false)),
-                                rightTitles: const AxisTitles(
-                                    sideTitles: SideTitles(showTitles: false)),
-                              ),
-                              gridData: FlGridData(
-                                show: false,
-                                drawVerticalLine: false,
-                                getDrawingHorizontalLine: (value) =>
-                                    const FlLine(
-                                        color: Colors.grey, strokeWidth: 0.5),
-                                getDrawingVerticalLine: (value) => const FlLine(
-                                    color: Colors.grey, strokeWidth: 0.5),
-                              ),
-                              borderData: FlBorderData(
-                                  show: false,
-                                  border:
-                                      Border.all(color: Colors.grey, width: 1)),
-                              lineTouchData: LineTouchData(
-                                touchCallback: (FlTouchEvent event,
-                                    LineTouchResponse? touchResponse) {
-                                  if (event is FlPanEndEvent ||
-                                      event is FlLongPressEnd ||
-                                      event is FlTapUpEvent) {
-                                    setState(() => _touchedSpot = null);
-                                  } else if (touchResponse != null &&
-                                      touchResponse.lineBarSpots != null &&
-                                      touchResponse.lineBarSpots!.isNotEmpty) {
-                                    setState(() => _touchedSpot =
-                                        touchResponse.lineBarSpots![0]);
-                                  }
-                                },
-                                touchTooltipData: LineTouchTooltipData(
-                                  getTooltipItems: (touchedBarSpots) =>
-                                      touchedBarSpots
-                                          .map((barSpot) => LineTooltipItem(
-                                              currencyFormat.format(barSpot.y),
-                                              const TextStyle(
-                                                  color: Colors.white)))
-                                          .toList(),
+                                                      fontSize: 8)),
+                                            );
+                                          })),
+                                  bottomTitles: AxisTitles(
+                                      sideTitles: SideTitles(
+                                          showTitles: true,
+                                          getTitlesWidget: (value, meta) {
+                                            // Hide first and last labels
+                                            if (_selectedRange == '1W') {
+                                              if ((value - meta.min).abs() <
+                                                  0.001) {
+                                                return const SizedBox.shrink();
+                                              }
+                                            } else {
+                                              if ((value - meta.min).abs() <
+                                                      0.001 ||
+                                                  (value - meta.max).abs() <
+                                                      0.001) {
+                                                return const SizedBox.shrink();
+                                              }
+                                            }
+                                            final date = DateTime
+                                                .fromMillisecondsSinceEpoch(
+                                                    value.toInt());
+                                            String text;
+                                            switch (_selectedRange) {
+                                              case '1W':
+                                                text = DateFormat.E('de_DE')
+                                                    .format(date);
+                                                break;
+                                              case '1M':
+                                                text = DateFormat.d('de_DE')
+                                                    .format(date);
+                                                break;
+                                              case '1J':
+                                                text = DateFormat.MMM('de_DE')
+                                                    .format(date);
+                                                break;
+                                              case 'MAX':
+                                                text = DateFormat.yMMM('de_DE')
+                                                    .format(date);
+                                                break;
+                                              default:
+                                                text = '';
+                                            }
+                                            return SideTitleWidget(
+                                                axisSide: meta.axisSide,
+                                                child: Text(text,
+                                                    style: const TextStyle(
+                                                        fontSize: 12)));
+                                          },
+                                          interval: _getBottomTitleInterval(
+                                              currentData))),
+                                  topTitles: const AxisTitles(
+                                      sideTitles:
+                                          SideTitles(showTitles: false)),
+                                  rightTitles: const AxisTitles(
+                                      sideTitles:
+                                          SideTitles(showTitles: false)),
                                 ),
-                                handleBuiltInTouches: true,
+                                gridData: FlGridData(
+                                  show: false,
+                                  drawVerticalLine: false,
+                                  getDrawingHorizontalLine: (value) =>
+                                      const FlLine(
+                                          color: Colors.grey, strokeWidth: 0.5),
+                                  getDrawingVerticalLine: (value) =>
+                                      const FlLine(
+                                          color: Colors.grey, strokeWidth: 0.5),
+                                ),
+                                borderData: FlBorderData(
+                                    show: false,
+                                    border: Border.all(
+                                        color: Colors.grey, width: 1)),
+                                lineTouchData: LineTouchData(
+                                  touchCallback: (FlTouchEvent event,
+                                      LineTouchResponse? touchResponse) {
+                                    if (event is FlPanEndEvent ||
+                                        event is FlLongPressEnd ||
+                                        event is FlTapUpEvent) {
+                                      setState(() => _touchedSpot = null);
+                                    } else if (touchResponse != null &&
+                                        touchResponse.lineBarSpots != null &&
+                                        touchResponse
+                                            .lineBarSpots!.isNotEmpty) {
+                                      setState(() => _touchedSpot =
+                                          touchResponse.lineBarSpots![0]);
+                                    }
+                                  },
+                                  touchTooltipData: LineTouchTooltipData(
+                                    getTooltipItems: (touchedBarSpots) =>
+                                        touchedBarSpots
+                                            .map((barSpot) => LineTooltipItem(
+                                                currencyFormat
+                                                    .format(barSpot.y),
+                                                const TextStyle(
+                                                    color: Colors.white)))
+                                            .toList(),
+                                  ),
+                                  handleBuiltInTouches: true,
+                                ),
+                                clipData: const FlClipData.all(),
                               ),
-                              clipData: const FlClipData.all(),
                             ),
                           ),
                         ),
+
                         const SizedBox(height: 16),
 
                         // Indicators
@@ -498,7 +532,11 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                                   activeColor: Colors.orange,
                                   onChanged: (value) =>
                                       setState(() => _showSma = value!)),
-                              Text('30-SMA', style: TextStyle(color: _showSma ? Colors.orange : Colors.white))
+                              Text('30-SMA',
+                                  style: TextStyle(
+                                      color: _showSma
+                                          ? Colors.orange
+                                          : Colors.white))
                             ]),
                             Row(children: [
                               Checkbox(
@@ -506,7 +544,11 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                                   activeColor: Colors.purple,
                                   onChanged: (value) =>
                                       setState(() => _showEma = value!)),
-                              Text('30-EMA', style: TextStyle(color: _showEma ? Colors.purple : Colors.white))
+                              Text('30-EMA',
+                                  style: TextStyle(
+                                      color: _showEma
+                                          ? Colors.purple
+                                          : Colors.white))
                             ]),
                             Row(children: [
                               Checkbox(
@@ -514,7 +556,10 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                                   activeColor: Colors.blue,
                                   onChanged: (value) =>
                                       setState(() => _showBb = value!)),
-                              Text('20-BB', style: TextStyle(color: _showBb ? Colors.blue : Colors.white))
+                              Text('20-BB',
+                                  style: TextStyle(
+                                      color:
+                                          _showBb ? Colors.blue : Colors.white))
                             ]),
                           ],
                         ),
@@ -563,19 +608,26 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             'Gewinn Aktueller Monat:',
             analysisData.currentMonthProfit,
             currencyFormat,
-            analysisData.currentMonthProfit >= 0 ? AppColors.green : AppColors.red),
+            analysisData.currentMonthProfit >= 0
+                ? AppColors.green
+                : AppColors.red),
         const SizedBox(height: 8),
         const Divider(color: Colors.grey),
         const SizedBox(height: 8),
-        _buildSummaryRow('Ø Monatliche Einnahmen:',
-            analysisData.averageMonthlyInflows, currencyFormat, AppColors.green),
+        _buildSummaryRow(
+            'Ø Monatliche Einnahmen:',
+            analysisData.averageMonthlyInflows,
+            currencyFormat,
+            AppColors.green),
         _buildSummaryRow('Ø Monatliche Ausgaben:',
             analysisData.averageMonthlyOutflows, currencyFormat, AppColors.red),
         _buildSummaryRow(
             'Ø Monatlicher Gewinn:',
             analysisData.averageMonthlyProfit,
             currencyFormat,
-            analysisData.averageMonthlyProfit >= 0 ? AppColors.green : AppColors.red),
+            analysisData.averageMonthlyProfit >= 0
+                ? AppColors.green
+                : AppColors.red),
       ],
     );
   }
