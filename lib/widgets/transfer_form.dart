@@ -13,8 +13,9 @@ import '../utils/validators.dart';
 
 class TransferForm extends StatefulWidget {
   final Transfer? transfer;
+  final List<Asset>? preloadedAssets; // NEW optional parameter
 
-  const TransferForm({super.key, this.transfer});
+  const TransferForm({super.key, this.transfer, this.preloadedAssets});
 
   @override
   State<TransferForm> createState() => _TransferFormState();
@@ -37,6 +38,7 @@ class _TransferFormState extends State<TransferForm> {
   late TextEditingController _sharesCtrl;
   late TextEditingController _priceCtrl;
   late TextEditingController _notesCtrl;
+  late TextEditingController _dateCtrl; // moved to state to avoid ephemeral controllers
 
   int? _sendingAccountId;
   int? _receivingAccountId;
@@ -53,15 +55,7 @@ class _TransferFormState extends State<TransferForm> {
     super.initState();
     final t = widget.transfer;
 
-    _db.assetsDao.getAllAssets().then((assets) {
-      if (mounted) {
-        setState(() {
-          _allAssets = assets;
-          _assetMap = {for (var a in assets) a.id: a};
-        });
-      }
-    });
-
+    // initialize date
     if (t != null) {
       final ds = t.date.toString();
       _date = DateTime.parse(
@@ -70,14 +64,31 @@ class _TransferFormState extends State<TransferForm> {
       _date = DateTime.now();
     }
 
+    // initialize controllers once
     _sharesCtrl = TextEditingController(text: t?.shares.toString());
     _priceCtrl = TextEditingController(text: t?.costBasis.toString());
     _notesCtrl = TextEditingController(text: t?.notes);
+    _dateCtrl = TextEditingController(text: DateFormat('dd.MM.yyyy').format(_date));
 
     _sendingAccountId = t?.sendingAccountId;
     _receivingAccountId = t?.receivingAccountId;
-    _assetId = t?.assetId ?? 1;
+    _assetId = t?.assetId ?? 1; // default asset id 1
     _isGenerated = t?.isGenerated ?? false;
+
+    // Use preloaded assets if provided (fast path)
+    if (widget.preloadedAssets != null) {
+      _allAssets = widget.preloadedAssets!;
+      _assetMap = {for (var a in _allAssets) a.id: a};
+    } else {
+      // fallback: async load assets as before (non-blocking UI)
+      _db.assetsDao.getAllAssets().then((assets) {
+        if (!mounted) return;
+        setState(() {
+          _allAssets = assets;
+          _assetMap = {for (var a in assets) a.id: a};
+        });
+      });
+    }
   }
 
   @override
@@ -85,6 +96,7 @@ class _TransferFormState extends State<TransferForm> {
     _sharesCtrl.dispose();
     _priceCtrl.dispose();
     _notesCtrl.dispose();
+    _dateCtrl.dispose();
     super.dispose();
   }
 
@@ -93,15 +105,13 @@ class _TransferFormState extends State<TransferForm> {
     final shares = double.parse(_sharesCtrl.text.replaceAll(',', '.'));
 
     // --- Validation Checks ---
-    // 1. Sending and receiving account must be selected and different
     if (_sendingAccountId == _receivingAccountId) {
       showToast(_l10n.sendingAndReceivingMustDiffer);
       return;
     }
 
-    // 2. Sending account must have enough shares of selected asset
     final aoa =
-        await _db.assetsOnAccountsDao.getAOA(_sendingAccountId!, _assetId!);
+    await _db.assetsOnAccountsDao.getAOA(_sendingAccountId!, _assetId!);
     double oldShares = widget.transfer == null ? 0 : widget.transfer!.shares;
     if (aoa.shares + oldShares - shares < 0) {
       showToast(
@@ -109,7 +119,6 @@ class _TransferFormState extends State<TransferForm> {
       return;
     }
 
-    // 3. Receiving account must be compatible with asset type
     final recAcc = await _db.accountsDao.getAccount(_receivingAccountId!);
     if (recAcc.type == AccountTypes.cash) {
       final asset = await _db.assetsDao.getAsset(_assetId!);
@@ -128,7 +137,6 @@ class _TransferFormState extends State<TransferForm> {
       }
     }
 
-    // Calculate transfer value
     var value = 0.0;
     if (_assetId == 1) {
       value = shares;
@@ -168,7 +176,6 @@ class _TransferFormState extends State<TransferForm> {
       companion = companion.copyWith(id: drift.Value(widget.transfer!.id));
     }
 
-    // Final save
     if (widget.transfer != null) {
       await _db.transfersDao.updateTransfer(widget.transfer!, companion, _l10n);
     } else {
@@ -180,8 +187,6 @@ class _TransferFormState extends State<TransferForm> {
 
   @override
   Widget build(BuildContext context) {
-    final dateText = DateFormat('dd.MM.yyyy').format(_date);
-
     return Padding(
       padding: MediaQuery.of(context).viewInsets,
       child: SingleChildScrollView(
@@ -199,7 +204,7 @@ class _TransferFormState extends State<TransferForm> {
                     Expanded(
                       child: TextFormField(
                         readOnly: true,
-                        controller: TextEditingController(text: dateText),
+                        controller: _dateCtrl,
                         decoration: InputDecoration(
                           labelText: _l10n.date,
                           border: const OutlineInputBorder(),
@@ -215,8 +220,8 @@ class _TransferFormState extends State<TransferForm> {
                     _reusables.buildAssetsDropdown(
                       _assetId!,
                       _allAssets,
-                      (val) => setState(() => _assetId = val),
-                      (val) => val == null ? _l10n.pleaseSelectAnAsset : null,
+                          (val) => setState(() => _assetId = val),
+                          (val) => val == null ? _l10n.pleaseSelectAnAsset : null,
                     ),
                   ],
                 ),
@@ -244,14 +249,14 @@ class _TransferFormState extends State<TransferForm> {
                           ),
                           items: accounts
                               .map((a) => DropdownMenuItem(
-                                    value: a.id,
-                                    child: Text(a.name),
-                                  ))
+                            value: a.id,
+                            child: Text(a.name),
+                          ))
                               .toList(),
                           onChanged: (v) =>
                               setState(() => _sendingAccountId = v),
                           validator: (v) =>
-                              v == null ? _l10n.pleaseSelectAnAccount : null,
+                          v == null ? _l10n.pleaseSelectAnAccount : null,
                         ),
                         const SizedBox(height: 12),
                         DropdownButtonFormField<int>(
@@ -263,14 +268,14 @@ class _TransferFormState extends State<TransferForm> {
                           ),
                           items: accounts
                               .map((a) => DropdownMenuItem(
-                                    value: a.id,
-                                    child: Text(a.name),
-                                  ))
+                            value: a.id,
+                            child: Text(a.name),
+                          ))
                               .toList(),
                           onChanged: (v) =>
                               setState(() => _receivingAccountId = v),
                           validator: (v) =>
-                              v == null ? _l10n.pleaseSelectAnAccount : null,
+                          v == null ? _l10n.pleaseSelectAnAccount : null,
                         ),
                       ],
                     );
@@ -315,6 +320,11 @@ class _TransferFormState extends State<TransferForm> {
       firstDate: DateTime(2000),
       lastDate: DateTime(2101),
     );
-    if (picked != null && picked != _date) setState(() => _date = picked);
+    if (picked != null && picked != _date) {
+      setState(() {
+        _date = picked;
+        _dateCtrl.text = DateFormat('dd.MM.yyyy').format(_date);
+      });
+    }
   }
 }

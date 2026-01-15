@@ -14,7 +14,11 @@ import 'dialogs.dart';
 class TradeForm extends StatefulWidget {
   final Trade? trade;
 
-  const TradeForm({super.key, this.trade});
+  // New optional preloaded data (fast-path)
+  final List<Asset>? preloadedAssets;
+  final List<Account>? preloadedAccounts;
+
+  const TradeForm({super.key, this.trade, this.preloadedAssets, this.preloadedAccounts});
 
   @override
   State<TradeForm> createState() => _TradeFormState();
@@ -61,26 +65,56 @@ class _TradeFormState extends State<TradeForm> {
     _feeController = TextEditingController(text: t?.fee.toString());
     _taxController = TextEditingController(text: t?.tax.toString());
 
-    if (_isEditing) {
-      // Editing logic to be implemented if needed
-    }
+    // If both assets + accounts were preloaded, use them synchronously to avoid flicker.
+    if (widget.preloadedAssets != null && widget.preloadedAccounts != null) {
+      final currencyProvider =
+      Provider.of<BaseCurrencyProvider>(context, listen: false);
 
-    _loadInitialData(t);
+      final allAssets = widget.preloadedAssets!;
+      final allAccounts = widget.preloadedAccounts!;
+
+      // Filter assets same as original logic
+      _assets = allAssets
+          .where((a) => a.tickerSymbol != currencyProvider.tickerSymbol)
+          .toList();
+
+      _clearingAccounts = allAccounts;
+      _investmentAccounts =
+          allAccounts.where((a) => a.type != AccountTypes.bankAccount).toList();
+
+      if (t != null) {
+        _selectedAsset = allAssets.firstWhere((a) => a.id == t.assetId);
+        _selectedClearingAccount =
+            allAccounts.firstWhere((a) => a.id == t.sourceAccountId);
+        _selectedInvestmentAccount =
+            allAccounts.firstWhere((a) => a.id == t.targetAccountId);
+      } else {
+        // keep nulls; user will select
+      }
+
+      // If an investment account & asset is known, fetch owned shares (async).
+      if (_selectedAsset != null && _selectedInvestmentAccount != null) {
+        _fetchOwnedShares(); // will set state when done
+      }
+    } else {
+      // fallback to original async load (non-blocking UI)
+      _loadInitialData(t);
+    }
   }
 
   Future<void> _loadInitialData(Trade? t) async {
     final currencyProvider =
-        Provider.of<BaseCurrencyProvider>(context, listen: false);
+    Provider.of<BaseCurrencyProvider>(context, listen: false);
     final db = Provider.of<AppDatabase>(context, listen: false);
     final allAssets = await db.assetsDao.getAllAssets();
     final allAccounts = await db.accountsDao.getAllAccounts();
 
     if (t != null) {
       _selectedAsset = allAssets.firstWhere((a) => a.id == t.assetId);
-      _selectedClearingAccount = allAccounts.firstWhere((a) =>
-      a.id == t.sourceAccountId);
-      _selectedInvestmentAccount = allAccounts.firstWhere((a) =>
-      a.id == t.targetAccountId);
+      _selectedClearingAccount =
+          allAccounts.firstWhere((a) => a.id == t.sourceAccountId);
+      _selectedInvestmentAccount =
+          allAccounts.firstWhere((a) => a.id == t.targetAccountId);
     }
 
     if (mounted) {
@@ -93,6 +127,10 @@ class _TradeFormState extends State<TradeForm> {
             .where((a) => a.type != AccountTypes.bankAccount)
             .toList();
       });
+
+      if (_selectedAsset != null && _selectedInvestmentAccount != null) {
+        await _fetchOwnedShares();
+      }
     }
   }
 
@@ -114,7 +152,6 @@ class _TradeFormState extends State<TradeForm> {
           .getAOA(_selectedInvestmentAccount!.id, _selectedAsset!.id);
       if (mounted) setState(() => _ownedShares = assetOnAccount.shares);
     } catch (e) {
-      // Asset not in account, so 0 shares owned.
       if (mounted) setState(() => _ownedShares = 0);
     }
   }
@@ -139,7 +176,7 @@ class _TradeFormState extends State<TradeForm> {
           setState(() {
             _datetime = picked;
             _dateController.text =
-                "${DateFormat('dd.MM.yyyy, HH:mm').format(picked)} Uhr";
+            "${DateFormat('dd.MM.yyyy, HH:mm').format(picked)} Uhr";
           });
         }
       }
@@ -150,8 +187,6 @@ class _TradeFormState extends State<TradeForm> {
     if (!_formKey.currentState!.validate()) return;
 
     final db = Provider.of<AppDatabase>(context, listen: false);
-    // await db.tradesDao.insertFromCsv();
-    // return;
 
     var trade = TradesCompanion(
       datetime: drift.Value(
@@ -169,7 +204,6 @@ class _TradeFormState extends State<TradeForm> {
     );
 
     try {
-      // NOTE: DAO enforces balance-history checks; UI validators should handle form-level validation.
       if (_isEditing) {
         trade = trade.copyWith(id: drift.Value(widget.trade!.id));
         await db.tradesDao.updateTrade(trade, l10n);
@@ -219,11 +253,13 @@ class _TradeFormState extends State<TradeForm> {
                         border: const OutlineInputBorder()),
                     items: TradeTypes.values
                         .map((type) => DropdownMenuItem(
-                            value: type, child: Text(type.name)))
+                        value: type, child: Text(type.name)))
                         .toList(),
-                    onChanged: _isEditing ? null : (value) => setState(() => _tradeType = value!),
+                    onChanged: _isEditing
+                        ? null
+                        : (value) => setState(() => _tradeType = value),
                     validator: (value) =>
-                        value == null ? l10n.pleaseSelectAType : null),
+                    value == null ? l10n.pleaseSelectAType : null),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<Asset>(
                   initialValue: _selectedAsset,
@@ -233,14 +269,16 @@ class _TradeFormState extends State<TradeForm> {
                       border: const OutlineInputBorder()),
                   items: _assets
                       .map((asset) => DropdownMenuItem(
-                          value: asset, child: Text(asset.name)))
+                      value: asset, child: Text(asset.name)))
                       .toList(),
-                  onChanged: _isEditing ? null : (value) {
+                  onChanged: _isEditing
+                      ? null
+                      : (value) {
                     setState(() => _selectedAsset = value);
                     _fetchOwnedShares();
                   },
                   validator: (value) =>
-                      value == null ? l10n.pleaseSelectAnAsset : null,
+                  value == null ? l10n.pleaseSelectAnAsset : null,
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -320,16 +358,18 @@ class _TradeFormState extends State<TradeForm> {
                         border: const OutlineInputBorder()),
                     items: _clearingAccounts
                         .map((account) => DropdownMenuItem(
-                            value: account, child: Text(account.name)))
+                        value: account, child: Text(account.name)))
                         .toList(),
-                    onChanged: _isEditing ? null : (value) => setState(() => _selectedClearingAccount = value),
+                    onChanged: _isEditing
+                        ? null
+                        : (value) => setState(() => _selectedClearingAccount = value),
                     validator: (value) {
                       String? error = validator.validateNotInitial(value?.name);
                       if (_tradeType == TradeTypes.buy) {
                         try {
                           double shares = double.parse(_sharesController.text);
                           double costBasis =
-                              double.parse(_costBasisController.text);
+                          double.parse(_costBasisController.text);
                           double fee = double.parse(_feeController.text);
                           double oldClearingAccountValueDelta = _isEditing ? widget.trade!.sourceAccountValueDelta : 0;
                           double clearingAccountValueDelta =
@@ -354,14 +394,16 @@ class _TradeFormState extends State<TradeForm> {
                       border: const OutlineInputBorder()),
                   items: _investmentAccounts
                       .map((account) => DropdownMenuItem(
-                          value: account, child: Text(account.name)))
+                      value: account, child: Text(account.name)))
                       .toList(),
-                  onChanged: _isEditing ? null : (value) {
+                  onChanged: _isEditing
+                      ? null
+                      : (value) {
                     setState(() => _selectedInvestmentAccount = value);
                     _fetchOwnedShares();
                   },
                   validator: (value) =>
-                      value == null ? l10n.pleaseSelectAnAccount : null,
+                  value == null ? l10n.pleaseSelectAnAccount : null,
                 ),
                 const SizedBox(height: 16),
                 Row(

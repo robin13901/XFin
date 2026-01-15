@@ -9,15 +9,42 @@ import '../database/daos/transfers_dao.dart';
 import '../widgets/dialogs.dart';
 import '../widgets/liquid_glass_widgets.dart';
 
-class TransfersScreen extends StatelessWidget {
+class TransfersScreen extends StatefulWidget {
   const TransfersScreen({super.key});
 
-  Future<void> _showTransferForm(
-      BuildContext context, Transfer? transfer) async {
+  @override
+  State<TransfersScreen> createState() => _TransfersScreenState();
+}
+
+class _TransfersScreenState extends State<TransfersScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _sheetAnimController;
+  late final Future<List<Asset>> assetsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    final db = Provider.of<AppDatabase>(context, listen: false);
+    assetsFuture = db.assetsDao.getAllAssets();
+    // Zero-duration controller already at value 1 -> sheet appears instantly (no open animation).
+    _sheetAnimController =
+    AnimationController(vsync: this, duration: Duration.zero)..value = 1.0;
+  }
+
+  @override
+  void dispose() {
+    _sheetAnimController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _showTransferForm(BuildContext context, Transfer? transfer) async {
+    final assets = await assetsFuture;
+    if (!context.mounted) return;
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (_) => TransferForm(transfer: transfer),
+      transitionAnimationController: _sheetAnimController,
+      builder: (_) => TransferForm(transfer: transfer, preloadedAssets: assets),
     );
   }
 
@@ -38,7 +65,7 @@ class TransfersScreen extends StatelessWidget {
               if (snapshot.hasError) {
                 return Center(
                     child:
-                        Text(l10n.anErrorOccurred(snapshot.error.toString())));
+                    Text(l10n.anErrorOccurred(snapshot.error.toString())));
               }
 
               final items = snapshot.data ?? [];
@@ -47,7 +74,7 @@ class TransfersScreen extends StatelessWidget {
               }
 
               final currencyFormat =
-                  NumberFormat.currency(locale: 'de_DE', symbol: '€');
+              NumberFormat.currency(locale: 'de_DE', symbol: '€');
               final dateFormat = DateFormat('dd.MM.yyyy');
 
               return ListView.builder(
@@ -88,7 +115,7 @@ class TransfersScreen extends StatelessWidget {
                               children: [
                                 TextSpan(
                                   text:
-                                      '${transfer.shares} ${asset.currencySymbol ?? asset.tickerSymbol} ≈ ',
+                                  '${transfer.shares} ${asset.currencySymbol ?? asset.tickerSymbol} ≈ ',
                                   style: const TextStyle(color: Colors.grey),
                                 ),
                                 TextSpan(

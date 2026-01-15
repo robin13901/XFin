@@ -22,6 +22,18 @@ import 'liquid_glass_widgets.dart';
 //   );
 // }
 
+Route _noAnimRoute(Widget page) {
+  return PageRouteBuilder(
+    pageBuilder: (context, animation, secondaryAnimation) => page,
+    transitionDuration: Duration.zero,
+    reverseTransitionDuration: Duration.zero,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+        child,
+    // opaque true means the new page covers the old one — cheap to render.
+    opaque: true,
+  );
+}
+
 Future<void> showMorePane({
   required BuildContext context,
   required GlobalKey navBarKey,
@@ -42,25 +54,25 @@ Future<void> showMorePane({
       label: l10n.settings,
       icon: Icons.settings,
       onTap: () => Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => const SettingsScreen())),
+          .push(_noAnimRoute(const SettingsScreen())),
     ),
     _PaneItem(
       label: l10n.assets,
       icon: Icons.monetization_on,
       onTap: () => Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => const AssetsScreen())),
+          .push(_noAnimRoute(const AssetsScreen())),
     ),
     _PaneItem(
       label: l10n.trades,
       icon: Icons.swap_horiz,
       onTap: () => Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => const TradesScreen())),
+          .push(_noAnimRoute(const TradesScreen())),
     ),
     _PaneItem(
       label: l10n.transfers,
       icon: Icons.receipt_long,
-      onTap: () => Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => const TransfersScreen())),
+      onTap: () =>
+          Navigator.of(context).push(_noAnimRoute(const TransfersScreen())),
     ),
   ];
 
@@ -159,10 +171,8 @@ class _AnimatedMorePaneState extends State<_AnimatedMorePane>
     // Removed: await _ctr.reverse();
     widget.entryRemover();
     // Schedule the navbar to be shown again after the pane is removed
-    Future.microtask(() {
-      widget.onCloseRestoreNav();
-      cb(); // Execute the navigation callback
-    });
+    widget.onCloseRestoreNav();
+    cb();
   }
 
   @override
@@ -183,12 +193,13 @@ class _AnimatedMorePaneState extends State<_AnimatedMorePane>
                 // Removed: AnimatedBuilder
                 child: SizedBox(
                   width: widget.paneWidth,
-                  child: RepaintBoundary( // Added RepaintBoundary here
+                  child: RepaintBoundary(
+                    // Added RepaintBoundary here
                     child: LiquidGlassLayer(
                       settings: widget.settings,
                       child: LiquidGlass.grouped(
                         shape:
-                        const LiquidRoundedSuperellipse(borderRadius: 28),
+                            const LiquidRoundedSuperellipse(borderRadius: 28),
                         child: _PaneContent(
                           items: widget.items,
                           onItemTap: (cb) => _onItemTap(cb),

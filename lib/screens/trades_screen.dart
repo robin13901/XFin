@@ -11,14 +11,55 @@ import 'package:xfin/database/daos/trades_dao.dart';
 import '../database/tables.dart';
 import '../widgets/liquid_glass_widgets.dart';
 
-class TradesScreen extends StatelessWidget {
+class TradesScreen extends StatefulWidget {
   const TradesScreen({super.key});
 
-  void _showTradeForm(BuildContext context, {Trade? trade}) {
-    showModalBottomSheet(
+  @override
+  State<TradesScreen> createState() => _TradesScreenState();
+}
+
+class _TradesScreenState extends State<TradesScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _sheetAnimController;
+
+  // Preload futures
+  late final Future<List<Asset>> _assetsFuture;
+  late final Future<List<Account>> _accountsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Zero-duration controller => sheet appears instantly (no open animation).
+    _sheetAnimController =
+    AnimationController(vsync: this, duration: Duration.zero)..value = 1.0;
+
+    // Start preloading DB data immediately (background).
+    final db = Provider.of<AppDatabase>(context, listen: false);
+    _assetsFuture = db.assetsDao.getAllAssets();
+    _accountsFuture = db.accountsDao.getAllAccounts();
+  }
+
+  @override
+  void dispose() {
+    _sheetAnimController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _showTradeForm(BuildContext context, {Trade? trade}) async {
+    final assets = await _assetsFuture;
+    final accounts = await _accountsFuture;
+
+    if (!context.mounted) return;
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (_) => TradeForm(trade: trade),
+      transitionAnimationController: _sheetAnimController,
+      builder: (_) => TradeForm(
+        trade: trade,
+        preloadedAssets: assets,
+        preloadedAccounts: accounts,
+      ),
     );
   }
 
@@ -29,7 +70,7 @@ class TradesScreen extends StatelessWidget {
     final currencyFormat = NumberFormat.currency(locale: 'de_DE', symbol: '€');
     final dateTimeFormatter = DateFormat('dd.MM.yyyy, HH:mm');
     final pnlFormat =
-        NumberFormat.currency(locale: 'de_DE', symbol: '€', decimalDigits: 2);
+    NumberFormat.currency(locale: 'de_DE', symbol: '€', decimalDigits: 2);
     final formatter = NumberFormat.decimalPattern('de_DE');
     formatter.minimumFractionDigits = 2;
     formatter.maximumFractionDigits = 2;
@@ -79,7 +120,7 @@ class TradesScreen extends StatelessWidget {
 
                   if (trade.type == TradeTypes.sell) {
                     final pnlColor =
-                        trade.profitAndLoss >= 0 ? Colors.green : Colors.red;
+                    trade.profitAndLoss >= 0 ? Colors.green : Colors.red;
 
                     subtitleWidgets.add(
                       Text.rich(
@@ -88,7 +129,6 @@ class TradesScreen extends StatelessWidget {
                             TextSpan(text: '${l10n.profitAndLoss}: '),
                             TextSpan(
                               text: pnlFormat.format(trade.profitAndLoss),
-                              // Value in color
                               style: TextStyle(color: pnlColor),
                             ),
                           ],
@@ -102,8 +142,7 @@ class TradesScreen extends StatelessWidget {
                             TextSpan(text: '${l10n.returnOnInvestment}: '),
                             TextSpan(
                               text:
-                                  '${formatter.format(trade.returnOnInvest * 100)} %',
-                              // Value in color
+                              '${formatter.format(trade.returnOnInvest * 100)} %',
                               style: TextStyle(color: pnlColor),
                             ),
                           ],
@@ -128,8 +167,6 @@ class TradesScreen extends StatelessWidget {
           ),
           buildLiquidGlassAppBar(context, title: Text(l10n.trades)),
           buildFAB(context: context, onTap: () => _showTradeForm(context)),
-          // buildFAB(context: context, onTap: () => DevTestScreen().parseAndInsertTrades(context)),
-          // buildFAB(context: context, onTap: () => DevTestScreen().parseAndInsertCsv(context)),
         ],
       ),
     );
