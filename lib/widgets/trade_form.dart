@@ -18,7 +18,8 @@ class TradeForm extends StatefulWidget {
   final List<Asset>? preloadedAssets;
   final List<Account>? preloadedAccounts;
 
-  const TradeForm({super.key, this.trade, this.preloadedAssets, this.preloadedAccounts});
+  const TradeForm(
+      {super.key, this.trade, this.preloadedAssets, this.preloadedAccounts});
 
   @override
   State<TradeForm> createState() => _TradeFormState();
@@ -68,7 +69,7 @@ class _TradeFormState extends State<TradeForm> {
     // If both assets + accounts were preloaded, use them synchronously to avoid flicker.
     if (widget.preloadedAssets != null && widget.preloadedAccounts != null) {
       final currencyProvider =
-      Provider.of<BaseCurrencyProvider>(context, listen: false);
+          Provider.of<BaseCurrencyProvider>(context, listen: false);
 
       final allAssets = widget.preloadedAssets!;
       final allAccounts = widget.preloadedAccounts!;
@@ -104,7 +105,7 @@ class _TradeFormState extends State<TradeForm> {
 
   Future<void> _loadInitialData(Trade? t) async {
     final currencyProvider =
-    Provider.of<BaseCurrencyProvider>(context, listen: false);
+        Provider.of<BaseCurrencyProvider>(context, listen: false);
     final db = Provider.of<AppDatabase>(context, listen: false);
     final allAssets = await db.assetsDao.getAllAssets();
     final allAccounts = await db.accountsDao.getAllAccounts();
@@ -176,7 +177,7 @@ class _TradeFormState extends State<TradeForm> {
           setState(() {
             _datetime = picked;
             _dateController.text =
-            "${DateFormat('dd.MM.yyyy, HH:mm').format(picked)} Uhr";
+                "${DateFormat('dd.MM.yyyy, HH:mm').format(picked)} Uhr";
           });
         }
       }
@@ -253,13 +254,13 @@ class _TradeFormState extends State<TradeForm> {
                         border: const OutlineInputBorder()),
                     items: TradeTypes.values
                         .map((type) => DropdownMenuItem(
-                        value: type, child: Text(type.name)))
+                            value: type, child: Text(type.name)))
                         .toList(),
                     onChanged: _isEditing
                         ? null
                         : (value) => setState(() => _tradeType = value),
                     validator: (value) =>
-                    value == null ? l10n.pleaseSelectAType : null),
+                        value == null ? l10n.pleaseSelectAType : null),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<Asset>(
                   initialValue: _selectedAsset,
@@ -269,16 +270,16 @@ class _TradeFormState extends State<TradeForm> {
                       border: const OutlineInputBorder()),
                   items: _assets
                       .map((asset) => DropdownMenuItem(
-                      value: asset, child: Text(asset.name)))
+                          value: asset, child: Text(asset.name)))
                       .toList(),
                   onChanged: _isEditing
                       ? null
                       : (value) {
-                    setState(() => _selectedAsset = value);
-                    _fetchOwnedShares();
-                  },
+                          setState(() => _selectedAsset = value);
+                          _fetchOwnedShares();
+                        },
                   validator: (value) =>
-                  value == null ? l10n.pleaseSelectAnAsset : null,
+                      value == null ? l10n.pleaseSelectAnAsset : null,
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -287,6 +288,8 @@ class _TradeFormState extends State<TradeForm> {
                       child: TextFormField(
                         controller: _sharesController,
                         decoration: InputDecoration(
+                            suffixText: _selectedAsset?.currencySymbol ??
+                                _selectedAsset?.tickerSymbol,
                             labelText: l10n.shares,
                             border: const OutlineInputBorder()),
                         keyboardType: const TextInputType.numberWithOptions(
@@ -358,23 +361,27 @@ class _TradeFormState extends State<TradeForm> {
                         border: const OutlineInputBorder()),
                     items: _clearingAccounts
                         .map((account) => DropdownMenuItem(
-                        value: account, child: Text(account.name)))
+                            value: account, child: Text(account.name)))
                         .toList(),
                     onChanged: _isEditing
                         ? null
-                        : (value) => setState(() => _selectedClearingAccount = value),
+                        : (value) =>
+                            setState(() => _selectedClearingAccount = value),
                     validator: (value) {
                       String? error = validator.validateNotInitial(value?.name);
                       if (_tradeType == TradeTypes.buy) {
                         try {
                           double shares = double.parse(_sharesController.text);
                           double costBasis =
-                          double.parse(_costBasisController.text);
+                              double.parse(_costBasisController.text);
                           double fee = double.parse(_feeController.text);
-                          double oldClearingAccountValueDelta = _isEditing ? widget.trade!.sourceAccountValueDelta : 0;
+                          double oldClearingAccountValueDelta = _isEditing
+                              ? widget.trade!.sourceAccountValueDelta
+                              : 0;
                           double clearingAccountValueDelta =
                               shares * costBasis + fee;
-                          double accountBalance = value!.balance - oldClearingAccountValueDelta;
+                          double accountBalance =
+                              value!.balance - oldClearingAccountValueDelta;
 
                           if (accountBalance < clearingAccountValueDelta) {
                             error = l10n.insufficientBalance;
@@ -394,16 +401,16 @@ class _TradeFormState extends State<TradeForm> {
                       border: const OutlineInputBorder()),
                   items: _investmentAccounts
                       .map((account) => DropdownMenuItem(
-                      value: account, child: Text(account.name)))
+                          value: account, child: Text(account.name)))
                       .toList(),
                   onChanged: _isEditing
                       ? null
                       : (value) {
-                    setState(() => _selectedInvestmentAccount = value);
-                    _fetchOwnedShares();
-                  },
+                          setState(() => _selectedInvestmentAccount = value);
+                          _fetchOwnedShares();
+                        },
                   validator: (value) =>
-                  value == null ? l10n.pleaseSelectAnAccount : null,
+                      value == null ? l10n.pleaseSelectAnAccount : null,
                 ),
                 const SizedBox(height: 16),
                 Row(
