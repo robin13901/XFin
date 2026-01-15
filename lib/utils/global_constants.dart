@@ -64,3 +64,45 @@ int cmpKey(int dtA, String typeA, int idA, int dtB, String typeB, int idB) {
 
   return (consumedValue, consumedFee);
 }
+
+class CategoryAutocompleteHelper {
+  final List<String> _categories;
+  final int maxResults;
+
+  CategoryAutocompleteHelper(
+      List<String> categories, {
+        this.maxResults = 6,
+      }) : _categories = categories;
+
+  Iterable<String> suggestions(String query) {
+    final q = query.toLowerCase().trim();
+    if (q.isEmpty) return const [];
+
+    int score(String c) {
+      final lc = c.toLowerCase();
+
+      if (lc == q) return 0; // exact match
+      if (lc.startsWith(q)) return 1; // prefix match
+
+      // word prefix match (e.g. "ins" → "Health Insurance")
+      final words = lc.split(RegExp(r'\s+'));
+      if (words.any((w) => w.startsWith(q))) return 2;
+
+      if (lc.contains(q)) return 3; // substring match
+      return 999;
+    }
+
+    final matches = _categories
+        .where((c) => c.toLowerCase().contains(q))
+        .toList();
+
+    matches.sort((a, b) {
+      final sa = score(a);
+      final sb = score(b);
+      if (sa != sb) return sa.compareTo(sb);
+      return a.compareTo(b); // stable fallback
+    });
+
+    return matches.take(maxResults);
+  }
+}

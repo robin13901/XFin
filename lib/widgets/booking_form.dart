@@ -9,6 +9,7 @@ import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/utils/format.dart';
 import 'package:xfin/widgets/reusables.dart';
 import '../database/tables.dart';
+import '../utils/global_constants.dart';
 import '../utils/validators.dart';
 
 class BookingForm extends StatefulWidget {
@@ -199,18 +200,25 @@ class _BookingFormState extends State<BookingForm> {
   }
 
   Widget _categoryField() {
+    final helper = CategoryAutocompleteHelper(
+      _distinctCategories,
+      maxResults: 6,
+    );
+
     return Autocomplete<String>(
-      optionsBuilder: (v) => v.text.isEmpty
-          ? const []
-          : _distinctCategories.where(
-              (c) => c.toLowerCase().contains(v.text.toLowerCase()),
-            ),
       key: const Key('category_field'),
+      optionsBuilder: (v) => helper.suggestions(v.text),
       onSelected: (s) => _catCtrl.text = s,
       fieldViewBuilder: (_, tCtrl, node, onSubmit) {
         if (tCtrl.text != _catCtrl.text) {
-          tCtrl.text = _catCtrl.text;
+          tCtrl.value = tCtrl.value.copyWith(
+            text: _catCtrl.text,
+            selection: TextSelection.collapsed(
+              offset: _catCtrl.text.length,
+            ),
+          );
         }
+
         return TextFormField(
           controller: tCtrl,
           focusNode: node,
@@ -366,65 +374,67 @@ class _BookingFormState extends State<BookingForm> {
     );
 
     if (shares > 0) {
-      double costBasis = _assetId == 1 ? 1 : double.parse(_costBasisCtrl.text.replaceAll(',', '.'));
-      companion = companion.copyWith(costBasis: drift.Value(costBasis), value: drift.Value(shares * costBasis));
+      double costBasis = _assetId == 1
+          ? 1
+          : double.parse(_costBasisCtrl.text.replaceAll(',', '.'));
+      companion = companion.copyWith(
+          costBasis: drift.Value(costBasis),
+          value: drift.Value(shares * costBasis));
     } else {
       companion = await _db.bookingsDao.calculateCostBasisAndValue(companion);
     }
 
     final value = companion.value.value;
 
-      Booking? original = widget.booking;
+    Booking? original = widget.booking;
 
-      // --- Merge Logic ---
-      if (original == null && _notesCtrl.text.isEmpty) {
-        final mergeCandidate =
-        await _db.bookingsDao.findMergeableBooking(companion);
+    // --- Merge Logic ---
+    if (original == null && _notesCtrl.text.isEmpty) {
+      final mergeCandidate =
+          await _db.bookingsDao.findMergeableBooking(companion);
 
-        if (mergeCandidate != null && mounted) {
-          final mergedShares = mergeCandidate.shares + shares;
-          final mergedValue = mergeCandidate.value + value;
-          final mergedCostBasis = mergedValue / mergedShares;
-          final mergedComp = mergeCandidate.toCompanion(false).copyWith(
-              shares: drift.Value(mergedShares),
-              value: drift.Value(mergedValue),
-              costBasis: drift.Value(mergedCostBasis)
+      if (mergeCandidate != null && mounted) {
+        final mergedShares = mergeCandidate.shares + shares;
+        final mergedValue = mergeCandidate.value + value;
+        final mergedCostBasis = mergedValue / mergedShares;
+        final mergedComp = mergeCandidate.toCompanion(false).copyWith(
+            shares: drift.Value(mergedShares),
+            value: drift.Value(mergedValue),
+            costBasis: drift.Value(mergedCostBasis));
+
+        if (mounted) {
+          final confirm = await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: Text(_l10n.mergeBookings),
+              content: Text(_l10n.mergeBookingsQuestion),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: Text(_l10n.createNew)),
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: Text(_l10n.merge)),
+              ],
+            ),
           );
 
-          if (mounted) {
-            final confirm = await showDialog<bool>(
-              context: context,
-              builder: (ctx) => AlertDialog(
-                title: Text(_l10n.mergeBookings),
-                content: Text(_l10n.mergeBookingsQuestion),
-                actions: [
-                  TextButton(
-                      onPressed: () => Navigator.pop(ctx, false),
-                      child: Text(_l10n.createNew)),
-                  TextButton(
-                      onPressed: () => Navigator.pop(ctx, true),
-                      child: Text(_l10n.merge)),
-                ],
-              ),
-            );
-
-            if (confirm == true) {
-              original = mergeCandidate;
-              companion = mergedComp;
-            }
+          if (confirm == true) {
+            original = mergeCandidate;
+            companion = mergedComp;
           }
         }
       }
-
-      if (original != null) {
-        companion = companion.copyWith(id: drift.Value(original.id));
-      }
-
-      original != null
-          ? await _db.bookingsDao.updateBooking(original, companion, _l10n)
-          : await _db.bookingsDao.createBooking(companion, _l10n);
-
-      if (mounted) Navigator.of(context).pop();
     }
-  }
 
+    if (original != null) {
+      companion = companion.copyWith(id: drift.Value(original.id));
+    }
+
+    original != null
+        ? await _db.bookingsDao.updateBooking(original, companion, _l10n)
+        : await _db.bookingsDao.createBooking(companion, _l10n);
+
+    if (mounted) Navigator.of(context).pop();
+  }
+}
