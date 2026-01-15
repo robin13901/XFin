@@ -214,6 +214,7 @@ class _BookingFormState extends State<BookingForm> {
         return TextFormField(
           controller: tCtrl,
           focusNode: node,
+          textCapitalization: TextCapitalization.words,
           decoration: InputDecoration(
             labelText: _l10n.category,
             border: const OutlineInputBorder(),
@@ -252,6 +253,7 @@ class _BookingFormState extends State<BookingForm> {
   Widget _notesField() {
     return TextFormField(
       controller: _notesCtrl,
+      textCapitalization: TextCapitalization.words,
       decoration: InputDecoration(
         labelText: _l10n.notes,
         border: const OutlineInputBorder(),
