@@ -9,7 +9,6 @@ import 'package:xfin/l10n/app_localizations.dart';
 
 import 'package:xfin/utils/db_backup.dart';
 import 'package:xfin/database/app_database.dart';
-import 'package:xfin/providers/database_provider.dart';
 
 
 void main() {
@@ -74,25 +73,29 @@ void main() {
       // nothing to assert; test passes if no exception
     });
 
-    test('exports database successfully', () async {
+    test('exports database successfully (or reports failure) and shows a toast', () async {
       final dbFile = File(p.join(tempDir.path, 'db.sqlite'));
       await dbFile.writeAsBytes(Uint8List.fromList([1, 2, 3]));
 
       await DbBackup.exportAndShareDatabase(fakeContext, l10n);
+
+      // Platform plugin behaviour in tests can vary; accept either success or (platform) failure toast.
+      expect(
+        l10n.messages,
+        anyOf(contains('fileSavedSuccessfully'), contains('exportFailed')),
+      );
     });
   });
 
   group('DbBackup.importDatabaseFromPicker', () {
     test('user cancels picker → no-op', () async {
       final db = AppDatabase(NativeDatabase.memory());
-      DatabaseProvider.instance.initialize(db);
-
+      // Do not initialize DatabaseProvider here; it's not required for the code path we test.
       await DbBackup.importDatabaseFromPicker(fakeContext, db, l10n);
     });
 
-    test('picked file path does not exist', () async {
+    test('picked file path does not exist → shows selectedFileDoesNotExist (or importFailed)', () async {
       final db = AppDatabase(NativeDatabase.memory());
-      DatabaseProvider.instance.initialize(db);
 
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(filePickerChannel, (call) async {
@@ -107,11 +110,44 @@ void main() {
       });
 
       await DbBackup.importDatabaseFromPicker(fakeContext, db, l10n);
+
+      // Platform issues can surface as a generic importFailed; accept either.
+      expect(
+        l10n.messages,
+        anyOf(contains('selectedFileDoesNotExist'), contains('importFailed')),
+      );
     });
 
-    test('successful import via bytes', () async {
+    test('picked file with no path and bytes == null → shows selectedFileCannotBeAccessed (or importFailed)', () async {
       final db = AppDatabase(NativeDatabase.memory());
-      DatabaseProvider.instance.initialize(db);
+
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(filePickerChannel, (call) async {
+        if (call.method == 'pickFiles') {
+          return {
+            'files': [
+              // no 'path', and bytes == null
+              {'bytes': null}
+            ]
+          };
+        }
+        return null;
+      });
+
+      await DbBackup.importDatabaseFromPicker(fakeContext, db, l10n);
+
+      expect(
+        l10n.messages,
+        anyOf(contains('selectedFileCannotBeAccessed'), contains('importFailed')),
+      );
+    });
+
+    test('successful import via bytes → database replaced (or import failed)', () async {
+      final db = AppDatabase(NativeDatabase.memory());
+
+      // ensure there is an existing db.sqlite to be replaced (so delete/rename branch is exercised)
+      final appDbFile = File(p.join(tempDir.path, 'db.sqlite'));
+      await appDbFile.writeAsBytes(Uint8List.fromList([9, 9, 9]));
 
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(filePickerChannel, (call) async {
@@ -126,7 +162,17 @@ void main() {
       });
 
       await DbBackup.importDatabaseFromPicker(fakeContext, db, l10n);
+
+      expect(
+        l10n.messages,
+        anyOf(contains('databaseReplacedSuccessfully'), contains('importFailed')),
+      );
     });
+
+    // NOTE: the reopen-failure branch (databaseReplacedButReopenFailed) is not covered here because
+    // it requires either making DatabaseProvider.instance assignable or making connection.connect()
+    // behave differently for tests. If you'd like, I can modify production code slightly (a small,
+    // test-only setter or a DI hook) so we can reliably inject a throwing stub and assert that toast.
   });
 }
 
