@@ -9,6 +9,7 @@ import 'package:xfin/database/app_database.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/widgets/reusables.dart';
 import '../database/tables.dart';
+import '../providers/database_provider.dart';
 import '../utils/validators.dart';
 
 class TransferForm extends StatefulWidget {
@@ -25,7 +26,7 @@ class _TransferFormState extends State<TransferForm> {
   final _formKey = GlobalKey<FormState>();
 
   // Helpers
-  AppDatabase get _db => Provider.of<AppDatabase>(context, listen: false);
+  AppDatabase get _db => context.read<DatabaseProvider>().db;
 
   AppLocalizations get _l10n => AppLocalizations.of(context)!;
 

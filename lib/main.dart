@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:xfin/app_theme.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/connection/connection.dart' as connection;
+import 'package:xfin/providers/database_provider.dart';
 import 'package:xfin/providers/language_provider.dart';
 import 'package:xfin/providers/theme_provider.dart';
 import 'package:xfin/providers/base_currency_provider.dart'; // Import the new provider
@@ -13,7 +14,6 @@ import 'package:xfin/screens/accounts_screen.dart';
 import 'package:xfin/screens/analysis_screen.dart';
 import 'package:xfin/screens/bookings_screen.dart';
 import 'package:xfin/screens/currency_selection_screen.dart'; // Import the new screen
-import 'package:xfin/screens/more_screen.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:xfin/widgets/liquid_glass_widgets.dart';
@@ -25,11 +25,13 @@ void main() async {
   // Initialize date formatting for the German locale.
   await initializeDateFormatting('de_DE', null);
 
-  final themeProvider = ThemeProvider();
-  await themeProvider.loadTheme();
+  await ThemeProvider.instance.loadTheme();
 
   final languageProvider = LanguageProvider();
   await languageProvider.loadLocale();
+
+  final initialDb = AppDatabase(connection.connect());
+  DatabaseProvider.instance.initialize(initialDb);
 
   // Initialize CurrencyProvider and load the symbol
   final currencyProvider = BaseCurrencyProvider();
@@ -41,11 +43,8 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
-        Provider<AppDatabase>(
-          create: (_) => AppDatabase(connection.connect()),
-          dispose: (_, db) => db.close(),
-        ),
-        ChangeNotifierProvider.value(value: themeProvider),
+        ChangeNotifierProvider.value(value: DatabaseProvider.instance,),
+        ChangeNotifierProvider.value(value: ThemeProvider.instance),
         ChangeNotifierProvider.value(value: languageProvider),
         ChangeNotifierProvider.value(value: currencyProvider),
         // Add CurrencyProvider
@@ -110,7 +109,6 @@ class _MainScreenState extends State<MainScreen> {
     AnalysisScreen(),
     AccountsScreen(),
     BookingsScreen(),
-    MoreScreen(),
   ];
 
   @override

@@ -15,7 +15,7 @@ void main() {
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
-      themeProvider = ThemeProvider();
+      themeProvider = ThemeProvider.instance;
       languageProvider = LanguageProvider();
       await themeProvider.loadTheme();
       await languageProvider.loadLocale();

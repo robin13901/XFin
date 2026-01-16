@@ -9,6 +9,7 @@ import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/utils/format.dart';
 import 'package:xfin/widgets/reusables.dart';
 import '../database/tables.dart';
+import '../providers/database_provider.dart';
 import '../utils/global_constants.dart';
 import '../utils/validators.dart';
 
@@ -55,7 +56,7 @@ class _BookingFormState extends State<BookingForm> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _db = Provider.of<AppDatabase>(context, listen: false);
+    _db = context.read<DatabaseProvider>().db;
     _l10n = AppLocalizations.of(context)!;
     _validator = Validator(_l10n);
     _reusables = Reusables(context);

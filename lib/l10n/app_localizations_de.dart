@@ -419,6 +419,39 @@ class AppLocalizationsDe extends AppLocalizations {
       'Die Änderungen können nicht gespeichert werden. Die eingegebenen Werte würden zu Inkonsistenzen im Verlauf des Kontostandes eines oder mehrerer beteiligter Konten führen.';
 
   @override
+  String get importDatabase => 'Datenbank importieren';
+
+  @override
+  String get exportDatabase => 'Datenbank exportieren';
+
+  @override
+  String get importDatabaseWarning =>
+      'Beim Import werden alle vorhandenen Daten überschrieben. Dieser Vorgang kann nicht rückgängig gemacht werden. Fortfahren?';
+
+  @override
+  String get importFailed => 'Import fehlgeschlagen.';
+
+  @override
+  String get exportFailed => 'Export fehlgeschlagen.';
+
+  @override
+  String get fileSavedSuccessfully => 'Datei erfolgreich gespeichert.';
+
+  @override
+  String get selectedFileDoesNotExist => 'Ausgewählte Datei existiert nicht.';
+
+  @override
+  String get selectedFileCannotBeAccessed =>
+      'Ausgewählte Datei kann nicht geöffnet werden.';
+
+  @override
+  String get databaseReplacedSuccessfully => 'Datenbank erfolgreich ersetzt.';
+
+  @override
+  String get databaseReplacedButReopenFailed =>
+      'Datenbank ersetzt, aber Öffnen fehlgeschlagen.';
+
+  @override
   String get delete => 'Löschen';
 
   @override

@@ -7,6 +7,7 @@ import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/daos/assets_dao.dart';
 import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
+import 'package:xfin/providers/database_provider.dart';
 import 'package:xfin/widgets/asset_form.dart';
 
 // Fake classes to avoid using Mockito generated mocks
@@ -67,6 +68,7 @@ void main() {
   setUp(() async {
     fakeAssetsDao = FakeAssetsDao(); // Initialize without initial assets
     fakeAppDatabase = FakeAppDatabase(assetsDao: fakeAssetsDao);
+    DatabaseProvider.instance.initialize(fakeAppDatabase);
     const locale = Locale('en');
     l10n = await AppLocalizations.delegate.load(locale);
   });
@@ -84,11 +86,9 @@ void main() {
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
-          body: Provider<AppDatabase>(
-            create: (_) => fakeAppDatabase,
-            child: AssetForm(asset: asset),
-          ),
-        ),
+            body: ChangeNotifierProvider<DatabaseProvider>.value(
+                value: DatabaseProvider.instance,
+                child: AssetForm(asset: asset))),
       ),
     );
     await tester

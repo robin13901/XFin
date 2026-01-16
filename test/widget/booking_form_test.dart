@@ -11,6 +11,7 @@ import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/providers/base_currency_provider.dart';
+import 'package:xfin/providers/database_provider.dart';
 import 'package:xfin/utils/format.dart';
 import 'package:xfin/widgets/booking_form.dart';
 
@@ -26,6 +27,7 @@ void main() {
 
   setUp(() async {
     db = AppDatabase(NativeDatabase.memory());
+    DatabaseProvider.instance.initialize(db);
     const locale = Locale('en');
     l10n = await AppLocalizations.delegate.load(locale);
     currencyProvider = BaseCurrencyProvider();
@@ -91,7 +93,7 @@ void main() {
         supportedLocales: AppLocalizations.supportedLocales,
         home: MultiProvider(
           providers: [
-            Provider<AppDatabase>(create: (_) => db),
+            ChangeNotifierProvider<DatabaseProvider>.value(value: DatabaseProvider.instance),
             ChangeNotifierProvider<BaseCurrencyProvider>(
                 create: (_) => currencyProvider),
           ],
@@ -106,7 +108,7 @@ void main() {
                       isScrollControlled: true,
                       builder: (_) => MultiProvider(
                         providers: [
-                          Provider<AppDatabase>.value(value: db),
+                          ChangeNotifierProvider<DatabaseProvider>.value(value: DatabaseProvider.instance),
                           ChangeNotifierProvider<BaseCurrencyProvider>.value(
                               value: currencyProvider),
                         ],
@@ -136,7 +138,7 @@ void main() {
     await tester.pumpWidget(
       MultiProvider(
         providers: [
-          Provider<AppDatabase>.value(value: db),
+          ChangeNotifierProvider<DatabaseProvider>.value(value: DatabaseProvider.instance),
           ChangeNotifierProvider<BaseCurrencyProvider>.value(
               value: currencyProvider),
         ],

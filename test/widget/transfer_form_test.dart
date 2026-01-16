@@ -1,3 +1,4 @@
+// test/widget/transfer_form_test.dart
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -13,6 +14,7 @@ import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/providers/base_currency_provider.dart';
 import 'package:xfin/utils/format.dart';
 import 'package:xfin/widgets/transfer_form.dart';
+import 'package:xfin/providers/database_provider.dart'; // <-- added
 
 extension WidgetTesterX on WidgetTester {
   Future<void> pumpUntilNoLongerFound(Finder finder,
@@ -45,6 +47,9 @@ void main() {
     currencyProvider = BaseCurrencyProvider();
     await currencyProvider.initialize(locale);
 
+    // Initialize the singleton DatabaseProvider with this in-memory db
+    DatabaseProvider.instance.initialize(db);
+
     // Create base currency asset (id = 1)
     await db.into(db.assets).insert(const AssetsCompanion(
       name: Value('EUR'),
@@ -68,15 +73,18 @@ void main() {
         localizationsDelegates: const [
           AppLocalizations.delegate,
           GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
         ],
         supportedLocales: AppLocalizations.supportedLocales,
         home: MultiProvider(
           providers: [
-            Provider<AppDatabase>(create: (_) => db),
-            ChangeNotifierProvider<BaseCurrencyProvider>(
-                create: (_) => currencyProvider),
+            // Provide the DatabaseProvider singleton (widgets expect this).
+            ChangeNotifierProvider<DatabaseProvider>.value(
+              value: DatabaseProvider.instance,
+            ),
+            ChangeNotifierProvider<BaseCurrencyProvider>.value(
+                value: currencyProvider),
           ],
           child: Builder(builder: (context) {
             return Scaffold(
@@ -89,7 +97,10 @@ void main() {
                       isScrollControlled: true,
                       builder: (_) => MultiProvider(
                         providers: [
-                          Provider<AppDatabase>.value(value: db),
+                          // Make DatabaseProvider available inside the sheet, too.
+                          ChangeNotifierProvider<DatabaseProvider>.value(
+                            value: DatabaseProvider.instance,
+                          ),
                           ChangeNotifierProvider<BaseCurrencyProvider>.value(
                               value: currencyProvider),
                         ],
@@ -114,7 +125,8 @@ void main() {
     await tester.pumpWidget(
       MultiProvider(
         providers: [
-          Provider<AppDatabase>.value(value: db),
+          ChangeNotifierProvider<DatabaseProvider>.value(
+              value: DatabaseProvider.instance),
           ChangeNotifierProvider<BaseCurrencyProvider>.value(
               value: currencyProvider),
         ],
@@ -123,8 +135,8 @@ void main() {
             localizationsDelegates: const [
               AppLocalizations.delegate,
               GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
             ],
             supportedLocales: AppLocalizations.supportedLocales,
             home: Scaffold(

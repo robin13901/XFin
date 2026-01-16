@@ -6,6 +6,7 @@ import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/widgets/asset_form.dart';
 import 'package:xfin/widgets/dialogs.dart';
 
+import '../providers/database_provider.dart';
 import '../utils/global_constants.dart';
 import '../widgets/liquid_glass_widgets.dart';
 
@@ -55,7 +56,7 @@ class AssetsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final db = Provider.of<AppDatabase>(context);
+    final db = context.read<DatabaseProvider>().db;
     final l10n = AppLocalizations.of(context)!;
     final currencyFormat = NumberFormat.currency(locale: 'de_DE', symbol: '€');
 

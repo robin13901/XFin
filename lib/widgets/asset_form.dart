@@ -5,6 +5,7 @@ import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 
+import '../providers/database_provider.dart';
 import '../utils/validators.dart';
 
 class AssetForm extends StatefulWidget {
@@ -18,7 +19,7 @@ class AssetForm extends StatefulWidget {
 
 class _AssetFormState extends State<AssetForm> {
   final _formKey = GlobalKey<FormState>();
-  late AppDatabase db;
+  late final AppDatabase db;
   late TextEditingController _nameController;
   late TextEditingController _tickerSymbolController;
   late TextEditingController _currencySymbolController;
@@ -29,7 +30,7 @@ class _AssetFormState extends State<AssetForm> {
   @override
   void initState() {
     super.initState();
-    db = Provider.of<AppDatabase>(context, listen: false);
+    db = context.read<DatabaseProvider>().db;
 
     _nameController = TextEditingController(text: widget.asset?.name);
     _tickerSymbolController =
@@ -66,8 +67,6 @@ class _AssetFormState extends State<AssetForm> {
 
   Future<void> _saveForm() async {
     if (_formKey.currentState!.validate()) {
-      final db = Provider.of<AppDatabase>(context, listen: false);
-
       // Get input values from form
       final name = _nameController.text.trim();
       final tickerSymbol = _tickerSymbolController.text.trim();

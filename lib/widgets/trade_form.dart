@@ -7,6 +7,7 @@ import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 
 import '../providers/base_currency_provider.dart';
+import '../providers/database_provider.dart';
 import '../utils/format.dart';
 import '../utils/validators.dart';
 import 'dialogs.dart';
@@ -18,6 +19,7 @@ class TradeForm extends StatefulWidget {
   final List<Asset>? preloadedAssets;
   final List<Account>? preloadedAccounts;
 
+
   const TradeForm(
       {super.key, this.trade, this.preloadedAssets, this.preloadedAccounts});
 
@@ -28,6 +30,7 @@ class TradeForm extends StatefulWidget {
 class _TradeFormState extends State<TradeForm> {
   final _formKey = GlobalKey<FormState>();
   late AppLocalizations l10n;
+  late final AppDatabase db;
 
   // Controllers
   late TextEditingController _dateController;
@@ -55,6 +58,7 @@ class _TradeFormState extends State<TradeForm> {
   void initState() {
     super.initState();
     Trade? t = widget.trade;
+    db = context.read<DatabaseProvider>().db;
 
     _datetime = t == null ? DateTime.now() : intToDateTime(t.datetime)!;
     _tradeType = t?.type;
@@ -106,7 +110,6 @@ class _TradeFormState extends State<TradeForm> {
   Future<void> _loadInitialData(Trade? t) async {
     final currencyProvider =
         Provider.of<BaseCurrencyProvider>(context, listen: false);
-    final db = Provider.of<AppDatabase>(context, listen: false);
     final allAssets = await db.assetsDao.getAllAssets();
     final allAccounts = await db.accountsDao.getAllAccounts();
 
@@ -147,7 +150,6 @@ class _TradeFormState extends State<TradeForm> {
 
   Future<void> _fetchOwnedShares() async {
     if (_selectedAsset == null || _selectedInvestmentAccount == null) return;
-    final db = Provider.of<AppDatabase>(context, listen: false);
     try {
       final assetOnAccount = await db.assetsOnAccountsDao
           .getAOA(_selectedInvestmentAccount!.id, _selectedAsset!.id);
@@ -186,8 +188,6 @@ class _TradeFormState extends State<TradeForm> {
 
   Future<void> _saveForm() async {
     if (!_formKey.currentState!.validate()) return;
-
-    final db = Provider.of<AppDatabase>(context, listen: false);
 
     var trade = TradesCompanion(
       datetime: drift.Value(

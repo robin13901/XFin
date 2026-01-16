@@ -63,13 +63,12 @@ class AppTheme {
       fillColor: AppColors.lightSurfaceVariant,
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
     ),
-    textTheme: Typography.blackMountainView, // dark text for light theme
+    textTheme: Typography.blackMountainView,
   );
 
   static final ColorScheme darkColorScheme = ColorScheme(
     brightness: Brightness.dark,
     primary: AppColors.darkOnSurface,
-    // light foreground for dark mode
     onPrimary: AppColors.darkSurface,
     secondary: AppColors.darkOnSurface,
     onSecondary: AppColors.darkSurface,

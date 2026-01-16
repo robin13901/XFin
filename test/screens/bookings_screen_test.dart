@@ -11,6 +11,7 @@ import 'package:xfin/database/daos/accounts_dao.dart';
 import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/providers/base_currency_provider.dart';
+import 'package:xfin/providers/database_provider.dart';
 import 'package:xfin/screens/bookings_screen.dart';
 import 'package:xfin/widgets/booking_form.dart';
 
@@ -27,6 +28,7 @@ void main() {
 
   setUp(() async {
     db = AppDatabase(NativeDatabase.memory());
+    DatabaseProvider.instance.initialize(db);
     const locale = Locale('en');
     currencyProvider = BaseCurrencyProvider();
     await currencyProvider.initialize(locale);
@@ -40,9 +42,7 @@ void main() {
     await tester.pumpWidget(
       MultiProvider(
         providers: [
-          Provider<AppDatabase>.value(
-            value: db,
-          ),
+          ChangeNotifierProvider<DatabaseProvider>.value(value: DatabaseProvider.instance),
           ChangeNotifierProvider<BaseCurrencyProvider>.value(
             value: currencyProvider,
           ),

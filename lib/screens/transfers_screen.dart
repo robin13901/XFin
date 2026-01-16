@@ -6,6 +6,7 @@ import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/widgets/transfer_form.dart';
 
 import '../database/daos/transfers_dao.dart';
+import '../providers/database_provider.dart';
 import '../widgets/dialogs.dart';
 import '../widgets/liquid_glass_widgets.dart';
 
@@ -19,12 +20,13 @@ class TransfersScreen extends StatefulWidget {
 class _TransfersScreenState extends State<TransfersScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _sheetAnimController;
+  late final AppDatabase db;
   late final Future<List<Asset>> assetsFuture;
 
   @override
   void initState() {
     super.initState();
-    final db = Provider.of<AppDatabase>(context, listen: false);
+    db = context.read<DatabaseProvider>().db;
     assetsFuture = db.assetsDao.getAllAssets();
     // Zero-duration controller already at value 1 -> sheet appears instantly (no open animation).
     _sheetAnimController =
@@ -50,7 +52,6 @@ class _TransfersScreenState extends State<TransfersScreen>
 
   @override
   Widget build(BuildContext context) {
-    final db = Provider.of<AppDatabase>(context);
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(

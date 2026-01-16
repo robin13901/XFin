@@ -416,6 +416,39 @@ class AppLocalizationsEn extends AppLocalizations {
       'The changes cannot be saved. The entered values would lead to inconsistencies in the account balance history of one or more of the accounts involved.';
 
   @override
+  String get importDatabase => 'Import Database';
+
+  @override
+  String get exportDatabase => 'Export Database';
+
+  @override
+  String get importDatabaseWarning =>
+      'Importing will replace all current data. This cannot be undone. Continue?';
+
+  @override
+  String get importFailed => 'Import failed.';
+
+  @override
+  String get exportFailed => 'Export failed.';
+
+  @override
+  String get fileSavedSuccessfully => 'File saved successfully.';
+
+  @override
+  String get selectedFileDoesNotExist => 'Selected file does not exist.';
+
+  @override
+  String get selectedFileCannotBeAccessed =>
+      'Selected file cannot be accessed.';
+
+  @override
+  String get databaseReplacedSuccessfully => 'Database replaced successfully.';
+
+  @override
+  String get databaseReplacedButReopenFailed =>
+      'Database replaced but reopen failed.';
+
+  @override
   String get delete => 'Delete';
 
   @override

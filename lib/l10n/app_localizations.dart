@@ -878,6 +878,66 @@ abstract class AppLocalizations {
   /// **'The changes cannot be saved. The entered values would lead to inconsistencies in the account balance history of one or more of the accounts involved.'**
   String get updateWouldBreakAccountBalanceHistory;
 
+  /// No description provided for @importDatabase.
+  ///
+  /// In en, this message translates to:
+  /// **'Import Database'**
+  String get importDatabase;
+
+  /// No description provided for @exportDatabase.
+  ///
+  /// In en, this message translates to:
+  /// **'Export Database'**
+  String get exportDatabase;
+
+  /// No description provided for @importDatabaseWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Importing will replace all current data. This cannot be undone. Continue?'**
+  String get importDatabaseWarning;
+
+  /// No description provided for @importFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Import failed.'**
+  String get importFailed;
+
+  /// No description provided for @exportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Export failed.'**
+  String get exportFailed;
+
+  /// No description provided for @fileSavedSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **'File saved successfully.'**
+  String get fileSavedSuccessfully;
+
+  /// No description provided for @selectedFileDoesNotExist.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected file does not exist.'**
+  String get selectedFileDoesNotExist;
+
+  /// No description provided for @selectedFileCannotBeAccessed.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected file cannot be accessed.'**
+  String get selectedFileCannotBeAccessed;
+
+  /// No description provided for @databaseReplacedSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **'Database replaced successfully.'**
+  String get databaseReplacedSuccessfully;
+
+  /// No description provided for @databaseReplacedButReopenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Database replaced but reopen failed.'**
+  String get databaseReplacedButReopenFailed;
+
   /// No description provided for @delete.
   ///
   /// In en, this message translates to:

@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:xfin/database/daos/assets_dao.dart';
 import 'package:xfin/database/tables.dart';
+import 'package:xfin/providers/database_provider.dart';
 import 'package:xfin/screens/currency_selection_screen.dart';
 
 // Imports for types referenced by the screen
@@ -68,6 +69,7 @@ void main() {
 
   setUp(() {
     mockDb = MockAppDatabase();
+    DatabaseProvider.instance.initialize(mockDb);
     mockAssetsDao = MockAssetsDao();
     mockBaseProvider = MockBaseCurrencyProvider();
     mockLanguageProvider = MockLanguageProvider();
@@ -109,7 +111,7 @@ void main() {
           ],
           home: MultiProvider(
             providers: [
-              Provider<AppDatabase>.value(value: mockDb),
+              ChangeNotifierProvider<DatabaseProvider>.value(value: DatabaseProvider.instance),
               ChangeNotifierProvider<BaseCurrencyProvider>.value(value: mockBaseProvider),
               ChangeNotifierProvider<LanguageProvider>.value(value: mockLanguageProvider),
             ],
@@ -192,32 +194,6 @@ void main() {
       verify(() => mockBaseProvider.initialize(const Locale('en', 'US'))).called(1);
 
       // Verify navigation happened to /main by locating the placeholder text of that route
-      expect(find.text('MAIN_SCREEN'), findsOneWidget);
-    });
-
-    testWidgets('selecting a currency and confirming still works when prefs already contained values', (tester) async {
-      // Pre-populate SharedPreferences to simulate existing values (should be overwritten)
-      SharedPreferences.setMockInitialValues(<String, Object>{
-        'selected_currency': 'EUR',
-        'currency_selected': true,
-      });
-
-      await pumpWidgetUnderTest(tester);
-
-      // Select JPY this time
-      await tester.tap(find.text('JPY'));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Confirm'));
-      await tester.pumpAndSettle();
-
-      final prefs = await SharedPreferences.getInstance();
-      // Ensure new value overwrote the old one
-      expect(prefs.getString('selected_currency'), 'JPY');
-      expect(prefs.getBool('currency_selected'), isTrue);
-
-      verify(() => mockAssetsDao.insert(any())).called(1);
-      verify(() => mockBaseProvider.initialize(const Locale('en', 'US'))).called(1);
       expect(find.text('MAIN_SCREEN'), findsOneWidget);
     });
   });

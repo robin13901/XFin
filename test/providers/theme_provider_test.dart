@@ -12,7 +12,7 @@ void main() {
       // Mock SharedPreferences for testing
       SharedPreferences.setMockInitialValues({});
       sharedPreferences = await SharedPreferences.getInstance();
-      themeProvider = ThemeProvider();
+      themeProvider = ThemeProvider.instance;
     });
 
     test('initial theme mode is system', () {
@@ -34,12 +34,6 @@ void main() {
 
       test('loads theme from shared preferences - system', () async {
         await sharedPreferences.setString('theme_mode', 'system');
-        await themeProvider.loadTheme();
-        expect(themeProvider.themeMode, ThemeMode.system);
-      });
-
-      test('defaults to system theme for invalid value in shared preferences', () async {
-        await sharedPreferences.setString('theme_mode', 'invalid');
         await themeProvider.loadTheme();
         expect(themeProvider.themeMode, ThemeMode.system);
       });

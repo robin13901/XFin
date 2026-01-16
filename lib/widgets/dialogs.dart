@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../database/app_database.dart';
 import '../l10n/app_localizations.dart';
+import '../providers/database_provider.dart';
 
 Future<void> showDeleteDialog(
   BuildContext context, {
@@ -13,7 +14,7 @@ Future<void> showDeleteDialog(
   Trade? trade,
 }) async {
   final l10n = AppLocalizations.of(context)!;
-  final db = Provider.of<AppDatabase>(context, listen: false);
+  final db = context.read<DatabaseProvider>().db;
   String title, content;
 
   if (account != null) {

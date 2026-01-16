@@ -7,6 +7,7 @@ import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/providers/base_currency_provider.dart';
 import 'package:xfin/widgets/reusables.dart';
+import '../providers/database_provider.dart';
 import '../utils/validators.dart';
 
 class AccountForm extends StatefulWidget {
@@ -45,7 +46,7 @@ class _AccountFormState extends State<AccountForm> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _db = Provider.of<AppDatabase>(context, listen: false);
+    _db = context.read<DatabaseProvider>().db;
     _reusables = Reusables(context);
   }
 
@@ -64,7 +65,6 @@ class _AccountFormState extends State<AccountForm> {
 
     // Defer loading static DB data until after first frame to guarantee immediate first paint.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // start stopwatch or logging if needed elsewhere
       _loadStaticData().then((_) {
         if (mounted) setState(() => _renderHeavy = true);
       });

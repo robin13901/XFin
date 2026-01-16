@@ -135,8 +135,18 @@
   "noTransfersYet": "Noch keine Überweisungen vorhanden",
   "transfers": "Überweisung",
   "isGenerated": "Erstellt durch Dauerauftrag",
-
   "updateWouldBreakAccountBalanceHistory": "Die Änderungen können nicht gespeichert werden. Die eingegebenen Werte würden zu Inkonsistenzen im Verlauf des Kontostandes eines oder mehrerer beteiligter Konten führen.",
+
+  "importDatabase": "Datenbank importieren",
+  "exportDatabase": "Datenbank exportieren",
+  "importDatabaseWarning": "Beim Import werden alle vorhandenen Daten überschrieben. Dieser Vorgang kann nicht rückgängig gemacht werden. Fortfahren?",
+  "importFailed": "Import fehlgeschlagen.",
+  "exportFailed": "Export fehlgeschlagen.",
+  "fileSavedSuccessfully" : "Datei erfolgreich gespeichert.",
+  "selectedFileDoesNotExist" : "Ausgewählte Datei existiert nicht.",
+  "selectedFileCannotBeAccessed" : "Ausgewählte Datei kann nicht geöffnet werden.",
+  "databaseReplacedSuccessfully" : "Datenbank erfolgreich ersetzt.",
+  "databaseReplacedButReopenFailed" : "Datenbank ersetzt, aber Öffnen fehlgeschlagen.",
 
   "delete": "Löschen",
   "deleteAccount": "Konto löschen",

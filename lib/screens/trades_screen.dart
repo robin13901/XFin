@@ -9,6 +9,7 @@ import 'package:xfin/widgets/trade_form.dart';
 import 'package:xfin/database/daos/trades_dao.dart';
 
 import '../database/tables.dart';
+import '../providers/database_provider.dart';
 import '../widgets/liquid_glass_widgets.dart';
 
 class TradesScreen extends StatefulWidget {
@@ -21,6 +22,7 @@ class TradesScreen extends StatefulWidget {
 class _TradesScreenState extends State<TradesScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _sheetAnimController;
+  late final AppDatabase db;
 
   // Preload futures
   late final Future<List<Asset>> _assetsFuture;
@@ -35,7 +37,7 @@ class _TradesScreenState extends State<TradesScreen>
     AnimationController(vsync: this, duration: Duration.zero)..value = 1.0;
 
     // Start preloading DB data immediately (background).
-    final db = Provider.of<AppDatabase>(context, listen: false);
+    db = context.read<DatabaseProvider>().db;
     _assetsFuture = db.assetsDao.getAllAssets();
     _accountsFuture = db.accountsDao.getAllAccounts();
   }
@@ -65,7 +67,6 @@ class _TradesScreenState extends State<TradesScreen>
 
   @override
   Widget build(BuildContext context) {
-    final db = Provider.of<AppDatabase>(context);
     final l10n = AppLocalizations.of(context)!;
     final currencyFormat = NumberFormat.currency(locale: 'de_DE', symbol: '€');
     final dateTimeFormatter = DateFormat('dd.MM.yyyy, HH:mm');

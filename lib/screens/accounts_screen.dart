@@ -5,6 +5,7 @@ import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/widgets/account_form.dart';
 
 import '../providers/base_currency_provider.dart';
+import '../providers/database_provider.dart';
 import '../widgets/dialogs.dart';
 import '../widgets/liquid_glass_widgets.dart';
 
@@ -113,7 +114,7 @@ class AccountsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final db = Provider.of<AppDatabase>(context);
+    final db = context.read<DatabaseProvider>().db;
     final l10n = AppLocalizations.of(context)!;
     final currencyProvider = Provider.of<BaseCurrencyProvider>(context);
 

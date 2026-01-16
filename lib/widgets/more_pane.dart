@@ -8,20 +8,6 @@ import 'package:xfin/screens/transfers_screen.dart';
 
 import 'liquid_glass_widgets.dart';
 
-/// New helper function for fade transition
-// PageRouteBuilder _buildFadePageRoute(Widget page) {
-//   return PageRouteBuilder(
-//     pageBuilder: (context, animation, secondaryAnimation) => page,
-//     transitionsBuilder: (context, animation, secondaryAnimation, child) {
-//       return FadeTransition(
-//         opacity: animation,
-//         child: child,
-//       );
-//     },
-//     transitionDuration: const Duration(milliseconds: 300), // Adjust duration as needed
-//   );
-// }
-
 Route _noAnimRoute(Widget page) {
   return PageRouteBuilder(
     pageBuilder: (context, animation, secondaryAnimation) => page,

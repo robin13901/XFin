@@ -7,13 +7,15 @@ import 'package:xfin/l10n/app_localizations.dart';
 
 import '../database/app_database.dart';
 import '../providers/base_currency_provider.dart';
+import '../providers/database_provider.dart';
 import '../providers/language_provider.dart';
 
 class CurrencySelectionScreen extends StatefulWidget {
   const CurrencySelectionScreen({super.key});
 
   @override
-  State<CurrencySelectionScreen> createState() => _CurrencySelectionScreenState();
+  State<CurrencySelectionScreen> createState() =>
+      _CurrencySelectionScreenState();
 }
 
 class _CurrencySelectionScreenState extends State<CurrencySelectionScreen> {
@@ -37,8 +39,9 @@ class _CurrencySelectionScreenState extends State<CurrencySelectionScreen> {
     if (_selectedCurrency != null) {
       await _saveCurrency(_selectedCurrency!);
       if (mounted) {
-        final db = Provider.of<AppDatabase>(context, listen: false);
-        final currencySymbol = _currencySymbols[_availableCurrencies.indexOf(_selectedCurrency!)];
+        final db = context.read<DatabaseProvider>().db;
+        final currencySymbol =
+            _currencySymbols[_availableCurrencies.indexOf(_selectedCurrency!)];
         final asset = AssetsCompanion(
           name: drift.Value(_selectedCurrency!),
           type: const drift.Value(AssetTypes.fiat),
@@ -52,12 +55,17 @@ class _CurrencySelectionScreenState extends State<CurrencySelectionScreen> {
         );
         await db.assetsDao.insert(asset);
       }
-      if (mounted) await Provider.of<BaseCurrencyProvider>(context, listen: false).initialize(Provider.of<LanguageProvider>(context, listen: false).appLocale);
+      if (mounted) {
+        await Provider.of<BaseCurrencyProvider>(context, listen: false)
+            .initialize(Provider.of<LanguageProvider>(context, listen: false)
+                .appLocale);
+      }
       if (mounted) Navigator.of(context).pushReplacementNamed('/main');
     } else {
       // Show a snackbar or toast to prompt user to select a currency
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context)!.pleaseSelectCurrency)),
+        SnackBar(
+            content: Text(AppLocalizations.of(context)!.pleaseSelectCurrency)),
       );
     }
   }

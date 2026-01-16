@@ -1,9 +1,14 @@
 import 'dart:collection';
 
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:xfin/providers/theme_provider.dart';
+
+
 double normalize(num value) {
-  const int decimals = 12;      // globally consistent, high precision
+  const int decimals = 12; // globally consistent, high precision
   const double epsilon = 1e-12; // treat anything below as zero
 
   if (value.abs() < epsilon) return 0.0;
@@ -16,6 +21,27 @@ final percentFormat = NumberFormat.decimalPattern('de_DE')
 
 String formatPercent(double value) {
   return '${percentFormat.format(value * 100)} %';
+}
+
+void showToast2(String msg) {
+  final mode = ThemeProvider.instance.themeMode;
+
+  final isDark = switch (mode) {
+    ThemeMode.dark => true,
+    ThemeMode.light => false,
+    ThemeMode.system =>
+      WidgetsBinding.instance.platformDispatcher.platformBrightness ==
+          Brightness.dark,
+  };
+
+  Fluttertoast.showToast(
+    msg: msg,
+    toastLength: Toast.LENGTH_SHORT,
+    gravity: ToastGravity.BOTTOM,
+    backgroundColor: isDark ? Colors.white : Colors.black,
+    textColor: isDark ? Colors.black : Colors.white,
+    fontSize: 14,
+  );
 }
 
 String preciseDecimal(double d) {
@@ -70,9 +96,9 @@ class CategoryAutocompleteHelper {
   final int maxResults;
 
   CategoryAutocompleteHelper(
-      List<String> categories, {
-        this.maxResults = 6,
-      }) : _categories = categories;
+    List<String> categories, {
+    this.maxResults = 6,
+  }) : _categories = categories;
 
   Iterable<String> suggestions(String query) {
     final q = query.toLowerCase().trim();
@@ -92,9 +118,8 @@ class CategoryAutocompleteHelper {
       return 999;
     }
 
-    final matches = _categories
-        .where((c) => c.toLowerCase().contains(q))
-        .toList();
+    final matches =
+        _categories.where((c) => c.toLowerCase().contains(q)).toList();
 
     matches.sort((a, b) {
       final sa = score(a);

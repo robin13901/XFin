@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -9,14 +8,14 @@ import 'package:xfin/database/daos/bookings_dao.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/widgets/booking_form.dart';
 
+import '../providers/database_provider.dart';
 import '../widgets/dialogs.dart';
 import '../widgets/liquid_glass_widgets.dart';
 
 class BookingsScreen extends StatefulWidget {
   const BookingsScreen({super.key});
 
-  static void showBookingForm(
-      BuildContext context, Booking? booking) {
+  static void showBookingForm(BuildContext context, Booking? booking) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -29,7 +28,7 @@ class BookingsScreen extends StatefulWidget {
 }
 
 class _BookingsScreenState extends State<BookingsScreen> {
-  late final AppDatabase db;
+  late AppDatabase db;
   late final ScrollController _scrollController;
 
   final List<BookingWithAccountAndAsset> _items = [];
@@ -42,40 +41,56 @@ class _BookingsScreenState extends State<BookingsScreen> {
   StreamSubscription<List<BookingWithAccountAndAsset>>? _pageSub;
   int _currentLimit = _initialLimit;
 
-  final Stopwatch _stopwatch = Stopwatch();
+  static final _currencyFormat = NumberFormat.currency(locale: 'de_DE', symbol: '€');
+  static final _dateFormat = DateFormat('dd.MM.yyyy');
 
   @override
   void initState() {
     super.initState();
-    _stopwatch.start();
     _scrollController = ScrollController()..addListener(_onScroll);
+
+    final dbProvider = context.read<DatabaseProvider>();
+    db = dbProvider.db;
+    dbProvider.addListener(_onDbChanged);
+
+    _loadInitial();
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    db = Provider.of<AppDatabase>(context, listen: false);
+  void _onDbChanged() {
+    if (!mounted) return;
+    final newDb = context.read<DatabaseProvider>().db;
+    if (identical(newDb, db)) return;
 
-    if (_items.isEmpty) {
+    setState(() {
+      db = newDb;
       _loadInitial();
-    }
+    });
   }
 
   @override
   void dispose() {
+    // Remove listener first so we don't receive callbacks while disposing.
+    try {
+      context.read<DatabaseProvider>().removeListener(_onDbChanged);
+    } catch (_) {}
+
+    // Cancel subscriptions and controllers before super.dispose()
     _pageSub?.cancel();
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+
     super.dispose();
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >
-        _scrollController.position.maxScrollExtent - 300) {
+    if (!_scrollController.hasClients) return;
+    if (_scrollController.position.pixels > _scrollController.position.maxScrollExtent - 300) {
       _loadMore();
     }
   }
 
   Future<void> _loadInitial() async {
+    _pageSub?.cancel();
     _items.clear();
     _hasMore = true;
     _currentLimit = _initialLimit;
@@ -84,42 +99,31 @@ class _BookingsScreenState extends State<BookingsScreen> {
 
   Future<void> _loadMore() async {
     if (_isLoading || !_hasMore) return;
-    // increase the watched limit and re-subscribe
     _currentLimit += _pageSize;
     _subscribeForLimit(_currentLimit);
   }
 
   void _subscribeForLimit(int limit) {
-    // Cancel previous subscription if any
     _pageSub?.cancel();
 
     _isLoading = true;
     setState(() {});
 
-    _pageSub = db.bookingsDao
-        .watchBookingsPage(limit: limit)
-        .listen((page) {
+    _pageSub = db.bookingsDao.watchBookingsPage(limit: limit).listen((page) {
       _isLoading = false;
 
-      // Replace the items with the current page snapshot
       _items
         ..clear()
         ..addAll(page);
 
-      // If we received fewer rows than requested, there's no more to load.
       _hasMore = page.length >= limit;
 
       if (mounted) setState(() {});
     }, onError: (e) {
-      // keep previous _hasMore as-is; show no crash
       _isLoading = false;
       if (mounted) setState(() {});
     });
   }
-
-  static final _currencyFormat =
-  NumberFormat.currency(locale: 'de_DE', symbol: '€');
-  static final _dateFormat = DateFormat('dd.MM.yyyy');
 
   @override
   Widget build(BuildContext context) {
@@ -136,8 +140,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
             ListView.builder(
               controller: _scrollController,
               padding: EdgeInsets.only(
-                top:
-                MediaQuery.of(context).padding.top + kToolbarHeight,
+                top: MediaQuery.of(context).padding.top + kToolbarHeight,
                 bottom: 92,
               ),
               itemCount: _items.length + (_hasMore ? 1 : 0),
@@ -153,8 +156,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
                 final booking = item.booking;
                 final asset = item.asset;
 
-                final valueColor =
-                booking.value < 0 ? Colors.red : Colors.green;
+                final valueColor = booking.value < 0 ? Colors.red : Colors.green;
 
                 final dateString = booking.date.toString();
                 final date = DateTime.parse(
@@ -174,49 +176,26 @@ class _BookingsScreenState extends State<BookingsScreen> {
                       if (asset.id == 1)
                         Text(
                           _currencyFormat.format(booking.value),
-                          style: TextStyle(
-                            color: valueColor,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: TextStyle(color: valueColor, fontWeight: FontWeight.bold),
                         )
                       else
                         Text.rich(
                           TextSpan(
                             children: [
-                              TextSpan(
-                                text:
-                                '${booking.shares} ${Unicode.RLI}${asset.currencySymbol ?? asset.tickerSymbol}${Unicode.PDI} ≈ ',
-                                style:
-                                const TextStyle(color: Colors.grey),
-                              ),
-                              TextSpan(
-                                text: _currencyFormat
-                                    .format(booking.value),
-                                style:
-                                TextStyle(color: valueColor),
-                              ),
+                              TextSpan(text: '${booking.shares} ${asset.currencySymbol ?? asset.tickerSymbol} ≈ ', style: const TextStyle(color: Colors.grey)),
+                              TextSpan(text: _currencyFormat.format(booking.value), style: TextStyle(color: valueColor)),
                             ],
                           ),
                         ),
-                      Text(
-                        dateText,
-                        style:
-                        Theme.of(context).textTheme.bodySmall,
-                      ),
+                      Text(dateText, style: Theme.of(context).textTheme.bodySmall),
                     ],
                   ),
-                  onTap: () => BookingsScreen.showBookingForm(
-                    context,
-                    booking,
-                  ),
+                  onTap: () => BookingsScreen.showBookingForm(context, booking),
                   onLongPress: () => showDeleteDialog(context, booking: booking),
                 );
               },
             ),
-          buildLiquidGlassAppBar(
-            context,
-            title: Text(l10n.bookings),
-          ),
+          buildLiquidGlassAppBar(context, title: Text(l10n.bookings)),
         ],
       ),
     );

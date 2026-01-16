@@ -7,6 +7,7 @@ import 'dart:math';
 
 import '../app_theme.dart';
 import '../database/app_database.dart';
+import '../providers/database_provider.dart';
 import '../utils/indicator_calculator.dart';
 
 // A data class to hold all asynchronous results needed by AnalysisScreen
@@ -44,6 +45,7 @@ class AnalysisScreen extends StatefulWidget {
 }
 
 class _AnalysisScreenState extends State<AnalysisScreen> {
+  late AppDatabase db;
   String _selectedRange = '1W';
   bool _showSma = false;
   bool _showEma = false;
@@ -60,11 +62,31 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   @override
   void initState() {
     super.initState();
+    final dbProvider = context.read<DatabaseProvider>();
+    db = dbProvider.db;
+    dbProvider.addListener(_onDbChanged);
     _fetchAnalysisData();
   }
 
+  void _onDbChanged() {
+    final newDb = context.read<DatabaseProvider>().db;
+    if (identical(newDb, db)) return;
+    setState(() {
+      db = newDb;
+      _fetchAnalysisData();
+    });
+  }
+
+  @override
+  void dispose() {
+    try {
+      context.read<DatabaseProvider>().removeListener(_onDbChanged);
+    } catch (_) {}
+    _controller.dispose();
+    super.dispose();
+  }
+
   void _fetchAnalysisData() {
-    AppDatabase db = Provider.of<AppDatabase>(context, listen: false);
     final now = DateTime.now();
 
     final Future<List<FlSpot>> balanceHistoryFuture =
@@ -88,37 +110,39 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     final Future<Map<String, double>> currentMonthCategoryOutflowsFuture =
         db.analysisDao.getMonthlyCategoryOutflows();
 
-    _analysisDataFuture = Future.wait([
-      balanceHistoryFuture,
-      sumOfInitialBalancesFuture,
-      currentMonthInflowsFuture,
-      currentMonthOutflowsFuture,
-      currentMonthProfitFuture,
-      averageMonthlyInflowsFuture,
-      averageMonthlyOutflowsFuture,
-      averageMonthlyProfitFuture,
-      currentMonthCategoryInflowsFuture,
-      currentMonthCategoryOutflowsFuture,
-    ]).then((results) {
-      return AnalysisData(
-        balanceHistory: results[0] as List<FlSpot>,
-        sumOfInitialBalances: results[1] as double,
-        currentMonthInflows: results[2] as double,
-        currentMonthOutflows: results[3] as double,
-        currentMonthProfit: results[4] as double,
-        averageMonthlyInflows: results[5] as double,
-        averageMonthlyOutflows: results[6] as double,
-        averageMonthlyProfit: results[7] as double,
-        currentMonthCategoryInflows: results[8] as Map<String, double>,
-        currentMonthCategoryOutflows: results[9] as Map<String, double>,
-      );
+    // Always assign the future inside setState so FutureBuilder reacts.
+    setState(() {
+      _analysisDataFuture = Future.wait([
+        balanceHistoryFuture,
+        sumOfInitialBalancesFuture,
+        currentMonthInflowsFuture,
+        currentMonthOutflowsFuture,
+        currentMonthProfitFuture,
+        averageMonthlyInflowsFuture,
+        averageMonthlyOutflowsFuture,
+        averageMonthlyProfitFuture,
+        currentMonthCategoryInflowsFuture,
+        currentMonthCategoryOutflowsFuture,
+      ]).then((results) {
+        return AnalysisData(
+          balanceHistory: results[0] as List<FlSpot>,
+          sumOfInitialBalances: results[1] as double,
+          currentMonthInflows: results[2] as double,
+          currentMonthOutflows: results[3] as double,
+          currentMonthProfit: results[4] as double,
+          averageMonthlyInflows: results[5] as double,
+          averageMonthlyOutflows: results[6] as double,
+          averageMonthlyProfit: results[7] as double,
+          currentMonthCategoryInflows: results[8] as Map<String, double>,
+          currentMonthCategoryOutflows: results[9] as Map<String, double>,
+        );
+      });
     });
   }
 
   void _onRangeSelected(String range) {
     setState(() {
       _selectedRange = range;
-      // Untouch the spot when range changes to reset the header
       _touchedSpot = null;
     });
   }

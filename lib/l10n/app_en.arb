@@ -135,8 +135,18 @@
   "noTransfersYet": "No transfers yet",
   "transfers": "Transfers",
   "isGenerated": "Created by standing order",
-
   "updateWouldBreakAccountBalanceHistory": "The changes cannot be saved. The entered values would lead to inconsistencies in the account balance history of one or more of the accounts involved.",
+
+  "importDatabase": "Import Database",
+  "exportDatabase": "Export Database",
+  "importDatabaseWarning": "Importing will replace all current data. This cannot be undone. Continue?",
+  "importFailed": "Import failed.",
+  "exportFailed": "Export failed.",
+  "fileSavedSuccessfully" : "File saved successfully.",
+  "selectedFileDoesNotExist" : "Selected file does not exist.",
+  "selectedFileCannotBeAccessed" : "Selected file cannot be accessed.",
+  "databaseReplacedSuccessfully" : "Database replaced successfully.",
+  "databaseReplacedButReopenFailed" : "Database replaced but reopen failed.",
 
   "delete": "Delete",
   "deleteAccount": "Delete Account",
