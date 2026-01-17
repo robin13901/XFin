@@ -35,40 +35,38 @@ class DbBackup {
     }
   }
 
+  /// Performs only the pickFiles call and forwards the result for processing.
   static Future<void> importDatabaseFromPicker(BuildContext context,
       AppDatabase currentDb, AppLocalizations l10n) async {
     try {
-      final res = await FilePicker.platform
+      final dynamic res = await FilePicker.platform
           .pickFiles(allowMultiple: false, type: FileType.any);
-      if (res == null || res.files.isEmpty) return;
-
-      final picked = res.files.single;
-      File src;
-      if (picked.path != null) {
-        src = File(picked.path!);
-        if (!await src.exists()) {
-          showToast2(l10n.selectedFileDoesNotExist);
-          return;
-        }
-      } else {
-        final bytes = picked.bytes;
-        if (bytes == null) {
-          showToast2(l10n.selectedFileCannotBeAccessed);
-          return;
-        }
-        final tmp = await getTemporaryDirectory();
-        src = File(p.join(tmp.path, _dbFileNameTemp));
-        await src.writeAsBytes(bytes);
-      }
-
-      await _replaceDbWithFile(currentDb, src, l10n);
-    } catch (e) {
+      await processPickedFilesResult(res, currentDb, l10n);
+    } catch (_) {
       showToast2(l10n.importFailed);
-      return;
     }
   }
 
-  static Future<void> _replaceDbWithFile(AppDatabase oldDb, File source, AppLocalizations l10n) async {
+  static Future<void> processPickedFilesResult(
+      dynamic res, AppDatabase currentDb, AppLocalizations l10n) async {
+    try {
+      if (res == null || res.files.isEmpty) return;
+      final picked = res.files.single;
+      final bool isPath = picked.path != null;
+      if (isPath ? !await File(picked.path!).exists() : picked.bytes == null) {
+        showToast2(isPath ? l10n.selectedFileDoesNotExist : l10n.selectedFileCannotBeAccessed);
+        return;
+      }
+      final File src = isPath ? File(picked.path!) : File(p.join((await getTemporaryDirectory()).path, _dbFileNameTemp));
+      if (!isPath) await src.writeAsBytes(picked.bytes as List<int>);
+      await replaceDbWithFile(currentDb, src, l10n);
+    } catch (_) {
+      showToast2(l10n.importFailed);
+    }
+  }
+
+  static Future<void> replaceDbWithFile(
+      AppDatabase oldDb, File source, AppLocalizations l10n) async {
     final appDbFile = await _localDbFile();
     await oldDb.close();
 

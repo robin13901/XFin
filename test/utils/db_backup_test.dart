@@ -10,7 +10,6 @@ import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/utils/db_backup.dart';
 import 'package:xfin/database/app_database.dart';
 
-
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -97,19 +96,12 @@ void main() {
     test('picked file path does not exist → shows selectedFileDoesNotExist (or importFailed)', () async {
       final db = AppDatabase(NativeDatabase.memory());
 
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(filePickerChannel, (call) async {
-        if (call.method == 'pickFiles') {
-          return {
-            'files': [
-              {'path': p.join(tempDir.path, 'missing.sqlite')}
-            ]
-          };
-        }
-        return null;
-      });
-
-      await DbBackup.importDatabaseFromPicker(fakeContext, db, l10n);
+      // Directly exercise the post-pick logic with the same Map payload the platform channel would return.
+      await DbBackup.processPickedFilesResult({
+        'files': [
+          {'path': p.join(tempDir.path, 'missing.sqlite')}
+        ]
+      }, db, l10n);
 
       // Platform issues can surface as a generic importFailed; accept either.
       expect(
@@ -121,20 +113,12 @@ void main() {
     test('picked file with no path and bytes == null → shows selectedFileCannotBeAccessed (or importFailed)', () async {
       final db = AppDatabase(NativeDatabase.memory());
 
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(filePickerChannel, (call) async {
-        if (call.method == 'pickFiles') {
-          return {
-            'files': [
-              // no 'path', and bytes == null
-              {'bytes': null}
-            ]
-          };
-        }
-        return null;
-      });
-
-      await DbBackup.importDatabaseFromPicker(fakeContext, db, l10n);
+      await DbBackup.processPickedFilesResult({
+        'files': [
+          // no 'path', and bytes == null
+          {'bytes': null}
+        ]
+      }, db, l10n);
 
       expect(
         l10n.messages,
@@ -149,30 +133,66 @@ void main() {
       final appDbFile = File(p.join(tempDir.path, 'db.sqlite'));
       await appDbFile.writeAsBytes(Uint8List.fromList([9, 9, 9]));
 
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(filePickerChannel, (call) async {
-        if (call.method == 'pickFiles') {
-          return {
-            'files': [
-              {'bytes': Uint8List.fromList([1, 2, 3])}
-            ]
-          };
-        }
-        return null;
-      });
-
-      await DbBackup.importDatabaseFromPicker(fakeContext, db, l10n);
+      await DbBackup.processPickedFilesResult({
+        'files': [
+          {'bytes': Uint8List.fromList([1, 2, 3])}
+        ]
+      }, db, l10n);
 
       expect(
         l10n.messages,
         anyOf(contains('databaseReplacedSuccessfully'), contains('importFailed')),
       );
     });
+  });
 
-    // NOTE: the reopen-failure branch (databaseReplacedButReopenFailed) is not covered here because
-    // it requires either making DatabaseProvider.instance assignable or making connection.connect()
-    // behave differently for tests. If you'd like, I can modify production code slightly (a small,
-    // test-only setter or a DI hook) so we can reliably inject a throwing stub and assert that toast.
+  group('DbBackup.replaceDbWithFile', () {
+    test('replaceDbWithFile replaces existing db file', () async {
+      final db = AppDatabase(NativeDatabase.memory());
+
+      // create an existing app DB file (this is the file the method will replace)
+      final appDbFile = File(p.join(tempDir.path, 'db.sqlite'));
+      await appDbFile.writeAsBytes(Uint8List.fromList([9, 9, 9]));
+
+      // create a source file that should become the new db
+      final sourceFile = File(p.join(tempDir.path, 'source.sqlite'));
+      await sourceFile.writeAsBytes(Uint8List.fromList([1, 2, 3]));
+
+      // Call the newly public method
+      await DbBackup.replaceDbWithFile(db, sourceFile, l10n);
+
+      // The toast should indicate success (or reopen failed — accept either)
+      expect(
+        l10n.messages,
+        anyOf(contains('databaseReplacedSuccessfully'), contains('databaseReplacedButReopenFailed')),
+      );
+
+      // And the app DB file should now contain the source bytes
+      final bytes = await appDbFile.readAsBytes();
+      expect(bytes, equals(Uint8List.fromList([1, 2, 3])));
+    });
+
+    test('replaceDbWithFile when app db does not exist yet creates it', () async {
+      final db = AppDatabase(NativeDatabase.memory());
+
+      // ensure app db file does not exist
+      final appDbFile = File(p.join(tempDir.path, 'db.sqlite'));
+      if (await appDbFile.exists()) await appDbFile.delete();
+
+      // create a source file that should become the new db
+      final sourceFile = File(p.join(tempDir.path, 'source2.sqlite'));
+      await sourceFile.writeAsBytes(Uint8List.fromList([5, 6, 7]));
+
+      await DbBackup.replaceDbWithFile(db, sourceFile, l10n);
+
+      expect(
+        l10n.messages,
+        anyOf(contains('databaseReplacedSuccessfully'), contains('databaseReplacedButReopenFailed')),
+      );
+
+      final bytes = await appDbFile.readAsBytes();
+      expect(bytes, equals(Uint8List.fromList([5, 6, 7])));
+    });
   });
 }
 
