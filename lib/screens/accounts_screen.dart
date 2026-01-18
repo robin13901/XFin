@@ -213,7 +213,7 @@ class AccountsScreen extends StatelessWidget {
                   }),
             ],
           ),
-          buildLiquidGlassAppBar(context, title: Text(l10n.accounts)),
+          buildLiquidGlassAppBar(context, title: Text(l10n.accounts), showBackButton: false),
         ],
       ),
     );

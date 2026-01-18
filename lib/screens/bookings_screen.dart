@@ -192,7 +192,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
                 );
               },
             ),
-          buildLiquidGlassAppBar(context, title: Text(l10n.bookings)),
+          buildLiquidGlassAppBar(context, title: Text(l10n.bookings), showBackButton: false),
         ],
       ),
     );

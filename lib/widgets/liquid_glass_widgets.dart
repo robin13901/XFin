@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 
 const liquidGlassSettings = LiquidGlassSettings(
-  thickness: 20,
-  blur: 1.6,
-  glassColor: Color(0x338a8a8a),
+  thickness: 30,
+  blur: 1.4,
+  glassColor: Color(0x33000000),
 );
 
 class LiquidGlassBottomNav extends StatelessWidget {
@@ -189,7 +189,7 @@ class LiquidGlassBottomNav extends StatelessWidget {
   }) {
     const Color selectedColor = Colors.white;
     const Color unselectedColor = Colors.grey;
-        // theme.iconTheme.color?.withValues(alpha: 0.85) ?? Colors.white70;
+    // theme.iconTheme.color?.withValues(alpha: 0.85) ?? Colors.white70;
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -260,10 +260,8 @@ Widget buildFAB({
   );
 }
 
-Widget buildLiquidGlassAppBar(
-    BuildContext context, {
-      required Widget title,
-    }) {
+Widget buildLiquidGlassAppBar(BuildContext context,
+    {required Widget title, bool showBackButton = true}) {
   final double statusBar = MediaQuery.of(context).padding.top;
   final double height = statusBar + kToolbarHeight;
 
@@ -297,13 +295,15 @@ Widget buildLiquidGlassAppBar(
               height: kToolbarHeight,
               child: Row(
                 children: [
-                  const BackButton(),
+                  if (showBackButton) ...[
+                    const BackButton(),
+                  ] else ...[
+                    const SizedBox(width: 8),
+                  ],
                   const SizedBox(width: 8),
                   Expanded(
                     child: DefaultTextStyle(
-                      style: Theme.of(context)
-                          .appBarTheme
-                          .titleTextStyle ??
+                      style: Theme.of(context).appBarTheme.titleTextStyle ??
                           Theme.of(context).textTheme.titleLarge!,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -319,7 +319,6 @@ Widget buildLiquidGlassAppBar(
     ),
   );
 }
-
 
 /// A simple model for menu items shown in the panel
 class GlassMenuItem {

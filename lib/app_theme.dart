@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 class AppColors {
   // Light theme (backgrounds = white / light grey, foreground = near-black)
   static const lightBackground = Color(0xFFF5F5F7); // very light grey
-  static const lightSurface = Color(0xFFFFFFFF); // white
+  static const lightSurface = Color(0xFFFBF7F5); // white
   static const lightSurfaceVariant = Color(0xFFE6E7EA); // slightly darker white
   static const lightOnSurface = Color(0xFF0F1720); // almost black
-  static const lightOutline = Color(0xFF9CA3AF);
+  static const lightOutline = Color(0xFFB8B8B8);
 
   // Dark theme (backgrounds = near-black / dark grey, foreground = light grey/white)
   static const darkBackground = Color(0xFF0A0A0B); // near black
@@ -16,8 +16,8 @@ class AppColors {
   static const darkOutline = Color(0xFF4B5563);
 
   // Highlight colors
-  static const red = Color(0xFFcf7070);
-  static const green = Color(0xFF90d485);
+  static const red = Color(0xffd85858);
+  static const green = Color(0xff78d668);
 }
 
 class AppTheme {
