@@ -65,7 +65,6 @@ void main() {
     mockObserver = MockNavigatorObserver();
 
     // default currency provider values
-    when(() => mockCurrencyProvider.symbol).thenReturn('€');
     when(() => mockCurrencyProvider.tickerSymbol).thenReturn('EUR');
 
     // wire DAOs on the database

@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/daos/bookings_dao.dart';
@@ -9,6 +8,7 @@ import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/widgets/booking_form.dart';
 
 import '../providers/database_provider.dart';
+import '../utils/format.dart';
 import '../widgets/dialogs.dart';
 import '../widgets/liquid_glass_widgets.dart';
 
@@ -40,9 +40,6 @@ class _BookingsScreenState extends State<BookingsScreen> {
   static const int _pageSize = 30;
   StreamSubscription<List<BookingWithAccountAndAsset>>? _pageSub;
   int _currentLimit = _initialLimit;
-
-  static final _currencyFormat = NumberFormat.currency(locale: 'de_DE', symbol: '€');
-  static final _dateFormat = DateFormat('dd.MM.yyyy');
 
   @override
   void initState() {
@@ -164,7 +161,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
                       '${dateString.substring(4, 6)}-'
                       '${dateString.substring(6, 8)}',
                 );
-                final dateText = _dateFormat.format(date);
+                final dateText = dateFormat.format(date);
 
                 return ListTile(
                   title: Text(booking.category),
@@ -175,7 +172,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
                     children: [
                       if (asset.id == 1)
                         Text(
-                          _currencyFormat.format(booking.value),
+                          formatCurrency(booking.value),
                           style: TextStyle(color: valueColor, fontWeight: FontWeight.bold),
                         )
                       else
@@ -183,7 +180,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
                           TextSpan(
                             children: [
                               TextSpan(text: '${booking.shares} ${asset.currencySymbol ?? asset.tickerSymbol} ≈ ', style: const TextStyle(color: Colors.grey)),
-                              TextSpan(text: _currencyFormat.format(booking.value), style: TextStyle(color: valueColor)),
+                              TextSpan(text: formatCurrency(booking.value), style: TextStyle(color: valueColor)),
                             ],
                           ),
                         ),

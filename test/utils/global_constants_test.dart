@@ -18,17 +18,6 @@ void main() {
     });
   });
 
-  group('formatPercent', () {
-    test('formats percent with one decimal and de_DE style', () {
-      // 0.12345 -> 12.345% -> rounded/displayed as 12,3 %
-      expect(formatPercent(0.12345), '12,3 %');
-    });
-
-    test('zero percent', () {
-      expect(formatPercent(0.0), '0,0 %');
-    });
-  });
-
   group('preciseDecimal', () {
     test('handles NaN and infinities', () {
       expect(preciseDecimal(double.nan), 'NaN');

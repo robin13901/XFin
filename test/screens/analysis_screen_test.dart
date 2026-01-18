@@ -4,7 +4,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
 
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/daos/accounts_dao.dart';
@@ -12,6 +11,7 @@ import 'package:xfin/database/daos/analysis_dao.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/providers/database_provider.dart';
 import 'package:xfin/screens/analysis_screen.dart';
+import 'package:xfin/utils/format.dart';
 
 class _MockAppDatabase extends Mock implements AppDatabase {}
 
@@ -204,9 +204,7 @@ void main() {
 
         // The total balance should be shown and include the euro symbol.
         // The last FlSpot y is 1000 + 9*10 = 1090.0
-        final currencyFormat =
-            NumberFormat.currency(locale: 'de_DE', symbol: '€');
-        final expectedBalance = currencyFormat.format(balanceHistory.last.y);
+        final expectedBalance = formatCurrency(balanceHistory.last.y);
         expect(find.text(expectedBalance), findsOneWidget);
 
         await tester.pumpWidget(Container());
@@ -295,10 +293,7 @@ void main() {
         // Header present
         expect(find.text('Monatliche Übersicht'), findsOneWidget);
 
-        // The value texts are formatted with euro symbol; ensure the negative value is present
-        final currencyFormat =
-            NumberFormat.currency(locale: 'de_DE', symbol: '€');
-        final neg = currencyFormat.format(-50.0);
+        final neg = formatCurrency(-50.0);
         expect(find.text(neg), findsOneWidget);
 
         await tester.pumpWidget(Container());
@@ -406,9 +401,7 @@ void main() {
         await tester.pumpAndSettle();
 
         // Should display the single value and not crash
-        final currencyFormat =
-            NumberFormat.currency(locale: 'de_DE', symbol: '€');
-        final expected = currencyFormat.format(500.0);
+        final expected = formatCurrency(500.0);
         expect(find.text(expected), findsOneWidget);
 
         await tester.pumpWidget(Container());

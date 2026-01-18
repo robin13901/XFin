@@ -2,12 +2,12 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:xfin/utils/global_constants.dart';
 import 'dart:math';
 
 import '../app_theme.dart';
 import '../database/app_database.dart';
 import '../providers/database_provider.dart';
+import '../utils/format.dart';
 import '../utils/indicator_calculator.dart';
 
 // A data class to hold all asynchronous results needed by AnalysisScreen
@@ -179,8 +179,6 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             'MAX': allData,
           };
 
-          final currencyFormat =
-              NumberFormat.currency(locale: 'de_DE', symbol: '€');
           final List<FlSpot> currentData = dataSets[_selectedRange]!;
 
           double balanceToShow;
@@ -321,7 +319,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                       children: [
                         // Total balance
                         Text(
-                          currencyFormat.format(balanceToShow),
+                          formatCurrency(balanceToShow),
                           style: const TextStyle(
                               fontSize: 32, fontWeight: FontWeight.bold),
                         ),
@@ -339,7 +337,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                                     size: 16),
                                 const SizedBox(width: 4),
                                 Text(
-                                    '${currencyFormat.format(profit)} (${formatPercent(profitPercent)})',
+                                    '${formatCurrency(profit)} (${formatPercent(profitPercent)})',
                                     style: TextStyle(
                                         color: profitColor, fontSize: 16)),
                               ],
@@ -530,8 +528,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                                     getTooltipItems: (touchedBarSpots) =>
                                         touchedBarSpots
                                             .map((barSpot) => LineTooltipItem(
-                                                currencyFormat
-                                                    .format(barSpot.y),
+                                            formatCurrency(barSpot.y),
                                                 const TextStyle(
                                                     color: Colors.white)))
                                             .toList(),
@@ -593,7 +590,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                   const SizedBox(height: 8),
                   Padding(
                     padding: const EdgeInsets.all(12.0),
-                    child: _buildMonthlySummary(analysisData, currencyFormat),
+                    child: _buildMonthlySummary(analysisData),
                   ),
                   const SizedBox(height: 8),
                   Padding(
@@ -602,7 +599,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                       children: [
                         _buildInflowOutflowSwitch(),
                         const SizedBox(height: 8),
-                        _buildCategoryList(analysisData, currencyFormat),
+                        _buildCategoryList(analysisData),
                       ],
                     ),
                   ),
@@ -616,8 +613,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     );
   }
 
-  Widget _buildMonthlySummary(
-      AnalysisData analysisData, NumberFormat currencyFormat) {
+  Widget _buildMonthlySummary(AnalysisData analysisData) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -625,13 +621,12 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: 8),
         _buildSummaryRow('Einnahmen Aktueller Monat:',
-            analysisData.currentMonthInflows, currencyFormat, AppColors.green),
+            analysisData.currentMonthInflows, AppColors.green),
         _buildSummaryRow('Ausgaben Aktueller Monat:',
-            analysisData.currentMonthOutflows, currencyFormat, AppColors.red),
+            analysisData.currentMonthOutflows, AppColors.red),
         _buildSummaryRow(
             'Gewinn Aktueller Monat:',
             analysisData.currentMonthProfit,
-            currencyFormat,
             analysisData.currentMonthProfit >= 0
                 ? AppColors.green
                 : AppColors.red),
@@ -641,14 +636,12 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
         _buildSummaryRow(
             'Ø Monatliche Einnahmen:',
             analysisData.averageMonthlyInflows,
-            currencyFormat,
             AppColors.green),
         _buildSummaryRow('Ø Monatliche Ausgaben:',
-            analysisData.averageMonthlyOutflows, currencyFormat, AppColors.red),
+            analysisData.averageMonthlyOutflows, AppColors.red),
         _buildSummaryRow(
             'Ø Monatlicher Gewinn:',
             analysisData.averageMonthlyProfit,
-            currencyFormat,
             analysisData.averageMonthlyProfit >= 0
                 ? AppColors.green
                 : AppColors.red),
@@ -656,8 +649,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     );
   }
 
-  Widget _buildSummaryRow(
-      String title, double value, NumberFormat currencyFormat, Color color) {
+  Widget _buildSummaryRow(String title, double value, Color color) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -665,7 +657,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
         children: [
           Text(title),
           Text(
-            currencyFormat.format(value),
+            formatCurrency(value),
             style: TextStyle(color: color, fontWeight: FontWeight.bold),
           ),
         ],
@@ -761,8 +753,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     );
   }
 
-  Widget _buildCategoryList(
-      AnalysisData analysisData, NumberFormat currencyFormat) {
+  Widget _buildCategoryList(AnalysisData analysisData) {
     final Map<String, double> categories = _showInflows
         ? analysisData.currentMonthCategoryInflows
         : analysisData.currentMonthCategoryOutflows;
@@ -789,15 +780,14 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
         aggregatedOtherAmount += entry.value;
         hasOther = true;
       } else {
-        categoryWidgets.add(_buildCategoryRow(
-            entry.key, entry.value, percentage, currencyFormat));
+        categoryWidgets.add(_buildCategoryRow(entry.key, entry.value, percentage));
       }
     }
 
     if (hasOther) {
       final otherPercentage = (aggregatedOtherAmount.abs() / totalAmount) * 100;
       categoryWidgets.add(_buildCategoryRow(
-          '...', aggregatedOtherAmount, otherPercentage, currencyFormat));
+          '...', aggregatedOtherAmount, otherPercentage));
     }
 
     if (hasOther && !_showAllCategories) {
@@ -838,8 +828,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     return Column(children: categoryWidgets);
   }
 
-  Widget _buildCategoryRow(String category, double amount, double percentage,
-      NumberFormat currencyFormat) {
+  Widget _buildCategoryRow(String category, double amount, double percentage) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -848,7 +837,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           Text(category),
           Row(
             children: [
-              Text(currencyFormat.format(amount)),
+              Text(formatCurrency(amount)),
               const SizedBox(width: 8),
               Text('${percentage.toStringAsFixed(1)}%',
                   style: TextStyle(color: Theme.of(context).hintColor)),

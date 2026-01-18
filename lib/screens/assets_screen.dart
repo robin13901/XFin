@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/l10n/app_localizations.dart';
+import 'package:xfin/utils/format.dart';
 import 'package:xfin/widgets/asset_form.dart';
 import 'package:xfin/widgets/dialogs.dart';
 
@@ -58,7 +58,6 @@ class AssetsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final db = context.read<DatabaseProvider>().db;
     final l10n = AppLocalizations.of(context)!;
-    final currencyFormat = NumberFormat.currency(locale: 'de_DE', symbol: '€');
 
     return Scaffold(
       body: Stack(
@@ -101,16 +100,16 @@ class AssetsScreen extends StatelessWidget {
                                         .abs() <
                                     0.01) ...[
                                   Text(
-                                      '${l10n.costBasis}: ${currencyFormat.format(asset.netCostBasis)}'),
+                                      '${l10n.costBasis}: ${formatCurrency(asset.netCostBasis)}'),
                                 ] else ...[
                                   Text(
-                                      '${l10n.netCostBasis}: ${currencyFormat.format(asset.netCostBasis)}'),
+                                      '${l10n.netCostBasis}: ${formatCurrency(asset.netCostBasis)}'),
                                   Text(
-                                      '${l10n.brokerCostBasis}: ${currencyFormat.format(asset.brokerCostBasis)}'),
+                                      '${l10n.brokerCostBasis}: ${formatCurrency(asset.brokerCostBasis)}'),
                                 ],
                               ],
                               Text(
-                                  '${l10n.value}: ${currencyFormat.format(asset.value)}'),
+                                  '${l10n.value}: ${formatCurrency(asset.value)}'),
                             ],
                           ),
                           trailing: Text(asset.type.name.toUpperCase()),

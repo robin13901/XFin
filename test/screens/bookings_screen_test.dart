@@ -2,7 +2,6 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:intl/intl.dart';
 import 'package:mockito/mockito.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,6 +12,7 @@ import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/providers/base_currency_provider.dart';
 import 'package:xfin/providers/database_provider.dart';
 import 'package:xfin/screens/bookings_screen.dart';
+import 'package:xfin/utils/format.dart';
 import 'package:xfin/widgets/booking_form.dart';
 
 class MockAccountsDao extends Mock implements AccountsDao {}
@@ -155,9 +155,7 @@ void main() {
 
               // Income Booking
               expect(find.widgetWithText(ListTile, 'Income'), findsOneWidget);
-              final incomeAmountFinder = find.text(
-                  NumberFormat.currency(locale: 'de_DE', symbol: '€')
-                      .format(1));
+              final incomeAmountFinder = find.text(formatCurrency(1));
               expect(incomeAmountFinder, findsOneWidget);
               final incomeAmountWidget =
                   tester.widget<Text>(incomeAmountFinder);
@@ -165,9 +163,7 @@ void main() {
 
               // Expense Booking
               expect(find.widgetWithText(ListTile, 'Expense'), findsOneWidget);
-              final expenseAmountFinder = find.text(
-                  NumberFormat.currency(locale: 'de_DE', symbol: '€')
-                      .format(-1));
+              final expenseAmountFinder = find.text(formatCurrency(-1));
               expect(expenseAmountFinder, findsOneWidget);
               final expenseAmountWidget =
                   tester.widget<Text>(expenseAmountFinder);

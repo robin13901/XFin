@@ -6,6 +6,7 @@ import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/providers/base_currency_provider.dart';
+import 'package:xfin/utils/format.dart';
 import 'package:xfin/widgets/reusables.dart';
 import '../providers/database_provider.dart';
 import '../utils/validators.dart';
@@ -308,7 +309,7 @@ class _AccountFormState extends State<AccountForm> {
   }
 
   Widget _buildStep2(BuildContext context, AppLocalizations l10n) {
-    final currencyProvider = Provider.of<BaseCurrencyProvider>(context);
+    Provider.of<BaseCurrencyProvider>(context);
     final reusables = _reusables;
 
     // If heavy UI not ready yet, show a lightweight placeholder that paints instantly.
@@ -392,7 +393,7 @@ class _AccountFormState extends State<AccountForm> {
               final item = _pendingAOAs[index];
               final asset = _assetMap[item.assetId];
               final oneLine =
-                  '${item.shares} ${asset?.tickerSymbol ?? ''} @ ${item.netCostBasis} ${currencyProvider.symbol} ≈ ${currencyProvider.format.format(item.value)}';
+                  '${item.shares} ${asset?.tickerSymbol ?? ''} @ ${item.netCostBasis} ${BaseCurrencyProvider.symbol} ≈ ${formatCurrency(item.value)}';
 
               return ListTile(
                 contentPadding: EdgeInsets.zero,

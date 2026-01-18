@@ -12,6 +12,7 @@ import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/providers/base_currency_provider.dart';
 import 'package:xfin/providers/database_provider.dart';
 import 'package:xfin/screens/trades_screen.dart';
+import 'package:xfin/utils/format.dart';
 import 'package:xfin/widgets/trade_form.dart';
 
 void main() {
@@ -119,12 +120,9 @@ void main() {
   group('with initial trades', () {
     late Account sourceAccount, targetAccount;
     late Asset asset;
-    late NumberFormat pnlFormat;
     late NumberFormat formatter;
 
     setUp(() async {
-      pnlFormat =
-          NumberFormat.currency(locale: 'de_DE', symbol: '€', decimalDigits: 2);
       formatter = NumberFormat.decimalPattern('de_DE');
       formatter.minimumFractionDigits = 2;
       formatter.maximumFractionDigits = 2;
@@ -241,31 +239,31 @@ void main() {
               expect(
                   find.descendant(
                       of: buyTradeFinder,
-                      matching: find.textContaining('01.01.2023, 09:00')),
+                      matching: find.textContaining('01.01.2023, 09:00 Uhr')),
                   findsOneWidget);
               expect(
                   find.descendant(
                       of: buyTradeFinder,
                       matching: find.textContaining(
-                          '${l10n.value}: ${pnlFormat.format(500)}')),
+                          '${l10n.value}: ${formatCurrency(500)}')),
                   findsOneWidget);
               expect(
                   find.descendant(
                       of: buyTradeFinder,
                       matching: find.textContaining(
-                          '${l10n.fee}: ${pnlFormat.format(5)}')),
+                          '${l10n.fee}: ${formatCurrency(5)}')),
                   findsOneWidget);
               expect(
                   find.descendant(
                       of: buyTradeFinder,
                       matching: find.textContaining(
-                          '${l10n.tax}: ${pnlFormat.format(0)}')),
+                          '${l10n.tax}: ${formatCurrency(0)}')),
                   findsNothing);
               expect(
                   find.descendant(
                       of: buyTradeFinder,
                       matching: find.textContaining(
-                          '${l10n.profitAndLoss}: ${pnlFormat.format(0)}')),
+                          '${l10n.profitAndLoss}: ${formatCurrency(0)}')),
                   findsNothing);
               expect(
                   find.descendant(
@@ -294,31 +292,31 @@ void main() {
               expect(
                   find.descendant(
                       of: sellPosFinder,
-                      matching: find.textContaining('02.01.2023, 10:00')),
+                      matching: find.textContaining('02.01.2023, 10:00 Uhr')),
                   findsOneWidget);
               expect(
                   find.descendant(
                       of: sellPosFinder,
                       matching:
-                          find.text('${l10n.value}: ${pnlFormat.format(240)}')),
+                          find.text('${l10n.value}: ${formatCurrency(240)}')),
                   findsOneWidget);
               expect(
                   find.descendant(
                       of: sellPosFinder,
                       matching:
-                          find.text('${l10n.fee}: ${pnlFormat.format(5)}')),
+                          find.text('${l10n.fee}: ${formatCurrency(5)}')),
                   findsOneWidget);
               expect(
                   find.descendant(
                       of: sellPosFinder,
                       matching:
-                          find.text('${l10n.tax}: ${pnlFormat.format(5)}')),
+                          find.text('${l10n.tax}: ${formatCurrency(5)}')),
                   findsOneWidget);
               expect(
                   find.descendant(
                       of: sellPosFinder,
                       matching: find.text(
-                          '${l10n.profitAndLoss}: ${pnlFormat.format(30)}')),
+                          '${l10n.profitAndLoss}: ${formatCurrency(30)}')),
                   findsOneWidget);
               expect(
                   find.descendant(
@@ -330,8 +328,8 @@ void main() {
               final pnlColor = getTextSpanColor(
                   tester,
                   sellPosFinder,
-                  '${l10n.profitAndLoss}: ${pnlFormat.format(30)}',
-                  pnlFormat.format(30));
+                  '${l10n.profitAndLoss}: ${formatCurrency(30)}',
+                  formatCurrency(30));
               expect(pnlColor, Colors.green);
 
               final roiColor = getTextSpanColor(
@@ -360,31 +358,31 @@ void main() {
               expect(
                   find.descendant(
                       of: sellNegFinder,
-                      matching: find.textContaining('03.01.2023, 11:00')),
+                      matching: find.textContaining('03.01.2023, 11:00 Uhr')),
                   findsOneWidget);
               expect(
                   find.descendant(
                       of: sellNegFinder,
                       matching:
-                          find.text('${l10n.value}: ${pnlFormat.format(270)}')),
+                          find.text('${l10n.value}: ${formatCurrency(270)}')),
                   findsOneWidget);
               expect(
                   find.descendant(
                       of: sellNegFinder,
                       matching:
-                          find.text('${l10n.fee}: ${pnlFormat.format(5)}')),
+                          find.text('${l10n.fee}: ${formatCurrency(5)}')),
                   findsOneWidget);
               expect(
                   find.descendant(
                       of: sellNegFinder,
                       matching:
-                          find.text('${l10n.tax}: ${pnlFormat.format(0)}')),
+                          find.text('${l10n.tax}: ${formatCurrency(0)}')),
                   findsOneWidget);
               expect(
                   find.descendant(
                       of: sellNegFinder,
                       matching: find.text(
-                          '${l10n.profitAndLoss}: ${pnlFormat.format(-35)}')),
+                          '${l10n.profitAndLoss}: ${formatCurrency(-35)}')),
                   findsOneWidget);
               expect(
                   find.descendant(
@@ -396,8 +394,8 @@ void main() {
               final pnlColor = getTextSpanColor(
                   tester,
                   sellNegFinder,
-                  '${l10n.profitAndLoss}: ${pnlFormat.format(-35)}',
-                  pnlFormat.format(-35));
+                  '${l10n.profitAndLoss}: ${formatCurrency(-35)}',
+                  formatCurrency(-35));
               expect(pnlColor, Colors.red);
 
               final roiColor = getTextSpanColor(

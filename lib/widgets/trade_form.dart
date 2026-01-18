@@ -219,7 +219,7 @@ class _TradeFormState extends State<TradeForm> {
 
   @override
   Widget build(BuildContext context) {
-    final currencyProvider = Provider.of<BaseCurrencyProvider>(context);
+    Provider.of<BaseCurrencyProvider>(context);
     l10n = AppLocalizations.of(context)!;
     final validator = Validator(l10n);
 
@@ -306,7 +306,7 @@ class _TradeFormState extends State<TradeForm> {
                         decoration: InputDecoration(
                           labelText: l10n.fee,
                           border: const OutlineInputBorder(),
-                          suffixText: currencyProvider.symbol,
+                          suffixText: BaseCurrencyProvider.symbol,
                         ),
                         keyboardType: const TextInputType.numberWithOptions(
                             decimal: true, signed: true),
@@ -325,7 +325,7 @@ class _TradeFormState extends State<TradeForm> {
                         decoration: InputDecoration(
                           labelText: l10n.costBasis,
                           border: const OutlineInputBorder(),
-                          suffixText: currencyProvider.symbol,
+                          suffixText: BaseCurrencyProvider.symbol,
                         ),
                         keyboardType: const TextInputType.numberWithOptions(
                             decimal: true),
@@ -341,7 +341,7 @@ class _TradeFormState extends State<TradeForm> {
                           decoration: InputDecoration(
                             labelText: l10n.tax,
                             border: const OutlineInputBorder(),
-                            suffixText: currencyProvider.symbol,
+                            suffixText: BaseCurrencyProvider.symbol,
                           ),
                           keyboardType: const TextInputType.numberWithOptions(
                               decimal: true),

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/l10n/app_localizations.dart';
@@ -7,6 +6,7 @@ import 'package:xfin/widgets/transfer_form.dart';
 
 import '../database/daos/transfers_dao.dart';
 import '../providers/database_provider.dart';
+import '../utils/format.dart';
 import '../widgets/dialogs.dart';
 import '../widgets/liquid_glass_widgets.dart';
 
@@ -74,10 +74,6 @@ class _TransfersScreenState extends State<TransfersScreen>
                 return Center(child: Text(l10n.noTransfersYet));
               }
 
-              final currencyFormat =
-              NumberFormat.currency(locale: 'de_DE', symbol: '€');
-              final dateFormat = DateFormat('dd.MM.yyyy');
-
               return ListView.builder(
                 padding: EdgeInsets.only(
                   top:
@@ -105,7 +101,7 @@ class _TransfersScreenState extends State<TransfersScreen>
                       children: [
                         if (asset.id == 1) ...[
                           Text(
-                            currencyFormat.format(transfer.value),
+                            formatCurrency(transfer.value),
                             style: const TextStyle(
                                 color: Colors.indigoAccent,
                                 fontWeight: FontWeight.bold),
@@ -120,7 +116,7 @@ class _TransfersScreenState extends State<TransfersScreen>
                                   style: const TextStyle(color: Colors.grey),
                                 ),
                                 TextSpan(
-                                  text: currencyFormat.format(transfer.value),
+                                  text: formatCurrency(transfer.value),
                                   style: const TextStyle(color: Colors.indigoAccent),
                                 ),
                               ],

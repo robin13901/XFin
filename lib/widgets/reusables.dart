@@ -123,7 +123,7 @@ class Reusables {
               decoration: InputDecoration(
                 labelText: l10n.pricePerShare,
                 border: const OutlineInputBorder(),
-                suffixText: currencyProvider.symbol,
+                suffixText: BaseCurrencyProvider.symbol,
                 errorMaxLines: 2,
               ),
               keyboardType:

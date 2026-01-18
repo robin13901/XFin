@@ -1,7 +1,11 @@
 import 'package:intl/intl.dart';
+import 'package:xfin/providers/base_currency_provider.dart';
 
 final dateFormat = DateFormat('dd.MM.yyyy');
-final dateTimeFormat = DateFormat('dd.MM.yyyy HH:mm');
+final dateTimeFormat = DateFormat('dd.MM.yyyy, HH:mm');
+
+final NumberFormat _currencyFormat =
+    NumberFormat.currency(locale: 'de_DE', symbol: BaseCurrencyProvider.symbol);
 
 int dateTimeToInt(DateTime dt) {
   return int.parse(DateFormat('yyyyMMdd').format(dt));
@@ -28,3 +32,14 @@ String dateTimeToString(DateTime dt) {
   return dateTimeToInt(dt).toString();
 }
 
+final percentFormat = NumberFormat.decimalPattern('de_DE')
+  ..minimumFractionDigits = 1
+  ..maximumFractionDigits = 1;
+
+String formatPercent(double value) {
+  return '${percentFormat.format(value * 100)} %';
+}
+
+String formatCurrency(double value) {
+  return _currencyFormat.format(value);
+}

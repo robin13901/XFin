@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/l10n/app_localizations.dart';
+import 'package:xfin/utils/format.dart';
 import 'package:xfin/utils/global_constants.dart';
 import 'package:xfin/widgets/dialogs.dart';
 import 'package:xfin/widgets/trade_form.dart';
@@ -68,10 +69,6 @@ class _TradesScreenState extends State<TradesScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final currencyFormat = NumberFormat.currency(locale: 'de_DE', symbol: '€');
-    final dateTimeFormatter = DateFormat('dd.MM.yyyy, HH:mm');
-    final pnlFormat =
-    NumberFormat.currency(locale: 'de_DE', symbol: '€', decimalDigits: 2);
     final formatter = NumberFormat.decimalPattern('de_DE');
     formatter.minimumFractionDigits = 2;
     formatter.maximumFractionDigits = 2;
@@ -111,12 +108,12 @@ class _TradesScreenState extends State<TradesScreen>
 
                   List<Text> subtitleWidgets = [
                     Text(
-                        '${l10n.datetime}: ${dateTimeFormatter.format(datetime)} Uhr'),
+                        '${l10n.datetime}: ${dateTimeFormat.format(datetime)} Uhr'),
                     Text(
-                        '${l10n.value}: ${currencyFormat.format(trade.targetAccountValueDelta.abs())}'),
-                    Text('${l10n.fee}: ${currencyFormat.format(trade.fee)}'),
+                        '${l10n.value}: ${formatCurrency(trade.targetAccountValueDelta.abs())}'),
+                    Text('${l10n.fee}: ${formatCurrency(trade.fee)}'),
                     if (trade.type == TradeTypes.sell)
-                      Text('${l10n.tax}: ${currencyFormat.format(trade.tax)}'),
+                      Text('${l10n.tax}: ${formatCurrency(trade.tax)}'),
                   ];
 
                   if (trade.type == TradeTypes.sell) {
@@ -129,7 +126,7 @@ class _TradesScreenState extends State<TradesScreen>
                           children: [
                             TextSpan(text: '${l10n.profitAndLoss}: '),
                             TextSpan(
-                              text: pnlFormat.format(trade.profitAndLoss),
+                              text: formatCurrency(trade.profitAndLoss),
                               style: TextStyle(color: pnlColor),
                             ),
                           ],
@@ -154,7 +151,7 @@ class _TradesScreenState extends State<TradesScreen>
 
                   return ListTile(
                     title: Text(
-                        '${trade.type.name.toUpperCase()} ${preciseDecimal(trade.shares)} ${asset.tickerSymbol} @ ${currencyFormat.format(trade.costBasis)}'),
+                        '${trade.type.name.toUpperCase()} ${preciseDecimal(trade.shares)} ${asset.tickerSymbol} @ ${formatCurrency(trade.costBasis)}'),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: subtitleWidgets,

@@ -1,7 +1,6 @@
 import 'dart:collection';
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:xfin/providers/theme_provider.dart';
@@ -13,14 +12,6 @@ double normalize(num value) {
 
   if (value.abs() < epsilon) return 0.0;
   return double.parse(value.toStringAsFixed(decimals));
-}
-
-final percentFormat = NumberFormat.decimalPattern('de_DE')
-  ..minimumFractionDigits = 1
-  ..maximumFractionDigits = 1;
-
-String formatPercent(double value) {
-  return '${percentFormat.format(value * 100)} %';
 }
 
 void showToast2(String msg) {

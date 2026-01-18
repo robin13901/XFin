@@ -6,6 +6,7 @@ import 'package:xfin/widgets/account_form.dart';
 
 import '../providers/base_currency_provider.dart';
 import '../providers/database_provider.dart';
+import '../utils/format.dart';
 import '../widgets/dialogs.dart';
 import '../widgets/liquid_glass_widgets.dart';
 
@@ -116,7 +117,7 @@ class AccountsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final db = context.read<DatabaseProvider>().db;
     final l10n = AppLocalizations.of(context)!;
-    final currencyProvider = Provider.of<BaseCurrencyProvider>(context);
+    Provider.of<BaseCurrencyProvider>(context);
 
     return Scaffold(
       body: Stack(
@@ -150,7 +151,7 @@ class AccountsScreen extends StatelessWidget {
                         return ListTile(
                           title: Text(account.name),
                           trailing: Text(
-                            currencyProvider.format.format(account.balance),
+                            formatCurrency(account.balance),
                             style: const TextStyle(
                               color: Colors.green,
                               fontSize: 16,
@@ -194,7 +195,7 @@ class AccountsScreen extends StatelessWidget {
                             return ListTile(
                               title: Text(account.name),
                               trailing: Text(
-                                currencyProvider.format.format(account.balance),
+                                formatCurrency(account.balance),
                                 style: TextStyle(
                                   color: account.balance < 0
                                       ? Colors.red
