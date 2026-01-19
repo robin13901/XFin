@@ -56,6 +56,13 @@ dev_dependencies:
   mockito: ^5.4.4
   mocktail: ^0.3.0
 
+  flutter_launcher_icons: ^0.14.4
+
 flutter:
   uses-material-design: true
   generate: true
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.png"
