@@ -1,4 +1,6 @@
-# xfin
+![xfin-logo-title](https://github.com/user-attachments/assets/c336e2e0-bf15-4978-a01b-e44445da4cf5)
+
+# XFin
 
 A personal finance tracker.
 
