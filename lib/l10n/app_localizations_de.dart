@@ -62,16 +62,20 @@ class AppLocalizationsDe extends AppLocalizations {
   String get noAssetsAddedYet => 'Noch keine Assets hinzugefügt';
 
   @override
-  String get cashInfo => 'TODO...';
+  String get cashInfo =>
+      'Nur FIAT Währungen können auf Bargeld Konten gebucht werden.';
 
   @override
-  String get bankAccountInfo => 'TODO...';
+  String get bankAccountInfo =>
+      'Nur die Basiswährung kann auf Bankkonten gebucht werden.';
 
   @override
-  String get portfolioInfo => 'TODO...';
+  String get portfolioInfo =>
+      'Alle Asset Typen können auf Portfolio Konten gebucht werden.';
 
   @override
-  String get cryptoWalletInfo => 'TODO...';
+  String get cryptoWalletInfo =>
+      'Nur Krypto Assets kann auf Krypto Wallets gebucht werden.';
 
   @override
   String get assetAlreadyAdded => 'Asset bereits hinzugefügt';

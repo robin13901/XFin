@@ -71,10 +71,15 @@ Future<void> showDeleteDialog(
 
 void showErrorDialog(BuildContext context, String content) {
   final l10n = AppLocalizations.of(context)!;
+  showInfoDialog(context, l10n.error, content);
+}
+
+void showInfoDialog(BuildContext context, String title, String content) {
+  final l10n = AppLocalizations.of(context)!;
   showDialog(
     context: context,
     builder: (context) => AlertDialog(
-      title: Text(l10n.error),
+      title: Text(title),
       content: Text(content),
       actions: [
         TextButton(

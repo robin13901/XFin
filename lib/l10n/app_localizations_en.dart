@@ -62,16 +62,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noAssetsAddedYet => 'No assets added yet';
 
   @override
-  String get cashInfo => 'TODO...';
+  String get cashInfo =>
+      'Only FIAT currencies can be credited to cash accounts.';
 
   @override
-  String get bankAccountInfo => 'TODO...';
+  String get bankAccountInfo =>
+      'Only the base currency can be credited to bank accounts.';
 
   @override
-  String get portfolioInfo => 'TODO...';
+  String get portfolioInfo =>
+      'All asset types can be credited to portfolio accounts.';
 
   @override
-  String get cryptoWalletInfo => 'TODO...';
+  String get cryptoWalletInfo =>
+      'Only crypto assets can be credited to crypto wallets.';
 
   @override
   String get assetAlreadyAdded => 'Asset already added';

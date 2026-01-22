@@ -203,25 +203,25 @@ abstract class AppLocalizations {
   /// No description provided for @cashInfo.
   ///
   /// In en, this message translates to:
-  /// **'TODO...'**
+  /// **'Only FIAT currencies can be credited to cash accounts.'**
   String get cashInfo;
 
   /// No description provided for @bankAccountInfo.
   ///
   /// In en, this message translates to:
-  /// **'TODO...'**
+  /// **'Only the base currency can be credited to bank accounts.'**
   String get bankAccountInfo;
 
   /// No description provided for @portfolioInfo.
   ///
   /// In en, this message translates to:
-  /// **'TODO...'**
+  /// **'All asset types can be credited to portfolio accounts.'**
   String get portfolioInfo;
 
   /// No description provided for @cryptoWalletInfo.
   ///
   /// In en, this message translates to:
-  /// **'TODO...'**
+  /// **'Only crypto assets can be credited to crypto wallets.'**
   String get cryptoWalletInfo;
 
   /// No description provided for @assetAlreadyAdded.

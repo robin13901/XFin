@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:xfin/providers/theme_provider.dart';
 
+Stopwatch stopwatch = Stopwatch();
 
 double normalize(num value) {
   const int decimals = 12; // globally consistent, high precision

@@ -10,6 +10,7 @@ import 'package:xfin/utils/format.dart';
 import 'package:xfin/widgets/reusables.dart';
 import '../providers/database_provider.dart';
 import '../utils/validators.dart';
+import 'dialogs.dart';
 
 class AccountForm extends StatefulWidget {
   const AccountForm({super.key});
@@ -144,12 +145,6 @@ class _AccountFormState extends State<AccountForm> {
 
   Future<void> _saveForm() async {
     final db = _db;
-
-    // AppLocalizations l10n = AppLocalizations.of(context)!;
-    // await _db.accountsDao.insertAccountsFromCsv(AccountsDao.accountsCsv2);
-    // await _db.accountsDao.insertAllEventsFromCsv(l10n);
-    // return;
-
     final name = _nameController.text.trim();
 
     AccountsCompanion account = AccountsCompanion(
@@ -188,22 +183,6 @@ class _AccountFormState extends State<AccountForm> {
       case AccountTypes.cryptoWallet:
         return l10n.cryptoWalletInfo;
     }
-  }
-
-  void _showTypeInfoDialog(AppLocalizations l10n) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(_getAccountTypeName(l10n, _type)),
-        content: Text(_getAccountTypeInfo(l10n, _type)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(l10n.ok),
-          ),
-        ],
-      ),
-    );
   }
 
   List<Asset> _filterAssetsForType(List<Asset> allAssets) {
@@ -331,7 +310,7 @@ class _AccountFormState extends State<AccountForm> {
               ),
               IconButton(
                 icon: const Icon(Icons.info_outline, size: 20),
-                onPressed: () => _showTypeInfoDialog(l10n),
+                onPressed: () => showInfoDialog(context, _getAccountTypeName(l10n, _type), _getAccountTypeInfo(l10n, _type)),
                 tooltip: l10n.info,
               ),
             ],
@@ -377,7 +356,7 @@ class _AccountFormState extends State<AccountForm> {
             ),
             IconButton(
               icon: const Icon(Icons.info_outline, size: 20),
-              onPressed: () => _showTypeInfoDialog(l10n),
+              onPressed: () => showInfoDialog(context, _getAccountTypeName(l10n, _type), _getAccountTypeInfo(l10n, _type)),
               tooltip: l10n.info,
             ),
           ],
