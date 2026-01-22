@@ -16,15 +16,7 @@ double normalize(num value) {
 }
 
 void showToast2(String msg) {
-  final mode = ThemeProvider.instance.themeMode;
-
-  final isDark = switch (mode) {
-    ThemeMode.dark => true,
-    ThemeMode.light => false,
-    ThemeMode.system =>
-      WidgetsBinding.instance.platformDispatcher.platformBrightness ==
-          Brightness.dark,
-  };
+  final isDark = ThemeProvider.isDark();
 
   Fluttertoast.showToast(
     msg: msg,

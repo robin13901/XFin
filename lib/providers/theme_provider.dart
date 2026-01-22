@@ -25,4 +25,14 @@ class ThemeProvider with ChangeNotifier {
     await prefs.setString(_themeKey, mode.name);
     notifyListeners();
   }
+
+  static bool isDark() {
+    return switch (instance.themeMode) {
+      ThemeMode.dark => true,
+      ThemeMode.light => false,
+      ThemeMode.system =>
+      WidgetsBinding.instance.platformDispatcher.platformBrightness ==
+          Brightness.dark,
+    };
+  }
 }

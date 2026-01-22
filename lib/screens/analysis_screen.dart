@@ -7,6 +7,7 @@ import 'dart:math';
 import '../app_theme.dart';
 import '../database/app_database.dart';
 import '../providers/database_provider.dart';
+import '../providers/theme_provider.dart';
 import '../utils/format.dart';
 import '../utils/indicator_calculator.dart';
 
@@ -162,6 +163,8 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             return const Center(child: Text('No data available.'));
           }
 
+          final isDark = ThemeProvider.isDark();
+
           final analysisData = snapshot.data!;
           final allData = analysisData.balanceHistory;
           final sumOfInitialBalances = analysisData.sumOfInitialBalances;
@@ -249,7 +252,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             LineChartBarData(
               spots: currentData,
               barWidth: 3,
-              color: Colors.white,
+              color: isDark ? Colors.white : Colors.black,
               dotData: const FlDotData(show: false),
             ),
           ];
@@ -359,7 +362,6 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                                     ? Theme.of(context)
                                         .colorScheme
                                         .secondary
-                                        .withValues(alpha: 0.25)
                                     : Colors.transparent,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(
@@ -372,7 +374,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                                 range,
                                 style: TextStyle(
                                   color: _selectedRange == range
-                                      ? Theme.of(context).colorScheme.secondary
+                                      ? isDark ? Colors.black : Colors.white
                                       : Theme.of(context)
                                           .textTheme
                                           .bodyLarge
@@ -528,7 +530,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                                     getTooltipItems: (touchedBarSpots) =>
                                         touchedBarSpots
                                             .map((barSpot) => LineTooltipItem(
-                                            formatCurrency(barSpot.y),
+                                                formatCurrency(barSpot.y),
                                                 const TextStyle(
                                                     color: Colors.white)))
                                             .toList(),
@@ -557,7 +559,9 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                                   style: TextStyle(
                                       color: _showSma
                                           ? Colors.orange
-                                          : Colors.white))
+                                          : isDark
+                                              ? Colors.white
+                                              : Colors.black))
                             ]),
                             Row(children: [
                               Checkbox(
@@ -569,7 +573,9 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                                   style: TextStyle(
                                       color: _showEma
                                           ? Colors.purple
-                                          : Colors.white))
+                                          : isDark
+                                              ? Colors.white
+                                              : Colors.black))
                             ]),
                             Row(children: [
                               Checkbox(
@@ -579,8 +585,11 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                                       setState(() => _showBb = value!)),
                               Text('20-BB',
                                   style: TextStyle(
-                                      color:
-                                          _showBb ? Colors.blue : Colors.white))
+                                      color: _showBb
+                                          ? Colors.blue
+                                          : isDark
+                                              ? Colors.white
+                                              : Colors.black))
                             ]),
                           ],
                         ),
@@ -633,10 +642,8 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
         const SizedBox(height: 8),
         const Divider(color: Colors.grey),
         const SizedBox(height: 8),
-        _buildSummaryRow(
-            'Ø Monatliche Einnahmen:',
-            analysisData.averageMonthlyInflows,
-            AppColors.green),
+        _buildSummaryRow('Ø Monatliche Einnahmen:',
+            analysisData.averageMonthlyInflows, AppColors.green),
         _buildSummaryRow('Ø Monatliche Ausgaben:',
             analysisData.averageMonthlyOutflows, AppColors.red),
         _buildSummaryRow(
@@ -780,14 +787,15 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
         aggregatedOtherAmount += entry.value;
         hasOther = true;
       } else {
-        categoryWidgets.add(_buildCategoryRow(entry.key, entry.value, percentage));
+        categoryWidgets
+            .add(_buildCategoryRow(entry.key, entry.value, percentage));
       }
     }
 
     if (hasOther) {
       final otherPercentage = (aggregatedOtherAmount.abs() / totalAmount) * 100;
-      categoryWidgets.add(_buildCategoryRow(
-          '...', aggregatedOtherAmount, otherPercentage));
+      categoryWidgets.add(
+          _buildCategoryRow('...', aggregatedOtherAmount, otherPercentage));
     }
 
     if (hasOther && !_showAllCategories) {

@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 
-const liquidGlassSettings = LiquidGlassSettings(
+import '../providers/theme_provider.dart';
+
+final liquidGlassSettings = LiquidGlassSettings(
   thickness: 30,
   blur: 1.4,
-  glassColor: Color(0x33000000),
+  glassColor: ThemeProvider.isDark() ? const Color(0x33000000) : const Color(0x33777777),
 );
+
+const x = Color(0x33777777);
 
 class LiquidGlassBottomNav extends StatelessWidget {
   final List<IconData> icons;
@@ -23,7 +27,6 @@ class LiquidGlassBottomNav extends StatelessWidget {
   /// equals circleSize so the center pill and circular buttons match.
   final double height;
   final double horizontalPadding;
-  final LiquidGlassSettings settings;
 
   const LiquidGlassBottomNav({
     super.key,
@@ -38,7 +41,6 @@ class LiquidGlassBottomNav extends StatelessWidget {
     this.onRightTap,
     this.height = 56.0, // default matches circleSize below
     this.horizontalPadding = 16.0,
-    this.settings = liquidGlassSettings,
   }) : assert(icons.length == labels.length,
             'icons and labels must be same length');
 
@@ -76,7 +78,7 @@ class LiquidGlassBottomNav extends StatelessWidget {
                     size: circleSize,
                     onTap: onLeftTap!,
                     key: const Key('fab'),
-                    settings: settings,
+                    settings: liquidGlassSettings,
                   ),
                 ),
               // Center pill (LiquidGlass single superellipse)
@@ -85,7 +87,7 @@ class LiquidGlassBottomNav extends StatelessWidget {
                 child: SizedBox(
                   height: navHeight,
                   child: LiquidGlassLayer(
-                    settings: settings,
+                    settings: liquidGlassSettings,
                     child: LiquidGlass.grouped(
                       shape: const LiquidRoundedSuperellipse(
                           borderRadius: circleSize / 2),
@@ -171,7 +173,7 @@ class LiquidGlassBottomNav extends StatelessWidget {
                       Icon(rightIcon, size: 26, color: theme.iconTheme.color),
                   size: circleSize,
                   onTap: onRightTap,
-                  settings: settings,
+                  settings: liquidGlassSettings,
                 ),
               ),
             ],
@@ -187,8 +189,8 @@ class LiquidGlassBottomNav extends StatelessWidget {
     required bool isSelected,
     required ThemeData theme,
   }) {
-    const Color selectedColor = Colors.white;
-    const Color unselectedColor = Colors.grey;
+    final Color selectedColor = ThemeProvider.isDark() ? Colors.white : Colors.black;
+    final Color unselectedColor = ThemeProvider.isDark() ? Colors.grey : Colors.black54;
     // theme.iconTheme.color?.withValues(alpha: 0.85) ?? Colors.white70;
 
     return Column(
@@ -337,7 +339,6 @@ Future<void> showLiquidGlassPanel({
   required List<GlassMenuItem> items,
   double widthFraction = 0.65, // fraction of screen width
   double maxHeightFraction = 0.7,
-  LiquidGlassSettings settings = liquidGlassSettings,
 }) async {
   final overlay = Overlay.of(context);
 
@@ -361,7 +362,7 @@ Future<void> showLiquidGlassPanel({
                 width: width,
                 // height adapt to content
                 child: LiquidGlassLayer(
-                  settings: settings,
+                  settings: liquidGlassSettings,
                   child: LiquidGlass.grouped(
                     shape: const LiquidRoundedSuperellipse(borderRadius: 28),
                     child: Container(
