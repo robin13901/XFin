@@ -3,9 +3,31 @@ import 'dart:collection';
 import 'package:flutter/material.dart';
 
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:xfin/providers/theme_provider.dart';
 
 Stopwatch stopwatch = Stopwatch();
+
+// Values from Shared Preferences
+int filterStartDate = 0;
+int filterEndDate = 99999999;
+bool isBaseCurrencySelected = false;
+String? baseCurrencyTickerSymbol;
+
+class PrefKeys {
+  static const String filterStartDate = 'filterStartDate'; // stored as yyyyMMdd or "0"
+  static const String filterEndDate = 'filterEndDate'; // stored as yyyyMMdd or "99999999"
+  static const String isBaseCurrencySelected = 'isBaseCurrencySelected';
+  static const String baseCurrencyTickerSymbol = 'baseCurrencyTickerSymbol';
+}
+
+Future<void> loadPrefs() async {
+  final prefs = await SharedPreferences.getInstance();
+  filterStartDate = prefs.getInt(PrefKeys.filterStartDate) ?? 0;
+  filterEndDate = prefs.getInt(PrefKeys.filterEndDate) ?? 99999999;
+  isBaseCurrencySelected = prefs.getBool(PrefKeys.isBaseCurrencySelected) ?? false;
+  baseCurrencyTickerSymbol = prefs.getString(PrefKeys.baseCurrencyTickerSymbol);
+}
 
 double normalize(num value) {
   const int decimals = 12; // globally consistent, high precision

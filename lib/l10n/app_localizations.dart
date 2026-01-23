@@ -938,6 +938,36 @@ abstract class AppLocalizations {
   /// **'Database replaced but reopen failed.'**
   String get databaseReplacedButReopenFailed;
 
+  /// No description provided for @startDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Date'**
+  String get startDate;
+
+  /// No description provided for @endDate.
+  ///
+  /// In en, this message translates to:
+  /// **'End Date'**
+  String get endDate;
+
+  /// No description provided for @sinceStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Since Start'**
+  String get sinceStart;
+
+  /// No description provided for @today.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get today;
+
+  /// No description provided for @pickDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick Date'**
+  String get pickDate;
+
   /// No description provided for @delete.
   ///
   /// In en, this message translates to:

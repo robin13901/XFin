@@ -453,6 +453,21 @@ class AppLocalizationsEn extends AppLocalizations {
       'Database replaced but reopen failed.';
 
   @override
+  String get startDate => 'Start Date';
+
+  @override
+  String get endDate => 'End Date';
+
+  @override
+  String get sinceStart => 'Since Start';
+
+  @override
+  String get today => 'Today';
+
+  @override
+  String get pickDate => 'Pick Date';
+
+  @override
   String get delete => 'Delete';
 
   @override

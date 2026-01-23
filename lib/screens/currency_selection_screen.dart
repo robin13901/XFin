@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
+import 'package:xfin/utils/global_constants.dart';
 
 import '../database/app_database.dart';
 import '../providers/base_currency_provider.dart';
@@ -23,10 +24,10 @@ class _CurrencySelectionScreenState extends State<CurrencySelectionScreen> {
   final List<String> _availableCurrencies = ['EUR', 'USD', 'GBP', 'JPY'];
   final List<String> _currencySymbols = ['€', '\$', '£', '¥'];
 
-  Future<void> _saveCurrency(String currency) async {
+  Future<void> _saveCurrency(String tickerSymbol) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('selected_currency', currency);
-    await prefs.setBool('currency_selected', true);
+    await prefs.setString(PrefKeys.baseCurrencyTickerSymbol, tickerSymbol);
+    await prefs.setBool(PrefKeys.isBaseCurrencySelected, true);
   }
 
   void _onCurrencySelected(String currency) {

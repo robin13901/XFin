@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:oktoast/oktoast.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:xfin/app_theme.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/connection/connection.dart' as connection;
@@ -16,6 +15,7 @@ import 'package:xfin/screens/bookings_screen.dart';
 import 'package:xfin/screens/currency_selection_screen.dart'; // Import the new screen
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:xfin/utils/global_constants.dart';
 import 'package:xfin/widgets/liquid_glass_widgets.dart';
 import 'package:xfin/widgets/more_pane.dart';
 
@@ -37,8 +37,7 @@ void main() async {
   final currencyProvider = BaseCurrencyProvider();
   await currencyProvider.initialize(languageProvider.appLocale);
 
-  final prefs = await SharedPreferences.getInstance();
-  final bool currencySelected = prefs.getBool('currency_selected') ?? false;
+  await loadPrefs();
 
   runApp(
     MultiProvider(
@@ -47,10 +46,9 @@ void main() async {
         ChangeNotifierProvider.value(value: ThemeProvider.instance),
         ChangeNotifierProvider.value(value: languageProvider),
         ChangeNotifierProvider.value(value: currencyProvider),
-        // Add CurrencyProvider
       ],
       child: MyApp(
-          initialRoute: currencySelected ? '/main' : '/currencySelection'),
+          initialRoute: isBaseCurrencySelected ? '/main' : '/currencySelection'),
     ),
   );
 }

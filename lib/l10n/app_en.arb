@@ -148,6 +148,12 @@
   "databaseReplacedSuccessfully" : "Database replaced successfully.",
   "databaseReplacedButReopenFailed" : "Database replaced but reopen failed.",
 
+  "startDate": "Start Date",
+  "endDate": "End Date",
+  "sinceStart": "Since Start",
+  "today": "Today",
+  "pickDate": "Pick Date",
+
   "delete": "Delete",
   "deleteAccount": "Delete Account",
   "deleteAsset": "Delete Asset",

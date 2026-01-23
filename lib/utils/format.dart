@@ -21,7 +21,8 @@ DateTime? intToDateTime(int i) {
   } else if (s.length == 14) {
     return DateTime.parse(
       '${s.substring(0, 4)}-${s.substring(4, 6)}-${s.substring(6, 8)}'
-      'T${s.substring(8, 10)}:${s.substring(10, 12)}:${s.substring(12, 14)}',
+          'T${s.substring(8, 10)}:${s.substring(10, 12)}:${s.substring(
+          12, 14)}',
     );
   } else {
     return null;

@@ -148,6 +148,12 @@
   "databaseReplacedSuccessfully" : "Datenbank erfolgreich ersetzt.",
   "databaseReplacedButReopenFailed" : "Datenbank ersetzt, aber Öffnen fehlgeschlagen.",
 
+  "startDate": "Startdatum",
+  "endDate": "Enddatum",
+  "sinceStart": "Seit Beginn",
+  "today": "Heute",
+  "pickDate": "Datum wählen",
+
   "delete": "Löschen",
   "deleteAccount": "Konto löschen",
   "deleteAsset": "Asset löschen",

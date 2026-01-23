@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
+import 'package:xfin/utils/global_constants.dart';
 
 
 class BaseCurrencyProvider with ChangeNotifier {
@@ -12,8 +12,7 @@ class BaseCurrencyProvider with ChangeNotifier {
   int get assetId => _assetId;
 
   Future<void> initialize(Locale locale) async {
-    final prefs = await SharedPreferences.getInstance();
-    _tickerSymbol = prefs.getString('selected_currency');
+    _tickerSymbol = baseCurrencyTickerSymbol;
     if (_tickerSymbol != null) {
       final format = NumberFormat.simpleCurrency(name: _tickerSymbol);
       symbol = format.currencySymbol;

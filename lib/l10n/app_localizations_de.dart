@@ -456,6 +456,21 @@ class AppLocalizationsDe extends AppLocalizations {
       'Datenbank ersetzt, aber Öffnen fehlgeschlagen.';
 
   @override
+  String get startDate => 'Startdatum';
+
+  @override
+  String get endDate => 'Enddatum';
+
+  @override
+  String get sinceStart => 'Seit Beginn';
+
+  @override
+  String get today => 'Heute';
+
+  @override
+  String get pickDate => 'Datum wählen';
+
+  @override
   String get delete => 'Löschen';
 
   @override

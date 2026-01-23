@@ -1,6 +1,8 @@
 import 'package:drift/drift.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:xfin/utils/format.dart';
+import 'package:xfin/utils/global_constants.dart';
 import '../app_database.dart';
 import '../tables.dart';
 
@@ -20,15 +22,6 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
     with _$AnalysisDaoMixin {
   AnalysisDao(super.db);
 
-  // Private Helpers
-  DateTime _parseDate(int dateInt) {
-    final dateString = dateInt.toString();
-    final year = int.parse(dateString.substring(0, 4));
-    final month = int.parse(dateString.substring(4, 6));
-    final day = int.parse(dateString.substring(6, 8));
-    return DateTime(year, month, day);
-  }
-
   (int, int) _getMonthStartEnd(DateTime date) {
     final startOfMonth = date.year * 10000 + date.month * 100 + 1;
     final lastDayOfMonth = DateTime(date.year, date.month + 1, 0);
@@ -40,19 +33,19 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
 
   Future<int> _getDaysInTimeFrame() async {
     final prefs = await SharedPreferences.getInstance();
-    final int? startOfTimeFrameInt = prefs.getInt('startOfTimeFrame');
-    final int? endOfTimeFrameInt = prefs.getInt('endOfTimeFrame');
+    final int startOfTimeFrameInt = prefs.getInt(PrefKeys.filterStartDate) ?? 0;
+    final int endOfTimeFrameInt = prefs.getInt(PrefKeys.filterEndDate) ?? 99999999;
 
-    DateTime effectiveEndDate;
-    if (endOfTimeFrameInt == null) {
+    DateTime? effectiveEndDate;
+    if (endOfTimeFrameInt == 99999999) {
       final now = DateTime.now();
       effectiveEndDate = DateTime(now.year, now.month, now.day);
     } else {
-      effectiveEndDate = _parseDate(endOfTimeFrameInt);
+      effectiveEndDate = intToDateTime(endOfTimeFrameInt);
     }
 
-    DateTime effectiveStartDate;
-    if (startOfTimeFrameInt == null) {
+    DateTime? effectiveStartDate;
+    if (startOfTimeFrameInt == 0) {
       List<int> allMinDates = [];
       final minBookingDate = await (selectOnly(bookings)
             ..addColumns([bookings.date.min()]))
@@ -74,13 +67,13 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
         effectiveStartDate = effectiveEndDate;
       } else {
         allMinDates.sort();
-        effectiveStartDate = _parseDate(allMinDates.first);
+        effectiveStartDate = intToDateTime(allMinDates.first);
       }
     } else {
-      effectiveStartDate = _parseDate(startOfTimeFrameInt);
+      effectiveStartDate = intToDateTime(startOfTimeFrameInt);
     }
 
-    return effectiveEndDate.difference(effectiveStartDate).inDays + 1;
+    return effectiveEndDate!.difference(effectiveStartDate!).inDays + 1;
   }
 
   Future<double> _getMonthsInTimeFrame() async {
@@ -113,8 +106,7 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
         .getSingle();
   }
 
-  Future<double> getFeesForMonth(
-      int startOfMonth, int endOfMonth) async {
+  Future<double> getFeesForMonth(int startOfMonth, int endOfMonth) async {
     return (selectOnly(trades)
           ..addColumns([trades.fee.sum()])
           ..where(trades.datetime
@@ -135,7 +127,9 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
   Future<double> getTotalPositivePnL() async {
     return (selectOnly(trades)
           ..addColumns([trades.profitAndLoss.sum()])
-          ..where(trades.profitAndLoss.isBiggerThanValue(0)))
+          ..where(trades.profitAndLoss.isBiggerThanValue(0) &
+              trades.datetime.isBetweenValues(
+                  filterStartDate * 1000000, filterEndDate * 1000000)))
         .map((row) => row.read(trades.profitAndLoss.sum()) ?? 0.0)
         .getSingle();
   }
@@ -143,19 +137,27 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
   Future<double> getTotalNegativePnL() async {
     return (selectOnly(trades)
           ..addColumns([trades.profitAndLoss.sum()])
-          ..where(trades.profitAndLoss.isSmallerThanValue(0)))
+          ..where(trades.profitAndLoss.isSmallerThanValue(0) &
+              trades.datetime.isBetweenValues(
+                  filterStartDate * 1000000, filterEndDate * 1000000)))
         .map((row) => row.read(trades.profitAndLoss.sum()) ?? 0.0)
         .getSingle();
   }
 
   Future<double> getTotalFees() async {
-    return (selectOnly(trades)..addColumns([trades.fee.sum()]))
+    return (selectOnly(trades)
+          ..addColumns([trades.fee.sum()])
+          ..where(trades.datetime.isBetweenValues(
+              filterStartDate * 1000000, filterEndDate * 1000000)))
         .map((row) => row.read(trades.fee.sum()) ?? 0.0)
         .getSingle();
   }
 
   Future<double> getTotalTax() async {
-    return (selectOnly(trades)..addColumns([trades.tax.sum()]))
+    return (selectOnly(trades)
+          ..addColumns([trades.tax.sum()])
+          ..where(trades.datetime.isBetweenValues(
+              filterStartDate * 1000000, filterEndDate * 1000000)))
         .map((row) => row.read(trades.tax.sum()) ?? 0.0)
         .getSingle();
   }
@@ -210,9 +212,8 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
         .map((row) => row.read(bookings.value.sum()) ?? 0.0)
         .getSingle();
 
-    final tradeResultExpression = trades.profitAndLoss.sum() -
-        trades.fee.sum() -
-        trades.tax.sum();
+    final tradeResultExpression =
+        trades.profitAndLoss.sum() - trades.fee.sum() - trades.tax.sum();
 
     final tradeFuture = (selectOnly(trades)
           ..addColumns([tradeResultExpression])
@@ -307,15 +308,16 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
           ..addColumns([bookings.value.sum()])
           ..where(bookings.value.isBiggerThanValue(0) &
               bookings.isGenerated.equals(false) &
-              bookings.excludeFromAverage.equals(false)))
+              bookings.excludeFromAverage.equals(false) &
+              bookings.date.isBetweenValues(filterStartDate, filterEndDate)))
         .map((row) => row.read(bookings.value.sum()) ?? 0.0)
         .getSingle();
 
     final periodicBookingsFuture = (select(periodicBookings)
           ..where((pb) => pb.shares.isBiggerThanValue(0)))
         .get()
-        .then((rows) => rows.fold<double>(0.0,
-            (acc, row) => acc + (row.value * row.monthlyAverageFactor)));
+        .then((rows) => rows.fold<double>(
+            0.0, (acc, row) => acc + (row.value * row.monthlyAverageFactor)));
 
     final positivePnLFuture = getTotalPositivePnL();
 
@@ -335,15 +337,16 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
           ..addColumns([bookings.value.sum()])
           ..where(bookings.value.isSmallerThanValue(0) &
               bookings.isGenerated.equals(false) &
-              bookings.excludeFromAverage.equals(false)))
+              bookings.excludeFromAverage.equals(false) &
+              bookings.date.isBetweenValues(filterStartDate, filterEndDate)))
         .map((row) => row.read(bookings.value.sum()) ?? 0.0)
         .getSingle();
 
     final periodicBookingsFuture = (select(periodicBookings)
           ..where((pb) => pb.shares.isSmallerThanValue(0)))
         .get()
-        .then((rows) => rows.fold<double>(0.0,
-            (acc, row) => acc + (row.value * row.monthlyAverageFactor)));
+        .then((rows) => rows.fold<double>(
+            0.0, (acc, row) => acc + (row.value * row.monthlyAverageFactor)));
 
     final negativePnLFuture = getTotalNegativePnL();
     final tradingFeesFuture = getTotalFees();
@@ -366,17 +369,17 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
     final bookingsFuture = (selectOnly(bookings)
           ..addColumns([bookings.value.sum()])
           ..where(bookings.isGenerated.equals(false) &
-              bookings.excludeFromAverage.equals(false)))
+              bookings.excludeFromAverage.equals(false) &
+              bookings.date.isBetweenValues(filterStartDate, filterEndDate)))
         .map((row) => row.read(bookings.value.sum()) ?? 0.0)
         .getSingle();
 
-    final periodicBookingsFuture = (select(periodicBookings)).get().then((rows) =>
-        rows.fold<double>(0.0,
-            (acc, row) => acc + (row.value * row.monthlyAverageFactor)));
+    final periodicBookingsFuture = (select(periodicBookings)).get().then(
+        (rows) => rows.fold<double>(
+            0.0, (acc, row) => acc + (row.value * row.monthlyAverageFactor)));
 
-    final tradeResultExpression = trades.profitAndLoss.sum() -
-        trades.fee.sum() -
-        trades.tax.sum();
+    final tradeResultExpression =
+        trades.profitAndLoss.sum() - trades.fee.sum() - trades.tax.sum();
 
     final tradesFuture = (selectOnly(trades)
           ..addColumns([tradeResultExpression]))
@@ -390,7 +393,8 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
     final tradesTotal = await tradesFuture;
     final monthsInTimeFrame = await monthsInTimeFrameFuture;
 
-    return (bookingsTotal + tradesTotal) / monthsInTimeFrame + periodicBookingsTotal;
+    return (bookingsTotal + tradesTotal) / monthsInTimeFrame +
+        periodicBookingsTotal;
   }
 
   Future<Map<String, double>> getMonthlyCategoryInflows() async {
@@ -398,7 +402,8 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
           ..addColumns([bookings.category, bookings.value.sum()])
           ..where(bookings.value.isBiggerThanValue(0) &
               bookings.isGenerated.equals(false) &
-              bookings.excludeFromAverage.equals(false))
+              bookings.excludeFromAverage.equals(false) &
+              bookings.date.isBetweenValues(filterStartDate, filterEndDate))
           ..groupBy([bookings.category]))
         .map((row) => {
               'category': row.read(bookings.category),
@@ -407,17 +412,17 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
         .get();
 
     final periodicBookingsFuture = (selectOnly(periodicBookings)
-      ..addColumns([
-        periodicBookings.category,
-        periodicBookings.value * periodicBookings.monthlyAverageFactor,
-      ])
-      ..where(periodicBookings.value.isBiggerThanValue(0)))
+          ..addColumns([
+            periodicBookings.category,
+            periodicBookings.value * periodicBookings.monthlyAverageFactor,
+          ])
+          ..where(periodicBookings.value.isBiggerThanValue(0)))
         .map((row) => {
-      'category': row.read(bookings.category),
-      'amount': row.read(periodicBookings.value *
-          periodicBookings.monthlyAverageFactor) ??
-          0.0,
-    })
+              'category': row.read(bookings.category),
+              'amount': row.read(periodicBookings.value *
+                      periodicBookings.monthlyAverageFactor) ??
+                  0.0,
+            })
         .get();
 
     final positivePnLFuture = getTotalPositivePnL();
@@ -450,7 +455,8 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
           ..addColumns([bookings.category, bookings.value.sum()])
           ..where(bookings.value.isSmallerThanValue(0) &
               bookings.isGenerated.equals(false) &
-              bookings.excludeFromAverage.equals(false))
+              bookings.excludeFromAverage.equals(false) &
+              bookings.date.isBetweenValues(filterStartDate, filterEndDate))
           ..groupBy([bookings.category]))
         .map((row) => {
               'category': row.read(bookings.category),
@@ -518,12 +524,12 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
     final Map<DateTime, double> dailyDeltas = {};
 
     for (final booking in allBookings) {
-      final date = _parseDate(booking.date);
+      final date = intToDateTime(booking.date)!;
       dailyDeltas[date] = (dailyDeltas[date] ?? 0) + booking.value;
     }
 
     for (final trade in allTrades) {
-      final date = _parseDate(trade.datetime);
+      final date = intToDateTime(trade.datetime ~/ 1000000)!;
       dailyDeltas[date] = (dailyDeltas[date] ?? 0) +
           trade.sourceAccountValueDelta +
           trade.targetAccountValueDelta;

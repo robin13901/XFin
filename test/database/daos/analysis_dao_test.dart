@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/daos/analysis_dao.dart';
 import 'package:xfin/database/tables.dart';
+import 'package:xfin/utils/global_constants.dart';
 
 DateTime _parseDateInt(int dateInt) {
   final s = dateInt.toString();
@@ -282,7 +283,7 @@ void main() {
     setUp(() async {
       // Use a simple time frame (whole January) so monthsInTimeFrame ~= 31/30.436875
       SharedPreferences.setMockInitialValues(
-          {'startOfTimeFrame': 20240101, 'endOfTimeFrame': 20240131});
+          {PrefKeys.filterStartDate: 20240101, PrefKeys.filterEndDate: 20240131});
 
       // Insert account and asset
       await db.into(db.accounts).insert(AccountsCompanion.insert(
@@ -349,6 +350,8 @@ void main() {
 
     test('getMonthlyInflows computes average correctly', () async {
       // Compute months from prefs rather than calling private DAO helper
+      filterStartDate = 20240101;
+      filterEndDate = 20240131;
       final months = _monthsBetweenInts(20240101, 20240131);
       const bookingsTotal = 200.0; // only the 200 booking included
       const positivePnL = 120.0; // total positive PnL
@@ -431,7 +434,7 @@ void main() {
               await db.into(db.assets).insert(AssetsCompanion.insert(
                   name: 'AST_BAL', type: AssetTypes.stock, tickerSymbol: 'ABAL'));
               await db.into(db.trades).insert(TradesCompanion.insert(
-                datetime: 20250102,
+                datetime: 20250102000000,
                 assetId: 5,
                 type: TradeTypes.buy,
                 sourceAccountValueDelta: -5.0,

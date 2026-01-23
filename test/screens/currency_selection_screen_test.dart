@@ -15,6 +15,7 @@ import 'package:xfin/database/app_database.dart';
 import 'package:xfin/providers/base_currency_provider.dart';
 import 'package:xfin/providers/language_provider.dart';
 import 'package:xfin/l10n/app_localizations.dart';
+import 'package:xfin/utils/global_constants.dart';
 
 // ---- Mocks ----
 class MockAppDatabase extends Mock implements AppDatabase {}
@@ -184,8 +185,8 @@ void main() {
 
       // Verify SharedPreferences were written
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('selected_currency'), 'USD');
-      expect(prefs.getBool('currency_selected'), isTrue);
+      expect(prefs.getString(PrefKeys.baseCurrencyTickerSymbol), 'USD');
+      expect(prefs.getBool(PrefKeys.isBaseCurrencySelected), isTrue);
 
       // Verify that the database DAO addAsset was called once
       verify(() => mockAssetsDao.insert(any())).called(1);
