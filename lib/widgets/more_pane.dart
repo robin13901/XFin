@@ -3,6 +3,7 @@ import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/screens/settings_screen.dart';
 import 'package:xfin/screens/assets_screen.dart';
+import 'package:xfin/screens/standing_orders_screen.dart';
 import 'package:xfin/screens/trades_screen.dart';
 import 'package:xfin/screens/transfers_screen.dart';
 
@@ -36,6 +37,12 @@ Future<void> showMorePane({
 
   // Build pane items (icon over text)
   final paneItems = <_PaneItem>[
+    _PaneItem(
+      label: l10n.standingOrders,
+      icon: Icons.refresh,
+      onTap: () => Navigator.of(context)
+          .push(_noAnimRoute(const StandingOrdersScreen())),
+    ),
     _PaneItem(
       label: l10n.settings,
       icon: Icons.settings,

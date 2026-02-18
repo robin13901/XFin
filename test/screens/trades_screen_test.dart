@@ -40,7 +40,8 @@ void main() {
     await tester.pumpWidget(
       MultiProvider(
         providers: [
-          ChangeNotifierProvider<DatabaseProvider>.value(value: DatabaseProvider.instance),
+          ChangeNotifierProvider<DatabaseProvider>.value(
+              value: DatabaseProvider.instance),
           ChangeNotifierProvider<BaseCurrencyProvider>.value(
               value: currencyProvider),
         ],
@@ -97,22 +98,6 @@ void main() {
 
             expect(find.text(l10n.noTrades), findsOneWidget);
             expect(find.byType(ListView), findsNothing);
-
-            await tester.pumpWidget(Container());
-          }));
-
-  testWidgets(
-      'tapping FAB opens TradeForm for new trade',
-      (tester) => tester.runAsync(() async {
-            await pumpWidget(tester);
-            await tester.pumpAndSettle();
-
-            await tester.tap(find.byIcon(Icons.add));
-            await tester.pumpAndSettle();
-
-            expect(find.byType(TradeForm), findsOneWidget);
-            final form = tester.widget<TradeForm>(find.byType(TradeForm));
-            expect(form.trade, isNull);
 
             await tester.pumpWidget(Container());
           }));
@@ -223,6 +208,22 @@ void main() {
     });
 
     testWidgets(
+        'tapping FAB opens TradeForm for new trade',
+            (tester) => tester.runAsync(() async {
+          await pumpWidget(tester);
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.byIcon(Icons.add));
+          await tester.pumpAndSettle();
+
+          expect(find.byType(TradeForm), findsOneWidget);
+          final form = tester.widget<TradeForm>(find.byType(TradeForm));
+          expect(form.trade, isNull);
+
+          await tester.pumpWidget(Container());
+        }));
+
+    testWidgets(
         'displays buy trade correctly',
         (tester) => tester.runAsync(() async {
               final l10n = await pumpWidget(tester);
@@ -250,14 +251,14 @@ void main() {
               expect(
                   find.descendant(
                       of: buyTradeFinder,
-                      matching: find.textContaining(
-                          '${l10n.fee}: ${formatCurrency(5)}')),
+                      matching: find
+                          .textContaining('${l10n.fee}: ${formatCurrency(5)}')),
                   findsOneWidget);
               expect(
                   find.descendant(
                       of: buyTradeFinder,
-                      matching: find.textContaining(
-                          '${l10n.tax}: ${formatCurrency(0)}')),
+                      matching: find
+                          .textContaining('${l10n.tax}: ${formatCurrency(0)}')),
                   findsNothing);
               expect(
                   find.descendant(
@@ -303,14 +304,12 @@ void main() {
               expect(
                   find.descendant(
                       of: sellPosFinder,
-                      matching:
-                          find.text('${l10n.fee}: ${formatCurrency(5)}')),
+                      matching: find.text('${l10n.fee}: ${formatCurrency(5)}')),
                   findsOneWidget);
               expect(
                   find.descendant(
                       of: sellPosFinder,
-                      matching:
-                          find.text('${l10n.tax}: ${formatCurrency(5)}')),
+                      matching: find.text('${l10n.tax}: ${formatCurrency(5)}')),
                   findsOneWidget);
               expect(
                   find.descendant(
@@ -369,14 +368,12 @@ void main() {
               expect(
                   find.descendant(
                       of: sellNegFinder,
-                      matching:
-                          find.text('${l10n.fee}: ${formatCurrency(5)}')),
+                      matching: find.text('${l10n.fee}: ${formatCurrency(5)}')),
                   findsOneWidget);
               expect(
                   find.descendant(
                       of: sellNegFinder,
-                      matching:
-                          find.text('${l10n.tax}: ${formatCurrency(0)}')),
+                      matching: find.text('${l10n.tax}: ${formatCurrency(0)}')),
                   findsOneWidget);
               expect(
                   find.descendant(

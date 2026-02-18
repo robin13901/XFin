@@ -7,6 +7,7 @@ import 'package:oktoast/oktoast.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/l10n/app_localizations.dart';
+import 'package:xfin/widgets/form_fields.dart';
 import 'package:xfin/widgets/reusables.dart';
 import '../database/tables.dart';
 import '../providers/database_provider.dart';
@@ -25,21 +26,19 @@ class TransferForm extends StatefulWidget {
 class _TransferFormState extends State<TransferForm> {
   final _formKey = GlobalKey<FormState>();
 
-  // Helpers
-  AppDatabase get _db => context.read<DatabaseProvider>().db;
-
-  AppLocalizations get _l10n => AppLocalizations.of(context)!;
-
-  Validator get _validator => Validator(_l10n);
-
-  Reusables get _reusables => Reusables(context);
+  late AppDatabase _db;
+  late AppLocalizations _l10n;
+  late Validator _validator;
+  late Reusables _reusables;
+  late FormFields _formFields;
 
   // Form state
   late DateTime _date;
   late TextEditingController _sharesCtrl;
   late TextEditingController _priceCtrl;
   late TextEditingController _notesCtrl;
-  late TextEditingController _dateCtrl; // moved to state to avoid ephemeral controllers
+  late TextEditingController
+      _dateCtrl; // moved to state to avoid ephemeral controllers
 
   int? _sendingAccountId;
   int? _receivingAccountId;
@@ -52,9 +51,19 @@ class _TransferFormState extends State<TransferForm> {
   Map<int, Asset> _assetMap = {};
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _l10n = AppLocalizations.of(context)!;
+    _validator = Validator(_l10n);
+    _reusables = Reusables(context);
+    _formFields = FormFields(_l10n, _validator, context);
+  }
+
+  @override
   void initState() {
     super.initState();
     final t = widget.transfer;
+    _db = context.read<DatabaseProvider>().db;
 
     // initialize date
     if (t != null) {
@@ -69,7 +78,8 @@ class _TransferFormState extends State<TransferForm> {
     _sharesCtrl = TextEditingController(text: t?.shares.toString());
     _priceCtrl = TextEditingController(text: t?.costBasis.toString());
     _notesCtrl = TextEditingController(text: t?.notes);
-    _dateCtrl = TextEditingController(text: DateFormat('dd.MM.yyyy').format(_date));
+    _dateCtrl =
+        TextEditingController(text: DateFormat('dd.MM.yyyy').format(_date));
 
     _sendingAccountId = t?.sendingAccountId;
     _receivingAccountId = t?.receivingAccountId;
@@ -112,7 +122,7 @@ class _TransferFormState extends State<TransferForm> {
     }
 
     final aoa =
-    await _db.assetsOnAccountsDao.getAOA(_sendingAccountId!, _assetId!);
+        await _db.assetsOnAccountsDao.getAOA(_sendingAccountId!, _assetId!);
     double oldShares = widget.transfer == null ? 0 : widget.transfer!.shares;
     if (aoa.shares + oldShares - shares < 0) {
       showToast(
@@ -200,32 +210,13 @@ class _TransferFormState extends State<TransferForm> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        readOnly: true,
-                        controller: _dateCtrl,
-                        decoration: InputDecoration(
-                          labelText: _l10n.date,
-                          border: const OutlineInputBorder(),
-                          suffixIcon: IconButton(
-                            icon: const Icon(Icons.calendar_today),
-                            onPressed: _pickDate,
-                          ),
-                        ),
-                        validator: (_) => _validator.validateDate(_date),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    _reusables.buildAssetsDropdown(
-                      _assetId!,
-                      _allAssets,
-                          (val) => setState(() => _assetId = val),
-                          (val) => val == null ? _l10n.pleaseSelectAnAsset : null,
-                    ),
-                  ],
-                ),
+                _formFields.dateAndAssetRow(
+                    dateController: _dateCtrl,
+                    date: _date,
+                    onDateChanged: (v) => setState(() => _date = v),
+                    assets: _allAssets,
+                    assetId: _assetId,
+                    onAssetChanged: (v) => setState(() => _assetId = v)),
                 const SizedBox(height: 16),
                 _reusables.buildSharesInputRow(
                   _sharesCtrl,
@@ -241,91 +232,34 @@ class _TransferFormState extends State<TransferForm> {
                     final accounts = snapshot.data ?? [];
                     return Column(
                       children: [
-                        DropdownButtonFormField<int>(
-                          key: const Key('sending_account_dropdown'),
-                          initialValue: _sendingAccountId,
-                          decoration: InputDecoration(
-                            labelText: _l10n.sendingAccount,
-                            border: const OutlineInputBorder(),
-                          ),
-                          items: accounts
-                              .map((a) => DropdownMenuItem(
-                            value: a.id,
-                            child: Text(a.name),
-                          ))
-                              .toList(),
-                          onChanged: (v) =>
-                              setState(() => _sendingAccountId = v),
-                          validator: (v) =>
-                          v == null ? _l10n.pleaseSelectAnAccount : null,
-                        ),
+                        _formFields.accountDropdown(
+                            key: const Key('sending_account_dropdown'),
+                            label: _l10n.sendingAccount,
+                            accounts: accounts,
+                            value: _sendingAccountId,
+                            onChanged: (v) =>
+                                setState(() => _sendingAccountId = v)),
                         const SizedBox(height: 12),
-                        DropdownButtonFormField<int>(
-                          key: const Key('receiving_account_dropdown'),
-                          initialValue: _receivingAccountId,
-                          decoration: InputDecoration(
-                            labelText: _l10n.receivingAccount,
-                            border: const OutlineInputBorder(),
-                          ),
-                          items: accounts
-                              .map((a) => DropdownMenuItem(
-                            value: a.id,
-                            child: Text(a.name),
-                          ))
-                              .toList(),
-                          onChanged: (v) =>
-                              setState(() => _receivingAccountId = v),
-                          validator: (v) =>
-                          v == null ? _l10n.pleaseSelectAnAccount : null,
-                        ),
+                        _formFields.accountDropdown(
+                            key: const Key('receiving_account_dropdown'),
+                            label: _l10n.receivingAccount,
+                            accounts: accounts,
+                            value: _receivingAccountId,
+                            onChanged: (v) =>
+                                setState(() => _receivingAccountId = v)),
                       ],
                     );
                   },
                 ),
                 const SizedBox(height: 16),
-                TextFormField(
-                  controller: _notesCtrl,
-                  textCapitalization: TextCapitalization.sentences,
-                  decoration: InputDecoration(
-                    labelText: _l10n.notes,
-                    border: const OutlineInputBorder(),
-                  ),
-                ),
+                _formFields.notesField(_notesCtrl),
                 const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: Text(_l10n.cancel),
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      onPressed: _saveForm,
-                      child: Text(_l10n.save),
-                    ),
-                  ],
-                ),
+                _formFields.footerButtons(context, _saveForm),
               ],
             ),
           ),
         ),
       ),
     );
-  }
-
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _date,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2101),
-    );
-    if (picked != null && picked != _date) {
-      setState(() {
-        _date = picked;
-        _dateCtrl.text = DateFormat('dd.MM.yyyy').format(_date);
-      });
-    }
   }
 }

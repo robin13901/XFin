@@ -15,8 +15,10 @@ bool isBaseCurrencySelected = false;
 String? baseCurrencyTickerSymbol;
 
 class PrefKeys {
-  static const String filterStartDate = 'filterStartDate'; // stored as yyyyMMdd or "0"
-  static const String filterEndDate = 'filterEndDate'; // stored as yyyyMMdd or "99999999"
+  static const String filterStartDate =
+      'filterStartDate'; // stored as yyyyMMdd or "0"
+  static const String filterEndDate =
+      'filterEndDate'; // stored as yyyyMMdd or "99999999"
   static const String isBaseCurrencySelected = 'isBaseCurrencySelected';
   static const String baseCurrencyTickerSymbol = 'baseCurrencyTickerSymbol';
 }
@@ -25,7 +27,8 @@ Future<void> loadPrefs() async {
   final prefs = await SharedPreferences.getInstance();
   filterStartDate = prefs.getInt(PrefKeys.filterStartDate) ?? 0;
   filterEndDate = prefs.getInt(PrefKeys.filterEndDate) ?? 99999999;
-  isBaseCurrencySelected = prefs.getBool(PrefKeys.isBaseCurrencySelected) ?? false;
+  isBaseCurrencySelected =
+      prefs.getBool(PrefKeys.isBaseCurrencySelected) ?? false;
   baseCurrencyTickerSymbol = prefs.getString(PrefKeys.baseCurrencyTickerSymbol);
 }
 
@@ -70,6 +73,25 @@ int cmpKey(int dtA, String typeA, int idA, int dtB, String typeB, int idB) {
   if (tc != 0) return tc < 0 ? -1 : 1;
   if (idA != idB) return idA < idB ? -1 : 1;
   return 0;
+}
+
+DateTime addMonths(DateTime date, int months) {
+  final year = date.year + (date.month + months - 1) ~/ 12;
+  final month = (date.month + months - 1) % 12 + 1;
+
+  final lastDayOfMonth = DateTime(year, month + 1, 0).day;
+  final day = date.day.clamp(1, lastDayOfMonth);
+
+  return DateTime(
+    year,
+    month,
+    day,
+    date.hour,
+    date.minute,
+    date.second,
+    date.millisecond,
+    date.microsecond,
+  );
 }
 
 (double, double) consumeFiFo(ListQueue<Map<String, double>> fifo, shares) {

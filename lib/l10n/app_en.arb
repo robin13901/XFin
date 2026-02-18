@@ -58,6 +58,7 @@
   "notes": "Notes",
   "excludeFromAverage": "Exclude from average",
   "dateCannotBeInTheFuture": "The date cannot be in the future.",
+  "dateMustBeInTheFuture": "The date must be in the future.",
   "accountHasReferencesArchiveInstead": "This account has references and cannot be deleted. Would you like to archive it instead?",
   "archive": "Archive",
   "confirm": "Confirm",
@@ -134,8 +135,28 @@
   "valueCannotBeZero": "Value must not be 0",
   "noTransfersYet": "No transfers yet",
   "transfers": "Transfers",
+  "transfer": "Transfer",
   "isGenerated": "Created by standing order",
   "updateWouldBreakAccountBalanceHistory": "The changes cannot be saved. The entered values would lead to inconsistencies in the account balance history of one or more of the accounts involved.",
+
+  "standingOrders": "Standing Orders",
+  "standingOrdersExecuted": "Standing Orders Executed",
+  "nStandingOrdersExecuted": "{n, plural, =1{1 standing order was executed automatically} other{{n} standing orders were executed automatically}}",
+  "@nStandingOrdersExecuted": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "nextExecutionDate": "Next Execution",
+  "cycle": "Cycle",
+  "pleaseSelectACycle": "Please select a cycle!",
+  "daily": "Daily",
+  "weekly": "Weekly",
+  "monthly": "Monthly",
+  "quarterly": "Quarterly",
+  "yearly": "Yearly",
 
   "importDatabase": "Import Database",
   "exportDatabase": "Export Database",
@@ -154,19 +175,24 @@
   "today": "Today",
   "pickDate": "Pick Date",
 
+  "noPeriodicBookingsYet": "No periodic bookings yet.",
+  "noPeriodicTransfersYet": "No periodic transfers yet.",
+
   "delete": "Delete",
   "deleteAccount": "Delete Account",
   "deleteAsset": "Delete Asset",
   "deleteBooking": "Delete Booking",
   "deleteTrade": "Delete Trade",
   "deleteTransfer": "Delete Transfer",
+  "deleteStandingOrder": "Delete Standing Order",
   "deleteAccountConfirmation": "Are you sure you want to delete this account?",
   "deleteAssetConfirmation": "Are you sure you want to delete this asset?",
   "deleteBookingConfirmation": "Are you sure you want to delete this booking?",
   "deleteTradeConfirmation": "Are you sure you want to delete this trade?",
   "deleteTransferConfirmation": "Are you sure you want to delete this transfer?",
+  "deleteStandingOrderConfirmation": "Are you sure you want to delete this standing order?",
   "cannotDeleteAccount": "Cannot Delete Account",
   "cannotDeleteAsset": "Cannot Delete Asset",
-  "cannotDeleteOrArchiveAccount": "Löschen oder Archivieren nicht möglich",
+  "cannotDeleteOrArchiveAccount": "Deletion or archiving not possible",
   "cannotDeleteOrArchiveAccountLong": "Accounts can only be deleted when they have no references. This account has references and cannot be deleted.\n\nAccounts with references can be archived but only if the balance is 0."
 }

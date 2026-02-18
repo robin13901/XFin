@@ -130,6 +130,22 @@ class TransfersDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
+  Future<void> createFromPeriodicTransfer(
+      PeriodicTransfer periodicTransfer, AppLocalizations l10n) async {
+    final companion = TransfersCompanion(
+      date: Value(periodicTransfer.nextExecutionDate),
+      assetId: Value(periodicTransfer.assetId),
+      sendingAccountId: Value(periodicTransfer.sendingAccountId),
+      receivingAccountId: Value(periodicTransfer.receivingAccountId),
+      shares: Value(periodicTransfer.shares),
+      costBasis: Value(periodicTransfer.costBasis),
+      value: Value(periodicTransfer.value),
+      notes: Value(periodicTransfer.notes),
+      isGenerated: const Value(true),
+    );
+    await createTransfer(companion, l10n);
+  }
+
   Future<void> updateTransfer(
       Transfer tOld, TransfersCompanion tNew, AppLocalizations l10n) {
     return transaction(() async {

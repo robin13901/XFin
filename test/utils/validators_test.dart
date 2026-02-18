@@ -60,8 +60,7 @@ void main() {
 
   group('validateDecimalGreaterZero', () {
     test('propagates decimal errors (null)', () {
-      expect(
-          validator.validateDecimalGreaterZero(null), l10n.requiredField);
+      expect(validator.validateDecimalGreaterZero(null), l10n.requiredField);
     });
 
     test('propagates decimal errors (non-numeric)', () {
@@ -86,8 +85,8 @@ void main() {
 
   group('validateDecimalGreaterEqualZero', () {
     test('propagates decimal errors', () {
-      expect(validator.validateDecimalGreaterEqualZero(null),
-          l10n.requiredField);
+      expect(
+          validator.validateDecimalGreaterEqualZero(null), l10n.requiredField);
       expect(
           validator.validateDecimalGreaterEqualZero('nope'), l10n.invalidInput);
     });
@@ -124,14 +123,16 @@ void main() {
       expect(validator.validateDecimalNotZero('0'), l10n.valueMustNotBeZero);
       expect(validator.validateDecimalNotZero('0.0'), l10n.valueMustNotBeZero);
       expect(validator.validateDecimalNotZero('-0'), l10n.valueMustNotBeZero);
-      expect(validator.validateDecimalNotZero('-0.00'), l10n.valueMustNotBeZero);
+      expect(
+          validator.validateDecimalNotZero('-0.00'), l10n.valueMustNotBeZero);
     });
 
     test('accepts non-zero numbers (positive, negative, scientific)', () {
       expect(validator.validateDecimalNotZero('0.0001'), isNull);
       expect(validator.validateDecimalNotZero('1'), isNull);
       expect(validator.validateDecimalNotZero('-1.2'), isNull);
-      expect(validator.validateDecimalNotZero('1e3'), isNull); // scientific notation
+      expect(validator.validateDecimalNotZero('1e3'),
+          isNull); // scientific notation
     });
   });
 
@@ -177,8 +178,8 @@ void main() {
     });
 
     test('rejects numbers equal to 0', () {
-      expect(validator.validateMaxTwoDecimalsNotZero('0'),
-          l10n.valueCannotBeZero);
+      expect(
+          validator.validateMaxTwoDecimalsNotZero('0'), l10n.valueCannotBeZero);
       expect(validator.validateMaxTwoDecimalsNotZero('-0.00'),
           l10n.valueCannotBeZero);
     });
@@ -288,47 +289,61 @@ void main() {
 
   group('validateIsUnique', () {
     test('propagates not-initial error (null)', () {
-      expect(validator.validateIsUnique(
-        null,
-        ['Cash'],
-      ), l10n.requiredField);
+      expect(
+          validator.validateIsUnique(
+            null,
+            ['Cash'],
+          ),
+          l10n.requiredField);
     });
 
     test('propagates not-initial error (empty or whitespace)', () {
-      expect(validator.validateIsUnique(
-        '',
-        ['Cash'],
-      ), l10n.requiredField);
-      expect(validator.validateIsUnique(
-        ' ',
-        ['Cash'],
-      ), l10n.requiredField);
+      expect(
+          validator.validateIsUnique(
+            '',
+            ['Cash'],
+          ),
+          l10n.requiredField);
+      expect(
+          validator.validateIsUnique(
+            ' ',
+            ['Cash'],
+          ),
+          l10n.requiredField);
     });
 
     test('returns error when name already exists', () {
-      expect(validator.validateIsUnique(
-        'Cash',
-        ['Cash', 'Savings'],
-      ), l10n.valueAlreadyExists);
+      expect(
+          validator.validateIsUnique(
+            'Cash',
+            ['Cash', 'Savings'],
+          ),
+          l10n.valueAlreadyExists);
     });
 
     test('trims whitespace before comparing', () {
-      expect(validator.validateIsUnique(
-        '  Cash  ',
-        ['Cash'],
-      ), l10n.valueAlreadyExists);
+      expect(
+          validator.validateIsUnique(
+            '  Cash  ',
+            ['Cash'],
+          ),
+          l10n.valueAlreadyExists);
     });
 
     test('returns null for a unique name', () {
-      expect(validator.validateIsUnique(
-        'Investments',
-        ['Cash', 'Savings'],
-      ), isNull);
+      expect(
+          validator.validateIsUnique(
+            'Investments',
+            ['Cash', 'Savings'],
+          ),
+          isNull);
 
-      expect(validator.validateIsUnique(
-        'Cash',
-        [],
-      ), isNull);
+      expect(
+          validator.validateIsUnique(
+            'Cash',
+            [],
+          ),
+          isNull);
     });
   });
 
@@ -338,26 +353,67 @@ void main() {
     });
 
     test('account is not selected', () {
-      expect(validator.validateAccountSelected(null), l10n.pleaseSelectAnAccount);
+      expect(
+          validator.validateAccountSelected(null), l10n.pleaseSelectAnAccount);
     });
   });
 
-  group('validateDate', () {
+  group('validateAssetSelected', () {
+    test('asset is selected', () {
+      expect(validator.validateAssetSelected(1), null);
+    });
+
+    test('account is not selected', () {
+      expect(validator.validateAssetSelected(null), l10n.pleaseSelectAnAsset);
+    });
+  });
+
+  group('validateCycleSelected', () {
+    test('cycle is selected', () {
+      expect(validator.validateCycleSelected(1), null);
+    });
+
+    test('cycle is not selected', () {
+      expect(validator.validateCycleSelected(null), l10n.pleaseSelectACycle);
+    });
+  });
+
+  group('validateDateNotInFuture', () {
     test('date is null', () {
-      expect(validator.validateDate(null), l10n.requiredField);
+      expect(validator.validateDateNotInFuture(null), l10n.requiredField);
     });
 
     test('date is in the past', () {
-      expect(validator.validateDate(DateTime(2021)), null);
+      expect(validator.validateDateNotInFuture(DateTime(2021)), null);
     });
 
     test('date is now', () {
-      expect(validator.validateDate(DateTime.now()), null);
+      expect(validator.validateDateNotInFuture(DateTime.now()), null);
     });
 
     test('date is in the future', () {
-      expect(validator.validateDate(DateTime(2099)), l10n.dateCannotBeInTheFuture);
+      expect(validator.validateDateNotInFuture(DateTime(2099)),
+          l10n.dateCannotBeInTheFuture);
     });
   });
 
+  group('validateDateInFuture', () {
+    test('date is null', () {
+      expect(validator.validateDateInFuture(null), l10n.requiredField);
+    });
+
+    test('date is in the past', () {
+      expect(validator.validateDateInFuture(DateTime(2021)),
+          l10n.dateMustBeInTheFuture);
+    });
+
+    test('date is now', () {
+      expect(validator.validateDateInFuture(DateTime.now()),
+          l10n.dateMustBeInTheFuture);
+    });
+
+    test('date is in the future', () {
+      expect(validator.validateDateInFuture(DateTime(2099)), null);
+    });
+  });
 }

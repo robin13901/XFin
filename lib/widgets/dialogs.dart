@@ -10,7 +10,9 @@ Future<void> showDeleteDialog(
   Account? account,
   Asset? asset,
   Booking? booking,
+  PeriodicBooking? periodicBooking,
   Transfer? transfer,
+  PeriodicTransfer? periodicTransfer,
   Trade? trade,
 }) async {
   final l10n = AppLocalizations.of(context)!;
@@ -26,12 +28,18 @@ Future<void> showDeleteDialog(
   } else if (booking != null) {
     title = l10n.deleteBooking;
     content = l10n.deleteBookingConfirmation;
+  } else if (periodicBooking != null) {
+    title = l10n.deleteStandingOrder;
+    content = l10n.deleteStandingOrderConfirmation;
   } else if (trade != null) {
     title = l10n.deleteTrade;
     content = l10n.deleteTradeConfirmation;
   } else if (transfer != null) {
     title = l10n.deleteTransfer;
     content = l10n.deleteTransferConfirmation;
+  } else if (periodicTransfer != null) {
+    title = l10n.deleteStandingOrder;
+    content = l10n.deleteStandingOrderConfirmation;
   } else {
     return;
   }
@@ -61,10 +69,14 @@ Future<void> showDeleteDialog(
       await db.assetsDao.deleteAsset(asset.id);
     } else if (booking != null) {
       await db.bookingsDao.deleteBooking(booking.id, l10n);
+    } else if (periodicBooking != null) {
+      await db.periodicBookingsDao.deletePeriodicBooking(periodicBooking.id);
     } else if (trade != null) {
       await db.tradesDao.deleteTrade(trade.id, l10n);
     } else if (transfer != null) {
       await db.transfersDao.deleteTransfer(transfer.id, l10n);
+    } else if (periodicTransfer != null) {
+      await db.periodicTransfersDao.deletePeriodicTransfer(periodicTransfer.id);
     }
   }
 }

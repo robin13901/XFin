@@ -242,7 +242,7 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
       );
 
       for (final accountId in accounts) {
-        final inconsistent = await db.accountsDao.isInconsistent(accountId);
+        final inconsistent = await db.accountsDao.leadsToInconsistentBalanceHistory(accountId: accountId);
         if (inconsistent) {
           throw Exception(l10n.actionCancelledDueToDataInconsistency);
         }

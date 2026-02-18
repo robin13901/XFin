@@ -9,8 +9,6 @@ final liquidGlassSettings = LiquidGlassSettings(
   glassColor: ThemeProvider.isDark() ? const Color(0x33000000) : const Color(0x33777777),
 );
 
-const x = Color(0x33777777);
-
 class LiquidGlassBottomNav extends StatelessWidget {
   final List<IconData> icons;
   final List<String> labels;

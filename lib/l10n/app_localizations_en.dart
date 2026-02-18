@@ -194,6 +194,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dateCannotBeInTheFuture => 'The date cannot be in the future.';
 
   @override
+  String get dateMustBeInTheFuture => 'The date must be in the future.';
+
+  @override
   String get accountHasReferencesArchiveInstead =>
       'This account has references and cannot be deleted. Would you like to archive it instead?';
 
@@ -413,11 +416,55 @@ class AppLocalizationsEn extends AppLocalizations {
   String get transfers => 'Transfers';
 
   @override
+  String get transfer => 'Transfer';
+
+  @override
   String get isGenerated => 'Created by standing order';
 
   @override
   String get updateWouldBreakAccountBalanceHistory =>
       'The changes cannot be saved. The entered values would lead to inconsistencies in the account balance history of one or more of the accounts involved.';
+
+  @override
+  String get standingOrders => 'Standing Orders';
+
+  @override
+  String get standingOrdersExecuted => 'Standing Orders Executed';
+
+  @override
+  String nStandingOrdersExecuted(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n standing orders were executed automatically',
+      one: '1 standing order was executed automatically',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get nextExecutionDate => 'Next Execution';
+
+  @override
+  String get cycle => 'Cycle';
+
+  @override
+  String get pleaseSelectACycle => 'Please select a cycle!';
+
+  @override
+  String get daily => 'Daily';
+
+  @override
+  String get weekly => 'Weekly';
+
+  @override
+  String get monthly => 'Monthly';
+
+  @override
+  String get quarterly => 'Quarterly';
+
+  @override
+  String get yearly => 'Yearly';
 
   @override
   String get importDatabase => 'Import Database';
@@ -468,6 +515,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pickDate => 'Pick Date';
 
   @override
+  String get noPeriodicBookingsYet => 'No periodic bookings yet.';
+
+  @override
+  String get noPeriodicTransfersYet => 'No periodic transfers yet.';
+
+  @override
   String get delete => 'Delete';
 
   @override
@@ -484,6 +537,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get deleteTransfer => 'Delete Transfer';
+
+  @override
+  String get deleteStandingOrder => 'Delete Standing Order';
 
   @override
   String get deleteAccountConfirmation =>
@@ -506,6 +562,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Are you sure you want to delete this transfer?';
 
   @override
+  String get deleteStandingOrderConfirmation =>
+      'Are you sure you want to delete this standing order?';
+
+  @override
   String get cannotDeleteAccount => 'Cannot Delete Account';
 
   @override
@@ -513,7 +573,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cannotDeleteOrArchiveAccount =>
-      'Löschen oder Archivieren nicht möglich';
+      'Deletion or archiving not possible';
 
   @override
   String get cannotDeleteOrArchiveAccountLong =>

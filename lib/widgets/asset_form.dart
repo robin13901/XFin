@@ -7,6 +7,7 @@ import 'package:xfin/l10n/app_localizations.dart';
 
 import '../providers/database_provider.dart';
 import '../utils/validators.dart';
+import 'form_fields.dart';
 
 class AssetForm extends StatefulWidget {
   final Asset? asset;
@@ -19,7 +20,12 @@ class AssetForm extends StatefulWidget {
 
 class _AssetFormState extends State<AssetForm> {
   final _formKey = GlobalKey<FormState>();
-  late final AppDatabase db;
+
+  late AppDatabase _db;
+  late AppLocalizations _l10n;
+  late Validator _validator;
+  late FormFields _formFields;
+
   late TextEditingController _nameController;
   late TextEditingController _tickerSymbolController;
   late TextEditingController _currencySymbolController;
@@ -28,9 +34,18 @@ class _AssetFormState extends State<AssetForm> {
   late List<String> _existingTickerSymbols;
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _db = context.read<DatabaseProvider>().db;
+    _l10n = AppLocalizations.of(context)!;
+    _validator = Validator(_l10n);
+    _formFields = FormFields(_l10n, _validator, context);
+  }
+
+  @override
   void initState() {
     super.initState();
-    db = context.read<DatabaseProvider>().db;
+    _db = context.read<DatabaseProvider>().db;
 
     _nameController = TextEditingController(text: widget.asset?.name);
     _tickerSymbolController =
@@ -42,7 +57,7 @@ class _AssetFormState extends State<AssetForm> {
     _existingAssetNames = [];
     _existingTickerSymbols = [];
 
-    db.assetsDao.watchAllAssets().first.then((assets) {
+    _db.assetsDao.watchAllAssets().first.then((assets) {
       if (!mounted) return;
       setState(() {
         _existingAssetNames = assets
@@ -56,6 +71,8 @@ class _AssetFormState extends State<AssetForm> {
       });
     });
   }
+
+
 
   @override
   void dispose() {
@@ -77,7 +94,7 @@ class _AssetFormState extends State<AssetForm> {
       if (currencySymbol == "") currencySymbol = null;
 
       // Insert and pop
-      await db.assetsDao.insert(AssetsCompanion.insert(
+      await _db.assetsDao.insert(AssetsCompanion.insert(
           name: name,
           type: _type,
           tickerSymbol: tickerSymbol,
@@ -189,20 +206,7 @@ class _AssetFormState extends State<AssetForm> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: Text(l10n.cancel),
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      onPressed: _saveForm,
-                      child: Text(l10n.save),
-                    ),
-                  ],
-                ),
+                _formFields.footerButtons(context, _saveForm),
               ],
             ),
           ),

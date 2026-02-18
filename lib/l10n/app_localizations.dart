@@ -452,6 +452,12 @@ abstract class AppLocalizations {
   /// **'The date cannot be in the future.'**
   String get dateCannotBeInTheFuture;
 
+  /// No description provided for @dateMustBeInTheFuture.
+  ///
+  /// In en, this message translates to:
+  /// **'The date must be in the future.'**
+  String get dateMustBeInTheFuture;
+
   /// No description provided for @accountHasReferencesArchiveInstead.
   ///
   /// In en, this message translates to:
@@ -866,6 +872,12 @@ abstract class AppLocalizations {
   /// **'Transfers'**
   String get transfers;
 
+  /// No description provided for @transfer.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer'**
+  String get transfer;
+
   /// No description provided for @isGenerated.
   ///
   /// In en, this message translates to:
@@ -877,6 +889,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The changes cannot be saved. The entered values would lead to inconsistencies in the account balance history of one or more of the accounts involved.'**
   String get updateWouldBreakAccountBalanceHistory;
+
+  /// No description provided for @standingOrders.
+  ///
+  /// In en, this message translates to:
+  /// **'Standing Orders'**
+  String get standingOrders;
+
+  /// No description provided for @standingOrdersExecuted.
+  ///
+  /// In en, this message translates to:
+  /// **'Standing Orders Executed'**
+  String get standingOrdersExecuted;
+
+  /// No description provided for @nStandingOrdersExecuted.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 standing order was executed automatically} other{{n} standing orders were executed automatically}}'**
+  String nStandingOrdersExecuted(int n);
+
+  /// No description provided for @nextExecutionDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Next Execution'**
+  String get nextExecutionDate;
+
+  /// No description provided for @cycle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cycle'**
+  String get cycle;
+
+  /// No description provided for @pleaseSelectACycle.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select a cycle!'**
+  String get pleaseSelectACycle;
+
+  /// No description provided for @daily.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily'**
+  String get daily;
+
+  /// No description provided for @weekly.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly'**
+  String get weekly;
+
+  /// No description provided for @monthly.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly'**
+  String get monthly;
+
+  /// No description provided for @quarterly.
+  ///
+  /// In en, this message translates to:
+  /// **'Quarterly'**
+  String get quarterly;
+
+  /// No description provided for @yearly.
+  ///
+  /// In en, this message translates to:
+  /// **'Yearly'**
+  String get yearly;
 
   /// No description provided for @importDatabase.
   ///
@@ -968,6 +1046,18 @@ abstract class AppLocalizations {
   /// **'Pick Date'**
   String get pickDate;
 
+  /// No description provided for @noPeriodicBookingsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No periodic bookings yet.'**
+  String get noPeriodicBookingsYet;
+
+  /// No description provided for @noPeriodicTransfersYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No periodic transfers yet.'**
+  String get noPeriodicTransfersYet;
+
   /// No description provided for @delete.
   ///
   /// In en, this message translates to:
@@ -1004,6 +1094,12 @@ abstract class AppLocalizations {
   /// **'Delete Transfer'**
   String get deleteTransfer;
 
+  /// No description provided for @deleteStandingOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Standing Order'**
+  String get deleteStandingOrder;
+
   /// No description provided for @deleteAccountConfirmation.
   ///
   /// In en, this message translates to:
@@ -1034,6 +1130,12 @@ abstract class AppLocalizations {
   /// **'Are you sure you want to delete this transfer?'**
   String get deleteTransferConfirmation;
 
+  /// No description provided for @deleteStandingOrderConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this standing order?'**
+  String get deleteStandingOrderConfirmation;
+
   /// No description provided for @cannotDeleteAccount.
   ///
   /// In en, this message translates to:
@@ -1049,7 +1151,7 @@ abstract class AppLocalizations {
   /// No description provided for @cannotDeleteOrArchiveAccount.
   ///
   /// In en, this message translates to:
-  /// **'Löschen oder Archivieren nicht möglich'**
+  /// **'Deletion or archiving not possible'**
   String get cannotDeleteOrArchiveAccount;
 
   /// No description provided for @cannotDeleteOrArchiveAccountLong.

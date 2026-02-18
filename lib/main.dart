@@ -16,6 +16,7 @@ import 'package:xfin/screens/currency_selection_screen.dart'; // Import the new 
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:xfin/utils/global_constants.dart';
+import 'package:xfin/widgets/dialogs.dart';
 import 'package:xfin/widgets/liquid_glass_widgets.dart';
 import 'package:xfin/widgets/more_pane.dart';
 
@@ -42,13 +43,16 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider.value(value: DatabaseProvider.instance,),
+        ChangeNotifierProvider.value(
+          value: DatabaseProvider.instance,
+        ),
         ChangeNotifierProvider.value(value: ThemeProvider.instance),
         ChangeNotifierProvider.value(value: languageProvider),
         ChangeNotifierProvider.value(value: currencyProvider),
       ],
       child: MyApp(
-          initialRoute: isBaseCurrencySelected ? '/main' : '/currencySelection'),
+          initialRoute:
+              isBaseCurrencySelected ? '/main' : '/currencySelection'),
     ),
   );
 }
@@ -100,7 +104,9 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
+  bool _standingOrdersExecuted = false;
   final GlobalKey _navBarKey = GlobalKey();
+  late AppLocalizations l10n;
   final ValueNotifier<bool> _navBarVisible = ValueNotifier<bool>(true);
 
   static const List<Widget> _widgetOptions = <Widget>[
@@ -110,8 +116,26 @@ class _MainScreenState extends State<MainScreen> {
   ];
 
   @override
+  Future<void> didChangeDependencies() async {
+    super.didChangeDependencies();
+    l10n = AppLocalizations.of(context)!;
+
+    if (!_standingOrdersExecuted) {
+      int executedCount = 0;
+      executedCount += await DatabaseProvider.instance.db.periodicBookingsDao
+          .executePending(l10n);
+      executedCount += await DatabaseProvider.instance.db.periodicTransfersDao
+          .executePending(l10n);
+      if (executedCount > 0 && mounted) {
+        showInfoDialog(context, l10n.standingOrdersExecuted,
+            l10n.nStandingOrdersExecuted(executedCount));
+      }
+      _standingOrdersExecuted = true;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       body: Stack(
         children: [
@@ -125,7 +149,9 @@ class _MainScreenState extends State<MainScreen> {
               builder: (context, visible, child) {
                 // If navbar is not visible, return an empty SizedBox to maintain layout
                 // Otherwise, show the navbar.
-                return visible ? RepaintBoundary(child: child!) : const SizedBox.shrink();
+                return visible
+                    ? RepaintBoundary(child: child!)
+                    : const SizedBox.shrink();
               },
               child: LiquidGlassBottomNav(
                 key: _navBarKey,

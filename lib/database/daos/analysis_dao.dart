@@ -418,7 +418,7 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
           ])
           ..where(periodicBookings.value.isBiggerThanValue(0)))
         .map((row) => {
-              'category': row.read(bookings.category),
+              'category': row.read(periodicBookings.category),
               'amount': row.read(periodicBookings.value *
                       periodicBookings.monthlyAverageFactor) ??
                   0.0,
@@ -471,7 +471,7 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
           ])
           ..where(periodicBookings.value.isSmallerThanValue(0)))
         .map((row) => {
-              'category': row.read(bookings.category),
+              'category': row.read(periodicBookings.category),
               'amount': row.read(periodicBookings.value *
                       periodicBookings.monthlyAverageFactor) ??
                   0.0,

@@ -11,9 +11,7 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
     with _$BookingsDaoMixin {
   BookingsDao(super.db);
 
-  List<BookingWithAccountAndAsset> _mapRows(
-    List<TypedResult> rows,
-  ) {
+  List<BookingWithAccountAndAsset> _mapRows(List<TypedResult> rows) {
     return rows.map((row) {
       return BookingWithAccountAndAsset(
         booking: row.readTable(bookings),
@@ -33,8 +31,8 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
       leftOuterJoin(assets, assets.id.equalsExp(bookings.assetId)),
     ]);
 
-    // Only non-archived accounts
     query.where(accounts.isArchived.equals(false));
+    query.where(assets.isArchived.equals(false));
 
     // Keyset pagination condition
     if (lastDate != null && lastValue != null) {
@@ -214,6 +212,37 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
         upToDatetime: b.date * 1000000,
         upToType: '_booking',
         upToId: b.id,
+      );
+    });
+  }
+
+  Future <void> createFromPeriodicBooking(PeriodicBooking pb, AppLocalizations l10n) async {
+    return transaction(() async {
+      BookingsCompanion b = BookingsCompanion(
+        date: Value(pb.nextExecutionDate),
+        assetId: Value(pb.assetId),
+        accountId: Value(pb.accountId),
+        category: Value(pb.category),
+        shares: Value(pb.shares),
+        costBasis: Value(pb.costBasis),
+        value: Value(pb.value),
+        notes: Value(pb.notes),
+        excludeFromAverage: const Value(true),
+        isGenerated: const Value(true),
+      );
+
+      final bookingId = await _insert(b);
+
+      await db.tradesDao.applyDbEffects(
+          b.assetId.value, b.accountId.value, b.shares.value, b.value.value, 0);
+
+      await db.assetsOnAccountsDao.recalculateSubsequentEvents(
+        l10n: l10n,
+        assetId: b.assetId.value,
+        accountId: b.accountId.value,
+        upToDatetime: b.date.value * 1000000,
+        upToType: '_booking',
+        upToId: bookingId,
       );
     });
   }

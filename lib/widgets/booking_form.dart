@@ -10,8 +10,8 @@ import 'package:xfin/utils/format.dart';
 import 'package:xfin/widgets/reusables.dart';
 import '../database/tables.dart';
 import '../providers/database_provider.dart';
-import '../utils/global_constants.dart';
 import '../utils/validators.dart';
+import 'form_fields.dart';
 
 class BookingForm extends StatefulWidget {
   final Booking? booking;
@@ -29,6 +29,7 @@ class _BookingFormState extends State<BookingForm> {
   late AppLocalizations _l10n;
   late Validator _validator;
   late Reusables _reusables;
+  late FormFields _formFields;
 
   // Controllers
   late TextEditingController _dateCtrl;
@@ -56,10 +57,13 @@ class _BookingFormState extends State<BookingForm> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _db = context.read<DatabaseProvider>().db;
+    _db = context
+        .read<DatabaseProvider>()
+        .db;
     _l10n = AppLocalizations.of(context)!;
     _validator = Validator(_l10n);
     _reusables = Reusables(context);
+    _formFields = FormFields(_l10n, _validator, context);
   }
 
   @override
@@ -125,7 +129,9 @@ class _BookingFormState extends State<BookingForm> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: MediaQuery.of(context).viewInsets,
+      padding: MediaQuery
+          .of(context)
+          .viewInsets,
       child: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -134,60 +140,40 @@ class _BookingFormState extends State<BookingForm> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _dateAndAssetRow(),
+                _formFields.dateAndAssetRow(
+                    dateController: _dateCtrl,
+                    date: _date,
+                    onDateChanged: (v) => setState(() => _date = v),
+                    assets: _allAssets,
+                    assetId: _assetId,
+                    onAssetChanged: (v) => setState(() => _assetId = v)),
                 if (_renderHeavy) ...[
                   const SizedBox(height: 16),
                   _sharesRow(),
                   const SizedBox(height: 16),
-                  _categoryField(),
+                  _formFields.categoryField(_catCtrl, _distinctCategories),
                   const SizedBox(height: 16),
-                  _accountDropdown(),
+                  _formFields.accountDropdown(
+                    accounts: _allAccounts,
+                    value: _accountId,
+                    onChanged: (v) {
+                      if (v != _accountId) setState(() => _accountId = v);
+                    },
+                  )
                 ],
                 const SizedBox(height: 16),
-                _notesField(),
+                _formFields.notesField(_notesCtrl),
                 _excludeCheckbox(),
                 if (widget.booking != null) ...[
                   _generatedCheckbox(),
                 ],
                 const SizedBox(height: 16),
-                _footerButtons(),
+                _formFields.footerButtons(context, _saveForm),
               ],
             ),
           ),
         ),
       ),
-    );
-  }
-
-  Widget _dateAndAssetRow() {
-    return Row(
-      children: [
-        Expanded(
-          child: TextFormField(
-            readOnly: true,
-            controller: _dateCtrl,
-            decoration: InputDecoration(
-              labelText: _l10n.date,
-              border: const OutlineInputBorder(),
-              suffixIcon: IconButton(
-                icon: const Icon(Icons.calendar_today),
-                onPressed: _pickDate,
-              ),
-            ),
-            validator: (_) => _validator.validateDate(_date),
-          ),
-        ),
-        const SizedBox(width: 16),
-        if (_renderHeavy)
-          _reusables.buildAssetsDropdown(
-            _assetId!,
-            _allAssets,
-            (v) => v != _assetId ? setState(() => _assetId = v) : null,
-            (v) => v == null ? _l10n.pleaseSelectAnAsset : null,
-          )
-        else
-          const SizedBox(width: 140),
-      ],
     );
   }
 
@@ -197,76 +183,6 @@ class _BookingFormState extends State<BookingForm> {
       _costBasisCtrl,
       _assetMap[_assetId],
       hideCostBasis: _hideCostBasis,
-    );
-  }
-
-  Widget _categoryField() {
-    final helper = CategoryAutocompleteHelper(
-      _distinctCategories,
-      maxResults: 6,
-    );
-
-    return Autocomplete<String>(
-      key: const Key('category_field'),
-      optionsBuilder: (v) => helper.suggestions(v.text),
-      onSelected: (s) => _catCtrl.text = s,
-      fieldViewBuilder: (_, tCtrl, node, onSubmit) {
-        if (tCtrl.text != _catCtrl.text) {
-          tCtrl.value = tCtrl.value.copyWith(
-            text: _catCtrl.text,
-            selection: TextSelection.collapsed(
-              offset: _catCtrl.text.length,
-            ),
-          );
-        }
-
-        return TextFormField(
-          controller: tCtrl,
-          focusNode: node,
-          textCapitalization: TextCapitalization.words,
-          decoration: InputDecoration(
-            labelText: _l10n.category,
-            border: const OutlineInputBorder(),
-          ),
-          validator: _validator.validateNotInitial,
-          onChanged: (v) => _catCtrl.text = v,
-          onFieldSubmitted: (v) {
-            onSubmit();
-            _catCtrl.text = v;
-          },
-        );
-      },
-    );
-  }
-
-  Widget _accountDropdown() {
-    return DropdownButtonFormField<int>(
-      initialValue: _accountId,
-      decoration: InputDecoration(
-        labelText: _l10n.account,
-        border: const OutlineInputBorder(),
-      ),
-      items: _allAccounts
-          .map(
-            (a) => DropdownMenuItem(
-              value: a.id,
-              child: Text(a.name),
-            ),
-          )
-          .toList(),
-      onChanged: (v) => v != _accountId ? setState(() => _accountId = v) : null,
-      validator: _validator.validateAccountSelected,
-    );
-  }
-
-  Widget _notesField() {
-    return TextFormField(
-      controller: _notesCtrl,
-      textCapitalization: TextCapitalization.words,
-      decoration: InputDecoration(
-        labelText: _l10n.notes,
-        border: const OutlineInputBorder(),
-      ),
     );
   }
 
@@ -290,39 +206,7 @@ class _BookingFormState extends State<BookingForm> {
     );
   }
 
-  Widget _footerButtons() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(_l10n.cancel),
-        ),
-        const SizedBox(width: 8),
-        ElevatedButton(
-          onPressed: _saveForm,
-          child: Text(_l10n.save),
-        ),
-      ],
-    );
-  }
-
   // ───────────────────────── Actions ─────────────────────────
-
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _date,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2101),
-    );
-    if (picked != null && picked != _date) {
-      setState(() {
-        _date = picked;
-        _dateCtrl.text = DateFormat('dd.MM.yyyy').format(picked);
-      });
-    }
-  }
 
   Future<void> _saveForm() async {
     if (!_formKey.currentState!.validate()) return;
@@ -392,7 +276,7 @@ class _BookingFormState extends State<BookingForm> {
     // --- Merge Logic ---
     if (original == null && _notesCtrl.text.isEmpty) {
       final mergeCandidate =
-          await _db.bookingsDao.findMergeableBooking(companion);
+      await _db.bookingsDao.findMergeableBooking(companion);
 
       if (mergeCandidate != null && mounted) {
         final mergedShares = mergeCandidate.shares + shares;
@@ -406,18 +290,19 @@ class _BookingFormState extends State<BookingForm> {
         if (mounted) {
           final confirm = await showDialog<bool>(
             context: context,
-            builder: (ctx) => AlertDialog(
-              title: Text(_l10n.mergeBookings),
-              content: Text(_l10n.mergeBookingsQuestion),
-              actions: [
-                TextButton(
-                    onPressed: () => Navigator.pop(ctx, false),
-                    child: Text(_l10n.createNew)),
-                TextButton(
-                    onPressed: () => Navigator.pop(ctx, true),
-                    child: Text(_l10n.merge)),
-              ],
-            ),
+            builder: (ctx) =>
+                AlertDialog(
+                  title: Text(_l10n.mergeBookings),
+                  content: Text(_l10n.mergeBookingsQuestion),
+                  actions: [
+                    TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: Text(_l10n.createNew)),
+                    TextButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: Text(_l10n.merge)),
+                  ],
+                ),
           );
 
           if (confirm == true) {

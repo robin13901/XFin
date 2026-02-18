@@ -58,6 +58,7 @@
   "notes": "Notizen",
   "excludeFromAverage": "Vom Durchschnitt ausschließen",
   "dateCannotBeInTheFuture": "Das Datum darf nicht in der Zukunft liegen.",
+  "dateMustBeInTheFuture": "Das Datum muss in der Zukunft liegen.",
   "accountHasReferencesArchiveInstead": "Dieses Konto hat Referenzen und kann nicht gelöscht werden. Möchten Sie es stattdessen archivieren?",
   "archive": "Archivieren",
   "confirm": "Bestätigen",
@@ -133,7 +134,8 @@
   "valueMustBeGreaterEqualZero": "Wert muss ≥ 0 sein",
   "valueCannotBeZero": "Wert darf nicht 0 sein",
   "noTransfersYet": "Noch keine Überweisungen vorhanden",
-  "transfers": "Überweisung",
+  "transfers": "Überweisungen",
+  "transfer": "Überweisung",
   "isGenerated": "Erstellt durch Dauerauftrag",
   "updateWouldBreakAccountBalanceHistory": "Die Änderungen können nicht gespeichert werden. Die eingegebenen Werte würden zu Inkonsistenzen im Verlauf des Kontostandes eines oder mehrerer beteiligter Konten führen.",
 
@@ -148,11 +150,33 @@
   "databaseReplacedSuccessfully" : "Datenbank erfolgreich ersetzt.",
   "databaseReplacedButReopenFailed" : "Datenbank ersetzt, aber Öffnen fehlgeschlagen.",
 
+  "standingOrders": "Daueraufträge",
+  "standingOrdersExecuted": "Daueraufträge ausgeführt",
+  "nStandingOrdersExecuted": "{n, plural, =1{1 Dauerauftrag wurde automatisch ausgeführt} other{{n} Daueraufträge wurden automatisch ausgeführt}}",
+  "@nStandingOrdersExecuted": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "nextExecutionDate": "Nächste Ausführung",
+  "cycle": "Zyklus",
+  "pleaseSelectACycle": "Bitte wähle einen Zyklus!",
+  "daily": "Täglich",
+  "weekly": "Wöchentlich",
+  "monthly": "Monatlich",
+  "quarterly": "Pro Quartal",
+  "yearly": "Jährlich",
+
   "startDate": "Startdatum",
   "endDate": "Enddatum",
   "sinceStart": "Seit Beginn",
   "today": "Heute",
   "pickDate": "Datum wählen",
+
+  "noPeriodicBookingsYet": "Noch keine periodischen Buchungen vorhanden.",
+  "noPeriodicTransfersYet": "Noch keine periodischen Überweisungen vorhanden.",
 
   "delete": "Löschen",
   "deleteAccount": "Konto löschen",
@@ -160,11 +184,13 @@
   "deleteBooking": "Buchung löschen",
   "deleteTrade": "Trade löschen",
   "deleteTransfer": "Überweisung löschen",
+  "deleteStandingOrder": "Dauerauftrag löschen",
   "deleteAccountConfirmation": "Sind Sie sicher, dass Sie dieses Konto löschen möchten?",
   "deleteAssetConfirmation": "Sind Sie sicher, dass Sie dieses Asset löschen möchten?",
   "deleteBookingConfirmation": "Sind Sie sicher, dass Sie diese Buchung löschen möchten?",
   "deleteTradeConfirmation": "Sind Sie sicher, dass Sie diesen Trade löschen möchten?",
   "deleteTransferConfirmation": "Sind Sie sicher, dass Sie diese Überweisung löschen möchten?",
+  "deleteStandingOrderConfirmation": "Sind Sie sicher, dass Sie diesen Dauerauftrag löschen möchten?",
   "cannotDeleteAccount": "Konto kann nicht gelöscht werden",
   "cannotDeleteAsset": "Asset kann nicht gelöscht werden",
   "cannotDeleteOrArchiveAccount": "Löschen oder Archivieren nicht möglich",

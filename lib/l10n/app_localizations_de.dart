@@ -195,6 +195,9 @@ class AppLocalizationsDe extends AppLocalizations {
       'Das Datum darf nicht in der Zukunft liegen.';
 
   @override
+  String get dateMustBeInTheFuture => 'Das Datum muss in der Zukunft liegen.';
+
+  @override
   String get accountHasReferencesArchiveInstead =>
       'Dieses Konto hat Referenzen und kann nicht gelöscht werden. Möchten Sie es stattdessen archivieren?';
 
@@ -413,7 +416,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get noTransfersYet => 'Noch keine Überweisungen vorhanden';
 
   @override
-  String get transfers => 'Überweisung';
+  String get transfers => 'Überweisungen';
+
+  @override
+  String get transfer => 'Überweisung';
 
   @override
   String get isGenerated => 'Erstellt durch Dauerauftrag';
@@ -421,6 +427,47 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get updateWouldBreakAccountBalanceHistory =>
       'Die Änderungen können nicht gespeichert werden. Die eingegebenen Werte würden zu Inkonsistenzen im Verlauf des Kontostandes eines oder mehrerer beteiligter Konten führen.';
+
+  @override
+  String get standingOrders => 'Daueraufträge';
+
+  @override
+  String get standingOrdersExecuted => 'Daueraufträge ausgeführt';
+
+  @override
+  String nStandingOrdersExecuted(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n Daueraufträge wurden automatisch ausgeführt',
+      one: '1 Dauerauftrag wurde automatisch ausgeführt',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get nextExecutionDate => 'Nächste Ausführung';
+
+  @override
+  String get cycle => 'Zyklus';
+
+  @override
+  String get pleaseSelectACycle => 'Bitte wähle einen Zyklus!';
+
+  @override
+  String get daily => 'Täglich';
+
+  @override
+  String get weekly => 'Wöchentlich';
+
+  @override
+  String get monthly => 'Monatlich';
+
+  @override
+  String get quarterly => 'Pro Quartal';
+
+  @override
+  String get yearly => 'Jährlich';
 
   @override
   String get importDatabase => 'Datenbank importieren';
@@ -471,6 +518,14 @@ class AppLocalizationsDe extends AppLocalizations {
   String get pickDate => 'Datum wählen';
 
   @override
+  String get noPeriodicBookingsYet =>
+      'Noch keine periodischen Buchungen vorhanden.';
+
+  @override
+  String get noPeriodicTransfersYet =>
+      'Noch keine periodischen Überweisungen vorhanden.';
+
+  @override
   String get delete => 'Löschen';
 
   @override
@@ -487,6 +542,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get deleteTransfer => 'Überweisung löschen';
+
+  @override
+  String get deleteStandingOrder => 'Dauerauftrag löschen';
 
   @override
   String get deleteAccountConfirmation =>
@@ -507,6 +565,10 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get deleteTransferConfirmation =>
       'Sind Sie sicher, dass Sie diese Überweisung löschen möchten?';
+
+  @override
+  String get deleteStandingOrderConfirmation =>
+      'Sind Sie sicher, dass Sie diesen Dauerauftrag löschen möchten?';
 
   @override
   String get cannotDeleteAccount => 'Konto kann nicht gelöscht werden';

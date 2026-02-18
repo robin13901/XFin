@@ -152,16 +152,8 @@ class _BookingsScreenState extends State<BookingsScreen> {
                 final item = _items[index];
                 final booking = item.booking;
                 final asset = item.asset;
-
                 final valueColor = booking.value < 0 ? Colors.red : Colors.green;
-
-                final dateString = booking.date.toString();
-                final date = DateTime.parse(
-                  '${dateString.substring(0, 4)}-'
-                      '${dateString.substring(4, 6)}-'
-                      '${dateString.substring(6, 8)}',
-                );
-                final dateText = dateFormat.format(date);
+                final dateText = dateFormat.format(intToDateTime(booking.date)!);
 
                 return ListTile(
                   title: Text(booking.category),

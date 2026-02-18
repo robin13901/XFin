@@ -91,9 +91,23 @@ class Validator {
     return accountId == null ? l10n.pleaseSelectAnAccount : null;
   }
 
-  String? validateDate(DateTime? value) {
+  String? validateAssetSelected(int? assetId) {
+    return assetId == null ? l10n.pleaseSelectAnAsset : null;
+  }
+
+  String? validateCycleSelected(int? cycleIndex) {
+    return cycleIndex == null ? l10n.pleaseSelectACycle : null;
+  }
+
+  String? validateDateNotInFuture(DateTime? value) {
     if (value == null) return l10n.requiredField;
     if (value.isAfter(DateTime.now())) return l10n.dateCannotBeInTheFuture;
+    return null;
+  }
+
+  String? validateDateInFuture(DateTime? value) {
+    if (value == null) return l10n.requiredField;
+    if (!value.isAfter(DateTime.now())) return l10n.dateMustBeInTheFuture;
     return null;
   }
 
