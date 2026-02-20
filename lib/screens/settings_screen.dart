@@ -8,6 +8,7 @@ import 'package:xfin/l10n/app_localizations.dart';
 
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/utils/db_backup.dart';
+import 'package:xfin/utils/date_picker_locale.dart';
 import 'package:xfin/utils/format.dart';
 
 import 'package:xfin/utils/global_constants.dart';
@@ -80,6 +81,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
+      locale: resolveDatePickerLocale(Localizations.localeOf(context)),
       initialDate: _startDate ?? now,
       firstDate: DateTime(1900),
       lastDate: DateTime(now.year + 10),
@@ -100,6 +102,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
+      locale: resolveDatePickerLocale(Localizations.localeOf(context)),
       initialDate: _endDate ?? now,
       firstDate: DateTime(1900),
       lastDate: DateTime(now.year + 10),
