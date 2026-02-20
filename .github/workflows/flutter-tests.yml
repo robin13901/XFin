@@ -31,7 +31,7 @@ jobs:
       - name: Generate coverage report
         run: |
           flutter test --coverage
-          dart run remove_from_coverage:remove_from_coverage -f coverage/lcov.info -r '\.g\.dart$' -r 'tables\.dart$' -r '^lib/l10n/'
+          dart run remove_from_coverage:remove_from_coverage -f coverage/lcov.info -r '\.g\.dart$' -r 'app_theme\.dart$' -r 'tables\.dart$' -r '^lib/l10n/'
 
       - name: Upload coverage report to Codecov
         uses: codecov/codecov-action@v4
