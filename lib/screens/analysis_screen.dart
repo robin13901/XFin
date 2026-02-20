@@ -1,15 +1,13 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'dart:math';
 
 import '../app_theme.dart';
 import '../database/app_database.dart';
 import '../providers/database_provider.dart';
-import '../providers/theme_provider.dart';
 import '../utils/format.dart';
-import '../utils/indicator_calculator.dart';
+import '../widgets/analysis_line_chart_section.dart';
 
 // A data class to hold all asynchronous results needed by AnalysisScreen
 class AnalysisData {
@@ -163,150 +161,8 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             return const Center(child: Text('No data available.'));
           }
 
-          final isDark = ThemeProvider.isDark();
-
           final analysisData = snapshot.data!;
           final allData = analysisData.balanceHistory;
-          final sumOfInitialBalances = analysisData.sumOfInitialBalances;
-
-          final Map<String, List<FlSpot>> dataSets = {
-            '1W': allData.length > 7
-                ? allData.sublist(allData.length - 7)
-                : allData,
-            '1M': allData.length > 30
-                ? allData.sublist(allData.length - 30)
-                : allData,
-            '1J': allData.length > 365
-                ? allData.sublist(allData.length - 365)
-                : allData,
-            'MAX': allData,
-          };
-
-          final List<FlSpot> currentData = dataSets[_selectedRange]!;
-
-          double balanceToShow;
-          double profit;
-          double profitPercent;
-          String dateText;
-
-          if (_touchedSpot == null) {
-            balanceToShow = currentData.isNotEmpty ? currentData.last.y : 0;
-            if (currentData.length < allData.length) {
-              profit = currentData.last.y - currentData.first.y;
-              profitPercent = (currentData.first.y != 0)
-                  ? (profit / currentData.first.y)
-                  : 0;
-            } else if (currentData.length == allData.length) {
-              profit = currentData.last.y - sumOfInitialBalances;
-              profitPercent = (sumOfInitialBalances != 0)
-                  ? (profit / sumOfInitialBalances)
-                  : 0;
-            } else {
-              profit = 0;
-              profitPercent = 0;
-            }
-
-            switch (_selectedRange) {
-              case '1W':
-                dateText = 'Seit 7 Tagen';
-                break;
-              case '1M':
-                dateText = 'Seit 1 Monat';
-                break;
-              case '1J':
-                dateText = 'Seit 1 Jahr';
-                break;
-              case 'MAX':
-                dateText = 'Insgesamt';
-                break;
-              default:
-                dateText = '';
-            }
-          } else {
-            balanceToShow = _touchedSpot!.y;
-            final spotIndex =
-                currentData.indexWhere((spot) => spot.x == _touchedSpot!.x);
-
-            if (spotIndex > 0) {
-              final previousSpot = currentData[spotIndex - 1];
-              profit = _touchedSpot!.y - previousSpot.y;
-              profitPercent =
-                  (previousSpot.y != 0) ? (profit / previousSpot.y) : 0;
-            } else if (currentData.length == allData.length) {
-              profit = currentData.first.y - sumOfInitialBalances;
-              profitPercent = (sumOfInitialBalances != 0)
-                  ? (profit / sumOfInitialBalances)
-                  : 0;
-            } else {
-              profit = 0;
-              profitPercent = 0;
-            }
-            dateText = DateFormat('dd.MM.yyyy').format(
-                DateTime.fromMillisecondsSinceEpoch(_touchedSpot!.x.toInt()));
-          }
-
-          final bool isProfit = profit >= 0;
-          final Color profitColor = isProfit ? AppColors.green : AppColors.red;
-
-          List<LineChartBarData> lineBarsData = [
-            LineChartBarData(
-              spots: currentData,
-              barWidth: 3,
-              color: isDark ? Colors.white : Colors.black,
-              dotData: const FlDotData(show: false),
-            ),
-          ];
-
-          final firstDateInRange =
-              currentData.isNotEmpty ? currentData.first.x : 0;
-
-          if (_showSma) {
-            final smaData = IndicatorCalculator.calculateSma(allData, 30);
-            lineBarsData.add(LineChartBarData(
-              spots:
-                  smaData.where((spot) => spot.x >= firstDateInRange).toList(),
-              isCurved: true,
-              barWidth: 2,
-              color: Colors.orange,
-              dotData: const FlDotData(show: false),
-            ));
-          }
-
-          if (_showEma) {
-            final emaData = IndicatorCalculator.calculateEma(allData, 30);
-            lineBarsData.add(LineChartBarData(
-              spots:
-                  emaData.where((spot) => spot.x >= firstDateInRange).toList(),
-              isCurved: true,
-              barWidth: 2,
-              color: Colors.purple,
-              dotData: const FlDotData(show: false),
-            ));
-          }
-
-          if (_showBb) {
-            final bbData = IndicatorCalculator.calculateBb(allData, 20);
-            lineBarsData.addAll(bbData.map((data) => data.copyWith(
-                spots: data.spots
-                    .where((spot) => spot.x >= firstDateInRange)
-                    .toList())));
-          }
-
-          double overallMinY = currentData.map((e) => e.y).reduce(min);
-          double overallMaxY = currentData.map((e) => e.y).reduce(max);
-
-          for (final barData in lineBarsData) {
-            if (barData.spots.isNotEmpty) {
-              overallMinY =
-                  min(overallMinY, barData.spots.map((e) => e.y).reduce(min));
-              overallMaxY =
-                  max(overallMaxY, barData.spots.map((e) => e.y).reduce(max));
-            }
-          }
-          double padding = (overallMaxY - overallMinY) * 0.05;
-          double minY = overallMinY - padding;
-          double maxY = overallMaxY + padding;
-
           return SingleChildScrollView(
             controller: _controller,
             physics: _chartPointerCount > 0
@@ -318,282 +174,43 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                 children: [
                   Padding(
                     padding: const EdgeInsets.all(12.0),
-                    child: Column(
-                      children: [
-                        // Total balance
-                        Text(
-                          formatCurrency(balanceToShow),
-                          style: const TextStyle(
-                              fontSize: 32, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(
-                                    isProfit
-                                        ? Icons.arrow_upward
-                                        : Icons.arrow_downward,
-                                    color: profitColor,
-                                    size: 16),
-                                const SizedBox(width: 4),
-                                Text(
-                                    '${formatCurrency(profit)} (${formatPercent(profitPercent)})',
-                                    style: TextStyle(
-                                        color: profitColor, fontSize: 16)),
-                              ],
-                            ),
-                            Text(dateText,
-                                style: const TextStyle(fontSize: 16)),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Range selection
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: ['1W', '1M', '1J', 'MAX'].map((range) {
-                            return TextButton(
-                              onPressed: () => _onRangeSelected(range),
-                              style: TextButton.styleFrom(
-                                backgroundColor: _selectedRange == range
-                                    ? Theme.of(context)
-                                        .colorScheme
-                                        .secondary
-                                    : Colors.transparent,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(
-                                      20), // pill / ellipse
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 8),
-                              ),
-                              child: Text(
-                                range,
-                                style: TextStyle(
-                                  color: _selectedRange == range
-                                      ? isDark ? Colors.black : Colors.white
-                                      : Theme.of(context)
-                                          .textTheme
-                                          .bodyLarge
-                                          ?.color,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                        const SizedBox(height: 16),
-                        Listener(
-                          onPointerDown: (_) {
-                            setState(() => _chartPointerCount += 1);
-                          },
-                          onPointerUp: (_) {
-                            setState(() {
-                              _chartPointerCount =
-                                  max(0, _chartPointerCount - 1);
-                            });
-                          },
-                          onPointerCancel: (_) {
-                            setState(() {
-                              _chartPointerCount =
-                                  max(0, _chartPointerCount - 1);
-                            });
-                          },
-                          child: SizedBox(
-                            height: 400,
-                            child: LineChart(
-                              LineChartData(
-                                minY: minY,
-                                maxY: maxY,
-                                lineBarsData: lineBarsData,
-                                titlesData: FlTitlesData(
-                                  leftTitles: AxisTitles(
-                                      sideTitles: SideTitles(
-                                          showTitles: true,
-                                          reservedSize: 38,
-                                          getTitlesWidget: (value, meta) {
-                                            // Hide first and last labels
-                                            if ((value - meta.min).abs() <
-                                                    0.001 ||
-                                                (value - meta.max).abs() <
-                                                    0.001) {
-                                              return const SizedBox.shrink();
-                                            }
-                                            String text;
-                                            if (value >= 1000000) {
-                                              text =
-                                                  '${(value / 1000000).toStringAsFixed(0)}m';
-                                            } else if (value >= 1000) {
-                                              text =
-                                                  '${(value / 1000).toStringAsFixed(2)}k';
-                                            } else {
-                                              text = value.toStringAsFixed(0);
-                                            }
-                                            return SideTitleWidget(
-                                              axisSide: meta.axisSide,
-                                              space: 10,
-                                              child: Text(text,
-                                                  style: const TextStyle(
-                                                      fontSize: 8)),
-                                            );
-                                          })),
-                                  bottomTitles: AxisTitles(
-                                      sideTitles: SideTitles(
-                                          showTitles: true,
-                                          getTitlesWidget: (value, meta) {
-                                            // Hide first and last labels
-                                            if (_selectedRange == '1W') {
-                                              if ((value - meta.min).abs() <
-                                                  0.001) {
-                                                return const SizedBox.shrink();
-                                              }
-                                            } else {
-                                              if ((value - meta.min).abs() <
-                                                      0.001 ||
-                                                  (value - meta.max).abs() <
-                                                      0.001) {
-                                                return const SizedBox.shrink();
-                                              }
-                                            }
-                                            final date = DateTime
-                                                .fromMillisecondsSinceEpoch(
-                                                    value.toInt());
-                                            String text;
-                                            switch (_selectedRange) {
-                                              case '1W':
-                                                text = DateFormat.E('de_DE')
-                                                    .format(date);
-                                                break;
-                                              case '1M':
-                                                text = DateFormat.d('de_DE')
-                                                    .format(date);
-                                                break;
-                                              case '1J':
-                                                text = DateFormat.MMM('de_DE')
-                                                    .format(date);
-                                                break;
-                                              case 'MAX':
-                                                text = DateFormat.yMMM('de_DE')
-                                                    .format(date);
-                                                break;
-                                              default:
-                                                text = '';
-                                            }
-                                            return SideTitleWidget(
-                                                axisSide: meta.axisSide,
-                                                child: Text(text,
-                                                    style: const TextStyle(
-                                                        fontSize: 12)));
-                                          },
-                                          interval: _getBottomTitleInterval(
-                                              currentData))),
-                                  topTitles: const AxisTitles(
-                                      sideTitles:
-                                          SideTitles(showTitles: false)),
-                                  rightTitles: const AxisTitles(
-                                      sideTitles:
-                                          SideTitles(showTitles: false)),
-                                ),
-                                gridData: FlGridData(
-                                  show: false,
-                                  drawVerticalLine: false,
-                                  getDrawingHorizontalLine: (value) =>
-                                      const FlLine(
-                                          color: Colors.grey, strokeWidth: 0.5),
-                                  getDrawingVerticalLine: (value) =>
-                                      const FlLine(
-                                          color: Colors.grey, strokeWidth: 0.5),
-                                ),
-                                borderData: FlBorderData(
-                                    show: false,
-                                    border: Border.all(
-                                        color: Colors.grey, width: 1)),
-                                lineTouchData: LineTouchData(
-                                  touchCallback: (FlTouchEvent event,
-                                      LineTouchResponse? touchResponse) {
-                                    if (event is FlPanEndEvent ||
-                                        event is FlLongPressEnd ||
-                                        event is FlTapUpEvent) {
-                                      setState(() => _touchedSpot = null);
-                                    } else if (touchResponse != null &&
-                                        touchResponse.lineBarSpots != null &&
-                                        touchResponse
-                                            .lineBarSpots!.isNotEmpty) {
-                                      setState(() => _touchedSpot =
-                                          touchResponse.lineBarSpots![0]);
-                                    }
-                                  },
-                                  touchTooltipData: LineTouchTooltipData(
-                                    getTooltipItems: (touchedBarSpots) =>
-                                        touchedBarSpots
-                                            .map((barSpot) => LineTooltipItem(
-                                                formatCurrency(barSpot.y),
-                                                const TextStyle(
-                                                    color: Colors.white)))
-                                            .toList(),
-                                  ),
-                                  handleBuiltInTouches: true,
-                                ),
-                                clipData: const FlClipData.all(),
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // Indicators
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            Row(children: [
-                              Checkbox(
-                                  value: _showSma,
-                                  activeColor: Colors.orange,
-                                  onChanged: (value) =>
-                                      setState(() => _showSma = value!)),
-                              Text('30-SMA',
-                                  style: TextStyle(
-                                      color: _showSma
-                                          ? Colors.orange
-                                          : isDark
-                                              ? Colors.white
-                                              : Colors.black))
-                            ]),
-                            Row(children: [
-                              Checkbox(
-                                  value: _showEma,
-                                  activeColor: Colors.purple,
-                                  onChanged: (value) =>
-                                      setState(() => _showEma = value!)),
-                              Text('30-EMA',
-                                  style: TextStyle(
-                                      color: _showEma
-                                          ? Colors.purple
-                                          : isDark
-                                              ? Colors.white
-                                              : Colors.black))
-                            ]),
-                            Row(children: [
-                              Checkbox(
-                                  value: _showBb,
-                                  activeColor: Colors.blue,
-                                  onChanged: (value) =>
-                                      setState(() => _showBb = value!)),
-                              Text('20-BB',
-                                  style: TextStyle(
-                                      color: _showBb
-                                          ? Colors.blue
-                                          : isDark
-                                              ? Colors.white
-                                              : Colors.black))
-                            ]),
-                          ],
-                        ),
-                      ],
+                    child: AnalysisLineChartSection(
+                      allData: allData,
+                      startValue: analysisData.sumOfInitialBalances,
+                      selectedRange: _selectedRange,
+                      onRangeSelected: _onRangeSelected,
+                      showSma: _showSma,
+                      showEma: _showEma,
+                      showBb: _showBb,
+                      onShowSmaChanged: (value) =>
+                          setState(() => _showSma = value),
+                      onShowEmaChanged: (value) =>
+                          setState(() => _showEma = value),
+                      onShowBbChanged: (value) => setState(() => _showBb = value),
+                      touchedSpot: _touchedSpot,
+                      onTouchedSpotChanged: (spot) =>
+                          setState(() => _touchedSpot = spot),
+                      onPointerDown: () => setState(() => _chartPointerCount += 1),
+                      onPointerUpOrCancel: () {
+                        setState(() {
+                          _chartPointerCount = max(0, _chartPointerCount - 1);
+                        });
+                      },
+                      valueFormatter: formatCurrency,
+                      rangeTextBuilder: (range) {
+                        switch (range) {
+                          case '1W':
+                            return 'Seit 7 Tagen';
+                          case '1M':
+                            return 'Seit 1 Monat';
+                          case '1J':
+                            return 'Seit 1 Jahr';
+                          case 'MAX':
+                            return 'Insgesamt';
+                          default:
+                            return '';
+                        }
+                      },
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -856,25 +473,4 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     );
   }
 
-  double _getBottomTitleInterval(List<FlSpot> data) {
-    if (data.isEmpty) return 1;
-    final first = DateTime.fromMillisecondsSinceEpoch(data.first.x.toInt());
-    final last = DateTime.fromMillisecondsSinceEpoch(data.last.x.toInt());
-    final difference = last.difference(first);
-
-    switch (_selectedRange) {
-      case '1W':
-        return const Duration(days: 1).inMilliseconds.toDouble();
-      case '1M':
-        return const Duration(days: 5).inMilliseconds.toDouble();
-      case '1J':
-        return const Duration(days: 30).inMilliseconds.toDouble();
-      case 'MAX':
-        return Duration(days: (difference.inDays / 4).round().clamp(1, 365))
-            .inMilliseconds
-            .toDouble(); // Show fewer labels for MAX
-      default:
-        return const Duration(days: 1).inMilliseconds.toDouble();
-    }
-  }
 }

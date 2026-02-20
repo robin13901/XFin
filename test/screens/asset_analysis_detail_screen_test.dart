@@ -102,7 +102,7 @@ void main() {
 
         await tester.tap(find.text('Shares'));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('SMA'));
+        await tester.tap(find.text('30-SMA'));
         await tester.pumpAndSettle();
 
         expect(find.text('Buys'), findsOneWidget);
