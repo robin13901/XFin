@@ -5,6 +5,7 @@ import 'package:xfin/utils/format.dart';
 import '../database/app_database.dart';
 import '../database/tables.dart';
 import '../providers/base_currency_provider.dart';
+import '../utils/date_picker_locale.dart';
 import '../utils/global_constants.dart';
 import '../utils/validators.dart';
 
@@ -28,10 +29,12 @@ class FormFields {
   }) {
     Future<void> pickDate() async {
       final picked = await showDatePicker(
-          context: _context,
-          initialDate: date,
-          firstDate: DateTime(2000),
-          lastDate: DateTime(2101));
+        context: _context,
+        locale: resolveDatePickerLocale(Localizations.localeOf(_context)),
+        initialDate: date,
+        firstDate: DateTime(2000),
+        lastDate: DateTime(2101),
+      );
       if (picked == null || picked == date) return;
       dateController.text = dateFormat.format(picked);
       onDateChanged(picked);

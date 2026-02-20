@@ -9,6 +9,7 @@ import 'package:xfin/l10n/app_localizations.dart';
 import '../providers/base_currency_provider.dart';
 import '../providers/database_provider.dart';
 import '../utils/format.dart';
+import '../utils/date_picker_locale.dart';
 import '../utils/validators.dart';
 import 'dialogs.dart';
 import 'form_fields.dart';
@@ -159,6 +160,7 @@ class _TradeFormState extends State<TradeForm> {
   Future<void> _selectDate(BuildContext context) async {
     final pickedDate = await showDatePicker(
       context: context,
+      locale: resolveDatePickerLocale(Localizations.localeOf(context)),
       initialDate: _datetime,
       firstDate: DateTime(2000),
       lastDate: DateTime.now(),
