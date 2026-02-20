@@ -2,8 +2,10 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
+import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/utils/format.dart';
+import 'package:xfin/utils/global_constants.dart';
 import 'package:xfin/widgets/asset_form.dart';
 import 'package:xfin/widgets/dialogs.dart';
 
@@ -63,7 +65,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
 
   Future<List<_AllocationItem>> _loadAllocationItems(AppDatabase db) async {
     final assets = (await db.assetsDao.getAllAssets())
-        .where((a) => !a.isArchived && a.id != 1)
+        .where((a) => !a.isArchived)
         .toList();
     if (_selectedType == null) {
       final Map<AssetTypes, double> byType = {};
@@ -91,14 +93,6 @@ class _AssetsScreenState extends State<AssetsScreen> {
 
   Widget _buildAllocationChart(List<_AllocationItem> items) {
     final total = items.fold<double>(0, (sum, e) => sum + e.value);
-    final colors = [
-      const Color(0xFF3B82F6),
-      const Color(0xFF2563EB),
-      const Color(0xFF1D4ED8),
-      const Color(0xFF1E40AF),
-      const Color(0xFF3730A3),
-      const Color(0xFF312E81),
-    ];
     return SizedBox(
       height: 240,
       child: PieChart(
@@ -111,7 +105,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
             final ratio = total == 0 ? 0.0 : item.value / total;
             return PieChartSectionData(
               value: item.value,
-              color: colors[index % colors.length],
+              color: chartColors[index % chartColors.length],
               radius: 88,
               title: ratio >= 0.08 ? '${(ratio * 100).toStringAsFixed(0)}%' : '',
               titleStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
@@ -122,7 +116,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
     );
   }
 
-  Widget _buildAnalysisTab(BuildContext context, AppDatabase db) {
+  Widget _buildAnalysisTab(BuildContext context, AppDatabase db, AppLocalizations l10n) {
     return FutureBuilder<List<_AllocationItem>>(
       future: _loadAllocationItems(db),
       builder: (context, snapshot) {
@@ -137,59 +131,57 @@ class _AssetsScreenState extends State<AssetsScreen> {
         return SingleChildScrollView(
           padding: EdgeInsets.only(
             top: MediaQuery.of(context).padding.top + kToolbarHeight + 12,
-            bottom: 120,
+            bottom: 96,
             left: 12,
             right: 12,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: AssetTypes.values.map((type) {
-                  final selected = _selectedType == type;
-                  return ChoiceChip(
-                    label: Text(type.name.toUpperCase()),
-                    selected: selected,
-                    onSelected: (_) => setState(() {
-                      _selectedType = selected ? null : type;
-                    }),
-                  );
-                }).toList(),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: AssetTypes.values.map((type) {
+                    final selected = _selectedType == type;
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: ChoiceChip(
+                        label: Text(getAssetTypeName(l10n, type, plural: true)),
+                        showCheckmark: false,
+                        selected: selected,
+                        onSelected: (_) => setState(() {
+                          _selectedType = selected ? null : type;
+                        }),
+                      ),
+                    );
+                  }).toList(),
+                ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 32),
               if (items.isEmpty)
-                const Center(child: Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Text('No allocation data yet.'),
+                Center(child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(l10n.noAssetsOfThisTypeYet),
                 ))
               else ...[
                 _buildAllocationChart(items),
-                const SizedBox(height: 16),
-                Text(
-                  _selectedType == null ? 'Assets' : '${_selectedType!.name.toUpperCase()} Assets',
-                  style: Theme.of(context).textTheme.titleLarge,
+                const SizedBox(height: 32),
+                Text(l10n.investments,
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
-                const SizedBox(height: 8),
                 ...List.generate(items.length, (index) {
                   final item = items[index];
-                  final ratio = total == 0 ? 0 : item.value / total;
+                  double ratio = total == 0 ? 0 : item.value / total;
                   return ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: CircleAvatar(
                       radius: 8,
-                      backgroundColor: [
-                        const Color(0xFF3B82F6),
-                        const Color(0xFF2563EB),
-                        const Color(0xFF1D4ED8),
-                        const Color(0xFF1E40AF),
-                        const Color(0xFF3730A3),
-                        const Color(0xFF312E81),
-                      ][index % 6],
+                      backgroundColor: chartColors[index % 10],
                     ),
-                    title: Text(item.label, style: const TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: Text(formatCurrency(item.value)),
+                    title: Text(_selectedType == null ? getAssetTypeName(l10n, item.type!, plural: true) : item.label, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: Text(formatCurrency(item.value), style: const TextStyle(color: Colors.grey)),
                     trailing: Text(formatPercent(ratio), style: const TextStyle(fontWeight: FontWeight.w700)),
                     onTap: () {
                       if (_selectedType == null && item.type != null) {
@@ -229,7 +221,6 @@ class _AssetsScreenState extends State<AssetsScreen> {
         return ListView.builder(
           padding: EdgeInsets.only(
             top: MediaQuery.of(context).padding.top + kToolbarHeight,
-            bottom: 120,
           ),
           itemCount: assets.length,
           itemBuilder: (context, index) {
@@ -251,7 +242,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                   Text('${l10n.value}: ${formatCurrency(asset.value)}'),
                 ],
               ),
-              trailing: Text(asset.type.name.toUpperCase()),
+              trailing: Text(getAssetTypeName(l10n, asset.type)),
               onLongPress: () => _handleLongPress(context, db, asset, l10n),
             );
           },
@@ -271,7 +262,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
           IndexedStack(
             index: _selectedTab,
             children: [
-              _buildAnalysisTab(context, db),
+              _buildAnalysisTab(context, db, l10n),
               _buildAssetsList(context, db, l10n),
             ],
           ),

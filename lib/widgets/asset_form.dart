@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
+import 'package:xfin/utils/format.dart';
 
 import '../providers/database_provider.dart';
 import '../utils/validators.dart';
@@ -103,23 +104,6 @@ class _AssetFormState extends State<AssetForm> {
     }
   }
 
-  String _getAssetTypeName(AppLocalizations l10n, AssetTypes type) {
-    switch (type) {
-      case AssetTypes.stock:
-        return l10n.stock;
-      case AssetTypes.crypto:
-        return l10n.crypto;
-      case AssetTypes.etf:
-        return l10n.etf;
-      case AssetTypes.fund:
-        return l10n.fund;
-      case AssetTypes.fiat:
-        return l10n.fiat;
-      case AssetTypes.derivative:
-        return l10n.derivative;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -158,7 +142,7 @@ class _AssetFormState extends State<AssetForm> {
                   items: AssetTypes.values.map((type) {
                     return DropdownMenuItem(
                       value: type,
-                      child: Text(_getAssetTypeName(l10n, type)),
+                      child: Text(getAssetTypeName(l10n, type)),
                     );
                   }).toList(),
                   onChanged: (value) {

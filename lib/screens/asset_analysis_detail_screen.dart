@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:xfin/database/tables.dart';
 
 import '../database/app_database.dart';
 import '../providers/database_provider.dart';

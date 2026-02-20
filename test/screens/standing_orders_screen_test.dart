@@ -103,9 +103,6 @@ void main() {
       ),
     );
 
-    // IMPORTANT:
-    // Do NOT call pumpAndSettle here.
-    // Just pump one frame so initState runs.
     await tester.pump();
 
     return AppLocalizations.of(

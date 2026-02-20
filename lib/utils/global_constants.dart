@@ -14,6 +14,19 @@ int filterEndDate = 99999999;
 bool isBaseCurrencySelected = false;
 String? baseCurrencyTickerSymbol;
 
+const chartColors = [
+  Color(0xff7400b8),
+  Color(0xff6930c3),
+  Color(0xff5e60ce),
+  Color(0xff5390d9),
+  Color(0xff4ea8de),
+  Color(0xff48bfe3),
+  Color(0xff56cfe1),
+  Color(0xff64dfdf),
+  Color(0xff72efdd),
+  Color(0xff80ffdb),
+];
+
 class PrefKeys {
   static const String filterStartDate =
       'filterStartDate'; // stored as yyyyMMdd or "0"

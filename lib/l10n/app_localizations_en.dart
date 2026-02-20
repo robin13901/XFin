@@ -275,7 +275,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get crypto => 'Crypto';
 
   @override
-  String get fiat => 'Fiat';
+  String get fiat => 'Fiat Currency';
 
   @override
   String get fund => 'Fund';
@@ -291,6 +291,36 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get commodity => 'Commodity';
+
+  @override
+  String get stocks => 'Stocks';
+
+  @override
+  String get cryptos => 'Crypto';
+
+  @override
+  String get fiats => 'Fiat Currencies';
+
+  @override
+  String get funds => 'Funds';
+
+  @override
+  String get derivatives => 'Derivatives';
+
+  @override
+  String get etfs => 'ETFs';
+
+  @override
+  String get bonds => 'Bonds';
+
+  @override
+  String get commodities => 'Commodities';
+
+  @override
+  String get noAssetsOfThisTypeYet => 'No assets of this type yet.';
+
+  @override
+  String get investments => 'Investments';
 
   @override
   String get value => 'Value';

@@ -56,14 +56,14 @@ void main() {
           type: AssetTypes.fiat,
           tickerSymbol: 'EUR',
         ));
-    await db.into(db.assets).insert(const AssetsCompanion.insert(
+    await db.into(db.assets).insert(AssetsCompanion.insert(
           name: 'BTC',
           type: AssetTypes.crypto,
           tickerSymbol: 'BTC',
-          value: Value(500),
-          shares: Value(1),
-          netCostBasis: Value(500),
-          brokerCostBasis: Value(500),
+          value: const Value(500),
+          shares: const Value(1),
+          netCostBasis: const Value(500),
+          brokerCostBasis: const Value(500),
         ));
   });
 
@@ -82,6 +82,9 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.byType(AssetForm), findsOneWidget);
+
+        await tester.pumpWidget(Container());
+        await tester.pumpAndSettle();
       }));
 
   testWidgets('switching to analysis hides FAB and supports allocation drilldown', (tester) => tester.runAsync(() async {
@@ -92,13 +95,16 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.byKey(const Key('fab')), findsNothing);
-        expect(find.text('CRYPTO'), findsOneWidget);
+        expect(find.text('Crypto'), findsAtLeastNWidgets(1));
 
-        await tester.tap(find.text('CRYPTO').first);
+        await tester.tap(find.text('Crypto').first);
         await tester.pumpAndSettle();
 
-        expect(find.text('CRYPTO Assets'), findsOneWidget);
+        expect(find.text('Investments'), findsOneWidget);
         expect(find.text('BTC'), findsOneWidget);
+
+        await tester.pumpWidget(Container());
+        await tester.pumpAndSettle();
       }));
 
   testWidgets('long press protected asset shows cannot-delete dialog', (tester) => tester.runAsync(() async {
@@ -114,5 +120,8 @@ void main() {
 
         expect(find.text(l10n.cannotDeleteAsset), findsOneWidget);
         expect(find.text(l10n.assetHasReferences), findsOneWidget);
+
+        await tester.pumpWidget(Container());
+        await tester.pumpAndSettle();
       }));
 }

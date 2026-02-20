@@ -605,7 +605,7 @@ abstract class AppLocalizations {
   /// No description provided for @fiat.
   ///
   /// In en, this message translates to:
-  /// **'Fiat'**
+  /// **'Fiat Currency'**
   String get fiat;
 
   /// No description provided for @fund.
@@ -637,6 +637,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Commodity'**
   String get commodity;
+
+  /// No description provided for @stocks.
+  ///
+  /// In en, this message translates to:
+  /// **'Stocks'**
+  String get stocks;
+
+  /// No description provided for @cryptos.
+  ///
+  /// In en, this message translates to:
+  /// **'Crypto'**
+  String get cryptos;
+
+  /// No description provided for @fiats.
+  ///
+  /// In en, this message translates to:
+  /// **'Fiat Currencies'**
+  String get fiats;
+
+  /// No description provided for @funds.
+  ///
+  /// In en, this message translates to:
+  /// **'Funds'**
+  String get funds;
+
+  /// No description provided for @derivatives.
+  ///
+  /// In en, this message translates to:
+  /// **'Derivatives'**
+  String get derivatives;
+
+  /// No description provided for @etfs.
+  ///
+  /// In en, this message translates to:
+  /// **'ETFs'**
+  String get etfs;
+
+  /// No description provided for @bonds.
+  ///
+  /// In en, this message translates to:
+  /// **'Bonds'**
+  String get bonds;
+
+  /// No description provided for @commodities.
+  ///
+  /// In en, this message translates to:
+  /// **'Commodities'**
+  String get commodities;
+
+  /// No description provided for @noAssetsOfThisTypeYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No assets of this type yet.'**
+  String get noAssetsOfThisTypeYet;
+
+  /// No description provided for @investments.
+  ///
+  /// In en, this message translates to:
+  /// **'Investments'**
+  String get investments;
 
   /// No description provided for @value.
   ///

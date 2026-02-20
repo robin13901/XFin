@@ -1,6 +1,9 @@
 import 'package:intl/intl.dart';
 import 'package:xfin/providers/base_currency_provider.dart';
 
+import '../database/tables.dart';
+import '../l10n/app_localizations.dart';
+
 final dateFormat = DateFormat('dd.MM.yyyy');
 final dateTimeFormat = DateFormat('dd.MM.yyyy, HH:mm');
 
@@ -43,4 +46,21 @@ String formatPercent(double value) {
 
 String formatCurrency(double value) {
   return _currencyFormat.format(value);
+}
+
+String getAssetTypeName(AppLocalizations l10n, AssetTypes type, {bool plural = false}) {
+  switch (type) {
+    case AssetTypes.stock:
+      return plural ? l10n.stocks : l10n.stock;
+    case AssetTypes.crypto:
+      return plural ? l10n.cryptos : l10n.crypto;
+    case AssetTypes.etf:
+      return plural ? l10n.etfs : l10n.etf;
+    case AssetTypes.fund:
+      return plural ? l10n.funds : l10n.fund;
+    case AssetTypes.fiat:
+      return plural ? l10n.fiats : l10n.fiat;
+    case AssetTypes.derivative:
+      return plural ? l10n.derivatives : l10n.derivative;
+  }
 }

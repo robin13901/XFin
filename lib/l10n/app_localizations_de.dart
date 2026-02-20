@@ -277,10 +277,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get crypto => 'Krypto';
 
   @override
-  String get fiat => 'Fiat';
+  String get fiat => 'Fiat Währung';
 
   @override
-  String get fund => 'Fonds';
+  String get fund => 'Fond';
 
   @override
   String get derivative => 'Derivat';
@@ -293,6 +293,37 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get commodity => 'Rohstoff';
+
+  @override
+  String get stocks => 'Aktien';
+
+  @override
+  String get cryptos => 'Krypto';
+
+  @override
+  String get fiats => 'Fiat Währungen';
+
+  @override
+  String get funds => 'Fonds';
+
+  @override
+  String get derivatives => 'Derivate';
+
+  @override
+  String get etfs => 'ETFs';
+
+  @override
+  String get bonds => 'Anleihen';
+
+  @override
+  String get commodities => 'Rohstoffe';
+
+  @override
+  String get noAssetsOfThisTypeYet =>
+      'Noch keine Assets dieses Typs vorhanden.';
+
+  @override
+  String get investments => 'Investments';
 
   @override
   String get value => 'Wert';

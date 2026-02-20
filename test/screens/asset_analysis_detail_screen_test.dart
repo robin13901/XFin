@@ -50,14 +50,14 @@ void main() {
     await currencyProvider.initialize(const Locale('en'));
 
     await db.into(db.assets).insert(AssetsCompanion.insert(name: 'EUR', type: AssetTypes.fiat, tickerSymbol: 'EUR'));
-    await db.into(db.assets).insert(const AssetsCompanion.insert(
+    await db.into(db.assets).insert(AssetsCompanion.insert(
       name: 'ACME',
       type: AssetTypes.stock,
       tickerSymbol: 'ACM',
-      value: Value(150),
-      shares: Value(3),
-      netCostBasis: Value(50),
-      brokerCostBasis: Value(50),
+      value: const Value(150),
+      shares: const Value(3),
+      netCostBasis: const Value(50),
+      brokerCostBasis: const Value(50),
     ));
 
     final src = await db.into(db.accounts).insert(AccountsCompanion.insert(name: 'Cash', type: AccountTypes.cash));
@@ -84,7 +84,7 @@ void main() {
       value: 50,
     ));
 
-    await db.into(db.assetsOnAccounts).insert(const AssetsOnAccountsCompanion.insert(accountId: 2, assetId: 2, shares: Value(3), value: Value(150)));
+    await db.into(db.assetsOnAccounts).insert(AssetsOnAccountsCompanion.insert(accountId: 2, assetId: 2, shares: const Value(3), value: const Value(150)));
   });
 
   tearDown(() async {
