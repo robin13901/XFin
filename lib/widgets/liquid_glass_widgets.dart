@@ -20,6 +20,8 @@ class LiquidGlassBottomNav extends StatelessWidget {
   final Set<int> leftVisibleForIndices;
   final IconData rightIcon;
   final VoidCallback? onRightTap;
+  final Set<int>? rightVisibleForIndices;
+  final bool keepLeftPlaceholder;
 
   /// Height parameter is now the overall container height; by default it
   /// equals circleSize so the center pill and circular buttons match.
@@ -37,7 +39,9 @@ class LiquidGlassBottomNav extends StatelessWidget {
     this.leftVisibleForIndices = const {},
     this.rightIcon = Icons.more_horiz,
     this.onRightTap,
-    this.height = 56.0, // default matches circleSize below
+    this.rightVisibleForIndices,
+    this.keepLeftPlaceholder = false,
+    this.height = 56.0,
     this.horizontalPadding = 16.0,
   }) : assert(icons.length == labels.length,
             'icons and labels must be same length');
@@ -53,6 +57,8 @@ class LiquidGlassBottomNav extends StatelessWidget {
 
     final bool showLeft =
         leftVisibleForIndices.contains(currentIndex) && onLeftTap != null;
+    final bool showRight =
+        rightVisibleForIndices == null || rightVisibleForIndices!.contains(currentIndex);
     const double itemHorizontalPadding = 12.0;
 
     return SafeArea(
@@ -78,6 +84,11 @@ class LiquidGlassBottomNav extends StatelessWidget {
                     key: const Key('fab'),
                     settings: liquidGlassSettings,
                   ),
+                )
+              else if (keepLeftPlaceholder)
+                const Padding(
+                  padding: EdgeInsets.only(right: 12),
+                  child: SizedBox(width: circleSize, height: circleSize),
                 ),
               // Center pill (LiquidGlass single superellipse)
               // We make its height equal to navHeight and border radius equal to circleSize/2.
@@ -166,13 +177,16 @@ class LiquidGlassBottomNav extends StatelessWidget {
               // Right circular button
               Padding(
                 padding: const EdgeInsets.only(left: 12),
-                child: buildCircleButton(
-                  child:
-                      Icon(rightIcon, size: 26, color: theme.iconTheme.color),
-                  size: circleSize,
-                  onTap: onRightTap,
-                  settings: liquidGlassSettings,
-                ),
+                child: showRight
+                    ? buildCircleButton(
+                        child:
+                            Icon(rightIcon, size: 26, color: theme.iconTheme.color),
+                        size: circleSize,
+                        onTap: onRightTap,
+                        settings: liquidGlassSettings,
+                        key: const Key('fab'),
+                      )
+                    : const SizedBox(width: circleSize, height: circleSize),
               ),
             ],
           ),

@@ -201,5 +201,94 @@ void main() {
 
       expect(await assetsDao.hasAssetsOnAccounts(assetId), isFalse);
     });
+
+
+    test('getAssetAnalysisDbData returns asset-linked records and named holdings',
+        () async {
+      final assetId = await assetsDao.insert(AssetsCompanion.insert(
+        name: 'Asset Analysis',
+        type: AssetTypes.stock,
+        tickerSymbol: 'ANA',
+        value: const Value(120.0),
+        shares: const Value(2.0),
+        netCostBasis: const Value(60.0),
+        brokerCostBasis: const Value(60.0),
+      ));
+
+      final source = await db.into(db.accounts).insertReturning(
+            AccountsCompanion.insert(name: 'Cash', type: AccountTypes.cash),
+          );
+      final target = await db.into(db.accounts).insertReturning(
+            AccountsCompanion.insert(name: 'Broker', type: AccountTypes.portfolio),
+          );
+
+      await db.into(db.trades).insert(TradesCompanion.insert(
+            assetId: assetId,
+            datetime: 20240101120000,
+            type: TradeTypes.buy,
+            sourceAccountValueDelta: -120.0,
+            targetAccountValueDelta: 120.0,
+            shares: 2.0,
+            costBasis: 60.0,
+            sourceAccountId: source.id,
+            targetAccountId: target.id,
+          ));
+
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+            date: 20240102,
+            accountId: target.id,
+            assetId: Value(assetId),
+            category: 'Dividend',
+            shares: 0.0,
+            value: 5.0,
+          ));
+
+      await db.into(db.transfers).insert(TransfersCompanion.insert(
+            date: 20240103,
+            sendingAccountId: source.id,
+            receivingAccountId: target.id,
+            assetId: Value(assetId),
+            shares: 0.0,
+            value: 10.0,
+          ));
+
+      await db.into(db.assetsOnAccounts).insert(AssetsOnAccountsCompanion.insert(
+            accountId: target.id,
+            assetId: assetId,
+            shares: const Value(2.0),
+            value: const Value(120.0),
+          ));
+
+      final result = await assetsDao.getAssetAnalysisDbData(assetId);
+
+      expect(result.asset.id, assetId);
+      expect(result.trades, hasLength(1));
+      expect(result.bookings, hasLength(1));
+      expect(result.transfers, hasLength(1));
+      expect(result.holdings, hasLength(1));
+      expect(result.holdings.first.accountName, 'Broker');
+      expect(result.holdings.first.value, 120.0);
+    });
+
+    test('getAssetAnalysisDbData filters zero-share holdings out', () async {
+      final assetId = await assetsDao.insert(AssetsCompanion.insert(
+        name: 'Asset Analysis 2',
+        type: AssetTypes.stock,
+        tickerSymbol: 'AN2',
+      ));
+      final accountId = await db.into(db.accounts).insert(AccountsCompanion.insert(
+            name: 'Empty Broker',
+            type: AccountTypes.portfolio,
+          ));
+      await db.into(db.assetsOnAccounts).insert(AssetsOnAccountsCompanion.insert(
+            accountId: accountId,
+            assetId: assetId,
+            shares: const Value(0.0),
+            value: const Value(50.0),
+          ));
+
+      final result = await assetsDao.getAssetAnalysisDbData(assetId);
+      expect(result.holdings, isEmpty);
+    });
   });
 }
