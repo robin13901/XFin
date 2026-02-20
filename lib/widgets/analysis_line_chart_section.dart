@@ -416,8 +416,8 @@ class AnalysisLineChartSection extends StatelessWidget {
       case '1J':
         return const Duration(days: 30).inMilliseconds.toDouble();
       case 'MAX':
-        final monthDays = 30;
-        final targetTicks = 6;
+        const monthDays = 30;
+        const targetTicks = 6;
         final stepDays = max(monthDays, (totalDays / targetTicks).round());
         return Duration(days: stepDays).inMilliseconds.toDouble();
       default:
