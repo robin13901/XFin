@@ -19,14 +19,19 @@ class AnalysisLineChartSection extends StatelessWidget {
   final bool showSma;
   final bool showEma;
   final bool showBb;
+  final bool showSma200;
   final ValueChanged<bool> onShowSmaChanged;
   final ValueChanged<bool> onShowEmaChanged;
   final ValueChanged<bool> onShowBbChanged;
+  final ValueChanged<bool>? onShowSma200Changed;
   final LineBarSpot? touchedSpot;
   final ValueChanged<LineBarSpot?> onTouchedSpotChanged;
   final VoidCallback onPointerDown;
   final VoidCallback onPointerUpOrCancel;
   final ValueFormatter valueFormatter;
+  final bool showSma200Toggle;
+  final String valueLabel;
+  final Widget? topRight;
 
   const AnalysisLineChartSection({
     super.key,
@@ -37,14 +42,19 @@ class AnalysisLineChartSection extends StatelessWidget {
     required this.showSma,
     required this.showEma,
     required this.showBb,
+    this.showSma200 = false,
     required this.onShowSmaChanged,
     required this.onShowEmaChanged,
     required this.onShowBbChanged,
+    this.onShowSma200Changed,
     required this.touchedSpot,
     required this.onTouchedSpotChanged,
     required this.onPointerDown,
     required this.onPointerUpOrCancel,
     required this.valueFormatter,
+    this.showSma200Toggle = false,
+    this.valueLabel = "",
+    this.topRight,
   });
 
   @override
@@ -122,6 +132,17 @@ class AnalysisLineChartSection extends StatelessWidget {
       ));
     }
 
+    if (showSma200) {
+      final smaData200 = IndicatorCalculator.calculateSma(allData, 200);
+      lineBarsData.add(LineChartBarData(
+        spots: smaData200.where((spot) => spot.x >= firstDateInRange).toList(),
+        isCurved: true,
+        barWidth: 2,
+        color: Colors.green,
+        dotData: const FlDotData(show: false),
+      ));
+    }
+
     if (showEma) {
       final emaData = IndicatorCalculator.calculateEma(allData, 30);
       lineBarsData.add(LineChartBarData(
@@ -160,11 +181,34 @@ class AnalysisLineChartSection extends StatelessWidget {
 
     return Column(
       children: [
-        Text(
-          valueFormatter(totalToShow),
-          style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
+        if (topRight == null) ...[
+          Text(
+            valueFormatter(totalToShow),
+            style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+        ] else ...[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (valueLabel.isNotEmpty)
+                      Text(valueLabel, style: Theme.of(context).textTheme.bodySmall),
+                    Text(
+                      valueFormatter(totalToShow),
+                      style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
+              topRight!,
+            ],
+          ),
+          const SizedBox(height: 16),
+        ],
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -333,67 +377,36 @@ class AnalysisLineChartSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
+        Wrap(
+          spacing: 12,
+          runSpacing: 4,
+          alignment: WrapAlignment.center,
           children: [
-            Row(
-              children: [
-                Checkbox(
-                  value: showSma,
-                  activeColor: Colors.orange,
-                  onChanged: (value) => onShowSmaChanged(value!),
-                ),
-                Text(
-                  '30-SMA',
-                  style: TextStyle(
-                    color: showSma
-                        ? Colors.orange
-                        : isDark
-                            ? Colors.white
-                            : Colors.black,
-                  ),
-                ),
-              ],
-            ),
-            Row(
-              children: [
-                Checkbox(
-                  value: showEma,
-                  activeColor: Colors.purple,
-                  onChanged: (value) => onShowEmaChanged(value!),
-                ),
-                Text(
-                  '30-EMA',
-                  style: TextStyle(
-                    color: showEma
-                        ? Colors.purple
-                        : isDark
-                            ? Colors.white
-                            : Colors.black,
-                  ),
-                ),
-              ],
-            ),
-            Row(
-              children: [
-                Checkbox(
-                  value: showBb,
-                  activeColor: Colors.blue,
-                  onChanged: (value) => onShowBbChanged(value!),
-                ),
-                Text(
-                  '20-BB',
-                  style: TextStyle(
-                    color: showBb
-                        ? Colors.blue
-                        : isDark
-                            ? Colors.white
-                            : Colors.black,
-                  ),
-                ),
-              ],
-            ),
+            _buildIndicatorToggle(isDark, showSma, Colors.orange, '30-SMA', (v) => onShowSmaChanged(v)),
+            if (showSma200Toggle)
+              _buildIndicatorToggle(isDark, showSma200, Colors.green, '200-SMA', (v) => onShowSma200Changed?.call(v)),
+            _buildIndicatorToggle(isDark, showEma, Colors.purple, '30-EMA', (v) => onShowEmaChanged(v)),
+            _buildIndicatorToggle(isDark, showBb, Colors.blue, '20-BB', (v) => onShowBbChanged(v)),
           ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildIndicatorToggle(bool isDark, bool selected, Color color, String label, ValueChanged<bool> onChanged) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Checkbox(
+          value: selected,
+          activeColor: color,
+          onChanged: (value) => onChanged(value ?? false),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            color: selected ? color : isDark ? Colors.white : Colors.black,
+          ),
         ),
       ],
     );

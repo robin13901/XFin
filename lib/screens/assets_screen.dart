@@ -1,12 +1,11 @@
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/utils/format.dart';
-import 'package:xfin/utils/global_constants.dart';
 import 'package:xfin/widgets/asset_form.dart';
+import 'package:xfin/widgets/charts.dart';
 import 'package:xfin/widgets/dialogs.dart';
 
 import '../providers/database_provider.dart';
@@ -65,7 +64,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
     }
   }
 
-  Future<List<_AllocationItem>> _loadAllocationItems(AppDatabase db) async {
+  Future<List<AllocationItem>> _loadAllocationItems(AppDatabase db) async {
     final assets = (await db.assetsDao.getAllAssets())
         .where((a) => !a.isArchived)
         .toList();
@@ -76,7 +75,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
             ifAbsent: () => asset.value);
       }
       return byType.entries
-          .map((e) => _AllocationItem(
+          .map((e) => AllocationItem(
                 label: e.key.name.toUpperCase(),
                 value: e.value,
                 type: e.key,
@@ -88,42 +87,15 @@ class _AssetsScreenState extends State<AssetsScreen> {
 
     return assets
         .where((a) => a.type == _selectedType)
-        .map((a) => _AllocationItem(label: a.name, value: a.value, asset: a))
+        .map((a) => AllocationItem(label: a.name, value: a.value, asset: a))
         .where((e) => e.value > 0)
         .toList()
       ..sort((a, b) => b.value.compareTo(a.value));
   }
 
-  Widget buildAllocationChart(List<_AllocationItem> items) {
-    final total = items.fold<double>(0, (sum, e) => sum + e.value);
-    return SizedBox(
-      height: 240,
-      child: PieChart(
-        PieChartData(
-          sectionsSpace: 3,
-          centerSpaceRadius: 46,
-          startDegreeOffset: -90,
-          sections: List.generate(items.length, (index) {
-            final item = items[index];
-            final ratio = total == 0 ? 0.0 : item.value / total;
-            return PieChartSectionData(
-              value: item.value,
-              color: chartColors[index % chartColors.length],
-              radius: 88,
-              title:
-                  ratio >= 0.08 ? '${(ratio * 100).toStringAsFixed(0)}%' : '',
-              titleStyle:
-                  const TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
-            );
-          }),
-        ),
-      ),
-    );
-  }
-
   Widget _buildAnalysisTab(
       BuildContext context, AppDatabase db, AppLocalizations l10n) {
-    return FutureBuilder<List<_AllocationItem>>(
+    return FutureBuilder<List<AllocationItem>>(
       future: _loadAllocationItems(db),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -133,7 +105,6 @@ class _AssetsScreenState extends State<AssetsScreen> {
           return Center(child: Text(snapshot.error.toString()));
         }
         final items = snapshot.data ?? [];
-        final total = items.fold<double>(0, (sum, e) => sum + e.value);
         return SingleChildScrollView(
           padding: EdgeInsets.only(
             top: MediaQuery.of(context).padding.top + kToolbarHeight + 12,
@@ -173,42 +144,34 @@ class _AssetsScreenState extends State<AssetsScreen> {
                   child: Text(l10n.noAssetsOfThisTypeYet),
                 ))
               else ...[
-                buildAllocationChart(items),
-                const SizedBox(height: 32),
-                Text(l10n.investments,
-                    style: Theme.of(context).textTheme.titleMedium),
-                ...List.generate(items.length, (index) {
-                  final item = items[index];
-                  double ratio = total == 0 ? 0 : item.value / total;
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: CircleAvatar(
-                      radius: 8,
-                      backgroundColor: chartColors[index % 10],
-                    ),
-                    title: Text(
-                        _selectedType == null
-                            ? getAssetTypeName(l10n, item.type!, plural: true)
-                            : item.label,
-                        style: const TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: Text(formatCurrency(item.value),
-                        style: const TextStyle(color: Colors.grey)),
-                    trailing: Text(formatPercent(ratio),
-                        style: const TextStyle(fontWeight: FontWeight.w700)),
-                    onTap: () {
-                      if (_selectedType == null && item.type != null) {
-                        setState(() => _selectedType = item.type);
-                        return;
-                      }
-                      if (item.asset == null) return;
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                            builder: (_) => AssetAnalysisDetailScreen(
-                                assetId: item.asset!.id)),
-                      );
-                    },
-                  );
-                }),
+                AllocationBreakdownSection(
+                  items: items
+                      .map(
+                        (item) => AllocationItem(
+                          label: _selectedType == null
+                              ? getAssetTypeName(l10n, item.type!, plural: true)
+                              : item.label,
+                          value: item.value,
+                          type: item.type,
+                          asset: item.asset,
+                        ),
+                      )
+                      .toList(),
+                  title: l10n.investments,
+                  onItemTap: (item) {
+                    if (_selectedType == null && item.type != null) {
+                      setState(() => _selectedType = item.type);
+                      return;
+                    }
+                    if (item.asset == null) return;
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            AssetAnalysisDetailScreen(assetId: item.asset!.id),
+                      ),
+                    );
+                  },
+                ),
               ],
             ],
           ),
@@ -311,14 +274,4 @@ class _AssetsScreenState extends State<AssetsScreen> {
       ),
     );
   }
-}
-
-class _AllocationItem {
-  final String label;
-  final double value;
-  final AssetTypes? type;
-  final Asset? asset;
-
-  const _AllocationItem(
-      {required this.label, required this.value, this.type, this.asset});
 }
