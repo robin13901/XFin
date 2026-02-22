@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:xfin/l10n/app_localizations.dart';
 
 import '../database/daos/assets_dao.dart';
 import '../providers/database_provider.dart';
@@ -42,6 +43,7 @@ class _AssetAnalysisDetailScreenState extends State<AssetAnalysisDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    AppLocalizations l10n = AppLocalizations.of(context)!;
     return Scaffold(
       body: FutureBuilder<AssetAnalysisDetailsData>(
         future: _future,
@@ -68,19 +70,20 @@ class _AssetAnalysisDetailScreenState extends State<AssetAnalysisDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(data.asset.name, style: Theme.of(context).textTheme.headlineSmall),
-                    const SizedBox(height: 12),
                     Wrap(
+                      alignment: WrapAlignment.end,
                       spacing: 8,
                       children: [
                         ChoiceChip(
-                          label: const Text('Value'),
+                          label: Text(l10n.value),
                           selected: !_showShares,
+                          showCheckmark: false,
                           onSelected: (_) => setState(() => _showShares = false),
                         ),
                         ChoiceChip(
-                          label: const Text('Shares'),
+                          label: Text(l10n.shares),
                           selected: _showShares,
+                          showCheckmark: false,
                           onSelected: (_) => setState(() => _showShares = true),
                         ),
                       ],
@@ -110,20 +113,6 @@ class _AssetAnalysisDetailScreenState extends State<AssetAnalysisDetailScreen> {
                       valueFormatter: _showShares
                           ? (value) => value.toStringAsFixed(4)
                           : formatCurrency,
-                      rangeTextBuilder: (range) {
-                        switch (range) {
-                          case '1W':
-                            return 'Seit 7 Tagen';
-                          case '1M':
-                            return 'Seit 1 Monat';
-                          case '1J':
-                            return 'Seit 1 Jahr';
-                          case 'MAX':
-                            return 'Insgesamt';
-                          default:
-                            return '';
-                        }
-                      },
                     ),
                     const SizedBox(height: 16),
                     _sectionTitle(context, 'Trading stats'),
@@ -180,7 +169,7 @@ class _AssetAnalysisDetailScreenState extends State<AssetAnalysisDetailScreen> {
                   ],
                 ),
               ),
-              buildLiquidGlassAppBar(context, title: const Text('Asset analysis')),
+              buildLiquidGlassAppBar(context, title: Text(data.asset.name)),
             ],
           );
         },

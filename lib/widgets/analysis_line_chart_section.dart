@@ -27,7 +27,6 @@ class AnalysisLineChartSection extends StatelessWidget {
   final VoidCallback onPointerDown;
   final VoidCallback onPointerUpOrCancel;
   final ValueFormatter valueFormatter;
-  final String Function(String range) rangeTextBuilder;
 
   const AnalysisLineChartSection({
     super.key,
@@ -46,7 +45,6 @@ class AnalysisLineChartSection extends StatelessWidget {
     required this.onPointerDown,
     required this.onPointerUpOrCancel,
     required this.valueFormatter,
-    required this.rangeTextBuilder,
   });
 
   @override
@@ -77,7 +75,7 @@ class AnalysisLineChartSection extends StatelessWidget {
         profit = 0;
         profitPercent = 0;
       }
-      dateText = rangeTextBuilder(selectedRange);
+      dateText = getRangeText(selectedRange);
     } else {
       totalToShow = touchedSpot!.y;
       final spotIndex = currentData.indexWhere((spot) => spot.x == touchedSpot!.x);
@@ -422,6 +420,21 @@ class AnalysisLineChartSection extends StatelessWidget {
         return Duration(days: stepDays).inMilliseconds.toDouble();
       default:
         return const Duration(days: 1).inMilliseconds.toDouble();
+    }
+  }
+
+  String getRangeText(String range) {
+    switch (range) {
+      case '1W':
+        return 'Seit 7 Tagen';
+      case '1M':
+        return 'Seit 1 Monat';
+      case '1J':
+        return 'Seit 1 Jahr';
+      case 'MAX':
+        return 'Insgesamt';
+      default:
+        return '';
     }
   }
 }

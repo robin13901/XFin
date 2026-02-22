@@ -197,20 +197,6 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                         });
                       },
                       valueFormatter: formatCurrency,
-                      rangeTextBuilder: (range) {
-                        switch (range) {
-                          case '1W':
-                            return 'Seit 7 Tagen';
-                          case '1M':
-                            return 'Seit 1 Monat';
-                          case '1J':
-                            return 'Seit 1 Jahr';
-                          case 'MAX':
-                            return 'Insgesamt';
-                          default:
-                            return '';
-                        }
-                      },
                     ),
                   ),
                   const SizedBox(height: 8),

@@ -39,8 +39,10 @@ class _AssetsScreenState extends State<AssetsScreen> {
     AppLocalizations l10n,
   ) async {
     final hasTrades = await db.assetsDao.hasTrades(asset.id);
-    final hasAssetsOnAccounts = await db.assetsDao.hasAssetsOnAccounts(asset.id);
-    final deletionProhibited = hasTrades || hasAssetsOnAccounts || asset.id == 1;
+    final hasAssetsOnAccounts =
+        await db.assetsDao.hasAssetsOnAccounts(asset.id);
+    final deletionProhibited =
+        hasTrades || hasAssetsOnAccounts || asset.id == 1;
 
     if (!context.mounted) return;
 
@@ -70,7 +72,8 @@ class _AssetsScreenState extends State<AssetsScreen> {
     if (_selectedType == null) {
       final Map<AssetTypes, double> byType = {};
       for (final asset in assets) {
-        byType.update(asset.type, (v) => v + asset.value, ifAbsent: () => asset.value);
+        byType.update(asset.type, (v) => v + asset.value,
+            ifAbsent: () => asset.value);
       }
       return byType.entries
           .map((e) => _AllocationItem(
@@ -91,7 +94,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
       ..sort((a, b) => b.value.compareTo(a.value));
   }
 
-  Widget _buildAllocationChart(List<_AllocationItem> items) {
+  Widget buildAllocationChart(List<_AllocationItem> items) {
     final total = items.fold<double>(0, (sum, e) => sum + e.value);
     return SizedBox(
       height: 240,
@@ -107,8 +110,10 @@ class _AssetsScreenState extends State<AssetsScreen> {
               value: item.value,
               color: chartColors[index % chartColors.length],
               radius: 88,
-              title: ratio >= 0.08 ? '${(ratio * 100).toStringAsFixed(0)}%' : '',
-              titleStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
+              title:
+                  ratio >= 0.08 ? '${(ratio * 100).toStringAsFixed(0)}%' : '',
+              titleStyle:
+                  const TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
             );
           }),
         ),
@@ -116,7 +121,8 @@ class _AssetsScreenState extends State<AssetsScreen> {
     );
   }
 
-  Widget _buildAnalysisTab(BuildContext context, AppDatabase db, AppLocalizations l10n) {
+  Widget _buildAnalysisTab(
+      BuildContext context, AppDatabase db, AppLocalizations l10n) {
     return FutureBuilder<List<_AllocationItem>>(
       future: _loadAllocationItems(db),
       builder: (context, snapshot) {
@@ -161,16 +167,16 @@ class _AssetsScreenState extends State<AssetsScreen> {
               ),
               const SizedBox(height: 32),
               if (items.isEmpty)
-                Center(child: Padding(
+                Center(
+                    child: Padding(
                   padding: const EdgeInsets.all(24),
                   child: Text(l10n.noAssetsOfThisTypeYet),
                 ))
               else ...[
-                _buildAllocationChart(items),
+                buildAllocationChart(items),
                 const SizedBox(height: 32),
                 Text(l10n.investments,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
+                    style: Theme.of(context).textTheme.titleMedium),
                 ...List.generate(items.length, (index) {
                   final item = items[index];
                   double ratio = total == 0 ? 0 : item.value / total;
@@ -180,9 +186,15 @@ class _AssetsScreenState extends State<AssetsScreen> {
                       radius: 8,
                       backgroundColor: chartColors[index % 10],
                     ),
-                    title: Text(_selectedType == null ? getAssetTypeName(l10n, item.type!, plural: true) : item.label, style: const TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: Text(formatCurrency(item.value), style: const TextStyle(color: Colors.grey)),
-                    trailing: Text(formatPercent(ratio), style: const TextStyle(fontWeight: FontWeight.w700)),
+                    title: Text(
+                        _selectedType == null
+                            ? getAssetTypeName(l10n, item.type!, plural: true)
+                            : item.label,
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: Text(formatCurrency(item.value),
+                        style: const TextStyle(color: Colors.grey)),
+                    trailing: Text(formatPercent(ratio),
+                        style: const TextStyle(fontWeight: FontWeight.w700)),
                     onTap: () {
                       if (_selectedType == null && item.type != null) {
                         setState(() => _selectedType = item.type);
@@ -190,7 +202,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
                       }
                       if (item.asset == null) return;
                       Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => AssetAnalysisDetailScreen(assetId: item.asset!.id)),
+                        MaterialPageRoute(
+                            builder: (_) => AssetAnalysisDetailScreen(
+                                assetId: item.asset!.id)),
                       );
                     },
                   );
@@ -203,7 +217,8 @@ class _AssetsScreenState extends State<AssetsScreen> {
     );
   }
 
-  Widget _buildAssetsList(BuildContext context, AppDatabase db, AppLocalizations l10n) {
+  Widget _buildAssetsList(
+      BuildContext context, AppDatabase db, AppLocalizations l10n) {
     return StreamBuilder<List<Asset>>(
       stream: db.assetsDao.watchAllAssets(),
       builder: (context, snapshot) {
@@ -232,11 +247,15 @@ class _AssetsScreenState extends State<AssetsScreen> {
                 children: [
                   Text('${l10n.shares}: ${asset.shares.toStringAsFixed(4)}'),
                   if (asset.id != 1 && asset.shares > 0) ...[
-                    if ((asset.netCostBasis - asset.brokerCostBasis).abs() < 0.01) ...[
-                      Text('${l10n.costBasis}: ${formatCurrency(asset.netCostBasis)}'),
+                    if ((asset.netCostBasis - asset.brokerCostBasis).abs() <
+                        0.01) ...[
+                      Text(
+                          '${l10n.costBasis}: ${formatCurrency(asset.netCostBasis)}'),
                     ] else ...[
-                      Text('${l10n.netCostBasis}: ${formatCurrency(asset.netCostBasis)}'),
-                      Text('${l10n.brokerCostBasis}: ${formatCurrency(asset.brokerCostBasis)}'),
+                      Text(
+                          '${l10n.netCostBasis}: ${formatCurrency(asset.netCostBasis)}'),
+                      Text(
+                          '${l10n.brokerCostBasis}: ${formatCurrency(asset.brokerCostBasis)}'),
                     ],
                   ],
                   Text('${l10n.value}: ${formatCurrency(asset.value)}'),
@@ -272,7 +291,10 @@ class _AssetsScreenState extends State<AssetsScreen> {
             left: 8,
             right: 8,
             child: LiquidGlassBottomNav(
-              icons: const [Icons.analytics_outlined, Icons.account_balance_wallet_outlined],
+              icons: const [
+                Icons.analytics_outlined,
+                Icons.account_balance_wallet_outlined
+              ],
               labels: const ['Analysis', 'Assets'],
               keys: const [Key('assets_nav_analysis'), Key('assets_nav_list')],
               currentIndex: _selectedTab,
@@ -297,5 +319,6 @@ class _AllocationItem {
   final AssetTypes? type;
   final Asset? asset;
 
-  const _AllocationItem({required this.label, required this.value, this.type, this.asset});
+  const _AllocationItem(
+      {required this.label, required this.value, this.type, this.asset});
 }
