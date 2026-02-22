@@ -36,13 +36,18 @@ class AssetsDao extends DatabaseAccessor<AppDatabase> with _$AssetsDaoMixin {
     for (final trade in trades) {
       final date = intToDateTime(trade.datetime ~/ 1000000)!;
       final dateOnly = DateTime(date.year, date.month, date.day);
-      final signedShares =
-          trade.type == TradeTypes.buy ? trade.shares : -trade.shares;
+
+      final sharesDelta = assetId == 1
+          ? -trade.targetAccountValueDelta
+          : (trade.type == TradeTypes.buy ? trade.shares : -trade.shares);
+      final valueDelta = assetId == 1
+          ? -trade.targetAccountValueDelta
+          : trade.targetAccountValueDelta;
 
       final current = dailyDeltas[dateOnly] ?? const _AssetValueDelta();
       dailyDeltas[dateOnly] = _AssetValueDelta(
-        shares: current.shares + signedShares,
-        value: current.value + trade.targetAccountValueDelta,
+        shares: current.shares + sharesDelta,
+        value: current.value + valueDelta,
       );
     }
 
@@ -62,28 +67,42 @@ class AssetsDao extends DatabaseAccessor<AppDatabase> with _$AssetsDaoMixin {
     if (dailyDeltas.isEmpty) {
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
-      sharesHistory.add(FlSpot(today.millisecondsSinceEpoch.toDouble(), asset.shares));
-      valueHistory.add(FlSpot(today.millisecondsSinceEpoch.toDouble(), asset.value));
+      sharesHistory
+          .add(FlSpot(today.millisecondsSinceEpoch.toDouble(), normalize(asset.shares)));
+      valueHistory
+          .add(FlSpot(today.millisecondsSinceEpoch.toDouble(), normalize(asset.value)));
     } else {
       final sortedDates = dailyDeltas.keys.toList()..sort();
       final firstDate = sortedDates.first;
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
-      final tomorrow = today.add(const Duration(days: 1));
 
-      double runningShares = 0;
-      double runningValue = 0;
+      final historyByDate = <DateTime, _AssetValueDelta>{};
+      double runningShares = asset.shares;
+      double runningValue = asset.value;
+
+      for (var date = today;
+          !date.isBefore(firstDate);
+          date = date.subtract(const Duration(days: 1))) {
+        final dateOnly = DateTime(date.year, date.month, date.day);
+        historyByDate[dateOnly] =
+            _AssetValueDelta(shares: runningShares, value: runningValue);
+
+        final delta = dailyDeltas[dateOnly] ?? const _AssetValueDelta();
+        runningShares -= delta.shares;
+        runningValue -= delta.value;
+      }
 
       for (var date = firstDate;
-          date.isBefore(tomorrow);
+          !date.isAfter(today);
           date = date.add(const Duration(days: 1))) {
         final dateOnly = DateTime(date.year, date.month, date.day);
-        final delta = dailyDeltas[dateOnly] ?? const _AssetValueDelta();
-        runningShares += delta.shares;
-        runningValue += delta.value;
+        final point = historyByDate[dateOnly] ?? const _AssetValueDelta();
 
-        sharesHistory.add(FlSpot(dateOnly.millisecondsSinceEpoch.toDouble(), normalize(runningShares)));
-        valueHistory.add(FlSpot(dateOnly.millisecondsSinceEpoch.toDouble(), normalize(runningValue)));
+        sharesHistory.add(FlSpot(
+            dateOnly.millisecondsSinceEpoch.toDouble(), normalize(point.shares)));
+        valueHistory.add(FlSpot(
+            dateOnly.millisecondsSinceEpoch.toDouble(), normalize(point.value)));
       }
     }
 
