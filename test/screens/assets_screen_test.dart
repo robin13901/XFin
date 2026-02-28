@@ -107,6 +107,55 @@ void main() {
         await tester.pumpAndSettle();
       }));
 
+
+  testWidgets('long press referenced zero-value asset offers archive and can unarchive', (tester) => tester.runAsync(() async {
+        final l10n = await pumpWidget(tester);
+        await db.into(db.assets).insert(AssetsCompanion.insert(
+              name: 'RefAsset',
+              type: AssetTypes.stock,
+              tickerSymbol: 'REF',
+              value: const Value(0),
+            ));
+        final accountId = await db.into(db.accounts).insert(AccountsCompanion.insert(
+              name: 'A1',
+              type: AccountTypes.portfolio,
+            ));
+        await db.into(db.assetsOnAccounts).insert(AssetsOnAccountsCompanion.insert(
+              accountId: accountId,
+              assetId: 3,
+              shares: const Value(0),
+              value: const Value(0),
+            ));
+
+        await tester.pumpAndSettle();
+
+        final center = tester.getCenter(find.text('RefAsset'));
+        final gesture = await tester.startGesture(center);
+        await tester.pump();
+        await Future.delayed(kLongPressTimeout);
+        await gesture.up();
+        await tester.pumpAndSettle();
+
+        expect(find.text(l10n.archive), findsOneWidget);
+        await tester.tap(find.text(l10n.archive));
+        await tester.pumpAndSettle();
+
+        expect(find.text('RefAsset'), findsNothing);
+        expect(find.text('Archived Assets'), findsOneWidget);
+
+        await tester.tap(find.text('Archived Assets'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('RefAsset'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Confirm'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('RefAsset'), findsOneWidget);
+
+        await tester.pumpWidget(Container());
+        await tester.pumpAndSettle();
+      }));
+
   testWidgets('long press protected asset shows cannot-delete dialog', (tester) => tester.runAsync(() async {
         final l10n = await pumpWidget(tester);
         await tester.pumpAndSettle();

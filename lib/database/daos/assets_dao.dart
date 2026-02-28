@@ -203,8 +203,21 @@ class AssetsDao extends DatabaseAccessor<AppDatabase> with _$AssetsDaoMixin {
     );
   }
 
-  Stream<List<Asset>> watchAllAssets() =>
-      (select(assets)..orderBy([(t) => OrderingTerm.desc(t.value)])).watch();
+  Future<void> setArchived(int assetId, bool archived) {
+    return (update(assets)..where((a) => a.id.equals(assetId))).write(
+      AssetsCompanion(isArchived: Value(archived)),
+    );
+  }
+
+  Stream<List<Asset>> watchAllAssets() => (select(assets)
+        ..where((a) => a.isArchived.equals(false))
+        ..orderBy([(t) => OrderingTerm.desc(t.value)]))
+      .watch();
+
+  Stream<List<Asset>> watchArchivedAssets() => (select(assets)
+        ..where((a) => a.isArchived.equals(true))
+        ..orderBy([(t) => OrderingTerm.desc(t.value)]))
+      .watch();
 
 }
 

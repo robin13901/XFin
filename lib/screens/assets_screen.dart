@@ -38,30 +38,74 @@ class _AssetsScreenState extends State<AssetsScreen> {
     AppLocalizations l10n,
   ) async {
     final hasTrades = await db.assetsDao.hasTrades(asset.id);
-    final hasAssetsOnAccounts =
-        await db.assetsDao.hasAssetsOnAccounts(asset.id);
-    final deletionProhibited =
-        hasTrades || hasAssetsOnAccounts || asset.id == 1;
+    final hasAssetsOnAccounts = await db.assetsDao.hasAssetsOnAccounts(asset.id);
+    final deletionProhibited = hasTrades || hasAssetsOnAccounts || asset.id == 1;
 
     if (!context.mounted) return;
 
     if (deletionProhibited) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text(l10n.cannotDeleteAsset),
-          content: Text(l10n.assetHasReferences),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(l10n.ok),
-            ),
-          ],
-        ),
-      );
+      if (asset.id == 1 || asset.value > 0) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(l10n.cannotDeleteAsset),
+            content: Text(l10n.assetHasReferences),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(l10n.ok),
+              ),
+            ],
+          ),
+        );
+      } else {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(l10n.cannotDeleteAsset),
+            content: Text(l10n.assetHasReferences),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(l10n.cancel),
+              ),
+              TextButton(
+                onPressed: () {
+                  db.assetsDao.setArchived(asset.id, true);
+                  Navigator.of(context).pop();
+                },
+                child: Text(l10n.archive),
+              ),
+            ],
+          ),
+        );
+      }
     } else {
       showDeleteDialog(context, asset: asset);
     }
+  }
+
+  void _handleArchivedAssetTap(BuildContext context, AppDatabase db, Asset asset) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Unarchive Asset'),
+        content: const Text('Do you want to unarchive this asset?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              db.assetsDao.setArchived(asset.id, false);
+              Navigator.of(context).pop();
+            },
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<List<AllocationItem>> _loadAllocationItems(AppDatabase db) async {
@@ -196,38 +240,55 @@ class _AssetsScreenState extends State<AssetsScreen> {
           return Center(child: Text(l10n.noAssets));
         }
 
-        return ListView.builder(
+        return ListView(
           padding: EdgeInsets.only(
             top: MediaQuery.of(context).padding.top + kToolbarHeight,
+            bottom: 96,
           ),
-          itemCount: assets.length,
-          itemBuilder: (context, index) {
-            final asset = assets[index];
-            return ListTile(
-              title: Text(asset.name),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('${l10n.shares}: ${asset.shares.toStringAsFixed(4)}'),
-                  if (asset.id != 1 && asset.shares > 0) ...[
-                    if ((asset.netCostBasis - asset.brokerCostBasis).abs() <
-                        0.01) ...[
-                      Text(
-                          '${l10n.costBasis}: ${formatCurrency(asset.netCostBasis)}'),
-                    ] else ...[
-                      Text(
-                          '${l10n.netCostBasis}: ${formatCurrency(asset.netCostBasis)}'),
-                      Text(
-                          '${l10n.brokerCostBasis}: ${formatCurrency(asset.brokerCostBasis)}'),
+          children: [
+            ...assets.map((asset) => ListTile(
+                  title: Text(asset.name),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${l10n.shares}: ${asset.shares.toStringAsFixed(4)}'),
+                      if (asset.id != 1 && asset.shares > 0) ...[
+                        if ((asset.netCostBasis - asset.brokerCostBasis).abs() < 0.01) ...[
+                          Text('${l10n.costBasis}: ${formatCurrency(asset.netCostBasis)}'),
+                        ] else ...[
+                          Text('${l10n.netCostBasis}: ${formatCurrency(asset.netCostBasis)}'),
+                          Text('${l10n.brokerCostBasis}: ${formatCurrency(asset.brokerCostBasis)}'),
+                        ],
+                      ],
+                      Text('${l10n.value}: ${formatCurrency(asset.value)}'),
                     ],
+                  ),
+                  trailing: Text(getAssetTypeName(l10n, asset.type)),
+                  onLongPress: () => _handleLongPress(context, db, asset, l10n),
+                )),
+            StreamBuilder<List<Asset>>(
+              stream: db.assetsDao.watchArchivedAssets(),
+              builder: (context, archivedSnapshot) {
+                final archivedAssets = archivedSnapshot.data ?? const <Asset>[];
+                if (archivedAssets.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+                return ExpansionTile(
+                  title: const Text('Archived Assets'),
+                  children: [
+                    ...archivedAssets.map((asset) => ListTile(
+                          title: Text(asset.name),
+                          trailing: Text(formatCurrency(asset.value), style: TextStyle(
+                            color: asset.value < 0 ? Colors.red : Colors.green,
+                            fontWeight: FontWeight.bold,
+                          )),
+                          onTap: () => _handleArchivedAssetTap(context, db, asset),
+                        )),
                   ],
-                  Text('${l10n.value}: ${formatCurrency(asset.value)}'),
-                ],
-              ),
-              trailing: Text(getAssetTypeName(l10n, asset.type)),
-              onLongPress: () => _handleLongPress(context, db, asset, l10n),
-            );
-          },
+                );
+              },
+            ),
+          ],
         );
       },
     );
