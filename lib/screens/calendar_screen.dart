@@ -25,6 +25,7 @@ class CalendarScreen extends StatefulWidget {
 
 class _CalendarScreenState extends State<CalendarScreen> {
   static const int _initialPage = 2000;
+  static const int _prefetchRadius = 2;
 
   late final DateTime _baseMonth;
   late final PageController _pageController;
@@ -33,7 +34,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   bool _showInflows = true;
   bool _showAllCategories = false;
 
-  final Map<String, Future<_CalendarScreenData>> _monthFutureCache = {};
+  final Map<int, Future<_CalendarScreenData>> _monthFutureCache = {};
   late Future<_CalendarScreenData> _selectedMonthFuture;
 
   DateTime get _selectedMonth => _monthAtPage(_currentPageIndex);
@@ -45,7 +46,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     _baseMonth = DateTime(now.year, now.month);
     _pageController = PageController(initialPage: _initialPage);
     _selectedMonthFuture = _ensureMonthData(_selectedMonth);
-    _prefetchAround(_selectedMonth);
+    _prefetchNeighborsAfterDisplay(_selectedMonth);
   }
 
   @override
@@ -59,7 +60,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return addMonths(_baseMonth, delta);
   }
 
-  String _monthKey(DateTime month) => '${month.year}-${month.month}';
+  int _monthCacheKey(DateTime month) => month.year * 100 + month.month;
 
   Future<_CalendarScreenData> _loadMonthData(DateTime month) async {
     final db = context.read<DatabaseProvider>().db;
@@ -79,14 +80,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Future<_CalendarScreenData> _ensureMonthData(DateTime month) {
-    final key = _monthKey(month);
+    final key = _monthCacheKey(month);
     return _monthFutureCache.putIfAbsent(key, () => _loadMonthData(month));
   }
 
-  void _prefetchAround(DateTime month) {
-    _ensureMonthData(month);
-    _ensureMonthData(addMonths(month, -1));
-    _ensureMonthData(addMonths(month, 1));
+  void _prefetchAround(DateTime month, {int radius = _prefetchRadius}) {
+    for (var i = -radius; i <= radius; i++) {
+      _ensureMonthData(addMonths(month, i));
+    }
+  }
+
+  Future<void> _prefetchNeighborsAfterDisplay(DateTime month) async {
+    await _ensureMonthData(month);
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _prefetchAround(month);
+    });
   }
 
   void _onMonthChanged(int pageIndex) {
@@ -96,7 +106,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       _showAllCategories = false;
       _selectedMonthFuture = _ensureMonthData(month);
     });
-    _prefetchAround(month);
+    _prefetchNeighborsAfterDisplay(month);
   }
 
   Future<void> _openDayDetails(DateTime day) async {
