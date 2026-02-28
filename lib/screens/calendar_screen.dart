@@ -301,59 +301,74 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final selectedMonth = _selectedMonth;
+    final selectedMonthKey = _monthCacheKey(selectedMonth);
 
     return Scaffold(
       body: Stack(
         children: [
-          FutureBuilder<_CalendarScreenData>(
-            future: _selectedMonthFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (snapshot.hasError || !snapshot.hasData) {
-                return Center(child: Text(snapshot.error.toString()));
-              }
+          SingleChildScrollView(
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).padding.top + kToolbarHeight + 12,
+              left: 12,
+              right: 12,
+              bottom: 24,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildMonthHeader(selectedMonth),
+                const SizedBox(height: 12),
+                _buildCalendarPager(),
+                const SizedBox(height: 20),
+                FutureBuilder<_CalendarScreenData>(
+                  key: ValueKey(selectedMonthKey),
+                  future: _selectedMonthFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasError || !snapshot.hasData) {
+                      return Center(child: Text(snapshot.error.toString()));
+                    }
 
-              final data = snapshot.data!;
-              return SingleChildScrollView(
-                padding: EdgeInsets.only(
-                  top: MediaQuery.of(context).padding.top + kToolbarHeight + 12,
-                  left: 12,
-                  right: 12,
-                  bottom: 24,
+                    final data = snapshot.data!;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l10n.calendarMonthlyOverview,
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
+                        const SizedBox(height: 8),
+                        _summaryRow(
+                          l10n.calendarInflows,
+                          data.monthlySnapshot.inflows,
+                          AppColors.green,
+                        ),
+                        _summaryRow(
+                          l10n.calendarOutflows,
+                          data.monthlySnapshot.outflows,
+                          AppColors.red,
+                        ),
+                        _summaryRow(
+                          l10n.calendarProfit,
+                          data.monthlySnapshot.profit,
+                          data.monthlySnapshot.profit >= 0
+                              ? AppColors.green
+                              : AppColors.red,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInflowOutflowSwitch(l10n),
+                        const SizedBox(height: 16),
+                        _buildCategoryPieChart(data.monthlySnapshot),
+                        const SizedBox(height: 16),
+                        _buildCategoryList(data.monthlySnapshot, l10n),
+                      ],
+                    );
+                  },
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildMonthHeader(selectedMonth),
-                    const SizedBox(height: 12),
-                    _buildCalendarPager(),
-                    const SizedBox(height: 20),
-                    Text(l10n.calendarMonthlyOverview,
-                        style: Theme.of(context).textTheme.headlineSmall),
-                    const SizedBox(height: 8),
-                    _summaryRow(l10n.calendarInflows, data.monthlySnapshot.inflows,
-                        AppColors.green),
-                    _summaryRow(l10n.calendarOutflows, data.monthlySnapshot.outflows,
-                        AppColors.red),
-                    _summaryRow(
-                      l10n.calendarProfit,
-                      data.monthlySnapshot.profit,
-                      data.monthlySnapshot.profit >= 0
-                          ? AppColors.green
-                          : AppColors.red,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildInflowOutflowSwitch(l10n),
-                    const SizedBox(height: 16),
-                    _buildCategoryPieChart(data.monthlySnapshot),
-                    const SizedBox(height: 16),
-                    _buildCategoryList(data.monthlySnapshot, l10n),
-                  ],
-                ),
-              );
-            },
+              ],
+            ),
           ),
           buildLiquidGlassAppBar(context, title: Text(l10n.calendar)),
         ],
@@ -380,7 +395,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
         onPageChanged: _onMonthChanged,
         itemBuilder: (context, index) {
           final month = _monthAtPage(index);
+          final monthKey = _monthCacheKey(month);
           return FutureBuilder<_CalendarScreenData>(
+            key: ValueKey(monthKey),
             future: _ensureMonthData(month),
             builder: (context, snapshot) {
               if (!snapshot.hasData) {

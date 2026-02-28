@@ -655,8 +655,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get calendarTradeSell => 'Sell';
 
   @override
-  String get calendarDayDetailsSwipeHint =>
-      'Swipe left or right for more details';
+  String get calendarDayDetailsSwipeHint => 'Swipe left or right for more details';
 
   @override
   String get calendarWeekdayMon => 'MON.';
@@ -678,4 +677,5 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get calendarWeekdaySun => 'SUN.';
+
 }
