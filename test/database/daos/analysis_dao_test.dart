@@ -205,6 +205,30 @@ void main() {
       ));
     });
 
+
+    test('month-end trades are included in monthly totals and categories',
+        () async {
+      await db.into(db.trades).insert(TradesCompanion.insert(
+        datetime: 20240131235959,
+        assetId: 3,
+        type: TradeTypes.sell,
+        sourceAccountValueDelta: 0,
+        targetAccountValueDelta: 0,
+        shares: 1,
+        costBasis: 1,
+        profitAndLoss: const Value(50),
+        sourceAccountId: 1,
+        targetAccountId: 2,
+      ));
+
+      final snapshot =
+          await analysisDao.getMonthlyAnalysisSnapshot(DateTime(2024, 1, 31));
+
+      // original positive pnl 120 + month-end trade 50
+      expect(snapshot.inflows, closeTo(470, 0.0001));
+      expect(snapshot.categoryInflows['Profit aus Trades'], closeTo(170, 0.0001));
+    });
+
     test('getTotalInflowsForMonth sums bookings and positive PnL', () async {
       final date = DateTime(2024, 1, 10); // falls into our month
       final result = await analysisDao.getTotalInflowsForMonth(date);
@@ -529,6 +553,29 @@ void main() {
       );
 
       expect(flow[20240210], closeTo(85, 1e-9));
+    });
+
+
+    test('getCalendarDayDetails returns analytics and event collections for one day',
+        () async {
+      await db.into(db.transfers).insert(TransfersCompanion.insert(
+            date: 20240210,
+            sendingAccountId: 1,
+            receivingAccountId: 1,
+            shares: 0,
+            value: 42,
+          ));
+
+      final details = await analysisDao.getCalendarDayDetails(DateTime(2024, 2, 10));
+
+      expect(details.day, DateTime(2024, 2, 10));
+      expect(details.bookings.length, 2);
+      expect(details.transfers.length, 1);
+      expect(details.trades.length, 1);
+      expect(details.inflow, closeTo(100, 1e-9));
+      expect(details.outflow, closeTo(-20, 1e-9));
+      expect(details.tradeNet, closeTo(5, 1e-9));
+      expect(details.net, closeTo(85, 1e-9));
     });
 
     test('getMonthlyAnalysisSnapshot combines month totals and categories', () async {

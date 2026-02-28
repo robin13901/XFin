@@ -31,6 +31,11 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
     return (startOfMonth, endOfMonth);
   }
 
+
+  int _monthStartDateTimeInt(int startDate) => startDate * 1000000;
+
+  int _monthEndDateTimeInt(int endDate) => endDate * 1000000 + 235959;
+
   Future<int> _getDaysInTimeFrame() async {
     final prefs = await SharedPreferences.getInstance();
     final int startOfTimeFrameInt = prefs.getInt(PrefKeys.filterStartDate) ?? 0;
@@ -89,7 +94,9 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
           ..where(
             trades.profitAndLoss.isBiggerThanValue(0) &
                 trades.datetime.isBetweenValues(
-                    startOfMonth * 1000000, endOfMonth * 1000000),
+                    _monthStartDateTimeInt(startOfMonth),
+                    _monthEndDateTimeInt(endOfMonth),
+                  ),
           ))
         .map((row) => row.read(trades.profitAndLoss.sum()) ?? 0.0)
         .getSingle();
@@ -101,7 +108,9 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
           ..addColumns([trades.profitAndLoss.sum()])
           ..where(trades.profitAndLoss.isSmallerThanValue(0) &
               trades.datetime.isBetweenValues(
-                  startOfMonth * 1000000, endOfMonth * 1000000)))
+                  _monthStartDateTimeInt(startOfMonth),
+                  _monthEndDateTimeInt(endOfMonth),
+                )))
         .map((row) => row.read(trades.profitAndLoss.sum()) ?? 0.0)
         .getSingle();
   }
@@ -109,8 +118,10 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
   Future<double> getFeesForMonth(int startOfMonth, int endOfMonth) async {
     return (selectOnly(trades)
           ..addColumns([trades.fee.sum()])
-          ..where(trades.datetime
-              .isBetweenValues(startOfMonth * 1000000, endOfMonth * 1000000)))
+          ..where(trades.datetime.isBetweenValues(
+              _monthStartDateTimeInt(startOfMonth),
+              _monthEndDateTimeInt(endOfMonth),
+            )))
         .map((row) => row.read(trades.fee.sum()) ?? 0.0)
         .getSingle();
   }
@@ -118,8 +129,10 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
   Future<double> getTaxForMonth(int startOfMonth, int endOfMonth) async {
     return (selectOnly(trades)
           ..addColumns([trades.tax.sum()])
-          ..where(trades.datetime
-              .isBetweenValues(startOfMonth * 1000000, endOfMonth * 1000000)))
+          ..where(trades.datetime.isBetweenValues(
+              _monthStartDateTimeInt(startOfMonth),
+              _monthEndDateTimeInt(endOfMonth),
+            )))
         .map((row) => row.read(trades.tax.sum()) ?? 0.0)
         .getSingle();
   }
@@ -217,8 +230,10 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
 
     final tradeFuture = (selectOnly(trades)
           ..addColumns([tradeResultExpression])
-          ..where(
-              trades.datetime.isBetweenValues(start * 1000000, end * 1000000)))
+          ..where(trades.datetime.isBetweenValues(
+              _monthStartDateTimeInt(start),
+              _monthEndDateTimeInt(end),
+            )))
         .map((row) => row.read(tradeResultExpression) ?? 0.0)
         .getSingle();
 
@@ -562,6 +577,57 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
+
+  Future<CalendarDayDetails> getCalendarDayDetails(DateTime day) async {
+    final dayInt = day.year * 10000 + day.month * 100 + day.day;
+    final dayStartInt = dayInt * 1000000;
+    final dayEndInt = dayStartInt + 235959;
+
+    final bookingsRows = await (select(bookings)
+          ..where((b) => b.date.equals(dayInt))
+          ..orderBy([(b) => OrderingTerm.asc(b.id)]))
+        .get();
+
+    final transferRows = await (select(transfers)
+          ..where((t) => t.date.equals(dayInt))
+          ..orderBy([(t) => OrderingTerm.asc(t.id)]))
+        .get();
+
+    final tradeRows = await (select(trades)
+          ..where((t) => t.datetime.isBetweenValues(dayStartInt, dayEndInt))
+          ..orderBy([(t) => OrderingTerm.asc(t.datetime)]))
+        .get();
+
+    var inflow = 0.0;
+    var outflow = 0.0;
+    var tradeNet = 0.0;
+
+    for (final booking in bookingsRows) {
+      if (booking.value >= 0) {
+        inflow += booking.value;
+      } else {
+        outflow += booking.value;
+      }
+    }
+
+    for (final trade in tradeRows) {
+      tradeNet += trade.sourceAccountValueDelta + trade.targetAccountValueDelta;
+    }
+
+    final net = inflow + outflow + tradeNet;
+
+    return CalendarDayDetails(
+      day: DateTime(day.year, day.month, day.day),
+      inflow: inflow,
+      outflow: outflow,
+      tradeNet: tradeNet,
+      net: net,
+      bookings: bookingsRows,
+      transfers: transferRows,
+      trades: tradeRows,
+    );
+  }
+
   Future<List<FlSpot>> getBalanceHistory() async {
     final futureResults = await Future.wait([
       db.accountsDao.getSumOfInitialBalances(),
@@ -629,5 +695,28 @@ class MonthlyAnalysisSnapshot {
     required this.profit,
     required this.categoryInflows,
     required this.categoryOutflows,
+  });
+}
+
+
+class CalendarDayDetails {
+  final DateTime day;
+  final double inflow;
+  final double outflow;
+  final double tradeNet;
+  final double net;
+  final List<Booking> bookings;
+  final List<Transfer> transfers;
+  final List<Trade> trades;
+
+  const CalendarDayDetails({
+    required this.day,
+    required this.inflow,
+    required this.outflow,
+    required this.tradeNet,
+    required this.net,
+    required this.bookings,
+    required this.transfers,
+    required this.trades,
   });
 }
