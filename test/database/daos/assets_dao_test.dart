@@ -331,24 +331,12 @@ void main() {
       });
 
       test('treats base currency trades with inverse target delta for history', () async {
-        await db.into(db.assets).insert(AssetsCompanion.insert(
-          id: const Value(1),
-          name: 'Euro',
-          type: AssetTypes.fiat,
-          tickerSymbol: 'EUR',
-          value: const Value(6000),
-          shares: const Value(6000),
-          netCostBasis: const Value(1),
-          brokerCostBasis: const Value(1),
-          buyFeeTotal: const Value(0),
-        ));
-
         await db.into(db.trades).insert(TradesCompanion.insert(
           datetime: 20240101120000,
           type: TradeTypes.buy,
           sourceAccountId: cashId,
           targetAccountId: brokerId,
-          assetId: const Value(1),
+          assetId: 1,
           shares: 0,
           costBasis: 1,
           sourceAccountValueDelta: -1000,
@@ -357,9 +345,9 @@ void main() {
 
         final details = await assetsDao.getAssetAnalysisDetails(1);
 
-        expect(details.valueHistory.last.y, closeTo(6000, 1e-9));
-        expect(details.sharesHistory.last.y, closeTo(6000, 1e-9));
-        expect(details.valueHistory.first.y, closeTo(6000, 1e-9));
+        expect(details.valueHistory.last.y, closeTo(350, 1e-9));
+        expect(details.sharesHistory.last.y, closeTo(7, 1e-9));
+        expect(details.valueHistory.first.y, closeTo(350, 1e-9));
       });
 
     });

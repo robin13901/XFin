@@ -326,6 +326,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get investments => 'Investments';
 
   @override
+  String get total => 'Gesamt';
+
+  @override
   String get value => 'Wert';
 
   @override

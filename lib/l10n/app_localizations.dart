@@ -698,6 +698,12 @@ abstract class AppLocalizations {
   /// **'Investments'**
   String get investments;
 
+  /// No description provided for @total.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get total;
+
   /// No description provided for @value.
   ///
   /// In en, this message translates to:

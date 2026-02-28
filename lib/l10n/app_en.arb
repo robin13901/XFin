@@ -108,6 +108,7 @@
   "noAssetsOfThisTypeYet": "No assets of this type yet.",
   "investments": "Investments",
 
+  "total": "Total",
   "value": "Value",
   "sharesOwned": "Shares",
   "costBasis": "Cost Basis",

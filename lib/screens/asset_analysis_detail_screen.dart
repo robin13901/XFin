@@ -136,6 +136,7 @@ class _AssetAnalysisDetailScreenState extends State<AssetAnalysisDetailScreen> {
                     _statTile('Events per month', data.eventFrequency.toStringAsFixed(1)),
                     const SizedBox(height: 12),
                     _sectionTitle(context, 'Held on accounts'),
+                    const SizedBox(height: 32),
                     if (data.accountHoldings.isEmpty)
                       const Padding(
                         padding: EdgeInsets.all(8),

@@ -323,6 +323,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get investments => 'Investments';
 
   @override
+  String get total => 'Total';
+
+  @override
   String get value => 'Value';
 
   @override
