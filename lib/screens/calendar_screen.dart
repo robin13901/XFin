@@ -135,7 +135,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       barrierDismissible: true,
       barrierLabel: l10n.calendarDayDetails,
       barrierColor: Colors.black54,
-      transitionDuration: const Duration(milliseconds: 180),
+      transitionDuration: Duration.zero,
       pageBuilder: (context, _, __) {
         return Center(
           child: Material(
@@ -148,19 +148,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         );
       },
-      transitionBuilder: (context, animation, _, child) {
-        return FadeTransition(
-          opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
-          child: ScaleTransition(
-            scale:
-                Tween<double>(begin: 0.96, end: 1.0).animate(CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeOut,
-            )),
-            child: child,
-          ),
-        );
-      },
+      transitionBuilder: (context, animation, _, child) => child,
     );
   }
 
@@ -392,6 +380,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       height: _calendarHeightForMonth(_selectedMonth),
       child: PageView.builder(
         controller: _pageController,
+        physics: const BouncingScrollPhysics(parent: PageScrollPhysics()),
+        allowImplicitScrolling: true,
         onPageChanged: _onMonthChanged,
         itemBuilder: (context, index) {
           final month = _monthAtPage(index);
@@ -831,28 +821,13 @@ class _DayDetailsPagerState extends State<_DayDetailsPager> {
     final dayLabel = DateFormat.yMd(Localizations.localeOf(context).toLanguageTag())
         .format(widget.details.day);
 
-    final fillColor = ThemeProvider.isDark()
-        ? const Color(0xCC1B1B1F)
-        : const Color(0xE6FFFFFF);
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(18),
-      child: LiquidGlassLayer(
-        settings: liquidGlassSettings,
-        child: LiquidGlass.grouped(
-          shape: const LiquidRoundedSuperellipse(borderRadius: 18),
-          child: Container(
-            decoration: BoxDecoration(
-              color: fillColor,
-              borderRadius: BorderRadius.circular(18),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 18,
-                  offset: Offset(0, 8),
-                ),
-              ],
-            ),
+    return RepaintBoundary(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: LiquidGlassLayer(
+          settings: liquidGlassSettings,
+          child: LiquidGlass.grouped(
+            shape: const LiquidRoundedSuperellipse(borderRadius: 28),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
               child: Column(
@@ -886,6 +861,7 @@ class _DayDetailsPagerState extends State<_DayDetailsPager> {
                   const SizedBox(height: 10),
                   Expanded(
                     child: PageView.builder(
+                      physics: const BouncingScrollPhysics(parent: PageScrollPhysics()),
                       itemCount: widget.pages.length,
                       onPageChanged: (i) => setState(() => _index = i),
                       itemBuilder: (context, i) {
