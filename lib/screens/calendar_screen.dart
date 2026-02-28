@@ -347,9 +347,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         ),
                         const SizedBox(height: 12),
                         _buildInflowOutflowSwitch(l10n),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 32),
                         _buildCategoryPieChart(data.monthlySnapshot),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 32),
                         _buildCategoryList(data.monthlySnapshot, l10n),
                       ],
                     );
@@ -380,7 +380,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       height: _calendarHeightForMonth(_selectedMonth),
       child: PageView.builder(
         controller: _pageController,
-        physics: const BouncingScrollPhysics(parent: PageScrollPhysics()),
+        physics: const BouncingScrollPhysics(),//const BouncingScrollPhysics(parent: PageScrollPhysics()),
         allowImplicitScrolling: true,
         onPageChanged: _onMonthChanged,
         itemBuilder: (context, index) {

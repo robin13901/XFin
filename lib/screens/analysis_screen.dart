@@ -226,9 +226,9 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                     child: Column(
                       children: [
                         _buildInflowOutflowSwitch(),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 32),
                         _buildCategoryPieChart(analysisData),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 32),
                         _buildCategoryList(analysisData),
                       ],
                     ),
