@@ -69,7 +69,7 @@ Future<void> showMorePane({
           Navigator.of(context).push(_noAnimRoute(const TransfersScreen())),
     ),
     _PaneItem(
-      label: 'Calendar',
+      label: l10n.calendar,
       icon: Icons.calendar_month,
       onTap: () =>
           Navigator.of(context).push(_noAnimRoute(const CalendarScreen())),

@@ -106,11 +106,11 @@ void main() {
     await pumpCalendar(tester);
 
     expect(find.text('Calendar'), findsOneWidget);
-    expect(find.text('Monatliche Übersicht'), findsOneWidget);
+    expect(find.text('Monthly overview'), findsOneWidget);
     expect(find.byType(PageView), findsAtLeastNWidgets(1));
     expect(find.byType(PieChart), findsOneWidget);
-    expect(find.text('Einnahmen'), findsAtLeastNWidgets(1));
-    expect(find.text('Ausgaben'), findsAtLeastNWidgets(1));
+    expect(find.text('Inflows'), findsAtLeastNWidgets(1));
+    expect(find.text('Outflows'), findsAtLeastNWidgets(1));
   });
 
   testWidgets('swiping month updates month dataset and keeps chart/list in sync',
