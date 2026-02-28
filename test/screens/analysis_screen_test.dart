@@ -300,6 +300,18 @@ void main() {
       });
     });
 
+
+    testWidgets('renders category pie chart for current mode', (tester) async {
+      await tester.runAsync(() async {
+        await pumpWidget(tester);
+        await tester.pumpAndSettle();
+
+        expect(find.byType(PieChart), findsOneWidget);
+
+        await tester.pumpWidget(Container());
+      });
+    });
+
     testWidgets(
         'category list collapses small categories into "..." and toggles show all',
         (tester) async {

@@ -511,6 +511,57 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
   }
 
   // Singles
+  Future<Map<int, double>> getDailyNetFlowInRange({
+    required DateTime start,
+    required DateTime end,
+  }) async {
+    final startInt = start.year * 10000 + start.month * 100 + start.day;
+    final endInt = end.year * 10000 + end.month * 100 + end.day;
+
+    final bookingRows = await (select(bookings)
+          ..where((b) => b.date.isBetweenValues(startInt, endInt)))
+        .get();
+    final tradeRows = await (select(trades)
+          ..where((t) => t.datetime
+              .isBetweenValues(startInt * 1000000, endInt * 1000000 + 235959)))
+        .get();
+
+    final result = <int, double>{};
+
+    for (final booking in bookingRows) {
+      result.update(booking.date, (value) => value + booking.value,
+          ifAbsent: () => booking.value);
+    }
+
+    for (final trade in tradeRows) {
+      final dateInt = trade.datetime ~/ 1000000;
+      final tradeNet =
+          trade.sourceAccountValueDelta + trade.targetAccountValueDelta;
+      result.update(dateInt, (value) => value + tradeNet,
+          ifAbsent: () => tradeNet);
+    }
+
+    return result;
+  }
+
+  Future<MonthlyAnalysisSnapshot> getMonthlyAnalysisSnapshot(DateTime date) async {
+    final results = await Future.wait([
+      getTotalInflowsForMonth(date),
+      getTotalOutflowsForMonth(date),
+      getProfitAndLossForMonth(date),
+      getCategoryInflowsForMonth(date),
+      getCategoryOutflowsForMonth(date),
+    ]);
+
+    return MonthlyAnalysisSnapshot(
+      inflows: results[0] as double,
+      outflows: results[1] as double,
+      profit: results[2] as double,
+      categoryInflows: results[3] as Map<String, double>,
+      categoryOutflows: results[4] as Map<String, double>,
+    );
+  }
+
   Future<List<FlSpot>> getBalanceHistory() async {
     final futureResults = await Future.wait([
       db.accountsDao.getSumOfInitialBalances(),
@@ -563,4 +614,20 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
 
     return spots;
   }
+}
+
+class MonthlyAnalysisSnapshot {
+  final double inflows;
+  final double outflows;
+  final double profit;
+  final Map<String, double> categoryInflows;
+  final Map<String, double> categoryOutflows;
+
+  const MonthlyAnalysisSnapshot({
+    required this.inflows,
+    required this.outflows,
+    required this.profit,
+    required this.categoryInflows,
+    required this.categoryOutflows,
+  });
 }

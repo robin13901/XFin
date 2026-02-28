@@ -479,4 +479,68 @@ void main() {
           expect(spots.first.y, 150.0);
         });
   });
+
+  group('AnalysisDao - calendar helpers', () {
+    setUp(() async {
+      await db.into(db.accounts).insert(AccountsCompanion.insert(
+            name: 'Cash2',
+            type: AccountTypes.cash,
+          ));
+      await db.into(db.assets).insert(AssetsCompanion.insert(
+            name: 'AST2',
+            type: AssetTypes.stock,
+            tickerSymbol: 'AST2',
+          ));
+
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+            date: 20240210,
+            accountId: 1,
+            category: 'Salary',
+            shares: 100,
+            value: 100,
+          ));
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+            date: 20240210,
+            accountId: 1,
+            category: 'Food',
+            shares: -20,
+            value: -20,
+          ));
+      await db.into(db.trades).insert(TradesCompanion.insert(
+            datetime: 20240210120000,
+            assetId: 2,
+            type: TradeTypes.sell,
+            sourceAccountValueDelta: 30,
+            targetAccountValueDelta: -25,
+            shares: 1,
+            costBasis: 1,
+            sourceAccountId: 1,
+            targetAccountId: 1,
+            profitAndLoss: const Value(10),
+            fee: const Value(2),
+            tax: const Value(1),
+          ));
+    });
+
+    test('getDailyNetFlowInRange aggregates bookings and trade account deltas by day', () async {
+      final flow = await analysisDao.getDailyNetFlowInRange(
+        start: DateTime(2024, 2, 1),
+        end: DateTime(2024, 2, 29),
+      );
+
+      expect(flow[20240210], closeTo(85, 1e-9));
+    });
+
+    test('getMonthlyAnalysisSnapshot combines month totals and categories', () async {
+      final snapshot = await analysisDao.getMonthlyAnalysisSnapshot(DateTime(2024, 2, 10));
+
+      expect(snapshot.inflows, closeTo(110, 1e-9));
+      expect(snapshot.outflows, closeTo(-23, 1e-9));
+      expect(snapshot.profit, closeTo(87, 1e-9));
+      expect(snapshot.categoryInflows['Salary'], closeTo(100, 1e-9));
+      expect(snapshot.categoryInflows['Profit aus Trades'], closeTo(10, 1e-9));
+      expect(snapshot.categoryOutflows['Food'], closeTo(-20, 1e-9));
+    });
+  });
+
 }
