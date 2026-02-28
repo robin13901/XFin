@@ -611,4 +611,71 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get cannotDeleteOrArchiveAccountLong =>
       'Accounts can only be deleted when they have no references. This account has references and cannot be deleted.\n\nAccounts with references can be archived but only if the balance is 0.';
+
+  @override
+  String get calendar => 'Calendar';
+
+  @override
+  String get calendarMonthlyOverview => 'Monthly overview';
+
+  @override
+  String get calendarInflows => 'Inflows';
+
+  @override
+  String get calendarOutflows => 'Outflows';
+
+  @override
+  String get calendarProfit => 'Profit';
+
+  @override
+  String get calendarNoCategoryData => 'No data available for this category.';
+
+  @override
+  String get calendarShowAll => 'Show all';
+
+  @override
+  String get calendarShowLess => 'Show less';
+
+  @override
+  String get calendarDayDetails => 'calendar-day-details';
+
+  @override
+  String get calendarAnalyticalStats => 'Analytical stats';
+
+  @override
+  String get calendarNet => 'Net';
+
+  @override
+  String get calendarTradeDeltas => 'Trade deltas';
+
+  @override
+  String get calendarTradeBuy => 'Buy';
+
+  @override
+  String get calendarTradeSell => 'Sell';
+
+  @override
+  String get calendarDayDetailsSwipeHint => 'Swipe left or right for more details';
+
+  @override
+  String get calendarWeekdayMon => 'MON.';
+
+  @override
+  String get calendarWeekdayTue => 'TUE.';
+
+  @override
+  String get calendarWeekdayWed => 'WED.';
+
+  @override
+  String get calendarWeekdayThu => 'THU.';
+
+  @override
+  String get calendarWeekdayFri => 'FRI.';
+
+  @override
+  String get calendarWeekdaySat => 'SAT.';
+
+  @override
+  String get calendarWeekdaySun => 'SUN.';
+
 }

@@ -1225,6 +1225,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Accounts can only be deleted when they have no references. This account has references and cannot be deleted.\n\nAccounts with references can be archived but only if the balance is 0.'**
   String get cannotDeleteOrArchiveAccountLong;
+
+  String get calendar;
+  String get calendarMonthlyOverview;
+  String get calendarInflows;
+  String get calendarOutflows;
+  String get calendarProfit;
+  String get calendarNoCategoryData;
+  String get calendarShowAll;
+  String get calendarShowLess;
+  String get calendarDayDetails;
+  String get calendarAnalyticalStats;
+  String get calendarNet;
+  String get calendarTradeDeltas;
+  String get calendarTradeBuy;
+  String get calendarTradeSell;
+  String get calendarDayDetailsSwipeHint;
+  String get calendarWeekdayMon;
+  String get calendarWeekdayTue;
+  String get calendarWeekdayWed;
+  String get calendarWeekdayThu;
+  String get calendarWeekdayFri;
+  String get calendarWeekdaySat;
+  String get calendarWeekdaySun;
+
 }
 
 class _AppLocalizationsDelegate
