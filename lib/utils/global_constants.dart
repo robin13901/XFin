@@ -89,8 +89,9 @@ int cmpKey(int dtA, String typeA, int idA, int dtB, String typeB, int idB) {
 }
 
 DateTime addMonths(DateTime date, int months) {
-  final year = date.year + (date.month + months - 1) ~/ 12;
-  final month = (date.month + months - 1) % 12 + 1;
+  final totalMonths = date.year * 12 + (date.month - 1) + months;
+  final year = totalMonths ~/ 12;
+  final month = totalMonths % 12 + 1;
 
   final lastDayOfMonth = DateTime(year, month + 1, 0).day;
   final day = date.day.clamp(1, lastDayOfMonth);

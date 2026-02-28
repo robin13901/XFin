@@ -79,7 +79,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
       _currentPageIndex = pageIndex;
       _showAllCategories = false;
     });
-    _ensureMonthData(_selectedMonth);
+
+    final month = _selectedMonth;
+    _ensureMonthData(month);
+    _ensureMonthData(addMonths(month, -1));
+    _ensureMonthData(addMonths(month, 1));
   }
 
   Future<void> _openDayDetails(DateTime day) async {
@@ -291,7 +295,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   children: [
                     _buildMonthHeader(data.month),
                     const SizedBox(height: 12),
-                    _buildCalendarPager(data),
+                    _buildCalendarPager(),
                     const SizedBox(height: 20),
                     Text('Monatliche Übersicht',
                         style: Theme.of(context).textTheme.headlineSmall),
@@ -350,22 +354,26 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  Widget _buildCalendarPager(_CalendarScreenData currentData) {
+  Widget _buildCalendarPager() {
     return SizedBox(
-      height: _calendarHeightForMonth(currentData.month),
+      height: _calendarHeightForMonth(_selectedMonth),
       child: PageView.builder(
         controller: _pageController,
         onPageChanged: _onMonthChanged,
         itemBuilder: (context, index) {
           final month = _monthAtPage(index);
-          final monthMap = (month.year == currentData.month.year &&
-                  month.month == currentData.month.month)
-              ? currentData.dayNetFlow
-              : const <int, double>{};
-          return _MonthGrid(
-            month: month,
-            dayNetFlow: monthMap,
-            onDayTap: _openDayDetails,
+          return FutureBuilder<_CalendarScreenData>(
+            future: _ensureMonthData(month),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              return _MonthGrid(
+                month: month,
+                dayNetFlow: snapshot.data!.dayNetFlow,
+                onDayTap: _openDayDetails,
+              );
+            },
           );
         },
       ),
@@ -374,9 +382,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   double _calendarHeightForMonth(DateTime month) {
     final rows = _gridRowCount(month);
-    const weekdayHeader = 36.0;
-    const rowHeight = 86.0;
-    return weekdayHeader + rows * rowHeight + 10;
+    const weekdayHeader = 32.0;
+    const rowHeight = 78.0;
+    const dividerHeight = 1.0;
+    const gridPadding = 12.0;
+    return weekdayHeader + dividerHeight + rows * rowHeight + gridPadding;
   }
 
   int _gridRowCount(DateTime month) {
@@ -666,76 +676,119 @@ class _MonthGrid extends StatelessWidget {
             final isSunday = i == 6;
             return Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
+                padding: const EdgeInsets.only(bottom: 8),
                 child: Text(
                   weekdayLabels[i],
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
                     color: isSunday
-                        ? AppColors.red
-                        : Theme.of(context).textTheme.bodyLarge?.color,
+                        ? AppColors.red.withValues(alpha: 0.9)
+                        : Theme.of(context).hintColor,
                   ),
                 ),
               ),
             );
           }),
         ),
-        const Divider(height: 1),
+        Divider(
+          height: 1,
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.2),
+        ),
         GridView.builder(
           physics: const NeverScrollableScrollPhysics(),
           itemCount: totalCells,
           shrinkWrap: true,
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 7,
-            mainAxisExtent: 86,
+            mainAxisExtent: 78,
           ),
           itemBuilder: (context, index) {
             final date = gridStart.add(Duration(days: index));
             final isCurrentMonth = date.month == month.month;
+            final isSunday = date.weekday == DateTime.sunday;
+            final isToday = _isSameDate(date, DateTime.now());
             final dateInt = date.year * 10000 + date.month * 100 + date.day;
             final net = dayNetFlow[dateInt];
-            final color = net == null
+            final netColor = net == null
                 ? Theme.of(context).hintColor
                 : (net >= 0 ? AppColors.green : AppColors.red);
 
             return InkWell(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(8),
               onTap: () => onDayTap(date),
               child: Container(
                 decoration: BoxDecoration(
-                  border: Border.all(
-                    color: Theme.of(context)
-                        .dividerColor
-                        .withValues(alpha: 0.25),
+                  border: Border(
+                    right: BorderSide(
+                      color: Theme.of(context)
+                          .dividerColor
+                          .withValues(alpha: 0.18),
+                    ),
+                    bottom: BorderSide(
+                      color: Theme.of(context)
+                          .dividerColor
+                          .withValues(alpha: 0.18),
+                    ),
                   ),
                 ),
-                padding: const EdgeInsets.all(6),
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      '${date.day}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: isCurrentMonth
-                            ? Theme.of(context).textTheme.bodyLarge?.color
-                            : Theme.of(context).hintColor,
+                    Container(
+                      width: 22,
+                      height: 22,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: isToday
+                            ? Theme.of(context).colorScheme.primary
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child: Text(
+                        '${date.day}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: !isCurrentMonth
+                              ? Theme.of(context).hintColor.withValues(alpha: 0.5)
+                              : isToday
+                                  ? Colors.white
+                                  : isSunday
+                                      ? AppColors.red.withValues(alpha: 0.9)
+                                      : Theme.of(context)
+                                          .textTheme
+                                          .bodyLarge
+                                          ?.color,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 4),
                     if (net != null)
-                      Text(
-                        formatCurrency(net),
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: isCurrentMonth
-                              ? color
-                              : color.withValues(alpha: 0.45),
-                          fontWeight: FontWeight.w600,
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 4, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: netColor.withValues(
+                            alpha: isCurrentMonth ? 0.24 : 0.12,
+                          ),
+                          borderRadius: BorderRadius.circular(4),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        child: Text(
+                          formatCurrency(net),
+                          style: TextStyle(
+                            fontSize: 9,
+                            color: isCurrentMonth
+                                ? netColor
+                                : netColor.withValues(alpha: 0.5),
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                   ],
                 ),
@@ -745,6 +798,10 @@ class _MonthGrid extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  bool _isSameDate(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 }
 
