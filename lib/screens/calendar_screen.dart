@@ -10,6 +10,7 @@ import '../database/daos/analysis_dao.dart';
 import '../database/tables.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/database_provider.dart';
+import '../providers/theme_provider.dart';
 import '../utils/format.dart';
 import '../utils/global_constants.dart';
 import '../widgets/inflow_outflow_toggle.dart';
@@ -409,7 +410,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     const weekdayHeader = 32.0;
     const rowHeight = 78.0;
     const dividerHeight = 1.0;
-    const gridPadding = 12.0;
+    const gridPadding = 28.0;
     return weekdayHeader + dividerHeight + rows * rowHeight + gridPadding;
   }
 
