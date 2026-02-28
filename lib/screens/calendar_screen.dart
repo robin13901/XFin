@@ -403,7 +403,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     const weekdayHeader = 32.0;
     const rowHeight = 78.0;
     const dividerHeight = 1.0;
-    const gridPadding = 12.0;
+    const gridPadding = 28.0;
     return weekdayHeader + dividerHeight + rows * rowHeight + gridPadding;
   }
 
