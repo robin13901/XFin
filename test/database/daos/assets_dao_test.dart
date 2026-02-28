@@ -202,6 +202,32 @@ void main() {
       expect(await assetsDao.hasAssetsOnAccounts(assetId), isFalse);
     });
 
+
+    test('setArchived moves asset between active and archived streams', () async {
+      final id = await assetsDao.insert(AssetsCompanion.insert(
+        name: 'Archivable Asset',
+        type: AssetTypes.stock,
+        tickerSymbol: 'ARCH',
+      ));
+
+      expect((await assetsDao.watchAllAssets().first).map((e) => e.id),
+          contains(id));
+      expect((await assetsDao.watchArchivedAssets().first).map((e) => e.id),
+          isNot(contains(id)));
+
+      await assetsDao.setArchived(id, true);
+
+      expect((await assetsDao.watchAllAssets().first).map((e) => e.id),
+          isNot(contains(id)));
+      expect((await assetsDao.watchArchivedAssets().first).map((e) => e.id),
+          contains(id));
+
+      await assetsDao.setArchived(id, false);
+
+      expect((await assetsDao.watchAllAssets().first).map((e) => e.id),
+          contains(id));
+    });
+
     group('getAssetAnalysisDetails', () {
       late int assetId;
       late int cashId;

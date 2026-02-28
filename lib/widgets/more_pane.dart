@@ -6,6 +6,7 @@ import 'package:xfin/screens/assets_screen.dart';
 import 'package:xfin/screens/standing_orders_screen.dart';
 import 'package:xfin/screens/trades_screen.dart';
 import 'package:xfin/screens/transfers_screen.dart';
+import 'package:xfin/screens/calendar_screen.dart';
 
 import 'liquid_glass_widgets.dart';
 
@@ -66,6 +67,12 @@ Future<void> showMorePane({
       icon: Icons.receipt_long,
       onTap: () =>
           Navigator.of(context).push(_noAnimRoute(const TransfersScreen())),
+    ),
+    _PaneItem(
+      label: 'Calendar',
+      icon: Icons.calendar_month,
+      onTap: () =>
+          Navigator.of(context).push(_noAnimRoute(const CalendarScreen())),
     ),
   ];
 
