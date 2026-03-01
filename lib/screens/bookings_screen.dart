@@ -172,7 +172,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
                           TextSpan(
                             children: [
                               TextSpan(text: '${booking.shares} ${asset.currencySymbol ?? asset.tickerSymbol} ≈ ', style: const TextStyle(color: Colors.grey)),
-                              TextSpan(text: formatCurrency(booking.value), style: TextStyle(color: valueColor)),
+                              TextSpan(text: formatCurrency(booking.value), style: TextStyle(color: valueColor, fontWeight: FontWeight.bold)),
                             ],
                           ),
                         ),

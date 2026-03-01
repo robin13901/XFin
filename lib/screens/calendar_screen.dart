@@ -10,6 +10,7 @@ import '../database/daos/analysis_dao.dart';
 import '../database/tables.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/database_provider.dart';
+import '../providers/theme_provider.dart';
 import '../utils/format.dart';
 import '../utils/global_constants.dart';
 import '../widgets/inflow_outflow_toggle.dart';
