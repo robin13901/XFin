@@ -3,7 +3,6 @@ import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 import 'package:provider/provider.dart';
 
 import '../database/app_database.dart';
-import '../database/tables.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/base_currency_provider.dart';
 import '../utils/validators.dart';
@@ -89,52 +88,6 @@ class Reusables {
     );
   }
 
-  Widget buildSharesInputRow(TextEditingController sharesController,
-      TextEditingController costBasisController, Asset? selectedAsset,
-      {bool hideCostBasis = false, signedShares = true}) {
-    final String? sharesSuffix =
-        selectedAsset?.currencySymbol ?? selectedAsset?.tickerSymbol;
-
-    return Row(
-      children: [
-        Expanded(
-          child: TextFormField(
-              key: const Key('shares_field'),
-              controller: sharesController,
-              decoration: InputDecoration(
-                labelText: selectedAsset?.id == 1 ? l10n.amount : l10n.shares,
-                border: const OutlineInputBorder(),
-                suffixText: sharesSuffix,
-                errorMaxLines: 2,
-              ),
-              keyboardType: TextInputType.numberWithOptions(
-                  signed: signedShares, decimal: true),
-              validator: (value) => selectedAsset?.type == AssetTypes.fiat
-                  ? validator.validateMaxTwoDecimalsNotZero(value)
-                  : validator.validateDecimalNotZero(value)
-          ),
-        ),
-        if (selectedAsset?.id != 1 && !hideCostBasis) ...[
-          const SizedBox(width: 16),
-          Expanded(
-            child: TextFormField(
-              key: const Key('cost_basis_field'),
-              controller: costBasisController,
-              decoration: InputDecoration(
-                labelText: l10n.pricePerShare,
-                border: const OutlineInputBorder(),
-                suffixText: BaseCurrencyProvider.symbol,
-                errorMaxLines: 2,
-              ),
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              validator: (value) => validator.validateDecimalGreaterZero(value),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
 
   // ---------- New helpers ----------
 

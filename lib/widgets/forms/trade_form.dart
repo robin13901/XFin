@@ -9,7 +9,6 @@ import 'package:xfin/l10n/app_localizations.dart';
 import '../../providers/base_currency_provider.dart';
 import '../../providers/database_provider.dart';
 import '../../utils/format.dart';
-import '../../utils/date_picker_locale.dart';
 import '../../utils/validators.dart';
 import '../dialogs.dart';
 import '../form_fields.dart';
@@ -157,34 +156,6 @@ class _TradeFormState extends State<TradeForm> {
     }
   }
 
-  Future<void> _selectDate(BuildContext context) async {
-    final pickedDate = await showDatePicker(
-      context: context,
-      locale: resolveDatePickerLocale(Localizations.localeOf(context)),
-      initialDate: _datetime,
-      firstDate: DateTime(2000),
-      lastDate: DateTime.now(),
-    );
-    if (pickedDate != null) {
-      if (!context.mounted) return;
-      final pickedTime = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.fromDateTime(_datetime),
-      );
-      if (pickedTime != null) {
-        final picked = DateTime(pickedDate.year, pickedDate.month,
-            pickedDate.day, pickedTime.hour, pickedTime.minute);
-        if (picked != _datetime) {
-          setState(() {
-            _datetime = picked;
-            _dateController.text =
-                "${DateFormat('dd.MM.yyyy, HH:mm').format(picked)} Uhr";
-          });
-        }
-      }
-    }
-  }
-
   Future<void> _saveForm() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -231,33 +202,24 @@ class _TradeFormState extends State<TradeForm> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextFormField(
+                _formFields.dateTimeField(
                   controller: _dateController,
-                  decoration: InputDecoration(
-                    labelText: _l10n.datetime,
-                    border: const OutlineInputBorder(),
-                    suffixIcon: const Icon(Icons.calendar_today),
-                  ),
-                  readOnly: true,
-                  onTap: () => _selectDate(context),
-                  validator: (value) => _validator.validateNotInitial(value),
+                  datetime: _datetime,
+                  onChanged: (dt) {
+                    setState(() {
+                      _datetime = dt;
+                      _dateController.text =
+                          "${DateFormat('dd.MM.yyyy, HH:mm').format(dt)} Uhr";
+                    });
+                  },
+                  validator: (_) => _validator.validateNotInitial(_dateController.text),
                 ),
                 const SizedBox(height: 16),
-                DropdownButtonFormField<TradeTypes>(
-                    initialValue: _tradeType,
-                    decoration: InputDecoration(
-                        labelText: _l10n.type,
-                        enabled: !_isEditing,
-                        border: const OutlineInputBorder()),
-                    items: TradeTypes.values
-                        .map((type) => DropdownMenuItem(
-                            value: type, child: Text(type.name)))
-                        .toList(),
-                    onChanged: _isEditing
-                        ? null
-                        : (value) => setState(() => _tradeType = value),
-                    validator: (value) =>
-                        value == null ? _l10n.pleaseSelectAType : null),
+                _formFields.tradeTypeDropdown(
+                  value: _tradeType,
+                  onChanged: (value) => setState(() => _tradeType = value),
+                  enabled: !_isEditing,
+                ),
                 const SizedBox(height: 16),
                 _formFields.assetsDropdown(
                     assets: _dropdownAssets,
@@ -268,39 +230,17 @@ class _TradeFormState extends State<TradeForm> {
                       _fetchOwnedShares();
                     }),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _sharesController,
-                        decoration: InputDecoration(
-                            suffixText:
-                                asset.currencySymbol ?? asset.tickerSymbol,
-                            labelText: _l10n.shares,
-                            border: const OutlineInputBorder()),
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
-                        validator: (value) =>
-                            _validator.validateSufficientSharesToSell(
-                                value, _ownedShares, _tradeType),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _feeController,
-                        decoration: InputDecoration(
-                          labelText: _l10n.fee,
-                          border: const OutlineInputBorder(),
-                          suffixText: BaseCurrencyProvider.symbol,
-                        ),
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true, signed: true),
-                        validator: (value) =>
-                            _validator.validateDecimalGreaterEqualZero(value),
-                      ),
-                    ),
-                  ],
+                _formFields.numericInputRow(
+                  controller1: _sharesController,
+                  label1: _l10n.shares,
+                  validator1: (value) => _validator.validateSufficientSharesToSell(
+                      value, _ownedShares, _tradeType),
+                  suffixText1: asset.currencySymbol ?? asset.tickerSymbol,
+                  controller2: _feeController,
+                  label2: _l10n.fee,
+                  validator2: (value) =>
+                      _validator.validateDecimalGreaterEqualZero(value),
+                  suffixText2: BaseCurrencyProvider.symbol,
                 ),
                 const SizedBox(height: 16),
                 Row(

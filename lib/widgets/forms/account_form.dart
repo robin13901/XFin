@@ -7,7 +7,7 @@ import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/providers/base_currency_provider.dart';
 import 'package:xfin/utils/format.dart';
-import 'package:xfin/widgets/reusables.dart';
+import '../form_fields.dart';
 import '../../providers/database_provider.dart';
 import '../../utils/validators.dart';
 import '../dialogs.dart';
@@ -40,7 +40,9 @@ class _AccountFormState extends State<AccountForm> {
 
   // Cached collaborators
   late AppDatabase _db;
-  late Reusables _reusables;
+  late FormFields _formFields;
+  late Validator _validator;
+  late AppLocalizations _l10n;
 
   // Progressive rendering: show cheap UI immediately, heavy UI after first frame + data load
   bool _renderHeavy = false;
@@ -49,7 +51,9 @@ class _AccountFormState extends State<AccountForm> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _db = context.read<DatabaseProvider>().db;
-    _reusables = Reusables(context);
+    _l10n = AppLocalizations.of(context)!;
+    _validator = Validator(_l10n);
+    _formFields = FormFields(_l10n, _validator, context);
   }
 
   @override
@@ -232,31 +236,17 @@ class _AccountFormState extends State<AccountForm> {
         mainAxisSize: MainAxisSize.min,
         children: [
           const SizedBox(height: 6),
-          TextFormField(
+          _formFields.basicTextField(
             key: const Key('account_name_field'),
             controller: _nameController,
+            label: l10n.accountName,
             textCapitalization: TextCapitalization.words,
-            decoration: InputDecoration(
-              labelText: l10n.accountName,
-              border: const OutlineInputBorder(),
-            ),
             validator: (value) =>
                 validator.validateIsUnique(value, _existingAccountNames),
           ),
           const SizedBox(height: 16),
-          DropdownButtonFormField<AccountTypes>(
-            key: const Key('account_type_dropdown'),
-            initialValue: _type,
-            decoration: InputDecoration(
-              labelText: l10n.type,
-              border: const OutlineInputBorder(),
-            ),
-            items: AccountTypes.values.map((type) {
-              return DropdownMenuItem(
-                value: type,
-                child: Text(_getAccountTypeName(l10n, type)),
-              );
-            }).toList(),
+          _formFields.accountTypeDropdown(
+            value: _type,
             onChanged: (value) {
               if (value != null && value != _type) {
                 setState(() {
@@ -265,7 +255,6 @@ class _AccountFormState extends State<AccountForm> {
                 });
               }
             },
-            validator: (value) => value == null ? l10n.pleaseSelectAType : null,
           ),
           const SizedBox(height: 24),
           Row(
@@ -289,7 +278,6 @@ class _AccountFormState extends State<AccountForm> {
 
   Widget _buildStep2(BuildContext context, AppLocalizations l10n) {
     Provider.of<BaseCurrencyProvider>(context);
-    final reusables = _reusables;
 
     // If heavy UI not ready yet, show a lightweight placeholder that paints instantly.
     if (!_renderHeavy) {
@@ -437,7 +425,7 @@ class _AccountFormState extends State<AccountForm> {
                 },
               ),
               const SizedBox(height: 16),
-              reusables.buildSharesInputRow(
+              _formFields.sharesAndCostBasisRow(
                   _sharesController, _pricePerShareController, selectedAsset),
               const SizedBox(height: 16),
               SizedBox(

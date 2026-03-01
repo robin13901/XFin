@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
-import 'package:xfin/utils/format.dart';
 
 import '../../providers/database_provider.dart';
 import '../../utils/validators.dart';
@@ -120,31 +119,17 @@ class _AssetFormState extends State<AssetForm> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const SizedBox(height: 6),
-                TextFormField(
+                _formFields.basicTextField(
                   key: const Key('asset_name_field'),
                   controller: _nameController,
+                  label: l10n.assetName,
                   textCapitalization: TextCapitalization.words,
-                  decoration: InputDecoration(
-                    labelText: l10n.assetName,
-                    border: const OutlineInputBorder(),
-                  ),
                   validator: (_) => validator.validateIsUnique(
                       _nameController.text, _existingAssetNames),
                 ),
                 const SizedBox(height: 16),
-                DropdownButtonFormField<AssetTypes>(
-                  key: const Key('asset_type_dropdown'),
-                  initialValue: _type,
-                  decoration: InputDecoration(
-                    labelText: l10n.type,
-                    border: const OutlineInputBorder(),
-                  ),
-                  items: AssetTypes.values.map((type) {
-                    return DropdownMenuItem(
-                      value: type,
-                      child: Text(getAssetTypeName(l10n, type)),
-                    );
-                  }).toList(),
+                _formFields.assetTypeDropdown(
+                  value: _type,
                   onChanged: (value) {
                     if (value != null) {
                       setState(() => _type = value);
@@ -155,14 +140,11 @@ class _AssetFormState extends State<AssetForm> {
                 Row(
                   children: [
                     Expanded(
-                      child: TextFormField(
+                      child: _formFields.basicTextField(
                         key: const Key('ticker_symbol_field'),
                         controller: _tickerSymbolController,
+                        label: l10n.tickerSymbol,
                         textCapitalization: TextCapitalization.characters,
-                        decoration: InputDecoration(
-                          labelText: l10n.tickerSymbol,
-                          border: const OutlineInputBorder(),
-                        ),
                         validator: (_) => validator.validateIsUnique(
                             _tickerSymbolController.text,
                             _existingTickerSymbols),
@@ -172,14 +154,11 @@ class _AssetFormState extends State<AssetForm> {
                         _type == AssetTypes.crypto) ...[
                       const SizedBox(width: 16),
                       Expanded(
-                        child: TextFormField(
+                        child: _formFields.basicTextField(
                           key: const Key('currency_symbol_field'),
                           controller: _currencySymbolController,
+                          label: l10n.currencySymbol,
                           textCapitalization: TextCapitalization.characters,
-                          decoration: InputDecoration(
-                            labelText: l10n.currencySymbol,
-                            border: const OutlineInputBorder(),
-                          ),
                           validator: (_) => _type == AssetTypes.fiat
                               ? validator.validateNotInitial(
                                   _currencySymbolController.text)

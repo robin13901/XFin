@@ -7,7 +7,6 @@ import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/utils/format.dart';
-import 'package:xfin/widgets/reusables.dart';
 import '../../database/tables.dart';
 import '../../providers/database_provider.dart';
 import '../../utils/validators.dart';
@@ -28,7 +27,6 @@ class _BookingFormState extends State<BookingForm> {
   late AppDatabase _db;
   late AppLocalizations _l10n;
   late Validator _validator;
-  late Reusables _reusables;
   late FormFields _formFields;
 
   // Controllers
@@ -62,7 +60,6 @@ class _BookingFormState extends State<BookingForm> {
         .db;
     _l10n = AppLocalizations.of(context)!;
     _validator = Validator(_l10n);
-    _reusables = Reusables(context);
     _formFields = FormFields(_l10n, _validator, context);
   }
 
@@ -178,7 +175,7 @@ class _BookingFormState extends State<BookingForm> {
   }
 
   Widget _sharesRow() {
-    return _reusables.buildSharesInputRow(
+    return _formFields.sharesAndCostBasisRow(
       _sharesCtrl,
       _costBasisCtrl,
       _assetMap[_assetId],
@@ -187,22 +184,18 @@ class _BookingFormState extends State<BookingForm> {
   }
 
   Widget _excludeCheckbox() {
-    return CheckboxListTile(
-      title: Text(_l10n.excludeFromAverage),
+    return _formFields.checkboxField(
+      label: _l10n.excludeFromAverage,
       value: _excludeFromAverage,
       onChanged: (v) => setState(() => _excludeFromAverage = v ?? false),
-      controlAffinity: ListTileControlAffinity.leading,
-      contentPadding: EdgeInsets.zero,
     );
   }
 
   Widget _generatedCheckbox() {
-    return CheckboxListTile(
-      title: Text(_l10n.isGenerated),
+    return _formFields.checkboxField(
+      label: _l10n.isGenerated,
       value: _isGenerated,
       onChanged: (v) => setState(() => _isGenerated = v ?? false),
-      controlAffinity: ListTileControlAffinity.leading,
-      contentPadding: EdgeInsets.zero,
     );
   }
 

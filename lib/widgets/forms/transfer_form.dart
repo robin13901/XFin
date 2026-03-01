@@ -8,7 +8,6 @@ import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/widgets/form_fields.dart';
-import 'package:xfin/widgets/reusables.dart';
 import '../../database/tables.dart';
 import '../../providers/database_provider.dart';
 import '../../utils/validators.dart';
@@ -29,7 +28,6 @@ class _TransferFormState extends State<TransferForm> {
   late AppDatabase _db;
   late AppLocalizations _l10n;
   late Validator _validator;
-  late Reusables _reusables;
   late FormFields _formFields;
 
   // Form state
@@ -55,7 +53,6 @@ class _TransferFormState extends State<TransferForm> {
     super.didChangeDependencies();
     _l10n = AppLocalizations.of(context)!;
     _validator = Validator(_l10n);
-    _reusables = Reusables(context);
     _formFields = FormFields(_l10n, _validator, context);
   }
 
@@ -218,7 +215,7 @@ class _TransferFormState extends State<TransferForm> {
                     assetId: _assetId,
                     onAssetChanged: (v) => setState(() => _assetId = v)),
                 const SizedBox(height: 16),
-                _reusables.buildSharesInputRow(
+                _formFields.sharesAndCostBasisRow(
                   _sharesCtrl,
                   _priceCtrl,
                   _assetMap[_assetId],

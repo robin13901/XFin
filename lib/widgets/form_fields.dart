@@ -189,7 +189,7 @@ class FormFields {
       items: accounts
           .map((a) => DropdownMenuItem(value: a.id, child: Text(a.name)))
           .toList(),
-      onChanged: onChanged,
+      onChanged: enabled ? onChanged : null,
       validator: (_) {
         if (customValidator != null && value != null) {
           Account account = accounts.firstWhere((a) => a.id == value);
@@ -275,6 +275,328 @@ class FormFields {
           child: Text(_l10n.save),
         ),
       ],
+    );
+  }
+
+  /// Generic text input field for simple text inputs.
+  ///
+  /// Used for: asset name, account name, ticker symbol, currency symbol, notes.
+  ///
+  /// Example:
+  /// ```dart
+  /// _formFields.basicTextField(
+  ///   controller: _nameController,
+  ///   label: 'Name',
+  ///   validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
+  /// )
+  /// ```
+  Widget basicTextField({
+    required TextEditingController controller,
+    required String label,
+    String? Function(String?)? validator,
+    TextCapitalization textCapitalization = TextCapitalization.none,
+    Key? key,
+    int maxLines = 1,
+    TextInputType? keyboardType,
+    String? suffixText,
+  }) {
+    return TextFormField(
+      key: key,
+      controller: controller,
+      textCapitalization: textCapitalization,
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+        suffixText: suffixText,
+      ),
+      maxLines: maxLines,
+      keyboardType: keyboardType,
+      validator: validator,
+    );
+  }
+
+  /// Date and time picker field.
+  ///
+  /// Opens a date picker followed by a time picker when tapped.
+  /// Used in TradeForm for recording precise transaction times.
+  ///
+  /// Example:
+  /// ```dart
+  /// _formFields.dateTimeField(
+  ///   controller: _dateTimeController,
+  ///   datetime: _selectedDateTime,
+  ///   onChanged: (dt) => setState(() => _selectedDateTime = dt),
+  /// )
+  /// ```
+  Widget dateTimeField({
+    required TextEditingController controller,
+    required DateTime datetime,
+    required ValueChanged<DateTime> onChanged,
+    String? Function(DateTime?)? validator,
+    String? label,
+    Key? key,
+  }) {
+    Future<void> pickDateTime() async {
+      final pickedDate = await showDatePicker(
+        context: _context,
+        locale: resolveDatePickerLocale(Localizations.localeOf(_context)),
+        initialDate: datetime,
+        firstDate: DateTime(2000),
+        lastDate: DateTime.now(),
+      );
+      if (pickedDate != null) {
+        if (!_context.mounted) return;
+        final pickedTime = await showTimePicker(
+          context: _context,
+          initialTime: TimeOfDay.fromDateTime(datetime),
+        );
+        if (pickedTime != null) {
+          final picked = DateTime(
+            pickedDate.year,
+            pickedDate.month,
+            pickedDate.day,
+            pickedTime.hour,
+            pickedTime.minute,
+          );
+          if (picked != datetime) {
+            controller.text = dateTimeFormat.format(picked);
+            onChanged(picked);
+          }
+        }
+      }
+    }
+
+    return TextFormField(
+      key: key,
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: label ?? _l10n.datetime,
+        border: const OutlineInputBorder(),
+        suffixIcon: const Icon(Icons.calendar_today),
+      ),
+      readOnly: true,
+      onTap: pickDateTime,
+      validator: (_) {
+        if (validator != null) return validator(datetime);
+        return _validator.validateDateNotInFuture(datetime);
+      },
+    );
+  }
+
+  /// Two numeric input fields side by side.
+  ///
+  /// Used for pairs like shares+fee, cost+tax in TradeForm.
+  ///
+  /// Example:
+  /// ```dart
+  /// _formFields.numericInputRow(
+  ///   controller1: _sharesController,
+  ///   label1: 'Shares',
+  ///   validator1: (v) => _validator.validateDecimal(v),
+  ///   suffixText1: 'AAPL',
+  ///   controller2: _feeController,
+  ///   label2: 'Fee',
+  ///   validator2: (v) => _validator.validateDecimalGreaterEqualZero(v),
+  ///   suffixText2: '€',
+  /// )
+  /// ```
+  Widget numericInputRow({
+    required TextEditingController controller1,
+    required String label1,
+    required String? Function(String?) validator1,
+    required TextEditingController controller2,
+    required String label2,
+    required String? Function(String?) validator2,
+    String? suffixText1,
+    String? suffixText2,
+    bool signed1 = false,
+    bool signed2 = false,
+    Key? key1,
+    Key? key2,
+  }) {
+    return Row(
+      children: [
+        Expanded(
+          child: TextFormField(
+            key: key1,
+            controller: controller1,
+            decoration: InputDecoration(
+              labelText: label1,
+              border: const OutlineInputBorder(),
+              suffixText: suffixText1,
+            ),
+            keyboardType: TextInputType.numberWithOptions(
+              decimal: true,
+              signed: signed1,
+            ),
+            validator: validator1,
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: TextFormField(
+            key: key2,
+            controller: controller2,
+            decoration: InputDecoration(
+              labelText: label2,
+              border: const OutlineInputBorder(),
+              suffixText: suffixText2,
+            ),
+            keyboardType: TextInputType.numberWithOptions(
+              decimal: true,
+              signed: signed2,
+            ),
+            validator: validator2,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Dropdown for selecting account type (Cash, Bank Account, Portfolio, Crypto Wallet).
+  ///
+  /// Used in AccountForm for choosing the type of account being created.
+  ///
+  /// Example:
+  /// ```dart
+  /// _formFields.accountTypeDropdown(
+  ///   value: _selectedType,
+  ///   onChanged: (type) => setState(() => _selectedType = type),
+  /// )
+  /// ```
+  Widget accountTypeDropdown({
+    required AccountTypes value,
+    required ValueChanged<AccountTypes?> onChanged,
+    bool enabled = true,
+    Key? key,
+  }) {
+    String typeText(AccountTypes type) {
+      switch (type) {
+        case AccountTypes.cash:
+          return _l10n.cash;
+        case AccountTypes.bankAccount:
+          return _l10n.bankAccount;
+        case AccountTypes.portfolio:
+          return _l10n.portfolio;
+        case AccountTypes.cryptoWallet:
+          return _l10n.cryptoWallet;
+      }
+    }
+
+    return DropdownButtonFormField<AccountTypes>(
+      key: key ?? const Key('account_type_dropdown'),
+      initialValue: value,
+      decoration: InputDecoration(
+        labelText: _l10n.type,
+        enabled: enabled,
+        border: const OutlineInputBorder(),
+      ),
+      items: AccountTypes.values
+          .map((type) => DropdownMenuItem(
+                value: type,
+                child: Text(typeText(type)),
+              ))
+          .toList(),
+      onChanged: enabled ? onChanged : null,
+    );
+  }
+
+  /// Dropdown for selecting asset type (Stock, Fiat Currency, Cryptocurrency).
+  ///
+  /// Used in AssetForm for choosing the type of asset being created.
+  ///
+  /// Example:
+  /// ```dart
+  /// _formFields.assetTypeDropdown(
+  ///   value: _selectedAssetType,
+  ///   onChanged: (type) => setState(() => _selectedAssetType = type),
+  /// )
+  /// ```
+  Widget assetTypeDropdown({
+    required AssetTypes value,
+    required ValueChanged<AssetTypes?> onChanged,
+    Key? key,
+  }) {
+    return DropdownButtonFormField<AssetTypes>(
+      key: key ?? const Key('asset_type_dropdown'),
+      initialValue: value,
+      decoration: InputDecoration(
+        labelText: _l10n.type,
+        border: const OutlineInputBorder(),
+      ),
+      items: AssetTypes.values
+          .map((type) => DropdownMenuItem(
+                value: type,
+                child: Text(getAssetTypeName(_l10n, type)),
+              ))
+          .toList(),
+      onChanged: onChanged,
+    );
+  }
+
+  /// Dropdown for selecting trade type (Buy or Sell).
+  ///
+  /// Used in TradeForm for choosing whether the trade is a buy or sell operation.
+  ///
+  /// Example:
+  /// ```dart
+  /// _formFields.tradeTypeDropdown(
+  ///   value: _tradeType,
+  ///   onChanged: (type) => setState(() => _tradeType = type),
+  ///   enabled: !_isEditing,
+  /// )
+  /// ```
+  Widget tradeTypeDropdown({
+    required TradeTypes? value,
+    required ValueChanged<TradeTypes?> onChanged,
+    bool enabled = true,
+    Key? key,
+  }) {
+    return DropdownButtonFormField<TradeTypes>(
+      key: key ?? const Key('trade_type_dropdown'),
+      initialValue: value,
+      decoration: InputDecoration(
+        labelText: _l10n.type,
+        enabled: enabled,
+        border: const OutlineInputBorder(),
+      ),
+      items: TradeTypes.values
+          .map((type) => DropdownMenuItem(
+                value: type,
+                child: Text(type.name),
+              ))
+          .toList(),
+      onChanged: enabled ? onChanged : null,
+      validator: (value) => value == null ? _l10n.pleaseSelectAType : null,
+    );
+  }
+
+  /// Checkbox field with consistent styling.
+  ///
+  /// Creates a CheckboxListTile with zero padding and leading control affinity.
+  /// Used for boolean flags like "Exclude from Average" or "Is Generated" in BookingForm.
+  ///
+  /// Example:
+  /// ```dart
+  /// _formFields.checkboxField(
+  ///   label: 'Exclude from Average',
+  ///   value: _excludeFromAverage,
+  ///   onChanged: (val) => setState(() => _excludeFromAverage = val ?? false),
+  /// )
+  /// ```
+  Widget checkboxField({
+    required String label,
+    required bool value,
+    required ValueChanged<bool?> onChanged,
+    Key? key,
+  }) {
+    return CheckboxListTile(
+      key: key,
+      title: Text(label),
+      value: value,
+      onChanged: onChanged,
+      controlAffinity: ListTileControlAffinity.leading,
+      contentPadding: EdgeInsets.zero,
     );
   }
 }

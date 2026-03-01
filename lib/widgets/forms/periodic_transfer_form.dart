@@ -8,6 +8,7 @@ import '../../database/app_database.dart';
 import '../../database/tables.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/database_provider.dart';
+import '../../utils/cycles_helper.dart';
 import '../../utils/validators.dart';
 import '../dialogs.dart';
 import '../form_fields.dart';
@@ -93,21 +94,6 @@ class _PeriodicTransferFormState extends State<PeriodicTransferForm> {
     super.dispose();
   }
 
-  double _monthlyFactorForCycle(Cycles c) {
-    switch (c) {
-      case Cycles.daily:
-        return 30.436875;
-      case Cycles.weekly:
-        return 30.436875 / 7;
-      case Cycles.monthly:
-        return 1.0;
-      case Cycles.quarterly:
-        return 1.0 / 3.0;
-      case Cycles.yearly:
-        return 1.0 / 12.0;
-    }
-  }
-
   Future<void> _saveForm() async {
     if (!_formKey.currentState!.validate()) return;
     if (_sendingAccountId == _receivingAccountId) {
@@ -119,7 +105,7 @@ class _PeriodicTransferFormState extends State<PeriodicTransferForm> {
     final shares = double.parse(_sharesCtrl.text.replaceAll(',', '.'));
     final value = shares;
     final notes = _notesCtrl.text.trim();
-    final monthlyAverageFactor = _monthlyFactorForCycle(_selectedCycle);
+    final monthlyAverageFactor = CyclesHelper.monthlyFactorForCycle(_selectedCycle);
 
     final companion = PeriodicTransfersCompanion(
       nextExecutionDate: drift.Value(intNextExecutionDate),
@@ -143,6 +129,7 @@ class _PeriodicTransferFormState extends State<PeriodicTransferForm> {
         await _db.periodicTransfersDao.insertPeriodicTransfer(companion);
       }
       if (mounted) Navigator.of(context).pop();
+      if (!mounted) return;
       int executedCount = await _db.periodicTransfersDao.executePending(_l10n);
       if (executedCount > 0 && mounted) {
         showInfoDialog(context, _l10n.standingOrdersExecuted,

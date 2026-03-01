@@ -15,7 +15,12 @@
       "Bash(flutter test test/screens/assets_screen_test.dart --plain-name=\"long press referenced zero-value\")",
       "Bash(flutter test test/database/daos/assets_dao_test.dart --plain-name=\"builds running daily\")",
       "Bash(flutter test test/screens/assets_screen_test.dart --plain-name=\"long press referenced zero\")",
-      "Bash(flutter analyze)"
+      "Bash(flutter analyze)",
+      "Bash(xargs grep -l \"Form\")",
+      "Bash(flutter analyze lib/widgets/form_fields.dart)",
+      "Bash(flutter analyze --no-pub lib/widgets/form_fields.dart)",
+      "Bash(flutter test test/widgets/forms/form_fields_test.dart --reporter=compact)",
+      "Bash(flutter test --reporter=compact)"
     ]
   }
 }
