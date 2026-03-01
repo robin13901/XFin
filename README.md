@@ -2,17 +2,7 @@
 
 # XFin
 
-A personal finance tracker.
+XFin is a personal finance tracker application built with Flutter.
 
-## Getting Started
+The goal is to create a cross-platform tool for managing personal money: tracking income and expenses, viewing spending patterns, and monitoring overall financial position. Data is stored locally on the device (privacy-focused, no cloud by default).
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
