@@ -117,7 +117,7 @@ class _TransfersScreenState extends State<TransfersScreen>
                                 ),
                                 TextSpan(
                                   text: formatCurrency(transfer.value),
-                                  style: const TextStyle(color: Colors.indigoAccent),
+                                  style: const TextStyle(color: Colors.indigoAccent, fontWeight: FontWeight.bold),
                                 ),
                               ],
                             ),
