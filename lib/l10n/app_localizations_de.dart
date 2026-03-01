@@ -634,8 +634,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get calendarProfit => 'Gewinn';
 
   @override
-  String get calendarNoCategoryData =>
-      'Keine Daten für diese Kategorie verfügbar.';
+  String get calendarNoCategoryData => 'Keine Daten für diese Kategorie verfügbar.';
 
   @override
   String get calendarShowAll => 'Alle anzeigen';
@@ -662,8 +661,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get calendarTradeSell => 'Verkauf';
 
   @override
-  String get calendarDayDetailsSwipeHint =>
-      'Wische nach links oder rechts für weitere Details';
+  String get calendarDayDetailsSwipeHint => 'Wische nach links oder rechts für weitere Details';
 
   @override
   String get calendarWeekdayMon => 'MO.';
@@ -685,4 +683,5 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get calendarWeekdaySun => 'SO.';
+
 }

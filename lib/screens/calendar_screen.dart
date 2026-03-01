@@ -23,6 +23,29 @@ class CalendarScreen extends StatefulWidget {
   State<CalendarScreen> createState() => _CalendarScreenState();
 }
 
+
+class _SnappyPageScrollPhysics extends PageScrollPhysics {
+  const _SnappyPageScrollPhysics({super.parent});
+
+  @override
+  _SnappyPageScrollPhysics applyTo(ScrollPhysics? ancestor) {
+    return _SnappyPageScrollPhysics(parent: buildParent(ancestor));
+  }
+
+  @override
+  double get minFlingDistance => 8.0;
+
+  @override
+  double get minFlingVelocity => 120.0;
+
+  @override
+  double get maxFlingVelocity => 12000.0;
+
+  @override
+  double carriedMomentum(double existingVelocity) =>
+      existingVelocity.sign * existingVelocity.abs().clamp(0.0, 7000.0) * 0.15;
+}
+
 class _CalendarScreenState extends State<CalendarScreen> {
   static const int _initialPage = 2000;
   static const int _prefetchRadius = 2;
@@ -129,12 +152,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
 
     final l10n = AppLocalizations.of(context)!;
-
     await showGeneralDialog(
       context: context,
       barrierDismissible: true,
       barrierLabel: l10n.calendarDayDetails,
-      barrierColor: Colors.black54,
+      barrierColor: Colors.transparent,
       transitionDuration: Duration.zero,
       pageBuilder: (context, _, __) {
         return Center(
@@ -250,6 +272,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     Expanded(
                       child: Text(
                         row.leading,
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -259,7 +282,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       row.trailing,
                       style: TextStyle(
                         color: row.trailingColor,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
                       ),
                     ),
                   ],
@@ -275,7 +299,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label),
+          Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
           Text(
             formatCurrency(value),
             style: TextStyle(color: color, fontWeight: FontWeight.w700),
@@ -347,9 +371,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         ),
                         const SizedBox(height: 12),
                         _buildInflowOutflowSwitch(l10n),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 16),
                         _buildCategoryPieChart(data.monthlySnapshot),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 16),
                         _buildCategoryList(data.monthlySnapshot, l10n),
                       ],
                     );
@@ -377,10 +401,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Widget _buildCalendarPager() {
     return SizedBox(
-      height: _calendarHeightForMonth(_selectedMonth),
+      height: _calendarPagerViewportHeight(),
       child: PageView.builder(
         controller: _pageController,
-        physics: const BouncingScrollPhysics(),//const BouncingScrollPhysics(parent: PageScrollPhysics()),
+        physics: const BouncingScrollPhysics(parent: _SnappyPageScrollPhysics()),
         allowImplicitScrolling: true,
         onPageChanged: _onMonthChanged,
         itemBuilder: (context, index) {
@@ -405,13 +429,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  double _calendarHeightForMonth(DateTime month) {
-    final rows = _gridRowCount(month);
+  double _calendarPagerViewportHeight() {
+    final current = _selectedMonth;
+    var maxRows = 0;
+    for (var i = -1; i <= 1; i++) {
+      final rows = _gridRowCount(addMonths(current, i));
+      if (rows > maxRows) {
+        maxRows = rows;
+      }
+    }
     const weekdayHeader = 32.0;
     const rowHeight = 78.0;
     const dividerHeight = 1.0;
-    const gridPadding = 28.0;
-    return weekdayHeader + dividerHeight + rows * rowHeight + gridPadding;
+    const gridPadding = 12.0;
+    return weekdayHeader + dividerHeight + maxRows * rowHeight + gridPadding;
   }
 
   int _gridRowCount(DateTime month) {
@@ -429,7 +460,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label),
+          Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
           Text(
             formatCurrency(value),
             style: TextStyle(color: color, fontWeight: FontWeight.bold),
@@ -733,7 +764,7 @@ class _MonthGrid extends StatelessWidget {
                           color: !isCurrentMonth
                               ? Theme.of(context).hintColor.withValues(alpha: 0.5)
                               : isToday
-                                  ? Colors.white
+                                  ? Theme.of(context).colorScheme.onPrimary
                                   : isSunday
                                       ? AppColors.red.withValues(alpha: 0.9)
                                       : Theme.of(context)
@@ -817,9 +848,8 @@ class _DayDetailsPagerState extends State<_DayDetailsPager> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final dayLabel = DateFormat.yMd(Localizations.localeOf(context).toLanguageTag())
-        .format(widget.details.day);
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    final dayLabel = DateFormat('EEEE, dd.MM.yyyy', locale).format(widget.details.day);
 
     return RepaintBoundary(
       child: ClipRRect(
@@ -841,7 +871,7 @@ class _DayDetailsPagerState extends State<_DayDetailsPager> {
                           style: Theme.of(context)
                               .textTheme
                               .titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w700),
+                              ?.copyWith(fontWeight: FontWeight.w800, fontSize: 19),
                         ),
                       ),
                       IconButton(
@@ -853,15 +883,16 @@ class _DayDetailsPagerState extends State<_DayDetailsPager> {
                   const SizedBox(height: 4),
                   Text(
                     widget.pages[_index].title,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).hintColor,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
                         ),
                   ),
                   const SizedBox(height: 10),
                   Expanded(
                     child: PageView.builder(
-                      physics: const BouncingScrollPhysics(parent: PageScrollPhysics()),
+                      physics: const BouncingScrollPhysics(parent: _SnappyPageScrollPhysics()),
                       itemCount: widget.pages.length,
                       onPageChanged: (i) => setState(() => _index = i),
                       itemBuilder: (context, i) {
@@ -890,14 +921,6 @@ class _DayDetailsPagerState extends State<_DayDetailsPager> {
                         ),
                       ),
                     ),
-                  const SizedBox(height: 4),
-                  Text(
-                    l10n.calendarDayDetailsSwipeHint,
-                    style: Theme.of(context)
-                        .textTheme
-                        .labelSmall
-                        ?.copyWith(color: Theme.of(context).hintColor),
-                  ),
                 ],
               ),
             ),
