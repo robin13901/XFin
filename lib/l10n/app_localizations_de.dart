@@ -617,4 +617,71 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get cannotDeleteOrArchiveAccountLong =>
       'Konten können nur gelöscht werden, wenn sie keine Referenzen mehr haben. Dieses Konto hat Referenzen und kann nicht gelöscht werden.\n\nKonten mit Referenzen können archiviert werden, jedoch nur dann wenn der Saldo 0 beträgt.';
+
+  @override
+  String get calendar => 'Kalender';
+
+  @override
+  String get calendarMonthlyOverview => 'Monatliche Übersicht';
+
+  @override
+  String get calendarInflows => 'Einnahmen';
+
+  @override
+  String get calendarOutflows => 'Ausgaben';
+
+  @override
+  String get calendarProfit => 'Gewinn';
+
+  @override
+  String get calendarNoCategoryData => 'Keine Daten für diese Kategorie verfügbar.';
+
+  @override
+  String get calendarShowAll => 'Alle anzeigen';
+
+  @override
+  String get calendarShowLess => 'Weniger anzeigen';
+
+  @override
+  String get calendarDayDetails => 'kalender-tag-details';
+
+  @override
+  String get calendarAnalyticalStats => 'Analytische Daten';
+
+  @override
+  String get calendarNet => 'Netto';
+
+  @override
+  String get calendarTradeDeltas => 'Trade-Deltas';
+
+  @override
+  String get calendarTradeBuy => 'Kauf';
+
+  @override
+  String get calendarTradeSell => 'Verkauf';
+
+  @override
+  String get calendarDayDetailsSwipeHint => 'Wische nach links oder rechts für weitere Details';
+
+  @override
+  String get calendarWeekdayMon => 'MO.';
+
+  @override
+  String get calendarWeekdayTue => 'DI.';
+
+  @override
+  String get calendarWeekdayWed => 'MI.';
+
+  @override
+  String get calendarWeekdayThu => 'DO.';
+
+  @override
+  String get calendarWeekdayFri => 'FR.';
+
+  @override
+  String get calendarWeekdaySat => 'SA.';
+
+  @override
+  String get calendarWeekdaySun => 'SO.';
+
 }

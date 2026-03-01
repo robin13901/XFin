@@ -1,12 +1,18 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 import 'package:provider/provider.dart';
 
 import '../app_theme.dart';
+import '../database/app_database.dart';
 import '../database/daos/analysis_dao.dart';
+import '../database/tables.dart';
+import '../l10n/app_localizations.dart';
 import '../providers/database_provider.dart';
 import '../utils/format.dart';
 import '../utils/global_constants.dart';
+import '../widgets/inflow_outflow_toggle.dart';
 import '../widgets/liquid_glass_widgets.dart';
 
 class CalendarScreen extends StatefulWidget {
@@ -16,8 +22,32 @@ class CalendarScreen extends StatefulWidget {
   State<CalendarScreen> createState() => _CalendarScreenState();
 }
 
+
+class _SnappyPageScrollPhysics extends PageScrollPhysics {
+  const _SnappyPageScrollPhysics({super.parent});
+
+  @override
+  _SnappyPageScrollPhysics applyTo(ScrollPhysics? ancestor) {
+    return _SnappyPageScrollPhysics(parent: buildParent(ancestor));
+  }
+
+  @override
+  double get minFlingDistance => 8.0;
+
+  @override
+  double get minFlingVelocity => 120.0;
+
+  @override
+  double get maxFlingVelocity => 12000.0;
+
+  @override
+  double carriedMomentum(double existingVelocity) =>
+      existingVelocity.sign * existingVelocity.abs().clamp(0.0, 7000.0) * 0.15;
+}
+
 class _CalendarScreenState extends State<CalendarScreen> {
   static const int _initialPage = 2000;
+  static const int _prefetchRadius = 2;
 
   late final DateTime _baseMonth;
   late final PageController _pageController;
@@ -26,7 +56,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
   bool _showInflows = true;
   bool _showAllCategories = false;
 
-  final Map<String, Future<_CalendarScreenData>> _monthFutureCache = {};
+  final Map<int, Future<_CalendarScreenData>> _monthFutureCache = {};
+  late Future<_CalendarScreenData> _selectedMonthFuture;
 
   DateTime get _selectedMonth => _monthAtPage(_currentPageIndex);
 
@@ -36,7 +67,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final now = DateTime.now();
     _baseMonth = DateTime(now.year, now.month);
     _pageController = PageController(initialPage: _initialPage);
-    _ensureMonthData(_selectedMonth);
+    _selectedMonthFuture = _ensureMonthData(_selectedMonth);
+    _prefetchNeighborsAfterDisplay(_selectedMonth);
   }
 
   @override
@@ -50,7 +82,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return addMonths(_baseMonth, delta);
   }
 
-  String _monthKey(DateTime month) => '${month.year}-${month.month}';
+  int _monthCacheKey(DateTime month) => month.year * 100 + month.month;
 
   Future<_CalendarScreenData> _loadMonthData(DateTime month) async {
     final db = context.read<DatabaseProvider>().db;
@@ -70,38 +102,61 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Future<_CalendarScreenData> _ensureMonthData(DateTime month) {
-    final key = _monthKey(month);
+    final key = _monthCacheKey(month);
     return _monthFutureCache.putIfAbsent(key, () => _loadMonthData(month));
   }
 
+  void _prefetchAround(DateTime month, {int radius = _prefetchRadius}) {
+    for (var i = -radius; i <= radius; i++) {
+      _ensureMonthData(addMonths(month, i));
+    }
+  }
+
+  Future<void> _prefetchNeighborsAfterDisplay(DateTime month) async {
+    await _ensureMonthData(month);
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _prefetchAround(month);
+    });
+  }
+
   void _onMonthChanged(int pageIndex) {
+    final month = _monthAtPage(pageIndex);
     setState(() {
       _currentPageIndex = pageIndex;
       _showAllCategories = false;
+      _selectedMonthFuture = _ensureMonthData(month);
     });
-
-    final month = _selectedMonth;
-    _ensureMonthData(month);
-    _ensureMonthData(addMonths(month, -1));
-    _ensureMonthData(addMonths(month, 1));
+    _prefetchNeighborsAfterDisplay(month);
   }
 
   Future<void> _openDayDetails(DateTime day) async {
     final db = context.read<DatabaseProvider>().db;
-    final details = await db.analysisDao.getCalendarDayDetails(day);
+    final results = await Future.wait([
+      db.analysisDao.getCalendarDayDetails(day),
+      db.assetsDao.getAllAssets(),
+    ]);
     if (!mounted) return;
 
-    final pages = _buildDetailPages(context, details);
+    final details = results[0] as CalendarDayDetails;
+    final assets = results[1] as List<Asset>;
+    final assetTickerById = <int, String>{
+      for (final asset in assets) asset.id: asset.tickerSymbol,
+    };
+
+    final pages = _buildDetailPages(context, details, assetTickerById);
     if (pages.isEmpty) {
       return;
     }
 
+    final l10n = AppLocalizations.of(context)!;
     await showGeneralDialog(
       context: context,
       barrierDismissible: true,
-      barrierLabel: 'calendar-day-details',
-      barrierColor: Colors.black54,
-      transitionDuration: const Duration(milliseconds: 180),
+      barrierLabel: l10n.calendarDayDetails,
+      barrierColor: Colors.transparent,
+      transitionDuration: Duration.zero,
       pageBuilder: (context, _, __) {
         return Center(
           child: Material(
@@ -109,53 +164,34 @@ class _CalendarScreenState extends State<CalendarScreen> {
             child: Container(
               width: MediaQuery.of(context).size.width * 0.92,
               constraints: const BoxConstraints(maxWidth: 560, maxHeight: 460),
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 18,
-                    offset: Offset(0, 8),
-                  ),
-                ],
-              ),
               child: _DayDetailsPager(details: details, pages: pages),
             ),
           ),
         );
       },
-      transitionBuilder: (context, animation, _, child) {
-        return FadeTransition(
-          opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
-          child: ScaleTransition(
-            scale:
-                Tween<double>(begin: 0.96, end: 1.0).animate(CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeOut,
-            )),
-            child: child,
-          ),
-        );
-      },
+      transitionBuilder: (context, animation, _, child) => child,
     );
   }
 
   List<_DayDetailsPage> _buildDetailPages(
-      BuildContext context, CalendarDayDetails details) {
+    BuildContext context,
+    CalendarDayDetails details,
+    Map<int, String> assetTickerById,
+  ) {
+    final l10n = AppLocalizations.of(context)!;
     final pages = <_DayDetailsPage>[];
 
     pages.add(
       _DayDetailsPage(
-        title: 'Analytical stats',
+        title: l10n.calendarAnalyticalStats,
         child: Column(
           children: [
-            _statLine('Netto', details.net,
+            _statLine(l10n.calendarNet, details.net,
                 details.net >= 0 ? AppColors.green : AppColors.red),
-            _statLine('Einnahmen', details.inflow, AppColors.green),
-            _statLine('Ausgaben', details.outflow, AppColors.red),
+            _statLine(l10n.calendarInflows, details.inflow, AppColors.green),
+            _statLine(l10n.calendarOutflows, details.outflow, AppColors.red),
             _statLine(
-              'Trade-Deltas',
+              l10n.calendarTradeDeltas,
               details.tradeNet,
               details.tradeNet >= 0 ? AppColors.green : AppColors.red,
             ),
@@ -167,7 +203,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (details.bookings.isNotEmpty) {
       pages.add(
         _DayDetailsPage(
-          title: 'Bookings',
+          title: l10n.bookings,
           child: _compactList(
             details.bookings.map((b) {
               return _SimpleDetailRow(
@@ -184,11 +220,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (details.transfers.isNotEmpty) {
       pages.add(
         _DayDetailsPage(
-          title: 'Transfers',
+          title: l10n.transfers,
           child: _compactList(
             details.transfers.map((t) {
               return _SimpleDetailRow(
-                leading: 'Transfer #${t.id}',
+                leading: '${l10n.transfer} #${t.id}',
                 trailing: formatCurrency(t.value),
                 trailingColor: Theme.of(context).textTheme.bodyLarge?.color,
               );
@@ -201,12 +237,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (details.trades.isNotEmpty) {
       pages.add(
         _DayDetailsPage(
-          title: 'Trades',
+          title: l10n.trades,
           child: _compactList(
             details.trades.map((t) {
               final net = t.sourceAccountValueDelta + t.targetAccountValueDelta;
+              final side =
+                  t.type == TradeTypes.buy ? l10n.calendarTradeBuy : l10n.calendarTradeSell;
+              final ticker = assetTickerById[t.assetId] ?? l10n.asset;
+              final description =
+                  '$side ${t.shares.toStringAsFixed(4)} $ticker @ ${formatCurrency(t.costBasis)}';
               return _SimpleDetailRow(
-                leading: '${t.type.name.toUpperCase()} #${t.id}',
+                leading: description,
                 trailing: formatCurrency(net),
                 trailingColor: net >= 0 ? AppColors.green : AppColors.red,
               );
@@ -230,7 +271,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     Expanded(
                       child: Text(
                         row.leading,
-                        maxLines: 1,
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -239,7 +281,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       row.trailing,
                       style: TextStyle(
                         color: row.trailingColor,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
                       ),
                     ),
                   ],
@@ -255,7 +298,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label),
+          Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
           Text(
             formatCurrency(value),
             style: TextStyle(color: color, fontWeight: FontWeight.w700),
@@ -267,102 +310,107 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final selectedMonth = _selectedMonth;
+    final selectedMonthKey = _monthCacheKey(selectedMonth);
 
     return Scaffold(
       body: Stack(
         children: [
-          FutureBuilder<_CalendarScreenData>(
-            future: _ensureMonthData(selectedMonth),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (snapshot.hasError || !snapshot.hasData) {
-                return Center(child: Text(snapshot.error.toString()));
-              }
+          SingleChildScrollView(
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).padding.top + kToolbarHeight + 12,
+              left: 12,
+              right: 12,
+              bottom: 24,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildMonthHeader(selectedMonth),
+                const SizedBox(height: 12),
+                _buildCalendarPager(),
+                const SizedBox(height: 20),
+                FutureBuilder<_CalendarScreenData>(
+                  key: ValueKey(selectedMonthKey),
+                  future: _selectedMonthFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasError || !snapshot.hasData) {
+                      return Center(child: Text(snapshot.error.toString()));
+                    }
 
-              final data = snapshot.data!;
-              return SingleChildScrollView(
-                padding: EdgeInsets.only(
-                  top: MediaQuery.of(context).padding.top + kToolbarHeight + 12,
-                  left: 12,
-                  right: 12,
-                  bottom: 24,
+                    final data = snapshot.data!;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l10n.calendarMonthlyOverview,
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
+                        const SizedBox(height: 8),
+                        _summaryRow(
+                          l10n.calendarInflows,
+                          data.monthlySnapshot.inflows,
+                          AppColors.green,
+                        ),
+                        _summaryRow(
+                          l10n.calendarOutflows,
+                          data.monthlySnapshot.outflows,
+                          AppColors.red,
+                        ),
+                        _summaryRow(
+                          l10n.calendarProfit,
+                          data.monthlySnapshot.profit,
+                          data.monthlySnapshot.profit >= 0
+                              ? AppColors.green
+                              : AppColors.red,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInflowOutflowSwitch(l10n),
+                        const SizedBox(height: 16),
+                        _buildCategoryPieChart(data.monthlySnapshot),
+                        const SizedBox(height: 16),
+                        _buildCategoryList(data.monthlySnapshot, l10n),
+                      ],
+                    );
+                  },
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildMonthHeader(data.month),
-                    const SizedBox(height: 12),
-                    _buildCalendarPager(),
-                    const SizedBox(height: 20),
-                    Text('Monatliche Übersicht',
-                        style: Theme.of(context).textTheme.headlineSmall),
-                    const SizedBox(height: 8),
-                    _summaryRow(
-                        'Einnahmen', data.monthlySnapshot.inflows, AppColors.green),
-                    _summaryRow(
-                        'Ausgaben', data.monthlySnapshot.outflows, AppColors.red),
-                    _summaryRow(
-                      'Gewinn',
-                      data.monthlySnapshot.profit,
-                      data.monthlySnapshot.profit >= 0
-                          ? AppColors.green
-                          : AppColors.red,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildInflowOutflowSwitch(),
-                    const SizedBox(height: 16),
-                    _buildCategoryPieChart(data.monthlySnapshot),
-                    const SizedBox(height: 16),
-                    _buildCategoryList(data.monthlySnapshot),
-                  ],
-                ),
-              );
-            },
+              ],
+            ),
           ),
-          buildLiquidGlassAppBar(context, title: const Text('Calendar')),
+          buildLiquidGlassAppBar(context, title: Text(l10n.calendar)),
         ],
       ),
     );
   }
 
   Widget _buildMonthHeader(DateTime selectedMonth) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        IconButton(
-          onPressed: () => _pageController.previousPage(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOut,
-          ),
-          icon: const Icon(Icons.chevron_left),
-        ),
-        Text(
-          '${monthName(selectedMonth.month)} ${selectedMonth.year}',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        IconButton(
-          onPressed: () => _pageController.nextPage(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOut,
-          ),
-          icon: const Icon(Icons.chevron_right),
-        ),
-      ],
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    final label = DateFormat('MMMM yyyy', locale).format(selectedMonth);
+    return Center(
+      child: Text(
+        label[0].toUpperCase() + label.substring(1),
+        style: Theme.of(context).textTheme.titleLarge,
+      ),
     );
   }
 
   Widget _buildCalendarPager() {
     return SizedBox(
-      height: _calendarHeightForMonth(_selectedMonth),
+      height: _calendarPagerViewportHeight(),
       child: PageView.builder(
         controller: _pageController,
+        physics: const BouncingScrollPhysics(parent: _SnappyPageScrollPhysics()),
+        allowImplicitScrolling: true,
         onPageChanged: _onMonthChanged,
         itemBuilder: (context, index) {
           final month = _monthAtPage(index);
+          final monthKey = _monthCacheKey(month);
           return FutureBuilder<_CalendarScreenData>(
+            key: ValueKey(monthKey),
             future: _ensureMonthData(month),
             builder: (context, snapshot) {
               if (!snapshot.hasData) {
@@ -380,13 +428,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  double _calendarHeightForMonth(DateTime month) {
-    final rows = _gridRowCount(month);
+  double _calendarPagerViewportHeight() {
+    final current = _selectedMonth;
+    var maxRows = 0;
+    for (var i = -1; i <= 1; i++) {
+      final rows = _gridRowCount(addMonths(current, i));
+      if (rows > maxRows) {
+        maxRows = rows;
+      }
+    }
     const weekdayHeader = 32.0;
     const rowHeight = 78.0;
     const dividerHeight = 1.0;
     const gridPadding = 12.0;
-    return weekdayHeader + dividerHeight + rows * rowHeight + gridPadding;
+    return weekdayHeader + dividerHeight + maxRows * rowHeight + gridPadding;
   }
 
   int _gridRowCount(DateTime month) {
@@ -394,8 +449,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final lastDayOfMonth = DateTime(month.year, month.month + 1, 0);
     final firstWeekdayOffset = (firstDayOfMonth.weekday + 6) % 7;
     final trailingDays = (7 - lastDayOfMonth.weekday) % 7;
-    final totalDays =
-        firstWeekdayOffset + lastDayOfMonth.day + trailingDays;
+    final totalDays = firstWeekdayOffset + lastDayOfMonth.day + trailingDays;
     return (totalDays / 7).ceil();
   }
 
@@ -405,7 +459,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label),
+          Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
           Text(
             formatCurrency(value),
             style: TextStyle(color: color, fontWeight: FontWeight.bold),
@@ -415,72 +469,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  Widget _buildInflowOutflowSwitch() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() {
-                _showInflows = true;
-                _showAllCategories = false;
-              }),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: _showInflows
-                      ? AppColors.green.withValues(alpha: 0.2)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Center(
-                  child: Text(
-                    'Einnahmen',
-                    style: TextStyle(
-                      color: _showInflows
-                          ? AppColors.green
-                          : Theme.of(context).textTheme.bodyLarge?.color,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() {
-                _showInflows = false;
-                _showAllCategories = false;
-              }),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: !_showInflows
-                      ? AppColors.red.withValues(alpha: 0.2)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Center(
-                  child: Text(
-                    'Ausgaben',
-                    style: TextStyle(
-                      color: !_showInflows
-                          ? AppColors.red
-                          : Theme.of(context).textTheme.bodyLarge?.color,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+  Widget _buildInflowOutflowSwitch(AppLocalizations l10n) {
+    return InflowOutflowToggle(
+      showInflows: _showInflows,
+      inflowLabel: l10n.calendarInflows,
+      outflowLabel: l10n.calendarOutflows,
+      onChanged: (showInflows) {
+        setState(() {
+          _showInflows = showInflows;
+          _showAllCategories = false;
+        });
+      },
     );
   }
 
@@ -548,12 +547,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  Widget _buildCategoryList(MonthlyAnalysisSnapshot snapshot) {
+  Widget _buildCategoryList(MonthlyAnalysisSnapshot snapshot, AppLocalizations l10n) {
     final categories =
         _showInflows ? snapshot.categoryInflows : snapshot.categoryOutflows;
     if (categories.isEmpty) {
-      return const Center(
-        child: Text('Keine Daten für diese Kategorie verfügbar.'),
+      return Center(
+        child: Text(l10n.calendarNoCategoryData),
       );
     }
 
@@ -606,14 +605,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
       widgets.add(
         TextButton(
           onPressed: () => setState(() => _showAllCategories = true),
-          child: const Text('Alle anzeigen'),
+          child: Text(l10n.calendarShowAll),
         ),
       );
     } else if (!data.hasOther && _showAllCategories) {
       widgets.add(
         TextButton(
           onPressed: () => setState(() => _showAllCategories = false),
-          child: const Text('Weniger anzeigen'),
+          child: Text(l10n.calendarShowLess),
         ),
       );
     }
@@ -659,6 +658,7 @@ class _MonthGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final firstDayOfMonth = DateTime(month.year, month.month, 1);
     final lastDayOfMonth = DateTime(month.year, month.month + 1, 0);
     final firstWeekdayOffset = (firstDayOfMonth.weekday + 6) % 7;
@@ -667,7 +667,15 @@ class _MonthGrid extends StatelessWidget {
     final gridStart = firstDayOfMonth.subtract(Duration(days: firstWeekdayOffset));
     final totalCells = firstWeekdayOffset + lastDayOfMonth.day + trailingDays;
 
-    const weekdayLabels = ['MO.', 'DI.', 'MI.', 'DO.', 'FR.', 'SA.', 'SO.'];
+    final weekdayLabels = [
+      l10n.calendarWeekdayMon,
+      l10n.calendarWeekdayTue,
+      l10n.calendarWeekdayWed,
+      l10n.calendarWeekdayThu,
+      l10n.calendarWeekdayFri,
+      l10n.calendarWeekdaySat,
+      l10n.calendarWeekdaySun,
+    ];
 
     return Column(
       children: [
@@ -755,7 +763,7 @@ class _MonthGrid extends StatelessWidget {
                           color: !isCurrentMonth
                               ? Theme.of(context).hintColor.withValues(alpha: 0.5)
                               : isToday
-                                  ? Colors.white
+                                  ? Theme.of(context).colorScheme.onPrimary
                                   : isSunday
                                       ? AppColors.red.withValues(alpha: 0.9)
                                       : Theme.of(context)
@@ -839,90 +847,85 @@ class _DayDetailsPagerState extends State<_DayDetailsPager> {
 
   @override
   Widget build(BuildContext context) {
-    final dayLabel =
-        '${widget.details.day.day.toString().padLeft(2, '0')}.${widget.details.day.month.toString().padLeft(2, '0')}.${widget.details.day.year}';
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    final dayLabel = DateFormat('EEEE, dd.MM.yyyy', locale).format(widget.details.day);
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  dayLabel,
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w700),
-                ),
-              ),
-              IconButton(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.close),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            widget.pages[_index].title,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).hintColor,
-                  fontWeight: FontWeight.w600,
-                ),
-          ),
-          const SizedBox(height: 10),
-          Expanded(
-            child: PageView.builder(
-              itemCount: widget.pages.length,
-              onPageChanged: (i) => setState(() => _index = i),
-              itemBuilder: (context, i) {
-                return SingleChildScrollView(
-                  child: widget.pages[i].child,
-                );
-              },
-            ),
-          ),
-          if (widget.pages.length > 1)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(
-                widget.pages.length,
-                (i) => AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  width: i == _index ? 14 : 8,
-                  height: 8,
-                  margin: const EdgeInsets.symmetric(horizontal: 3),
-                  decoration: BoxDecoration(
-                    color: i == _index
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(context).dividerColor,
-                    borderRadius: BorderRadius.circular(4),
+    return RepaintBoundary(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: LiquidGlassLayer(
+          settings: liquidGlassSettings,
+          child: LiquidGlass.grouped(
+            shape: const LiquidRoundedSuperellipse(borderRadius: 28),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          dayLabel,
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w800, fontSize: 19),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
                   ),
-                ),
+                  const SizedBox(height: 4),
+                  Text(
+                    widget.pages[_index].title,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).hintColor,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                        ),
+                  ),
+                  const SizedBox(height: 10),
+                  Expanded(
+                    child: PageView.builder(
+                      physics: const BouncingScrollPhysics(parent: _SnappyPageScrollPhysics()),
+                      itemCount: widget.pages.length,
+                      onPageChanged: (i) => setState(() => _index = i),
+                      itemBuilder: (context, i) {
+                        return SingleChildScrollView(
+                          child: widget.pages[i].child,
+                        );
+                      },
+                    ),
+                  ),
+                  if (widget.pages.length > 1)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(
+                        widget.pages.length,
+                        (i) => AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          width: i == _index ? 14 : 8,
+                          height: 8,
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          decoration: BoxDecoration(
+                            color: i == _index
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context).dividerColor,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
-        ],
+          ),
+        ),
       ),
     );
   }
-}
-
-String monthName(int month) {
-  const names = [
-    'Januar',
-    'Februar',
-    'März',
-    'April',
-    'Mai',
-    'Juni',
-    'Juli',
-    'August',
-    'September',
-    'Oktober',
-    'November',
-    'Dezember',
-  ];
-  return names[(month - 1).clamp(0, 11)];
 }

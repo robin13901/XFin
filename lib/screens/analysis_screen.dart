@@ -8,7 +8,9 @@ import '../database/app_database.dart';
 import '../providers/database_provider.dart';
 import '../utils/format.dart';
 import '../utils/global_constants.dart';
+import '../l10n/app_localizations.dart';
 import '../widgets/analysis_line_chart_section.dart';
+import '../widgets/inflow_outflow_toggle.dart';
 
 // A data class to hold all asynchronous results needed by AnalysisScreen
 class AnalysisData {
@@ -300,82 +302,20 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   }
 
   Widget _buildInflowOutflowSwitch() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _showInflows = true;
-                  _showAllCategories = false;
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    scrollToBottom();
-                  });
-                });
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: _showInflows
-                      ? AppColors.green.withValues(alpha: 0.2)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Center(
-                  child: Text(
-                    'Einnahmen',
-                    style: TextStyle(
-                      color: _showInflows
-                          ? AppColors.green
-                          : Theme.of(context).textTheme.bodyLarge?.color,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _showInflows = false;
-                  _showAllCategories = false;
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    scrollToBottom();
-                  });
-                });
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: !_showInflows
-                      ? AppColors.red.withValues(alpha: 0.2)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Center(
-                  child: Text(
-                    'Ausgaben',
-                    style: TextStyle(
-                      color: !_showInflows
-                          ? AppColors.red
-                          : Theme.of(context).textTheme.bodyLarge?.color,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+    final l10n = AppLocalizations.of(context)!;
+    return InflowOutflowToggle(
+      showInflows: _showInflows,
+      inflowLabel: l10n.calendarInflows,
+      outflowLabel: l10n.calendarOutflows,
+      onChanged: (showInflows) {
+        setState(() {
+          _showInflows = showInflows;
+          _showAllCategories = false;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            scrollToBottom();
+          });
+        });
+      },
     );
   }
 
