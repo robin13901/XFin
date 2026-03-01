@@ -1,4 +1,3 @@
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
@@ -10,11 +9,13 @@ import '../database/daos/analysis_dao.dart';
 import '../database/tables.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/database_provider.dart';
-import '../providers/theme_provider.dart';
 import '../utils/format.dart';
 import '../utils/global_constants.dart';
+import '../widgets/category_widgets.dart';
+import '../widgets/common_widgets.dart';
 import '../widgets/inflow_outflow_toggle.dart';
 import '../widgets/liquid_glass_widgets.dart';
+import '../widgets/summary_row.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -36,28 +37,37 @@ class _SnappyPageScrollPhysics extends PageScrollPhysics {
   double get minFlingDistance => 1.0;
 
   @override
-  double get minFlingVelocity => 25.0;
+  double get minFlingVelocity => 15.0;
 
   @override
-  double get maxFlingVelocity => 15000.0;
+  double get maxFlingVelocity => 20000.0;
 
   @override
   double carriedMomentum(double existingVelocity) =>
-      existingVelocity.sign * existingVelocity.abs().clamp(0.0, 7000.0) * 8;
+      existingVelocity.sign * existingVelocity.abs().clamp(0.0, 10000.0) * 12;
+
+  @override
+  SpringDescription get spring => SpringDescription.withDampingRatio(
+        mass: 0.3,
+        stiffness: 300.0,
+        ratio: 0.8,
+      );
 }
 
 class _CalendarScreenState extends State<CalendarScreen> {
   static const int _initialPage = 2000;
-  static const int _prefetchRadius = 2;
+  static const int _prefetchRadius = 3;
 
   late final DateTime _baseMonth;
   late final PageController _pageController;
+  late final ScrollController _scrollController;
   int _currentPageIndex = _initialPage;
 
   bool _showInflows = true;
   bool _showAllCategories = false;
 
   final Map<int, Future<_CalendarScreenData>> _monthFutureCache = {};
+  final Map<int, _CalendarScreenData> _monthDataCache = {};
   late Future<_CalendarScreenData> _selectedMonthFuture;
 
   DateTime get _selectedMonth => _monthAtPage(_currentPageIndex);
@@ -68,6 +78,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final now = DateTime.now();
     _baseMonth = DateTime(now.year, now.month);
     _pageController = PageController(initialPage: _initialPage);
+    _scrollController = ScrollController();
     _selectedMonthFuture = _ensureMonthData(_selectedMonth);
     _prefetchNeighborsAfterDisplay(_selectedMonth);
   }
@@ -75,6 +86,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   void dispose() {
     _pageController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -95,11 +107,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
       db.analysisDao.getMonthlyAnalysisSnapshot(month),
     ]);
 
-    return _CalendarScreenData(
+    final data = _CalendarScreenData(
       month: month,
       dayNetFlow: results[0] as Map<int, double>,
       monthlySnapshot: results[1] as MonthlyAnalysisSnapshot,
     );
+
+    // Cache the resolved data for instant access
+    _monthDataCache[_monthCacheKey(month)] = data;
+
+    return data;
   }
 
   Future<_CalendarScreenData> _ensureMonthData(DateTime month) {
@@ -313,12 +330,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final selectedMonth = _selectedMonth;
-    final selectedMonthKey = _monthCacheKey(selectedMonth);
 
     return Scaffold(
       body: Stack(
         children: [
           SingleChildScrollView(
+            controller: _scrollController,
             padding: EdgeInsets.only(
               top: MediaQuery.of(context).padding.top + kToolbarHeight + 12,
               left: 12,
@@ -328,54 +345,35 @@ class _CalendarScreenState extends State<CalendarScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildMonthHeader(selectedMonth),
+                _MonthHeader(month: selectedMonth),
                 const SizedBox(height: 12),
                 _buildCalendarPager(),
                 const SizedBox(height: 20),
                 FutureBuilder<_CalendarScreenData>(
-                  key: ValueKey(selectedMonthKey),
                   future: _selectedMonthFuture,
                   builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    if (snapshot.hasError || !snapshot.hasData) {
-                      return Center(child: Text(snapshot.error.toString()));
+                    // Show previous data while loading to avoid flicker
+                    final data = snapshot.data ?? _monthDataCache[_monthCacheKey(selectedMonth)];
+                    if (data == null) {
+                      return const SizedBox(height: 200);
                     }
 
-                    final data = snapshot.data!;
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          l10n.calendarMonthlyOverview,
-                          style: Theme.of(context).textTheme.headlineSmall,
-                        ),
-                        const SizedBox(height: 8),
-                        _summaryRow(
-                          l10n.calendarInflows,
-                          data.monthlySnapshot.inflows,
-                          AppColors.green,
-                        ),
-                        _summaryRow(
-                          l10n.calendarOutflows,
-                          data.monthlySnapshot.outflows,
-                          AppColors.red,
-                        ),
-                        _summaryRow(
-                          l10n.calendarProfit,
-                          data.monthlySnapshot.profit,
-                          data.monthlySnapshot.profit >= 0
-                              ? AppColors.green
-                              : AppColors.red,
-                        ),
-                        const SizedBox(height: 12),
-                        _buildInflowOutflowSwitch(l10n),
-                        const SizedBox(height: 32),
-                        _buildCategoryPieChart(data.monthlySnapshot),
-                        const SizedBox(height: 32),
-                        _buildCategoryList(data.monthlySnapshot, l10n),
-                      ],
+                    return _MonthSummarySection(
+                      key: ValueKey(_monthCacheKey(selectedMonth)),
+                      data: data,
+                      showInflows: _showInflows,
+                      showAllCategories: _showAllCategories,
+                      onInflowOutflowChanged: (showInflows) {
+                        setState(() {
+                          _showInflows = showInflows;
+                          _showAllCategories = false;
+                        });
+                      },
+                      onShowAllChanged: (showAll) {
+                        setState(() {
+                          _showAllCategories = showAll;
+                        });
+                      },
                     );
                   },
                 ),
@@ -384,17 +382,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
           buildLiquidGlassAppBar(context, title: Text(l10n.calendar)),
         ],
-      ),
-    );
-  }
-
-  Widget _buildMonthHeader(DateTime selectedMonth) {
-    final locale = Localizations.localeOf(context).toLanguageTag();
-    final label = DateFormat('MMMM yyyy', locale).format(selectedMonth);
-    return Center(
-      child: Text(
-        label[0].toUpperCase() + label.substring(1),
-        style: Theme.of(context).textTheme.titleLarge,
       ),
     );
   }
@@ -410,12 +397,25 @@ class _CalendarScreenState extends State<CalendarScreen> {
         itemBuilder: (context, index) {
           final month = _monthAtPage(index);
           final monthKey = _monthCacheKey(month);
+
+          // Check if data is already cached synchronously
+          final cachedData = _monthDataCache[monthKey];
+          if (cachedData != null) {
+            return _MonthGrid(
+              key: ValueKey(monthKey),
+              month: month,
+              dayNetFlow: cachedData.dayNetFlow,
+              onDayTap: _openDayDetails,
+            );
+          }
+
+          // Otherwise use FutureBuilder
           return FutureBuilder<_CalendarScreenData>(
             key: ValueKey(monthKey),
             future: _ensureMonthData(month),
             builder: (context, snapshot) {
               if (!snapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
+                return const SizedBox.shrink();
               }
               return _MonthGrid(
                 month: month,
@@ -430,195 +430,187 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   double _calendarPagerViewportHeight() {
-    final current = _selectedMonth;
-    var maxRows = 0;
-    for (var i = -1; i <= 1; i++) {
-      final rows = _gridRowCount(addMonths(current, i));
-      if (rows > maxRows) {
-        maxRows = rows;
-      }
-    }
+    // Fixed height for 6 rows (maximum possible)
     const weekdayHeader = 32.0;
     const rowHeight = 78.0;
     const dividerHeight = 1.0;
     const gridPadding = 32;
+    const maxRows = 6;
     return weekdayHeader + dividerHeight + maxRows * rowHeight + gridPadding;
   }
 
-  int _gridRowCount(DateTime month) {
-    final firstDayOfMonth = DateTime(month.year, month.month, 1);
-    final lastDayOfMonth = DateTime(month.year, month.month + 1, 0);
-    final firstWeekdayOffset = (firstDayOfMonth.weekday + 6) % 7;
-    final trailingDays = (7 - lastDayOfMonth.weekday) % 7;
-    final totalDays = firstWeekdayOffset + lastDayOfMonth.day + trailingDays;
-    return (totalDays / 7).ceil();
-  }
 
-  Widget _summaryRow(String label, double value, Color color) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-          Text(
-            formatCurrency(value),
-            style: TextStyle(color: color, fontWeight: FontWeight.bold),
-          ),
-        ],
+}
+
+class _MonthHeader extends StatelessWidget {
+  final DateTime month;
+
+  const _MonthHeader({required this.month});
+
+  @override
+  Widget build(BuildContext context) {
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    final label = DateFormat('MMMM yyyy', locale).format(month);
+    return Center(
+      child: Text(
+        label[0].toUpperCase() + label.substring(1),
+        style: Theme.of(context).textTheme.titleLarge,
       ),
     );
   }
+}
 
-  Widget _buildInflowOutflowSwitch(AppLocalizations l10n) {
-    return InflowOutflowToggle(
-      showInflows: _showInflows,
-      inflowLabel: l10n.calendarInflows,
-      outflowLabel: l10n.calendarOutflows,
-      onChanged: (showInflows) {
-        setState(() {
-          _showInflows = showInflows;
-          _showAllCategories = false;
-        });
-      },
-    );
-  }
+class _MonthSummarySection extends StatelessWidget {
+  final _CalendarScreenData data;
+  final bool showInflows;
+  final bool showAllCategories;
+  final ValueChanged<bool> onInflowOutflowChanged;
+  final ValueChanged<bool> onShowAllChanged;
 
-  _CategoryDisplayData _categoryData(MonthlyAnalysisSnapshot snapshot) {
-    final categories =
-        _showInflows ? snapshot.categoryInflows : snapshot.categoryOutflows;
-    final totalAmount =
-        categories.values.fold(0.0, (sum, item) => sum + item.abs());
-    final sortedCategories = categories.entries.toList()
-      ..sort((a, b) => b.value.abs().compareTo(a.value.abs()));
+  const _MonthSummarySection({
+    super.key,
+    required this.data,
+    required this.showInflows,
+    required this.showAllCategories,
+    required this.onInflowOutflowChanged,
+    required this.onShowAllChanged,
+  });
 
-    final visible = <MapEntry<String, double>>[];
-    bool hasOther = false;
-    double other = 0;
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
 
-    for (final entry in sortedCategories) {
-      final percentage = totalAmount == 0 ? 0 : (entry.value.abs() / totalAmount) * 100;
-      if (!_showAllCategories && percentage < 1.0) {
-        hasOther = true;
-        other += entry.value;
-      } else {
-        visible.add(entry);
-      }
-    }
-
-    if (hasOther && other != 0) {
-      visible.add(MapEntry('...', other));
-    }
-
-    return _CategoryDisplayData(
-      entries: visible,
-      totalAmount: totalAmount,
-      hasOther: hasOther,
-    );
-  }
-
-  Widget _buildCategoryPieChart(MonthlyAnalysisSnapshot snapshot) {
-    final data = _categoryData(snapshot);
-    if (data.entries.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return SizedBox(
-      height: 220,
-      child: PieChart(
-        PieChartData(
-          sectionsSpace: 3,
-          centerSpaceRadius: 40,
-          startDegreeOffset: -90,
-          sections: List.generate(data.entries.length, (index) {
-            final entry = data.entries[index];
-            final ratio =
-                data.totalAmount == 0 ? 0.0 : entry.value.abs() / data.totalAmount;
-            return PieChartSectionData(
-              value: entry.value.abs(),
-              color: chartColors[index % chartColors.length],
-              radius: 84,
-              title: ratio >= 0.08 ? '${(ratio * 100).toStringAsFixed(0)}%' : '',
-              titleStyle:
-                  const TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
-            );
-          }),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionTitle(title: l10n.calendarMonthlyOverview),
+        const SizedBox(height: 8),
+        SummaryRow(
+          label: l10n.calendarInflows,
+          value: formatCurrency(data.monthlySnapshot.inflows),
+          valueColor: AppColors.green,
         ),
-      ),
+        SummaryRow(
+          label: l10n.calendarOutflows,
+          value: formatCurrency(data.monthlySnapshot.outflows),
+          valueColor: AppColors.red,
+        ),
+        SummaryRow(
+          label: l10n.calendarProfit,
+          value: formatCurrency(data.monthlySnapshot.profit),
+          valueColor: data.monthlySnapshot.profit >= 0 ? AppColors.green : AppColors.red,
+        ),
+        const SizedBox(height: 12),
+        InflowOutflowToggle(
+          showInflows: showInflows,
+          inflowLabel: l10n.calendarInflows,
+          outflowLabel: l10n.calendarOutflows,
+          onChanged: onInflowOutflowChanged,
+        ),
+        const SizedBox(height: 32),
+        CategoryPieChart(
+          data: calculateCategoryData(
+            categories: showInflows
+                ? data.monthlySnapshot.categoryInflows
+                : data.monthlySnapshot.categoryOutflows,
+            showAllCategories: showAllCategories,
+          ),
+        ),
+        const SizedBox(height: 32),
+        _CategoryListWrapper(
+          data: data,
+          showInflows: showInflows,
+          showAllCategories: showAllCategories,
+          onShowAllChanged: onShowAllChanged,
+        ),
+      ],
     );
   }
+}
 
-  Widget _buildCategoryList(MonthlyAnalysisSnapshot snapshot, AppLocalizations l10n) {
+/// Wrapper to handle category list display logic
+class _CategoryListWrapper extends StatelessWidget {
+  final _CalendarScreenData data;
+  final bool showInflows;
+  final bool showAllCategories;
+  final ValueChanged<bool> onShowAllChanged;
+
+  const _CategoryListWrapper({
+    required this.data,
+    required this.showInflows,
+    required this.showAllCategories,
+    required this.onShowAllChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final categories =
-        _showInflows ? snapshot.categoryInflows : snapshot.categoryOutflows;
+        showInflows ? data.monthlySnapshot.categoryInflows : data.monthlySnapshot.categoryOutflows;
+
     if (categories.isEmpty) {
-      return Center(
-        child: Text(l10n.calendarNoCategoryData),
-      );
+      return Center(child: Text(l10n.calendarNoCategoryData));
     }
 
-    final data = _categoryData(snapshot);
-    final widgets = <Widget>[];
+    final displayData = calculateCategoryData(
+      categories: categories,
+      showAllCategories: showAllCategories,
+    );
 
-    for (var i = 0; i < data.entries.length; i++) {
-      final entry = data.entries[i];
-      final percentage =
-          data.totalAmount == 0 ? 0 : (entry.value.abs() / data.totalAmount) * 100;
-      widgets.add(
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Row(
-                  children: [
-                    Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: chartColors[i % chartColors.length],
-                        shape: BoxShape.circle,
+    return Column(
+      children: [
+        ...List.generate(displayData.entries.length, (i) {
+          final entry = displayData.entries[i];
+          final percentage = displayData.totalAmount == 0
+              ? 0
+              : (entry.value.abs() / displayData.totalAmount) * 100;
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: chartColors[i % chartColors.length],
+                          shape: BoxShape.circle,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(entry.key)),
-                  ],
-                ),
-              ),
-              Row(
-                children: [
-                  Text(formatCurrency(entry.value)),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${percentage.toStringAsFixed(1)}%',
-                    style: TextStyle(color: Theme.of(context).hintColor),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(entry.key)),
+                    ],
                   ),
-                ],
-              )
-            ],
+                ),
+                Row(
+                  children: [
+                    Text(formatCurrency(entry.value)),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${percentage.toStringAsFixed(1)}%',
+                      style: TextStyle(color: Theme.of(context).hintColor),
+                    ),
+                  ],
+                )
+              ],
+            ),
+          );
+        }),
+        if (displayData.hasOther && !showAllCategories)
+          TextButton(
+            onPressed: () => onShowAllChanged(true),
+            child: Text(l10n.calendarShowAll),
+          )
+        else if (!displayData.hasOther && showAllCategories)
+          TextButton(
+            onPressed: () => onShowAllChanged(false),
+            child: Text(l10n.calendarShowLess),
           ),
-        ),
-      );
-    }
-
-    if (data.hasOther && !_showAllCategories) {
-      widgets.add(
-        TextButton(
-          onPressed: () => setState(() => _showAllCategories = true),
-          child: Text(l10n.calendarShowAll),
-        ),
-      );
-    } else if (!data.hasOther && _showAllCategories) {
-      widgets.add(
-        TextButton(
-          onPressed: () => setState(() => _showAllCategories = false),
-          child: Text(l10n.calendarShowLess),
-        ),
-      );
-    }
-
-    return Column(children: widgets);
+      ],
+    );
   }
 }
 
@@ -634,24 +626,13 @@ class _CalendarScreenData {
   });
 }
 
-class _CategoryDisplayData {
-  final List<MapEntry<String, double>> entries;
-  final double totalAmount;
-  final bool hasOther;
-
-  const _CategoryDisplayData({
-    required this.entries,
-    required this.totalAmount,
-    required this.hasOther,
-  });
-}
-
 class _MonthGrid extends StatelessWidget {
   final DateTime month;
   final Map<int, double> dayNetFlow;
   final ValueChanged<DateTime> onDayTap;
 
   const _MonthGrid({
+    super.key,
     required this.month,
     required this.dayNetFlow,
     required this.onDayTap,
@@ -667,6 +648,7 @@ class _MonthGrid extends StatelessWidget {
 
     final gridStart = firstDayOfMonth.subtract(Duration(days: firstWeekdayOffset));
     final totalCells = firstWeekdayOffset + lastDayOfMonth.day + trailingDays;
+    final rowCount = (totalCells / 7).ceil();
 
     final weekdayLabels = [
       l10n.calendarWeekdayMon,
@@ -705,105 +687,113 @@ class _MonthGrid extends StatelessWidget {
           height: 1,
           color: Theme.of(context).dividerColor.withValues(alpha: 0.2),
         ),
-        GridView.builder(
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: totalCells,
-          shrinkWrap: true,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 7,
-            mainAxisExtent: 78,
-          ),
-          itemBuilder: (context, index) {
-            final date = gridStart.add(Duration(days: index));
-            final isCurrentMonth = date.month == month.month;
-            final isSunday = date.weekday == DateTime.sunday;
-            final isToday = _isSameDate(date, DateTime.now());
-            final dateInt = date.year * 10000 + date.month * 100 + date.day;
-            final net = dayNetFlow[dateInt];
-            final netColor = net == null
-                ? Theme.of(context).hintColor
-                : (net >= 0 ? AppColors.green : AppColors.red);
+        Expanded(
+          child: Column(
+            children: List.generate(rowCount, (rowIndex) {
+              return Expanded(
+                child: Row(
+                  children: List.generate(7, (colIndex) {
+                    final cellIndex = rowIndex * 7 + colIndex;
+                    if (cellIndex >= totalCells) {
+                      return const Expanded(child: SizedBox());
+                    }
 
-            return InkWell(
-              borderRadius: BorderRadius.circular(8),
-              onTap: () => onDayTap(date),
-              child: Container(
-                decoration: BoxDecoration(
-                  border: Border(
-                    right: BorderSide(
-                      color: Theme.of(context)
-                          .dividerColor
-                          .withValues(alpha: 0.18),
-                    ),
-                    bottom: BorderSide(
-                      color: Theme.of(context)
-                          .dividerColor
-                          .withValues(alpha: 0.18),
-                    ),
-                  ),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 22,
-                      height: 22,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: isToday
-                            ? Theme.of(context).colorScheme.primary
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(11),
-                      ),
-                      child: Text(
-                        '${date.day}',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: !isCurrentMonth
-                              ? Theme.of(context).hintColor.withValues(alpha: 0.5)
-                              : isToday
-                                  ? Theme.of(context).colorScheme.onPrimary
-                                  : isSunday
-                                      ? AppColors.red.withValues(alpha: 0.9)
-                                      : Theme.of(context)
-                                          .textTheme
-                                          .bodyLarge
-                                          ?.color,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    if (net != null)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 4, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: netColor.withValues(
-                            alpha: isCurrentMonth ? 0.24 : 0.12,
+                    final date = gridStart.add(Duration(days: cellIndex));
+                    final isCurrentMonth = date.month == month.month;
+                    final isSunday = date.weekday == DateTime.sunday;
+                    final isToday = _isSameDate(date, DateTime.now());
+                    final dateInt = date.year * 10000 + date.month * 100 + date.day;
+                    final net = dayNetFlow[dateInt];
+                    final netColor = net == null
+                        ? Theme.of(context).hintColor
+                        : (net >= 0 ? AppColors.green : AppColors.red);
+
+                    return Expanded(
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () => onDayTap(date),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            border: Border(
+                              right: BorderSide(
+                                color: Theme.of(context)
+                                    .dividerColor
+                                    .withValues(alpha: 0.18),
+                              ),
+                              bottom: BorderSide(
+                                color: Theme.of(context)
+                                    .dividerColor
+                                    .withValues(alpha: 0.18),
+                              ),
+                            ),
                           ),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          formatCurrency(net),
-                          style: TextStyle(
-                            fontSize: 9,
-                            color: isCurrentMonth
-                                ? netColor
-                                : netColor.withValues(alpha: 0.5),
-                            fontWeight: FontWeight.w600,
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 22,
+                                height: 22,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: isToday
+                                      ? Theme.of(context).colorScheme.primary
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(11),
+                                ),
+                                child: Text(
+                                  '${date.day}',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: isToday
+                                        ? Theme.of(context).colorScheme.onPrimary
+                                        : !isCurrentMonth
+                                            ? Theme.of(context).hintColor.withValues(alpha: 0.5)
+                                            : isSunday
+                                                ? AppColors.red.withValues(alpha: 0.9)
+                                                : Theme.of(context)
+                                                    .textTheme
+                                                    .bodyLarge
+                                                    ?.color,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              if (net != null)
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 4, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: netColor.withValues(
+                                      alpha: isCurrentMonth ? 0.24 : 0.12,
+                                    ),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    formatCurrency(net),
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      color: isCurrentMonth
+                                          ? netColor
+                                          : netColor.withValues(alpha: 0.5),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                            ],
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                  ],
+                    );
+                  }),
                 ),
-              ),
-            );
-          },
+              );
+            }),
+          ),
         ),
       ],
     );

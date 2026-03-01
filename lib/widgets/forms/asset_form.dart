@@ -6,9 +6,9 @@ import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/utils/format.dart';
 
-import '../providers/database_provider.dart';
-import '../utils/validators.dart';
-import 'form_fields.dart';
+import '../../providers/database_provider.dart';
+import '../../utils/validators.dart';
+import '../form_fields.dart';
 
 class AssetForm extends StatefulWidget {
   final Asset? asset;

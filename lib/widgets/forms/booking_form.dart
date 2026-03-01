@@ -8,10 +8,10 @@ import 'package:xfin/database/app_database.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/utils/format.dart';
 import 'package:xfin/widgets/reusables.dart';
-import '../database/tables.dart';
-import '../providers/database_provider.dart';
-import '../utils/validators.dart';
-import 'form_fields.dart';
+import '../../database/tables.dart';
+import '../../providers/database_provider.dart';
+import '../../utils/validators.dart';
+import '../form_fields.dart';
 
 class BookingForm extends StatefulWidget {
   final Booking? booking;

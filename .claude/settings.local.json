@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter test test/screens/calendar_screen_test.dart)",
+      "Bash(flutter test test/widgets/ --reporter expanded)",
+      "Bash(flutter test test/widgets/)",
+      "Bash(flutter test)",
+      "Bash(flutter test test/screens/analysis_screen_test.dart)",
+      "Bash(flutter test test/database/daos/assets_dao_test.dart)",
+      "Bash(flutter test test/screens/assets_screen_test.dart)",
+      "Bash(flutter test --reporter=expanded)",
+      "Bash(flutter test test/screens/analysis_screen_test.dart --plain-name=\"displays loading indicator\")",
+      "Bash(flutter test test/screens/analysis_screen_test.dart --plain-name=\"inflow/outflow switch\")",
+      "Bash(flutter test test/database/daos/assets_dao_test.dart --plain-name=\"builds running daily histories\")",
+      "Bash(flutter test test/screens/assets_screen_test.dart --plain-name=\"long press referenced zero-value\")",
+      "Bash(flutter test test/database/daos/assets_dao_test.dart --plain-name=\"builds running daily\")",
+      "Bash(flutter test test/screens/assets_screen_test.dart --plain-name=\"long press referenced zero\")",
+      "Bash(flutter analyze)"
+    ]
+  }
+}

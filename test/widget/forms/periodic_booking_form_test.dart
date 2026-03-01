@@ -12,7 +12,7 @@ import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/providers/database_provider.dart';
 import 'package:xfin/utils/format.dart';
 import 'package:xfin/utils/global_constants.dart';
-import 'package:xfin/widgets/periodic_booking_form.dart';
+import 'package:xfin/widgets/forms/periodic_booking_form.dart';
 
 void main() {
   late AppDatabase db;

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/l10n/app_localizations.dart';
-import 'package:xfin/widgets/account_form.dart';
+import 'package:xfin/widgets/forms/account_form.dart';
 
 import '../providers/base_currency_provider.dart';
 import '../providers/database_provider.dart';

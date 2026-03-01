@@ -11,7 +11,7 @@ import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/providers/base_currency_provider.dart';
 import 'package:xfin/providers/database_provider.dart';
-import 'package:xfin/widgets/trade_form.dart';
+import 'package:xfin/widgets/forms/trade_form.dart';
 
 /// A tiny TradesDao subclass that throws on insertTrade — used to test error path.
 class ThrowingTradesDao extends gen_trades_dao.TradesDao {

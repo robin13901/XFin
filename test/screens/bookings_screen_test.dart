@@ -13,7 +13,7 @@ import 'package:xfin/providers/base_currency_provider.dart';
 import 'package:xfin/providers/database_provider.dart';
 import 'package:xfin/screens/bookings_screen.dart';
 import 'package:xfin/utils/format.dart';
-import 'package:xfin/widgets/booking_form.dart';
+import 'package:xfin/widgets/forms/booking_form.dart';
 
 class MockAccountsDao extends Mock implements AccountsDao {}
 

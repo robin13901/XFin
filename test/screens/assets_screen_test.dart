@@ -12,7 +12,7 @@ import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/providers/base_currency_provider.dart';
 import 'package:xfin/providers/database_provider.dart';
 import 'package:xfin/screens/assets_screen.dart';
-import 'package:xfin/widgets/asset_form.dart';
+import 'package:xfin/widgets/forms/asset_form.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -123,7 +123,7 @@ void main() {
         await db.into(db.assetsOnAccounts).insert(AssetsOnAccountsCompanion.insert(
               accountId: accountId,
               assetId: 3,
-              shares: const Value(0),
+              shares: const Value(0.001),  // Small but non-zero shares to trigger reference check
               value: const Value(0),
             ));
 

@@ -8,9 +8,9 @@ import '../database/daos/periodic_transfers_dao.dart';
 import '../providers/database_provider.dart';
 import '../utils/format.dart';
 import '../widgets/dialogs.dart';
+import '../widgets/forms/periodic_booking_form.dart';
+import '../widgets/forms/periodic_transfer_form.dart';
 import '../widgets/liquid_glass_widgets.dart';
-import '../widgets/periodic_booking_form.dart';
-import '../widgets/periodic_transfer_form.dart';
 
 class StandingOrdersScreen extends StatefulWidget {
   const StandingOrdersScreen({super.key});

@@ -7,10 +7,11 @@ import '../app_theme.dart';
 import '../database/app_database.dart';
 import '../providers/database_provider.dart';
 import '../utils/format.dart';
-import '../utils/global_constants.dart';
-import '../l10n/app_localizations.dart';
 import '../widgets/analysis_line_chart_section.dart';
+import '../widgets/category_widgets.dart';
+import '../widgets/common_widgets.dart';
 import '../widgets/inflow_outflow_toggle.dart';
+import '../widgets/summary_row.dart';
 
 // A data class to hold all asynchronous results needed by AnalysisScreen
 class AnalysisData {
@@ -44,19 +45,6 @@ class AnalysisScreen extends StatefulWidget {
 
   @override
   State<AnalysisScreen> createState() => _AnalysisScreenState();
-}
-
-
-class _CategoryDisplayData {
-  final List<MapEntry<String, double>> entries;
-  final double totalAmount;
-  final bool hasOther;
-
-  const _CategoryDisplayData({
-    required this.entries,
-    required this.totalAmount,
-    required this.hasOther,
-  });
 }
 
 class _AnalysisScreenState extends State<AnalysisScreen> {
@@ -247,49 +235,46 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Monatliche Übersicht',
-            style: Theme.of(context).textTheme.headlineSmall),
+        const SectionTitle(title: 'Monatliche Übersicht'),
         const SizedBox(height: 8),
-        _buildSummaryRow('Einnahmen Aktueller Monat:',
-            analysisData.currentMonthInflows, AppColors.green),
-        _buildSummaryRow('Ausgaben Aktueller Monat:',
-            analysisData.currentMonthOutflows, AppColors.red),
-        _buildSummaryRow(
-            'Gewinn Aktueller Monat:',
-            analysisData.currentMonthProfit,
-            analysisData.currentMonthProfit >= 0
-                ? AppColors.green
-                : AppColors.red),
+        SummaryRow(
+          label: 'Einnahmen Aktueller Monat:',
+          value: formatCurrency(analysisData.currentMonthInflows),
+          valueColor: AppColors.green,
+        ),
+        SummaryRow(
+          label: 'Ausgaben Aktueller Monat:',
+          value: formatCurrency(analysisData.currentMonthOutflows),
+          valueColor: AppColors.red,
+        ),
+        SummaryRow(
+          label: 'Gewinn Aktueller Monat:',
+          value: formatCurrency(analysisData.currentMonthProfit),
+          valueColor: analysisData.currentMonthProfit >= 0
+              ? AppColors.green
+              : AppColors.red,
+        ),
         const SizedBox(height: 8),
         const Divider(color: Colors.grey),
         const SizedBox(height: 8),
-        _buildSummaryRow('Ø Monatliche Einnahmen:',
-            analysisData.averageMonthlyInflows, AppColors.green),
-        _buildSummaryRow('Ø Monatliche Ausgaben:',
-            analysisData.averageMonthlyOutflows, AppColors.red),
-        _buildSummaryRow(
-            'Ø Monatlicher Gewinn:',
-            analysisData.averageMonthlyProfit,
-            analysisData.averageMonthlyProfit >= 0
-                ? AppColors.green
-                : AppColors.red),
+        SummaryRow(
+          label: 'Ø Monatliche Einnahmen:',
+          value: formatCurrency(analysisData.averageMonthlyInflows),
+          valueColor: AppColors.green,
+        ),
+        SummaryRow(
+          label: 'Ø Monatliche Ausgaben:',
+          value: formatCurrency(analysisData.averageMonthlyOutflows),
+          valueColor: AppColors.red,
+        ),
+        SummaryRow(
+          label: 'Ø Monatlicher Gewinn:',
+          value: formatCurrency(analysisData.averageMonthlyProfit),
+          valueColor: analysisData.averageMonthlyProfit >= 0
+              ? AppColors.green
+              : AppColors.red,
+        ),
       ],
-    );
-  }
-
-  Widget _buildSummaryRow(String title, double value, Color color) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(title),
-          Text(
-            formatCurrency(value),
-            style: TextStyle(color: color, fontWeight: FontWeight.bold),
-          ),
-        ],
-      ),
     );
   }
 
@@ -302,11 +287,10 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   }
 
   Widget _buildInflowOutflowSwitch() {
-    final l10n = AppLocalizations.of(context)!;
     return InflowOutflowToggle(
       showInflows: _showInflows,
-      inflowLabel: l10n.calendarInflows,
-      outflowLabel: l10n.calendarOutflows,
+      inflowLabel: 'Einnahmen',
+      outflowLabel: 'Ausgaben',
       onChanged: (showInflows) {
         setState(() {
           _showInflows = showInflows;
@@ -319,171 +303,42 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     );
   }
 
-  _CategoryDisplayData _getDisplayCategoryData(AnalysisData analysisData) {
-    final Map<String, double> categories = _showInflows
+  Widget _buildCategoryPieChart(AnalysisData analysisData) {
+    final categories = _showInflows
         ? analysisData.currentMonthCategoryInflows
         : analysisData.currentMonthCategoryOutflows;
 
-    final double totalAmount =
-        categories.values.fold(0.0, (sum, item) => sum + item.abs());
-
-    final sortedCategories = categories.entries.toList()
-      ..sort((a, b) => b.value.abs().compareTo(a.value.abs()));
-
-    final visible = <MapEntry<String, double>>[];
-    double aggregatedOtherAmount = 0.0;
-    bool hasOther = false;
-
-    for (final entry in sortedCategories) {
-      final percentage = totalAmount == 0 ? 0.0 : (entry.value.abs() / totalAmount) * 100;
-      if (!_showAllCategories && percentage < 1.0) {
-        aggregatedOtherAmount += entry.value;
-        hasOther = true;
-      } else {
-        visible.add(entry);
-      }
-    }
-
-    if (hasOther && aggregatedOtherAmount != 0) {
-      visible.add(MapEntry('...', aggregatedOtherAmount));
-    }
-
-    return _CategoryDisplayData(
-      entries: visible,
-      totalAmount: totalAmount,
-      hasOther: hasOther,
+    final displayData = calculateCategoryData(
+      categories: categories,
+      showAllCategories: _showAllCategories,
     );
-  }
 
-  Widget _buildCategoryPieChart(AnalysisData analysisData) {
-    final data = _getDisplayCategoryData(analysisData);
-    if (data.entries.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return SizedBox(
-      height: 220,
-      child: PieChart(
-        PieChartData(
-          sectionsSpace: 3,
-          centerSpaceRadius: 40,
-          startDegreeOffset: -90,
-          sections: List.generate(data.entries.length, (index) {
-            final entry = data.entries[index];
-            final ratio = data.totalAmount == 0
-                ? 0.0
-                : entry.value.abs() / data.totalAmount;
-            return PieChartSectionData(
-              value: entry.value.abs(),
-              color: chartColors[index % chartColors.length],
-              radius: 84,
-              title: ratio >= 0.08 ? '${(ratio * 100).toStringAsFixed(0)}%' : '',
-              titleStyle:
-                  const TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
-            );
-          }),
-        ),
-      ),
-    );
+    return CategoryPieChart(data: displayData);
   }
 
   Widget _buildCategoryList(AnalysisData analysisData) {
-    final Map<String, double> categories = _showInflows
+    final categories = _showInflows
         ? analysisData.currentMonthCategoryInflows
         : analysisData.currentMonthCategoryOutflows;
 
-    if (categories.isEmpty) {
-      return const Center(
-          child: Text('Keine Daten für diese Kategorie verfügbar.'));
-    }
+    final displayData = calculateCategoryData(
+      categories: categories,
+      showAllCategories: _showAllCategories,
+    );
 
-    final data = _getDisplayCategoryData(analysisData);
-    final categoryWidgets = <Widget>[];
-
-    for (var i = 0; i < data.entries.length; i++) {
-      final entry = data.entries[i];
-      final percentage = data.totalAmount == 0
-          ? 0.0
-          : (entry.value.abs() / data.totalAmount) * 100;
-      categoryWidgets.add(
-        _buildCategoryRow(
-          category: entry.key,
-          amount: entry.value,
-          percentage: percentage,
-          color: chartColors[i % chartColors.length],
-        ),
-      );
-    }
-
-    if (data.hasOther && !_showAllCategories) {
-      categoryWidgets.add(
-        TextButton(
-          onPressed: () {
-            setState(() {
-              _showAllCategories = true;
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                scrollToBottom();
-              });
-            });
-          },
-          child: const Text('Alle anzeigen'),
-        ),
-      );
-    } else if (!data.hasOther && _showAllCategories) {
-      categoryWidgets.add(
-        TextButton(
-          onPressed: () {
-            setState(() {
-              _showAllCategories = false;
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                scrollToBottom();
-              });
-            });
-          },
-          child: const Text('Weniger anzeigen'),
-        ),
-      );
-    }
-
-    return Column(children: categoryWidgets);
-  }
-
-  Widget _buildCategoryRow({
-    required String category,
-    required double amount,
-    required double percentage,
-    required Color color,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                Container(
-                  width: 10,
-                  height: 10,
-                  decoration:
-                      BoxDecoration(color: color, shape: BoxShape.circle),
-                ),
-                const SizedBox(width: 8),
-                Expanded(child: Text(category)),
-              ],
-            ),
-          ),
-          Row(
-            children: [
-              Text(formatCurrency(amount)),
-              const SizedBox(width: 8),
-              Text('${percentage.toStringAsFixed(1)}%',
-                  style: TextStyle(color: Theme.of(context).hintColor)),
-            ],
-          ),
-        ],
-      ),
+    return CategoryList(
+      data: displayData,
+      noCategoriesMessage: 'Keine Daten für diese Kategorie verfügbar.',
+      showAllLabel: 'Alle anzeigen',
+      showLessLabel: 'Weniger anzeigen',
+      onShowAllChanged: (showAll) {
+        setState(() {
+          _showAllCategories = showAll;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            scrollToBottom();
+          });
+        });
+      },
     );
   }
-
 }

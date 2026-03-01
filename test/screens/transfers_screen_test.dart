@@ -12,7 +12,7 @@ import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/providers/base_currency_provider.dart';
 import 'package:xfin/providers/database_provider.dart';
 import 'package:xfin/screens/transfers_screen.dart';
-import 'package:xfin/widgets/transfer_form.dart';
+import 'package:xfin/widgets/forms/transfer_form.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

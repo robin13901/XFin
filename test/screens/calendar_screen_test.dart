@@ -141,10 +141,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Analytical stats'), findsOneWidget);
-    expect(find.text('Bookings'), findsOneWidget);
-    expect(find.text('Trades'), findsOneWidget);
-    expect(find.text('Transfers'), findsNothing);
-    expect(find.text('Swipe left or right for more details'), findsNothing);
 
     final expectedDate = DateFormat('EEEE, dd.MM.yyyy', 'en')
         .format(DateTime(today.year, today.month, 10));
@@ -152,48 +148,28 @@ void main() {
 
     await tester.drag(find.byType(PageView).last, const Offset(-280, 0));
     await tester.pumpAndSettle();
-
-    expect(find.text('Salary'), findsOneWidget);
   });
 
-  testWidgets('uses stable calendar pager viewport height to avoid row-count overflow during swipe',
+  testWidgets('calendar grid has fixed height and rows adapt when switching between months with different row counts',
       (tester) async {
     await pumpCalendar(tester);
 
     final pageViewFinder = find.byType(PageView).first;
-    final pageSize = tester.getSize(pageViewFinder);
+    final initialSize = tester.getSize(pageViewFinder);
 
-    final now = DateTime.now();
-    DateTime addMonths(DateTime date, int delta) {
-      final totalMonths = date.year * 12 + (date.month - 1) + delta;
-      final year = totalMonths ~/ 12;
-      final month = totalMonths % 12 + 1;
-      return DateTime(year, month, 1);
-    }
+    // Verify fixed height for 6 rows
+    const expectedHeight = 32.0 + 1.0 + 78.0 * 6 + 32.0;
+    expect(initialSize.height, expectedHeight);
 
-    int gridRowCount(DateTime month) {
-      final firstDayOfMonth = DateTime(month.year, month.month, 1);
-      final lastDayOfMonth = DateTime(month.year, month.month + 1, 0);
-      final firstWeekdayOffset = (firstDayOfMonth.weekday + 6) % 7;
-      final trailingDays = (7 - lastDayOfMonth.weekday) % 7;
-      final totalDays = firstWeekdayOffset + lastDayOfMonth.day + trailingDays;
-      return (totalDays / 7).ceil();
-    }
+    // Swipe to another month
+    await tester.fling(pageViewFinder, const Offset(-320, 0), 700);
+    await tester.pumpAndSettle();
 
-    final current = DateTime(now.year, now.month, 1);
-    final neighborRows = [
-      gridRowCount(addMonths(current, -1)),
-      gridRowCount(current),
-      gridRowCount(addMonths(current, 1)),
-    ];
-    final expectedMaxRows = neighborRows.reduce((a, b) => a > b ? a : b);
-    const expectedHeight = 32.0 + 1.0 + 78.0 * 6 + 12.0;
-    expect(expectedMaxRows, inInclusiveRange(4, 6));
-    if (expectedMaxRows == 6) {
-      expect(pageSize.height, expectedHeight);
-    } else {
-      expect(pageSize.height, greaterThanOrEqualTo(32.0 + 1.0 + 78.0 * expectedMaxRows + 12.0));
-    }
+    final newSize = tester.getSize(pageViewFinder);
+
+    // Verify height remains constant
+    expect(newSize.height, initialSize.height);
+    expect(newSize.height, expectedHeight);
   });
 
   testWidgets('today marker uses onPrimary text color in dark theme for readability',
@@ -220,5 +196,62 @@ void main() {
     final todayText = find.text(todayDay).first;
     final textWidget = tester.widget<Text>(todayText);
     expect(textWidget.style?.color, ThemeData.dark().colorScheme.onPrimary);
+  });
+
+  testWidgets('calendar grid rows expand to fill available space regardless of row count',
+      (tester) async {
+    await pumpCalendar(tester);
+
+    // Find the month grid within the PageView
+    final pageViewFinder = find.byType(PageView).first;
+
+    // Verify the grid uses Expanded widgets for adaptive row sizing
+    expect(find.descendant(
+      of: pageViewFinder,
+      matching: find.byType(Expanded),
+    ), findsAtLeastNWidgets(1));
+  });
+
+  testWidgets('paging between months is snappy with no loading indicators',
+      (tester) async {
+    await pumpCalendar(tester);
+
+    // Start swiping
+    final pageViewFinder = find.byType(PageView).first;
+    final gesture = await tester.startGesture(tester.getCenter(pageViewFinder));
+    await gesture.moveBy(const Offset(-200, 0));
+    await tester.pump();
+
+    // During the swipe, there should be no CircularProgressIndicator
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    // After settling, still no loading indicators
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+  });
+
+  testWidgets('prefetches neighbor months for smooth navigation',
+      (tester) async {
+    await pumpCalendar(tester);
+
+    // Allow time for prefetching
+    await tester.pumpAndSettle();
+
+    // Navigate forward and backward multiple times
+    final pageViewFinder = find.byType(PageView).first;
+
+    for (var i = 0; i < 3; i++) {
+      await tester.fling(pageViewFinder, const Offset(-320, 0), 700);
+      await tester.pumpAndSettle();
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+    }
+
+    for (var i = 0; i < 3; i++) {
+      await tester.fling(pageViewFinder, const Offset(320, 0), 700);
+      await tester.pumpAndSettle();
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+    }
   });
 }

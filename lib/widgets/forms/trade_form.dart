@@ -6,13 +6,13 @@ import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 
-import '../providers/base_currency_provider.dart';
-import '../providers/database_provider.dart';
-import '../utils/format.dart';
-import '../utils/date_picker_locale.dart';
-import '../utils/validators.dart';
-import 'dialogs.dart';
-import 'form_fields.dart';
+import '../../providers/base_currency_provider.dart';
+import '../../providers/database_provider.dart';
+import '../../utils/format.dart';
+import '../../utils/date_picker_locale.dart';
+import '../../utils/validators.dart';
+import '../dialogs.dart';
+import '../form_fields.dart';
 
 class TradeForm extends StatefulWidget {
   final Trade? trade;

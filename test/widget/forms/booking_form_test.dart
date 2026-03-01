@@ -13,7 +13,7 @@ import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/providers/base_currency_provider.dart';
 import 'package:xfin/providers/database_provider.dart';
 import 'package:xfin/utils/format.dart';
-import 'package:xfin/widgets/booking_form.dart';
+import 'package:xfin/widgets/forms/booking_form.dart';
 
 void main() {
   late AppDatabase db;

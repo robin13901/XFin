@@ -8,9 +8,9 @@ import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/providers/base_currency_provider.dart';
 import 'package:xfin/utils/format.dart';
 import 'package:xfin/widgets/reusables.dart';
-import '../providers/database_provider.dart';
-import '../utils/validators.dart';
-import 'dialogs.dart';
+import '../../providers/database_provider.dart';
+import '../../utils/validators.dart';
+import '../dialogs.dart';
 
 class AccountForm extends StatefulWidget {
   const AccountForm({super.key});

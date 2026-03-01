@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/l10n/app_localizations.dart';
-import 'package:xfin/widgets/transfer_form.dart';
 
 import '../database/daos/transfers_dao.dart';
 import '../providers/database_provider.dart';
 import '../utils/format.dart';
 import '../widgets/dialogs.dart';
+import '../widgets/forms/transfer_form.dart';
 import '../widgets/liquid_glass_widgets.dart';
 
 class TransfersScreen extends StatefulWidget {

@@ -13,7 +13,7 @@ import 'package:xfin/providers/base_currency_provider.dart';
 import 'package:xfin/providers/database_provider.dart';
 import 'package:xfin/screens/trades_screen.dart';
 import 'package:xfin/utils/format.dart';
-import 'package:xfin/widgets/trade_form.dart';
+import 'package:xfin/widgets/forms/trade_form.dart';
 
 void main() {
   late AppDatabase db;

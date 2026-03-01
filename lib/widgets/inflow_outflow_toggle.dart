@@ -51,7 +51,7 @@ class InflowOutflowToggle extends StatelessWidget {
     required String label,
     required VoidCallback onTap,
   }) {
-    final selectedColor = Colors.indigo;
+    const selectedColor = Colors.indigoAccent;
     final textColor = isSelected
         ? Colors.white
         : Theme.of(context).textTheme.bodyLarge?.color;

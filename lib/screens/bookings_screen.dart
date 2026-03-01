@@ -5,11 +5,11 @@ import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/daos/bookings_dao.dart';
 import 'package:xfin/l10n/app_localizations.dart';
-import 'package:xfin/widgets/booking_form.dart';
 
 import '../providers/database_provider.dart';
 import '../utils/format.dart';
 import '../widgets/dialogs.dart';
+import '../widgets/forms/booking_form.dart';
 import '../widgets/liquid_glass_widgets.dart';
 
 class BookingsScreen extends StatefulWidget {

@@ -4,7 +4,7 @@ import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/utils/format.dart';
-import 'package:xfin/widgets/asset_form.dart';
+import 'package:xfin/widgets/forms/asset_form.dart';
 import 'package:xfin/widgets/charts.dart';
 import 'package:xfin/widgets/dialogs.dart';
 

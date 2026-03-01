@@ -10,6 +10,7 @@ import '../providers/database_provider.dart';
 import '../utils/format.dart';
 import '../widgets/analysis_line_chart_section.dart';
 import '../widgets/charts.dart';
+import '../widgets/common_widgets.dart';
 import '../widgets/liquid_glass_widgets.dart';
 
 class AssetAnalysisDetailScreen extends StatefulWidget {
@@ -121,21 +122,21 @@ class _AssetAnalysisDetailScreenState extends State<AssetAnalysisDetailScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    _sectionTitle(context, 'Trading stats'),
-                    _statTile('Buys', data.buys.toString()),
-                    _statTile('Sells', data.sells.toString()),
-                    _statTile('Total profit', formatCurrency(data.totalProfit)),
-                    _statTile('Total fees', formatCurrency(data.totalFees)),
-                    _statTile('Trade volume', formatCurrency(data.tradeVolume)),
+                    SectionTitle(title: 'Trading stats', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                    StatTile(label: 'Buys', value: data.buys.toString()),
+                    StatTile(label: 'Sells', value: data.sells.toString()),
+                    StatTile(label: 'Total profit', value: formatCurrency(data.totalProfit)),
+                    StatTile(label: 'Total fees', value: formatCurrency(data.totalFees)),
+                    StatTile(label: 'Trade volume', value: formatCurrency(data.tradeVolume)),
                     const SizedBox(height: 12),
-                    _sectionTitle(context, 'General stats'),
-                    _statTile('Booking inflows', formatCurrency(data.bookingInflows)),
-                    _statTile('Booking outflows', formatCurrency(data.bookingOutflows)),
-                    _statTile('Transfers', data.transferCount.toString()),
-                    _statTile('Transfer volume', formatCurrency(data.transferVolume)),
-                    _statTile('Events per month', data.eventFrequency.toStringAsFixed(1)),
+                    SectionTitle(title: 'General stats', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                    StatTile(label: 'Booking inflows', value: formatCurrency(data.bookingInflows)),
+                    StatTile(label: 'Booking outflows', value: formatCurrency(data.bookingOutflows)),
+                    StatTile(label: 'Transfers', value: data.transferCount.toString()),
+                    StatTile(label: 'Transfer volume', value: formatCurrency(data.transferVolume)),
+                    StatTile(label: 'Events per month', value: data.eventFrequency.toStringAsFixed(1)),
                     const SizedBox(height: 12),
-                    _sectionTitle(context, 'Held on accounts'),
+                    SectionTitle(title: 'Held on accounts', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                     const SizedBox(height: 32),
                     if (data.accountHoldings.isEmpty)
                       const Padding(
@@ -157,19 +158,6 @@ class _AssetAnalysisDetailScreenState extends State<AssetAnalysisDetailScreen> {
           );
         },
       ),
-    );
-  }
-
-  Widget _sectionTitle(BuildContext context, String title) {
-    return Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700));
-  }
-
-  Widget _statTile(String label, String value) {
-    return ListTile(
-      visualDensity: const VisualDensity(vertical: -3),
-      contentPadding: EdgeInsets.zero,
-      title: Text(label, style: const TextStyle(fontSize: 16)),
-      trailing: Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
     );
   }
 }

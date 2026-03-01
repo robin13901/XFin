@@ -9,9 +9,9 @@ import 'package:xfin/database/app_database.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/widgets/form_fields.dart';
 import 'package:xfin/widgets/reusables.dart';
-import '../database/tables.dart';
-import '../providers/database_provider.dart';
-import '../utils/validators.dart';
+import '../../database/tables.dart';
+import '../../providers/database_provider.dart';
+import '../../utils/validators.dart';
 
 class TransferForm extends StatefulWidget {
   final Transfer? transfer;

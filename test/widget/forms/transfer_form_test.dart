@@ -1,4 +1,3 @@
-// test/widget/transfer_form_test.dart
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -13,8 +12,8 @@ import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/providers/base_currency_provider.dart';
 import 'package:xfin/utils/format.dart';
-import 'package:xfin/widgets/transfer_form.dart';
-import 'package:xfin/providers/database_provider.dart'; // <-- added
+import 'package:xfin/providers/database_provider.dart';
+import 'package:xfin/widgets/forms/transfer_form.dart';
 
 extension WidgetTesterX on WidgetTester {
   Future<void> pumpUntilNoLongerFound(Finder finder,

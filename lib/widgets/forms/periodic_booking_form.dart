@@ -4,31 +4,31 @@ import 'package:provider/provider.dart';
 import 'package:xfin/utils/format.dart';
 import 'package:xfin/utils/global_constants.dart';
 
-import '../database/app_database.dart';
-import '../database/tables.dart';
-import '../l10n/app_localizations.dart';
-import '../providers/database_provider.dart';
-import '../utils/validators.dart';
-import 'dialogs.dart';
-import 'form_fields.dart';
+import '../../database/app_database.dart';
+import '../../database/tables.dart';
+import '../../l10n/app_localizations.dart';
+import '../../providers/database_provider.dart';
+import '../../utils/validators.dart';
+import '../dialogs.dart';
+import '../form_fields.dart';
 
-class PeriodicTransferForm extends StatefulWidget {
-  final PeriodicTransfer? periodicTransfer;
+class PeriodicBookingForm extends StatefulWidget {
+  final PeriodicBooking? periodicBooking;
   final List<Asset>? preloadedAssets;
   final List<Account>? preloadedAccounts;
 
-  const PeriodicTransferForm({
+  const PeriodicBookingForm({
     super.key,
-    this.periodicTransfer,
+    this.periodicBooking,
     this.preloadedAssets,
     this.preloadedAccounts,
   });
 
   @override
-  State<PeriodicTransferForm> createState() => _PeriodicTransferFormState();
+  State<PeriodicBookingForm> createState() => _PeriodicBookingFormState();
 }
 
-class _PeriodicTransferFormState extends State<PeriodicTransferForm> {
+class _PeriodicBookingFormState extends State<PeriodicBookingForm> {
   final _formKey = GlobalKey<FormState>();
   late AppDatabase _db;
   late AppLocalizations _l10n;
@@ -38,20 +38,21 @@ class _PeriodicTransferFormState extends State<PeriodicTransferForm> {
   // Controllers
   late TextEditingController _dateCtrl;
   late TextEditingController _sharesCtrl;
+  late TextEditingController _categoryCtrl;
   late TextEditingController _notesCtrl;
 
   // Form values
+  static const int _assetId = 1;
   late DateTime _nextExecDate;
   late Cycles _selectedCycle;
-  int? _sendingAccountId;
-  int? _receivingAccountId;
-  int? _assetId;
+  int? _accountId;
 
   // Data from DB
   List<Asset> _assets = [];
   List<Account> _accounts = [];
+  List<String> _distinctCategories = [];
 
-  bool get _isEditing => widget.periodicTransfer != null;
+  bool get _isEditing => widget.periodicBooking != null;
 
   @override
   void didChangeDependencies() {
@@ -64,31 +65,33 @@ class _PeriodicTransferFormState extends State<PeriodicTransferForm> {
   @override
   void initState() {
     super.initState();
+    final pb = widget.periodicBooking;
     _db = context.read<DatabaseProvider>().db;
-    final pt = widget.periodicTransfer;
 
     _nextExecDate =
-        pt == null ? addMonths(DateTime.now(), 1) : intToDateTime(pt.nextExecutionDate)!;
-    _selectedCycle = pt?.cycle ?? Cycles.monthly;
-    _assetId = pt?.assetId ?? 1;
+        pb == null ? addMonths(DateTime.now(), 1) : intToDateTime(pb.nextExecutionDate)!;
+    _selectedCycle = pb?.cycle ?? Cycles.monthly;
+
+    _db.bookingsDao
+        .getDistinctCategories()
+        .then((v) => setState(() => _distinctCategories = v));
 
     _dateCtrl = TextEditingController(text: dateFormat.format(_nextExecDate));
-    _sharesCtrl = TextEditingController(text: pt?.value.toString() ?? '');
-    _notesCtrl = TextEditingController(text: pt?.notes ?? '');
+    _sharesCtrl = TextEditingController(text: pb?.shares.toString() ?? '');
+    _categoryCtrl = TextEditingController(text: pb?.category ?? '');
+    _notesCtrl = TextEditingController(text: pb?.notes ?? '');
 
     _assets = widget.preloadedAssets ?? [];
     _accounts = widget.preloadedAccounts ?? [];
 
-    if (_isEditing) {
-      _sendingAccountId = widget.periodicTransfer!.sendingAccountId;
-      _receivingAccountId = widget.periodicTransfer!.receivingAccountId;
-    }
+    if (_isEditing) _accountId = widget.periodicBooking!.accountId;
   }
 
   @override
   void dispose() {
     _dateCtrl.dispose();
     _sharesCtrl.dispose();
+    _categoryCtrl.dispose();
     _notesCtrl.dispose();
     super.dispose();
   }
@@ -110,25 +113,20 @@ class _PeriodicTransferFormState extends State<PeriodicTransferForm> {
 
   Future<void> _saveForm() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_sendingAccountId == _receivingAccountId) {
-      showErrorDialog(context, _l10n.sendingAndReceivingMustDiffer);
-      return;
-    }
 
     final intNextExecutionDate = dateTimeToInt(_nextExecDate);
     final shares = double.parse(_sharesCtrl.text.replaceAll(',', '.'));
-    final value = shares;
     final notes = _notesCtrl.text.trim();
     final monthlyAverageFactor = _monthlyFactorForCycle(_selectedCycle);
 
-    final companion = PeriodicTransfersCompanion(
+    final companion = PeriodicBookingsCompanion(
       nextExecutionDate: drift.Value(intNextExecutionDate),
-      assetId: drift.Value(_assetId!),
-      sendingAccountId: drift.Value(_sendingAccountId!),
-      receivingAccountId: drift.Value(_receivingAccountId!),
+      assetId: const drift.Value(_assetId),
+      accountId: drift.Value(_accountId!),
       shares: drift.Value(shares),
       costBasis: const drift.Value(1),
-      value: drift.Value(value),
+      value: drift.Value(shares),
+      category: drift.Value(_categoryCtrl.text.trim()),
       notes: notes.isEmpty ? const drift.Value.absent() : drift.Value(notes),
       cycle: drift.Value(_selectedCycle),
       monthlyAverageFactor: drift.Value(monthlyAverageFactor),
@@ -136,14 +134,14 @@ class _PeriodicTransferFormState extends State<PeriodicTransferForm> {
 
     try {
       if (_isEditing) {
-        final id = widget.periodicTransfer!.id;
+        final id = widget.periodicBooking!.id;
         final toSave = companion.copyWith(id: drift.Value(id));
-        await _db.periodicTransfersDao.updatePeriodicTransfer(toSave);
+        await _db.periodicBookingsDao.updatePeriodicBooking(toSave);
       } else {
-        await _db.periodicTransfersDao.insertPeriodicTransfer(companion);
+        await _db.periodicBookingsDao.insertPeriodicBooking(companion);
       }
       if (mounted) Navigator.of(context).pop();
-      int executedCount = await _db.periodicTransfersDao.executePending(_l10n);
+      int executedCount = await _db.periodicBookingsDao.executePending(_l10n);
       if (executedCount > 0 && mounted) {
         showInfoDialog(context, _l10n.standingOrdersExecuted,
             _l10n.nStandingOrdersExecuted(executedCount));
@@ -167,45 +165,30 @@ class _PeriodicTransferFormState extends State<PeriodicTransferForm> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _formFields.dateAndAssetRow(
-                  dateController: _dateCtrl,
-                  date: _nextExecDate,
-                  dateLabel: _l10n.nextExecutionDate,
-                  customDateValidator: _validator.validateDateInFuture,
-                  onDateChanged: (v) => setState(() => _nextExecDate = v),
-                  assets: _assets,
-                  assetsEditable: true,
-                  assetId: _assetId,
-                  onAssetChanged: (v) => setState(() => _assetId = v),
-                ),
+                    dateController: _dateCtrl,
+                    date: _nextExecDate,
+                    dateLabel: _l10n.nextExecutionDate,
+                    customDateValidator: _validator.validateDateInFuture,
+                    onDateChanged: (v) => setState(() => _nextExecDate = v),
+                    assets: _assets,
+                    assetsEditable: false,
+                    assetId: _assetId),
                 const SizedBox(height: 16),
                 _formFields.cyclesDropdown(
-                  cycles: Cycles.values,
-                  value: Cycles.values.indexOf(_selectedCycle),
-                  onChanged: (v) =>
-                      setState(() => _selectedCycle = Cycles.values[v!]),
-                ),
+                    cycles: Cycles.values,
+                    value: 2,
+                    onChanged: (v) =>
+                        setState(() => _selectedCycle = Cycles.values[v!])),
                 const SizedBox(height: 16),
                 _formFields.accountDropdown(
-                  accounts: _accounts,
-                  value: _sendingAccountId,
-                  onChanged: (v) => setState(() => _sendingAccountId = v),
-                  label: _l10n.sendingAccount,
-                  key: const Key('sending_account_dropdown'),
-                ),
-                const SizedBox(height: 16),
-                _formFields.accountDropdown(
-                  accounts: _accounts,
-                  value: _receivingAccountId,
-                  onChanged: (v) => setState(() => _receivingAccountId = v),
-                  label: _l10n.receivingAccount,
-                  key: const Key('receiving_account_dropdown'),
-                ),
+                    accounts: _accounts,
+                    value: _accountId,
+                    onChanged: (v) => setState(() => _accountId = v)),
                 const SizedBox(height: 16),
                 _formFields.sharesField(
-                  _sharesCtrl,
-                  _assets.firstWhere((a) => a.id == _assetId),
-                  signedShares: false,
-                ),
+                    _sharesCtrl, _assets.firstWhere((a) => a.id == _assetId)),
+                const SizedBox(height: 16),
+                _formFields.categoryField(_categoryCtrl, _distinctCategories),
                 const SizedBox(height: 12),
                 _formFields.notesField(_notesCtrl),
                 const SizedBox(height: 20),

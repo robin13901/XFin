@@ -6,11 +6,11 @@ import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/utils/format.dart';
 import 'package:xfin/utils/global_constants.dart';
 import 'package:xfin/widgets/dialogs.dart';
-import 'package:xfin/widgets/trade_form.dart';
 import 'package:xfin/database/daos/trades_dao.dart';
 
 import '../database/tables.dart';
 import '../providers/database_provider.dart';
+import '../widgets/forms/trade_form.dart';
 import '../widgets/liquid_glass_widgets.dart';
 
 class TradesScreen extends StatefulWidget {
