@@ -1226,29 +1226,137 @@ abstract class AppLocalizations {
   /// **'Accounts can only be deleted when they have no references. This account has references and cannot be deleted.\n\nAccounts with references can be archived but only if the balance is 0.'**
   String get cannotDeleteOrArchiveAccountLong;
 
+  /// No description provided for @calendar.
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar'**
   String get calendar;
-  String get calendarMonthlyOverview;
-  String get calendarInflows;
-  String get calendarOutflows;
-  String get calendarProfit;
-  String get calendarNoCategoryData;
-  String get calendarShowAll;
-  String get calendarShowLess;
-  String get calendarDayDetails;
-  String get calendarAnalyticalStats;
-  String get calendarNet;
-  String get calendarTradeDeltas;
-  String get calendarTradeBuy;
-  String get calendarTradeSell;
-  String get calendarDayDetailsSwipeHint;
-  String get calendarWeekdayMon;
-  String get calendarWeekdayTue;
-  String get calendarWeekdayWed;
-  String get calendarWeekdayThu;
-  String get calendarWeekdayFri;
-  String get calendarWeekdaySat;
-  String get calendarWeekdaySun;
 
+  /// No description provided for @calendarMonthlyOverview.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly overview'**
+  String get calendarMonthlyOverview;
+
+  /// No description provided for @calendarInflows.
+  ///
+  /// In en, this message translates to:
+  /// **'Inflows'**
+  String get calendarInflows;
+
+  /// No description provided for @calendarOutflows.
+  ///
+  /// In en, this message translates to:
+  /// **'Outflows'**
+  String get calendarOutflows;
+
+  /// No description provided for @calendarProfit.
+  ///
+  /// In en, this message translates to:
+  /// **'Profit'**
+  String get calendarProfit;
+
+  /// No description provided for @calendarNoCategoryData.
+  ///
+  /// In en, this message translates to:
+  /// **'No data available for this category.'**
+  String get calendarNoCategoryData;
+
+  /// No description provided for @calendarShowAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Show all'**
+  String get calendarShowAll;
+
+  /// No description provided for @calendarShowLess.
+  ///
+  /// In en, this message translates to:
+  /// **'Show less'**
+  String get calendarShowLess;
+
+  /// No description provided for @calendarDayDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'calendar-day-details'**
+  String get calendarDayDetails;
+
+  /// No description provided for @calendarAnalyticalStats.
+  ///
+  /// In en, this message translates to:
+  /// **'Analytical stats'**
+  String get calendarAnalyticalStats;
+
+  /// No description provided for @calendarNet.
+  ///
+  /// In en, this message translates to:
+  /// **'Net'**
+  String get calendarNet;
+
+  /// No description provided for @calendarTradeDeltas.
+  ///
+  /// In en, this message translates to:
+  /// **'Trade deltas'**
+  String get calendarTradeDeltas;
+
+  /// No description provided for @calendarTradeBuy.
+  ///
+  /// In en, this message translates to:
+  /// **'Buy'**
+  String get calendarTradeBuy;
+
+  /// No description provided for @calendarTradeSell.
+  ///
+  /// In en, this message translates to:
+  /// **'Sell'**
+  String get calendarTradeSell;
+
+  /// No description provided for @calendarDayDetailsSwipeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Swipe left or right for more details'**
+  String get calendarDayDetailsSwipeHint;
+
+  /// No description provided for @calendarWeekdayMon.
+  ///
+  /// In en, this message translates to:
+  /// **'MON.'**
+  String get calendarWeekdayMon;
+
+  /// No description provided for @calendarWeekdayTue.
+  ///
+  /// In en, this message translates to:
+  /// **'TUE.'**
+  String get calendarWeekdayTue;
+
+  /// No description provided for @calendarWeekdayWed.
+  ///
+  /// In en, this message translates to:
+  /// **'WED.'**
+  String get calendarWeekdayWed;
+
+  /// No description provided for @calendarWeekdayThu.
+  ///
+  /// In en, this message translates to:
+  /// **'THU.'**
+  String get calendarWeekdayThu;
+
+  /// No description provided for @calendarWeekdayFri.
+  ///
+  /// In en, this message translates to:
+  /// **'FRI.'**
+  String get calendarWeekdayFri;
+
+  /// No description provided for @calendarWeekdaySat.
+  ///
+  /// In en, this message translates to:
+  /// **'SAT.'**
+  String get calendarWeekdaySat;
+
+  /// No description provided for @calendarWeekdaySun.
+  ///
+  /// In en, this message translates to:
+  /// **'SUN.'**
+  String get calendarWeekdaySun;
 }
 
 class _AppLocalizationsDelegate

@@ -33,17 +33,17 @@ class _SnappyPageScrollPhysics extends PageScrollPhysics {
   }
 
   @override
-  double get minFlingDistance => 8.0;
+  double get minFlingDistance => 1.0;
 
   @override
-  double get minFlingVelocity => 120.0;
+  double get minFlingVelocity => 25.0;
 
   @override
-  double get maxFlingVelocity => 12000.0;
+  double get maxFlingVelocity => 15000.0;
 
   @override
   double carriedMomentum(double existingVelocity) =>
-      existingVelocity.sign * existingVelocity.abs().clamp(0.0, 7000.0) * 0.15;
+      existingVelocity.sign * existingVelocity.abs().clamp(0.0, 7000.0) * 8;
 }
 
 class _CalendarScreenState extends State<CalendarScreen> {
@@ -371,9 +371,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         ),
                         const SizedBox(height: 12),
                         _buildInflowOutflowSwitch(l10n),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 32),
                         _buildCategoryPieChart(data.monthlySnapshot),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 32),
                         _buildCategoryList(data.monthlySnapshot, l10n),
                       ],
                     );
@@ -441,7 +441,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     const weekdayHeader = 32.0;
     const rowHeight = 78.0;
     const dividerHeight = 1.0;
-    const gridPadding = 12.0;
+    const gridPadding = 32;
     return weekdayHeader + dividerHeight + maxRows * rowHeight + gridPadding;
   }
 
