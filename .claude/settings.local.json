@@ -30,7 +30,13 @@
       "Bash(flutter test test/screens/ --no-pub)",
       "Bash(flutter test test/screens/bookings_screen_test.dart)",
       "Bash(flutter test test/screens/asset_analysis_detail_screen_test.dart test/screens/transfers_screen_test.dart)",
-      "Bash(flutter test test/screens/transfers_screen_test.dart)"
+      "Bash(flutter test test/screens/transfers_screen_test.dart)",
+      "Bash(flutter test test/mixins/ test/database/connection/)",
+      "Bash(flutter test test/mixins/database_provider_mixin_test.dart)",
+      "Bash(flutter test --reporter=compact test/mixins/ test/database/connection/)",
+      "Bash(flutter test test/mixins/form_base_mixin_test.dart)",
+      "Bash(flutter test test/mixins/pagination_mixin_test.dart)",
+      "Bash(flutter test test/mixins/ test/database/connection/ --reporter=compact)"
     ]
   }
 }
