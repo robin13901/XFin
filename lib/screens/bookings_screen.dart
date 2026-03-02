@@ -1,13 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/daos/bookings_dao.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 
-import '../providers/database_provider.dart';
+import '../constants/spacing.dart';
+import '../mixins/database_provider_mixin.dart';
 import '../utils/format.dart';
+import '../utils/modal_helper.dart';
 import '../widgets/dialogs.dart';
 import '../widgets/forms/booking_form.dart';
 import '../widgets/liquid_glass_widgets.dart';
@@ -16,21 +17,16 @@ class BookingsScreen extends StatefulWidget {
   const BookingsScreen({super.key});
 
   static void showBookingForm(BuildContext context, Booking? booking) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => BookingForm(booking: booking),
-    );
+    showFormModal(context, BookingForm(booking: booking));
   }
 
   @override
   State<BookingsScreen> createState() => _BookingsScreenState();
 }
 
-class _BookingsScreenState extends State<BookingsScreen> {
-  late AppDatabase db;
+class _BookingsScreenState extends State<BookingsScreen>
+    with DatabaseProviderMixin<BookingsScreen> {
   late final ScrollController _scrollController;
-
   final List<BookingWithAccountAndAsset> _items = [];
 
   bool _isLoading = false;
@@ -41,41 +37,36 @@ class _BookingsScreenState extends State<BookingsScreen> {
   StreamSubscription<List<BookingWithAccountAndAsset>>? _pageSub;
   int _currentLimit = _initialLimit;
 
+  bool _initialized = false;
+
   @override
   void initState() {
     super.initState();
     _scrollController = ScrollController()..addListener(_onScroll);
-
-    final dbProvider = context.read<DatabaseProvider>();
-    db = dbProvider.db;
-    dbProvider.addListener(_onDbChanged);
-
-    _loadInitial();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialized) {
+      _initialized = true;
+      _loadInitial();
+    }
+  }
+
+  // ignore: unused_element
   void _onDbChanged() {
     if (!mounted) return;
-    final newDb = context.read<DatabaseProvider>().db;
-    if (identical(newDb, db)) return;
-
     setState(() {
-      db = newDb;
       _loadInitial();
     });
   }
 
   @override
   void dispose() {
-    // Remove listener first so we don't receive callbacks while disposing.
-    try {
-      context.read<DatabaseProvider>().removeListener(_onDbChanged);
-    } catch (_) {}
-
-    // Cancel subscriptions and controllers before super.dispose()
     _pageSub?.cancel();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
-
     super.dispose();
   }
 
@@ -104,19 +95,18 @@ class _BookingsScreenState extends State<BookingsScreen> {
     _pageSub?.cancel();
 
     _isLoading = true;
-    setState(() {});
+    if (mounted) setState(() {});
 
     _pageSub = db.bookingsDao.watchBookingsPage(limit: limit).listen((page) {
+      if (!mounted) return;
       _isLoading = false;
-
       _items
         ..clear()
         ..addAll(page);
-
       _hasMore = page.length >= limit;
-
       if (mounted) setState(() {});
     }, onError: (e) {
+      if (!mounted) return;
       _isLoading = false;
       if (mounted) setState(() {});
     });
@@ -144,7 +134,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
               itemBuilder: (context, index) {
                 if (index >= _items.length) {
                   return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
+                    padding: EdgeInsets.symmetric(vertical: Spacing.medium),
                     child: Center(child: CircularProgressIndicator()),
                   );
                 }

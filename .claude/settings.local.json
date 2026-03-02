@@ -20,7 +20,14 @@
       "Bash(flutter analyze lib/widgets/form_fields.dart)",
       "Bash(flutter analyze --no-pub lib/widgets/form_fields.dart)",
       "Bash(flutter test test/widgets/forms/form_fields_test.dart --reporter=compact)",
-      "Bash(flutter test --reporter=compact)"
+      "Bash(flutter test --reporter=compact)",
+      "Bash(grep -n \"\\\\.read<\" lib/**/*.dart)",
+      "Bash(flutter test test/screens/bookings_screen_test.dart --no-pub)",
+      "Bash(flutter test test/screens/accounts_screen_test.dart --no-pub)",
+      "Bash(flutter test test/screens/bookings_screen_test.dart test/screens/accounts_screen_test.dart --no-pub)",
+      "Bash(flutter analyze --no-pub)",
+      "Bash(echo \"Tests completed with code: $?\")",
+      "Bash(flutter test test/screens/ --no-pub)"
     ]
   }
 }

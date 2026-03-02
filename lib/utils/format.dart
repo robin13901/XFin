@@ -49,18 +49,18 @@ String formatCurrency(double value) {
 }
 
 String getAssetTypeName(AppLocalizations l10n, AssetTypes type, {bool plural = false}) {
-  switch (type) {
-    case AssetTypes.stock:
-      return plural ? l10n.stocks : l10n.stock;
-    case AssetTypes.crypto:
-      return plural ? l10n.cryptos : l10n.crypto;
-    case AssetTypes.etf:
-      return plural ? l10n.etfs : l10n.etf;
-    case AssetTypes.fund:
-      return plural ? l10n.funds : l10n.fund;
-    case AssetTypes.fiat:
-      return plural ? l10n.fiats : l10n.fiat;
-    case AssetTypes.derivative:
-      return plural ? l10n.derivatives : l10n.derivative;
-  }
+  return switch ((type, plural)) {
+    (AssetTypes.stock, false) => l10n.stock,
+    (AssetTypes.stock, true) => l10n.stocks,
+    (AssetTypes.crypto, false) => l10n.crypto,
+    (AssetTypes.crypto, true) => l10n.cryptos,
+    (AssetTypes.etf, false) => l10n.etf,
+    (AssetTypes.etf, true) => l10n.etfs,
+    (AssetTypes.fund, false) => l10n.fund,
+    (AssetTypes.fund, true) => l10n.funds,
+    (AssetTypes.fiat, false) => l10n.fiat,
+    (AssetTypes.fiat, true) => l10n.fiats,
+    (AssetTypes.derivative, false) => l10n.derivative,
+    (AssetTypes.derivative, true) => l10n.derivatives,
+  };
 }

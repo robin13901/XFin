@@ -7,6 +7,7 @@ import 'package:xfin/widgets/forms/account_form.dart';
 import '../providers/base_currency_provider.dart';
 import '../providers/database_provider.dart';
 import '../utils/format.dart';
+import '../utils/modal_helper.dart';
 import '../widgets/dialogs.dart';
 import '../widgets/liquid_glass_widgets.dart';
 
@@ -14,11 +15,7 @@ class AccountsScreen extends StatelessWidget {
   const AccountsScreen({super.key});
 
   static void showAccountForm(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => const AccountForm(),
-    );
+    showFormModal(context, const AccountForm());
   }
 
   Future<void> _handleLongPress(
