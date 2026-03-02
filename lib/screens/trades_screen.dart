@@ -83,7 +83,7 @@ class _TradesScreenState extends State<TradesScreen>
                 return const Center(child: CircularProgressIndicator());
               }
               if (snapshot.hasError) {
-                showErrorDialog(context, snapshot.error.toString());
+                showErrorDialog(context, l10n.errorLoadingData);
               }
               final tradesWithAssets = snapshot.data ?? [];
               if (tradesWithAssets.isEmpty) {

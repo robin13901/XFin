@@ -36,7 +36,8 @@
       "Bash(flutter test --reporter=compact test/mixins/ test/database/connection/)",
       "Bash(flutter test test/mixins/form_base_mixin_test.dart)",
       "Bash(flutter test test/mixins/pagination_mixin_test.dart)",
-      "Bash(flutter test test/mixins/ test/database/connection/ --reporter=compact)"
+      "Bash(flutter test test/mixins/ test/database/connection/ --reporter=compact)",
+      "Bash(flutter pub get)"
     ]
   }
 }

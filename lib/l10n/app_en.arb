@@ -230,5 +230,7 @@
   "calendarWeekdayThu": "THU.",
   "calendarWeekdayFri": "FRI.",
   "calendarWeekdaySat": "SAT.",
-  "calendarWeekdaySun": "SUN."
+  "calendarWeekdaySun": "SUN.",
+
+  "errorLoadingData": "An unexpected error occurred while loading the data."
 }

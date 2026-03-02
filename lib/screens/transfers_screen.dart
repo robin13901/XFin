@@ -64,9 +64,7 @@ class _TransfersScreenState extends State<TransfersScreen>
                 return const Center(child: CircularProgressIndicator());
               }
               if (snapshot.hasError) {
-                return Center(
-                    child:
-                    Text(l10n.anErrorOccurred(snapshot.error.toString())));
+                showErrorDialog(context, l10n.errorLoadingData);
               }
 
               final items = snapshot.data ?? [];

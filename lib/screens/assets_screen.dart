@@ -146,7 +146,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
           return const Center(child: CircularProgressIndicator());
         }
         if (snapshot.hasError) {
-          return Center(child: Text(snapshot.error.toString()));
+          return Center(child: Text(l10n.errorLoadingData));
         }
         final items = snapshot.data ?? [];
         return SingleChildScrollView(
@@ -233,7 +233,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
           return const Center(child: CircularProgressIndicator());
         }
         if (snapshot.hasError) {
-          showErrorDialog(context, snapshot.error.toString());
+          showErrorDialog(context, l10n.errorLoadingData);
         }
         final assets = snapshot.data ?? [];
         if (assets.isEmpty) {

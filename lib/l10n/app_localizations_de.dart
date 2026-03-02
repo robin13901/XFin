@@ -685,4 +685,8 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get calendarWeekdaySun => 'SO.';
+
+  @override
+  String get errorLoadingData =>
+      'Beim Laden der Daten ist ein unerwarteter Fehler aufgetreten.';
 }

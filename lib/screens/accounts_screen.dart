@@ -129,7 +129,7 @@ class AccountsScreen extends StatelessWidget {
                       return const Center(child: CircularProgressIndicator());
                     }
                     if (snapshot.hasError) {
-                      showErrorDialog(context, snapshot.error.toString());
+                      showErrorDialog(context, l10n.errorLoadingData);
                     }
                     final accounts = snapshot.data ?? [];
                     if (accounts.isEmpty) {

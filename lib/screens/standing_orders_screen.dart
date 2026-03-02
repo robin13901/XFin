@@ -80,7 +80,7 @@ class _StandingOrdersScreenState extends State<StandingOrdersScreen> {
           return const Center(child: CircularProgressIndicator());
         }
         if (snapshot.hasError) {
-          showErrorDialog(context, snapshot.error.toString());
+          showErrorDialog(context, l10n.errorLoadingData);
         }
         final periodicBookings = snapshot.data ?? [];
         if (periodicBookings.isEmpty) {
@@ -142,7 +142,7 @@ class _StandingOrdersScreenState extends State<StandingOrdersScreen> {
           return const Center(child: CircularProgressIndicator());
         }
         if (snapshot.hasError) {
-          showErrorDialog(context, snapshot.error.toString());
+          showErrorDialog(context, l10n.errorLoadingData);
         }
         final periodicTransfers = snapshot.data ?? [];
         if (periodicTransfers.isEmpty) {

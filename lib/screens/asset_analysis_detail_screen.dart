@@ -55,7 +55,7 @@ class _AssetAnalysisDetailScreenState extends State<AssetAnalysisDetailScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError || !snapshot.hasData) {
-            return Center(child: Text(snapshot.error.toString()));
+            return Center(child: Text(l10n.errorLoadingData));
           }
           final data = snapshot.data!;
           return Stack(

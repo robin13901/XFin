@@ -678,4 +678,8 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get calendarWeekdaySun => 'SUN.';
+
+  @override
+  String get errorLoadingData =>
+      'An unexpected error occurred while loading the data.';
 }

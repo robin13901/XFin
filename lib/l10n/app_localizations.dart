@@ -1357,6 +1357,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'SUN.'**
   String get calendarWeekdaySun;
+
+  /// No description provided for @errorLoadingData.
+  ///
+  /// In en, this message translates to:
+  /// **'An unexpected error occurred while loading the data.'**
+  String get errorLoadingData;
 }
 
 class _AppLocalizationsDelegate
