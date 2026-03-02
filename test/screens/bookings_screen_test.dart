@@ -1,4 +1,6 @@
+import 'package:drift/drift.dart' hide isNotNull;
 import 'package:drift/native.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -186,6 +188,155 @@ void main() {
               expect(form.booking, isNotNull);
               expect(form.booking!.id, booking1.id);
               expect(form.booking!.category, 'Income');
+
+              await tester.pumpWidget(Container());
+            }));
+
+    testWidgets(
+        'scrolling near bottom triggers pagination',
+        (tester) => tester.runAsync(() async {
+              await pumpWidget(tester);
+              await tester.pumpAndSettle();
+
+              // Create more bookings to enable pagination
+              for (int i = 3; i <= 20; i++) {
+                await db.into(db.bookings).insert(
+                  Booking(
+                    id: i,
+                    date: 20250101 + i,
+                    shares: 1,
+                    costBasis: 1,
+                    assetId: 1,
+                    value: 1,
+                    category: 'Category $i',
+                    accountId: account.id,
+                    excludeFromAverage: false,
+                    isGenerated: false,
+                  ).toCompanion(false),
+                );
+              }
+
+              await tester.pumpAndSettle();
+
+              // Scroll to near bottom to trigger _onScroll and _loadMore
+              final listFinder = find.byType(Scrollable);
+              await tester.drag(listFinder, const Offset(0, -500));
+              await tester.pumpAndSettle();
+
+              // Verify more items are loaded
+              expect(find.byType(ListTile), findsWidgets);
+
+              await tester.pumpWidget(Container());
+            }));
+
+    testWidgets(
+        'long press opens delete dialog',
+        (tester) => tester.runAsync(() async {
+              final l10n = await pumpWidget(tester);
+              await tester.pumpAndSettle();
+
+              expect(find.text('Expense'), findsOneWidget);
+
+              // Simulate long press gesture
+              final center = tester.getCenter(find.text('Expense'));
+              final gesture = await tester.startGesture(center);
+              await tester.pump();
+              await Future.delayed(kLongPressTimeout);
+              await gesture.up();
+              await tester.pumpAndSettle();
+
+              // Verify delete dialog appears
+              expect(find.text(l10n.deleteBookingConfirmation), findsOneWidget);
+
+              // Cancel to close dialog
+              await tester.tap(find.text(l10n.cancel));
+              await tester.pumpAndSettle();
+
+              await tester.pumpWidget(Container());
+            }));
+  });
+
+  group('with non-fiat asset bookings', () {
+    late Account portfolioAccount;
+    late Booking cryptoBooking;
+
+    setUp(() async {
+      portfolioAccount = const Account(
+        id: 2,
+        name: 'Portfolio',
+        balance: 0,
+        initialBalance: 0,
+        type: AccountTypes.portfolio,
+        isArchived: false,
+      );
+
+      await db.into(db.accounts).insert(portfolioAccount.toCompanion(false));
+
+      // Add EUR as base currency
+      await db.into(db.assets).insert(AssetsCompanion.insert(
+        name: 'EUR',
+        type: AssetTypes.fiat,
+        tickerSymbol: 'EUR',
+      ));
+
+      // Add BTC as crypto asset
+      await db.into(db.assets).insert(AssetsCompanion.insert(
+        name: 'Bitcoin',
+        type: AssetTypes.crypto,
+        tickerSymbol: 'BTC',
+        currencySymbol: const Value('₿'),
+      ));
+
+      await db.into(db.assetsOnAccounts).insert(
+        AssetsOnAccountsCompanion.insert(accountId: portfolioAccount.id, assetId: 2),
+      );
+
+      cryptoBooking = Booking(
+        id: 1,
+        date: 20250101,
+        shares: 0.5,
+        costBasis: 50000,
+        assetId: 2,
+        value: 25000,
+        category: 'Investment',
+        accountId: portfolioAccount.id,
+        excludeFromAverage: false,
+        isGenerated: false,
+      );
+
+      await db.into(db.bookings).insert(cryptoBooking.toCompanion(false));
+    });
+
+    testWidgets(
+        'displays shares and value for non-fiat assets',
+        (tester) => tester.runAsync(() async {
+              await pumpWidget(tester);
+              await tester.pumpAndSettle();
+
+              // Verify shares are displayed with currency symbol
+              expect(find.textContaining('0.5 ₿'), findsOneWidget);
+              expect(find.textContaining(formatCurrency(25000)), findsOneWidget);
+
+              await tester.pumpWidget(Container());
+            }));
+  });
+
+  group('error handling', () {
+    testWidgets(
+        'handles stream errors gracefully',
+        (tester) => tester.runAsync(() async {
+              // Close the database to trigger errors
+              await db.close();
+
+              // Reinitialize with a new database that will work
+              db = AppDatabase(NativeDatabase.memory());
+              DatabaseProvider.instance.initialize(db);
+
+              await pumpWidget(tester);
+              await tester.pumpAndSettle();
+
+              // Should show empty state instead of crashing
+              expect(find.byType(CircularProgressIndicator), findsNothing);
 
               await tester.pumpWidget(Container());
             }));

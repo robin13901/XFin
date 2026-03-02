@@ -166,5 +166,67 @@ void main() {
 
           await tester.pumpWidget(Container());
         }));
+
+    testWidgets('tapping transfer opens edit form (line 130)',
+            (tester) => tester.runAsync(() async {
+          await pumpTransfersScreen(tester);
+          await tester.pumpAndSettle();
+
+          // Tap the transfer to open edit form (line 130: onTap callback)
+          await tester.tap(find.text('Sender → Receiver'));
+          await tester.pumpAndSettle();
+
+          // Should open TransferForm in edit mode
+          expect(find.byType(TransferForm), findsOneWidget);
+
+          await tester.pumpWidget(Container());
+        }));
+  });
+
+  group('with non-fiat asset transfers', () {
+    late int senderId;
+    late int receiverId;
+
+    setUp(() async {
+      // Insert accounts
+      senderId = await db.accountsDao.insert(AccountsCompanion.insert(
+        name: 'Wallet A',
+        type: AccountTypes.portfolio,
+      ));
+      receiverId = await db.accountsDao.insert(AccountsCompanion.insert(
+        name: 'Wallet B',
+        type: AccountTypes.portfolio,
+      ));
+
+      // Insert Bitcoin as crypto asset
+      await db.into(db.assets).insert(AssetsCompanion.insert(
+        name: 'Bitcoin',
+        type: AssetTypes.crypto,
+        tickerSymbol: 'BTC',
+        currencySymbol: const Value('₿'),
+      ));
+
+      // Create transfer with crypto asset (tests lines 109-119)
+      await db.transfersDao.createTransfer(TransfersCompanion.insert(
+        sendingAccountId: senderId,
+        receivingAccountId: receiverId,
+        assetId: const Value(2),
+        shares: 0.5,
+        value: 25000.0,
+        date: 20250101,
+      ), l10n);
+    });
+
+    testWidgets('displays shares and value for non-fiat transfers (lines 109-119)',
+            (tester) => tester.runAsync(() async {
+          await pumpTransfersScreen(tester);
+          await tester.pumpAndSettle();
+
+          // Should display shares with currency symbol (lines 109-119)
+          expect(find.textContaining('0.5 ₿'), findsOneWidget);
+          expect(find.textContaining('€'), findsOneWidget);
+
+          await tester.pumpWidget(Container());
+        }));
   });
 }

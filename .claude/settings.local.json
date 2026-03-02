@@ -27,7 +27,10 @@
       "Bash(flutter test test/screens/bookings_screen_test.dart test/screens/accounts_screen_test.dart --no-pub)",
       "Bash(flutter analyze --no-pub)",
       "Bash(echo \"Tests completed with code: $?\")",
-      "Bash(flutter test test/screens/ --no-pub)"
+      "Bash(flutter test test/screens/ --no-pub)",
+      "Bash(flutter test test/screens/bookings_screen_test.dart)",
+      "Bash(flutter test test/screens/asset_analysis_detail_screen_test.dart test/screens/transfers_screen_test.dart)",
+      "Bash(flutter test test/screens/transfers_screen_test.dart)"
     ]
   }
 }
