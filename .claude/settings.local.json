@@ -55,7 +55,10 @@
       "Bash(test -f coverage/lcov.info)",
       "Bash(xargs grep -l \"filter\\\\|Filter\")",
       "Bash(flutter test test/database/filter_builder_test.dart test/models/filter/filter_rule_test.dart test/widgets/filter/)",
-      "Bash(flutter test --reporter expanded)"
+      "Bash(flutter test --reporter expanded)",
+      "Bash(flutter test test/widgets/liquid_glass_widgets_test.dart)",
+      "Bash(flutter analyze lib/widgets/liquid_glass_widgets.dart)",
+      "Bash(flutter analyze test/widgets/liquid_glass_widgets_test.dart)"
     ]
   }
 }
