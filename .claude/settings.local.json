@@ -47,7 +47,10 @@
       "Bash(flutter test test/database/daos/periodic_transfers_dao_test.dart --name \"skips execution when sending account has insufficient balance\")",
       "Bash(ls -la \"C:\\\\Users\\\\I551358\\\\.claude\\\\memory\"\" 2>/dev/null || echo \"Not found \")",
       "Bash(flutter test test/database/daos/analysis_dao_test.dart test/database/daos/bookings_dao_test.dart)",
-      "Bash(flutter test test/database/daos/analysis_dao_test.dart --name \"getCalendarDayDetails\")"
+      "Bash(flutter test test/database/daos/analysis_dao_test.dart --name \"getCalendarDayDetails\")",
+      "Bash(flutter test test/screens/accounts_screen_test.dart)",
+      "Bash(flutter test test/database/daos/analysis_dao_test.dart --name \"getMonthlyAnalysisSnapshot\")",
+      "Bash(tee /tmp/test_output.txt)"
     ]
   }
 }

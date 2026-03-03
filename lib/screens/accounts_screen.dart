@@ -119,33 +119,31 @@ class AccountsScreen extends StatelessWidget {
     return Scaffold(
       body: Stack(
         children: [
-          Column(
-            children: [
-              Expanded(
-                child: StreamBuilder<List<Account>>(
-                  stream: db.accountsDao.watchAllAccounts(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    if (snapshot.hasError) {
-                      showErrorDialog(context, l10n.errorLoadingData);
-                    }
-                    final accounts = snapshot.data ?? [];
-                    if (accounts.isEmpty) {
-                      return Center(child: Text(l10n.noActiveAccounts));
-                    }
+          StreamBuilder<List<Account>>(
+            stream: db.accountsDao.watchAllAccounts(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                showErrorDialog(context, l10n.errorLoadingData);
+              }
+              final accounts = snapshot.data ?? [];
 
-                    return ListView.builder(
-                      padding: EdgeInsets.only(
-                        top:
-                        MediaQuery.of(context).padding.top + kToolbarHeight,
-                        bottom: 92,
-                      ),
-                      itemCount: accounts.length,
-                      itemBuilder: (context, index) {
-                        final account = accounts[index];
-                        return ListTile(
+              return ListView(
+                padding: EdgeInsets.only(
+                  top: MediaQuery.of(context).padding.top + kToolbarHeight,
+                  bottom: 92,
+                ),
+                children: [
+                  if (accounts.isEmpty)
+                    Center(
+                        child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(l10n.noActiveAccounts),
+                    ))
+                  else
+                    ...accounts.map((account) => ListTile(
                           title: Text(account.name),
                           trailing: Text(
                             formatCurrency(account.balance),
@@ -160,57 +158,43 @@ class AccountsScreen extends StatelessWidget {
                           },
                           onLongPress: () =>
                               _handleLongPress(context, db, account, l10n),
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-              StreamBuilder<List<Account>>(
-                  stream: db.accountsDao.watchArchivedAccounts(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const SizedBox.shrink();
-                    }
-                    if (snapshot.hasError ||
-                        !snapshot.hasData ||
-                        snapshot.data!.isEmpty) {
-                      return const SizedBox.shrink();
-                    }
+                        )),
+                  StreamBuilder<List<Account>>(
+                    stream: db.accountsDao.watchArchivedAccounts(),
+                    builder: (context, archivedSnapshot) {
+                      final archivedAccounts =
+                          archivedSnapshot.data ?? const <Account>[];
+                      if (archivedAccounts.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
 
-                    final archivedAccounts = snapshot.data!;
-
-                    return ExpansionTile(
-                      title: Text(l10n.archivedAccounts),
-                      children: [
-                        ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: archivedAccounts.length,
-                          itemBuilder: (context, index) {
-                            final account = archivedAccounts[index];
-                            return ListTile(
-                              title: Text(account.name),
-                              trailing: Text(
-                                formatCurrency(account.balance),
-                                style: TextStyle(
-                                  color: account.balance < 0
-                                      ? Colors.red
-                                      : Colors.green,
-                                  fontWeight: FontWeight.bold,
+                      return ExpansionTile(
+                        title: Text(l10n.archivedAccounts),
+                        children: [
+                          ...archivedAccounts.map((account) => ListTile(
+                                title: Text(account.name),
+                                trailing: Text(
+                                  formatCurrency(account.balance),
+                                  style: TextStyle(
+                                    color: account.balance < 0
+                                        ? Colors.red
+                                        : Colors.green,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                              ),
-                              onTap: () => _handleArchivedAccountTap(
-                                  context, db, account, l10n),
-                            );
-                          },
-                        ),
-                      ],
-                    );
-                  }),
-            ],
+                                onTap: () => _handleArchivedAccountTap(
+                                    context, db, account, l10n),
+                              )),
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              );
+            },
           ),
-          buildLiquidGlassAppBar(context, title: Text(l10n.accounts), showBackButton: false),
+          buildLiquidGlassAppBar(context,
+              title: Text(l10n.accounts), showBackButton: false),
         ],
       ),
     );

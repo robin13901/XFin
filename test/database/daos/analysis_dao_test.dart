@@ -506,6 +506,10 @@ void main() {
 
   group('AnalysisDao - calendar helpers', () {
     setUp(() async {
+      // Reset global filter variables to default values
+      filterStartDate = 0;
+      filterEndDate = 99999999;
+
       await db.into(db.accounts).insert(AccountsCompanion.insert(
             name: 'Cash2',
             type: AccountTypes.cash,

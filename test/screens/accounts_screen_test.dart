@@ -107,7 +107,8 @@ void main() {
 
             // After streams settle, no active accounts -> localized empty message
             expect(find.text(l10n.noActiveAccounts), findsOneWidget);
-            expect(find.byType(ListView), findsNothing);
+            // ListView is still rendered but with empty message inside
+            expect(find.byType(ListView), findsOneWidget);
 
             // cleanup
             await tester.pumpWidget(Container());
