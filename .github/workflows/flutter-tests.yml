@@ -34,8 +34,9 @@ jobs:
           dart run remove_from_coverage:remove_from_coverage -f coverage/lcov.info -r '\.g\.dart$' -r 'app_theme\.dart$' -r 'tables\.dart$' -r '^lib/l10n/'
 
       - name: Upload coverage report to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
           fail_ci_if_error: true
+          verbose: true
