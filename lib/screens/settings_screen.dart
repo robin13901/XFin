@@ -15,6 +15,7 @@ import 'package:xfin/utils/global_constants.dart';
 
 import '../providers/database_provider.dart';
 import '../widgets/liquid_glass_widgets.dart';
+import '../providers/base_currency_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -26,6 +27,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   late DateTime? _startDate, _endDate;
   late bool _isSinceStartSelected, _isTodaySelected;
+  Asset? _baseCurrencyAsset;
 
   @override
   void initState() {
@@ -35,6 +37,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _endDate = filterEndDate == 99999999 ? null : intToDateTime(filterEndDate);
     _isSinceStartSelected = _startDate == null;
     _isTodaySelected = _endDate == null;
+
+    _loadBaseCurrency();
+  }
+
+  Future<void> _loadBaseCurrency() async {
+    final db = context.read<DatabaseProvider>().db;
+    final baseCurrencyProvider = context.read<BaseCurrencyProvider>();
+    final assetId = baseCurrencyProvider.assetId;
+
+    final asset = await db.assetsDao.getAsset(assetId);
+    if (mounted) {
+      setState(() {
+        _baseCurrencyAsset = asset;
+      });
+    }
   }
 
   Future<void> _saveStartPref(int value) async {
@@ -257,6 +274,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 leading: const Icon(Icons.download_rounded),
                 title: Text(l10n.importDatabase),
                 onTap: () => _importDb(context, l10n),
+              ),
+              const Divider(),
+              ListTile(
+                title: Text(l10n.baseCurrency),
+                trailing: _baseCurrencyAsset == null
+                    ? const CircularProgressIndicator()
+                    : Text(
+                        '${_baseCurrencyAsset!.name} (${_baseCurrencyAsset!.currencySymbol ?? _baseCurrencyAsset!.tickerSymbol})',
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
               ),
             ],
           ),

@@ -57,20 +57,39 @@ class PeriodicTransfersDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
-  Future<int> executePending(AppLocalizations l10n) async {
+  Future<(int executed, int failed)> executePending(AppLocalizations l10n) async {
     int now = dateTimeToInt(DateTime.now());
     int executedCount = 0;
+    int failedCount = 0;
     return transaction(() async {
       final all = await getAll();
       for (PeriodicTransfer pt in all) {
         while (pt.nextExecutionDate <= now) {
+          // Validate sending account balance
+          // Check if AOA exists first
+          final aoa = await (db.select(db.assetsOnAccounts)
+                ..where((a) =>
+                    a.accountId.equals(pt.sendingAccountId) &
+                    a.assetId.equals(pt.assetId)))
+              .getSingleOrNull();
+
+          // If AOA exists, check balance; if not, allow execution (it will be created)
+          if (aoa != null && aoa.value < pt.value) {
+            // Insufficient balance - skip execution
+            failedCount++;
+            pt = pt.copyWith(nextExecutionDate: _calculateNextExecutionDate(pt));
+            await updatePeriodicTransfer(pt.toCompanion(false));
+            continue;
+          }
+
+          // Execute if validation passed
           await db.transfersDao.createFromPeriodicTransfer(pt, l10n);
           executedCount++;
           pt = pt.copyWith(nextExecutionDate: _calculateNextExecutionDate(pt));
           await updatePeriodicTransfer(pt.toCompanion(false));
         }
       }
-      return executedCount;
+      return (executedCount, failedCount);
     });
   }
 

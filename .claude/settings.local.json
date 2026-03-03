@@ -37,7 +37,14 @@
       "Bash(flutter test test/mixins/form_base_mixin_test.dart)",
       "Bash(flutter test test/mixins/pagination_mixin_test.dart)",
       "Bash(flutter test test/mixins/ test/database/connection/ --reporter=compact)",
-      "Bash(flutter pub get)"
+      "Bash(flutter pub get)",
+      "Bash(flutter test test/screens/settings_screen_test.dart)",
+      "Bash(grep -n \"createFromPeriodicBooking\\\\|createFromPeriodicTransfer\" \"c:/SAPDevelop/Privat/XFin/lib/database/daos\"/*.dart)",
+      "Bash(ls -la \"c:\\\\SAPDevelop\\\\Privat\\\\XFin\"/*.yaml)",
+      "Bash(ls -la lib/l10n/*.dart)",
+      "Bash(flutter gen-l10n)",
+      "Bash(flutter test test/database/daos/periodic_bookings_dao_test.dart)",
+      "Bash(flutter test test/database/daos/periodic_transfers_dao_test.dart --name \"skips execution when sending account has insufficient balance\")"
     ]
   }
 }

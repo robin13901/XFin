@@ -974,6 +974,12 @@ abstract class AppLocalizations {
   /// **'{n, plural, =1{1 standing order was executed automatically} other{{n} standing orders were executed automatically}}'**
   String nStandingOrdersExecuted(int n);
 
+  /// No description provided for @nStandingOrdersFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 standing order could not be executed due to insufficient balance} other{{n} standing orders could not be executed due to insufficient balance}}'**
+  String nStandingOrdersFailed(int n);
+
   /// No description provided for @nextExecutionDate.
   ///
   /// In en, this message translates to:
@@ -1363,6 +1369,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'An unexpected error occurred while loading the data.'**
   String get errorLoadingData;
+
+  /// No description provided for @baseCurrency.
+  ///
+  /// In en, this message translates to:
+  /// **'Base Currency'**
+  String get baseCurrency;
 }
 
 class _AppLocalizationsDelegate

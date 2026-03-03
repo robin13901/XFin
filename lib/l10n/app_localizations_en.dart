@@ -476,6 +476,18 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String nStandingOrdersFailed(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          '$n standing orders could not be executed due to insufficient balance',
+      one: '1 standing order could not be executed due to insufficient balance',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get nextExecutionDate => 'Next Execution';
 
   @override
@@ -682,4 +694,7 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get errorLoadingData =>
       'An unexpected error occurred while loading the data.';
+
+  @override
+  String get baseCurrency => 'Base Currency';
 }

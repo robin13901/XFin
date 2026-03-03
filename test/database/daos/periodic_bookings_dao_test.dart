@@ -264,8 +264,9 @@ void main() {
         cycle: const Value(Cycles.daily),
       ));
 
-      final executedCount = await periodicBookingsDao.executePending(l10n);
+      final (executedCount, failedCount) = await periodicBookingsDao.executePending(l10n);
       expect(executedCount, greaterThan(0));
+      expect(failedCount, 0);
 
       final newBookings = await db.bookingsDao.getAllBookings();
       expect(newBookings.length, greaterThan(0));
@@ -361,8 +362,9 @@ void main() {
         cycle: const Value(Cycles.daily),
       ));
 
-      final executedCount = await periodicBookingsDao.executePending(l10n);
+      final (executedCount, failedCount) = await periodicBookingsDao.executePending(l10n);
       expect(executedCount, 0);
+      expect(failedCount, 0);
 
       final newBookings = await db.bookingsDao.getAllBookings();
       expect(newBookings, isEmpty);
@@ -372,10 +374,132 @@ void main() {
     });
 
     test('handles no periodic bookings gracefully', () async {
-      final executedCount = await periodicBookingsDao.executePending(l10n);
+      final (executedCount, failedCount) = await periodicBookingsDao.executePending(l10n);
       expect(executedCount, 0);
+      expect(failedCount, 0);
       final newBookings = await db.bookingsDao.getAllBookings();
       expect(newBookings, isEmpty);
+    });
+
+    test('skips execution when insufficient balance for negative bookings', () async {
+      // Setup: Create account with 100 balance
+      await db.into(db.assetsOnAccounts).insert(
+        AssetsOnAccountsCompanion(
+          accountId: Value(accountId),
+          assetId: Value(assetId),
+          shares: const Value(100.0),
+          value: const Value(100.0),
+          netCostBasis: const Value(1.0),
+          brokerCostBasis: const Value(1.0),
+          buyFeeTotal: const Value(0.0),
+        ),
+      );
+
+      // Create periodic booking with withdrawal of 150 (more than balance)
+      // Use DateTime with time component to ensure only one execution is attempted
+      final pastDate = DateTime.now().subtract(const Duration(hours: 1));
+      await periodicBookingsDao.insertPeriodicBooking(
+        PeriodicBookingsCompanion.insert(
+          nextExecutionDate: dateTimeToInt(pastDate),
+          assetId: Value(assetId),
+          accountId: accountId,
+          shares: -150.0,
+          value: -150.0,
+          category: 'Large Withdrawal',
+          cycle: const Value(Cycles.daily),
+        ),
+      );
+
+      final (executedCount, failedCount) = await periodicBookingsDao.executePending(l10n);
+
+      expect(executedCount, 0);
+      expect(failedCount, 1);
+
+      // Verify booking was NOT created
+      final bookings = await db.bookingsDao.getAllBookings();
+      expect(bookings, isEmpty);
+
+      // Verify nextExecutionDate WAS updated
+      final updatedPb = (await periodicBookingsDao.getAll()).first;
+      expect(updatedPb.nextExecutionDate, greaterThan(dateTimeToInt(pastDate)));
+    });
+
+    test('executes when sufficient balance for negative bookings', () async {
+      // Setup: Create account with 200 balance
+      await db.into(db.assetsOnAccounts).insert(
+        AssetsOnAccountsCompanion(
+          accountId: Value(accountId),
+          assetId: Value(assetId),
+          shares: const Value(200.0),
+          value: const Value(200.0),
+          netCostBasis: const Value(1.0),
+          brokerCostBasis: const Value(1.0),
+          buyFeeTotal: const Value(0.0),
+        ),
+      );
+
+      // Create periodic booking with withdrawal of 50 (less than balance)
+      final pastDate = DateTime.now().subtract(const Duration(hours: 1));
+      await periodicBookingsDao.insertPeriodicBooking(
+        PeriodicBookingsCompanion.insert(
+          nextExecutionDate: dateTimeToInt(pastDate),
+          assetId: Value(assetId),
+          accountId: accountId,
+          shares: -50.0,
+          value: -50.0,
+          category: 'Small Withdrawal',
+          cycle: const Value(Cycles.daily),
+        ),
+      );
+
+      final (executedCount, failedCount) = await periodicBookingsDao.executePending(l10n);
+
+      expect(executedCount, 1);
+      expect(failedCount, 0);
+
+      // Verify booking WAS created
+      final bookings = await db.bookingsDao.getAllBookings();
+      expect(bookings.length, 1);
+      expect(bookings.first.category, 'Small Withdrawal');
+    });
+
+    test('always executes positive bookings regardless of balance', () async {
+      // Setup: Create account with 0 balance
+      await db.into(db.assetsOnAccounts).insert(
+        AssetsOnAccountsCompanion(
+          accountId: Value(accountId),
+          assetId: Value(assetId),
+          shares: const Value(0.0),
+          value: const Value(0.0),
+          netCostBasis: const Value(1.0),
+          brokerCostBasis: const Value(1.0),
+          buyFeeTotal: const Value(0.0),
+        ),
+      );
+
+      // Create periodic booking with deposit (positive value)
+      final pastDate = DateTime.now().subtract(const Duration(hours: 1));
+      await periodicBookingsDao.insertPeriodicBooking(
+        PeriodicBookingsCompanion.insert(
+          nextExecutionDate: dateTimeToInt(pastDate),
+          assetId: Value(assetId),
+          accountId: accountId,
+          shares: 100.0,
+          value: 100.0,
+          category: 'Deposit',
+          cycle: const Value(Cycles.daily),
+        ),
+      );
+
+      final (executedCount, failedCount) = await periodicBookingsDao.executePending(l10n);
+
+      expect(executedCount, 1);
+      expect(failedCount, 0);
+
+      // Verify booking WAS created
+      final bookings = await db.bookingsDao.getAllBookings();
+      expect(bookings.length, 1);
+      expect(bookings.first.category, 'Deposit');
     });
   });
 }

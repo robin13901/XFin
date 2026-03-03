@@ -130,10 +130,19 @@ class _PeriodicTransferFormState extends State<PeriodicTransferForm> {
       }
       if (mounted) Navigator.of(context).pop();
       if (!mounted) return;
-      int executedCount = await _db.periodicTransfersDao.executePending(_l10n);
-      if (executedCount > 0 && mounted) {
-        showInfoDialog(context, _l10n.standingOrdersExecuted,
-            _l10n.nStandingOrdersExecuted(executedCount));
+      final (ptExecuted, ptFailed) = await _db.periodicTransfersDao.executePending(_l10n);
+      final executedCount = ptExecuted;
+      final failedCount = ptFailed;
+      if (mounted && (executedCount > 0 || failedCount > 0)) {
+        String message = '';
+        if (executedCount > 0) {
+          message = _l10n.nStandingOrdersExecuted(executedCount);
+        }
+        if (failedCount > 0) {
+          if (message.isNotEmpty) message += '\n\n';
+          message += _l10n.nStandingOrdersFailed(failedCount);
+        }
+        showInfoDialog(context, _l10n.standingOrdersExecuted, message);
       }
     } catch (e) {
       if (mounted) showErrorDialog(context, e.toString());

@@ -173,6 +173,14 @@
       }
     }
   },
+  "nStandingOrdersFailed": "{n, plural, =1{1 Dauerauftrag konnte aufgrund unzureichenden Saldos nicht ausgeführt werden} other{{n} Daueraufträge konnten aufgrund unzureichenden Saldos nicht ausgeführt werden}}",
+  "@nStandingOrdersFailed": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
   "nextExecutionDate": "Nächste Ausführung",
   "cycle": "Zyklus",
   "pleaseSelectACycle": "Bitte wähle einen Zyklus!",
@@ -232,5 +240,6 @@
   "calendarWeekdaySat": "SA.",
   "calendarWeekdaySun": "SO.",
 
-  "errorLoadingData": "Beim Laden der Daten ist ein unerwarteter Fehler aufgetreten."
+  "errorLoadingData": "Beim Laden der Daten ist ein unerwarteter Fehler aufgetreten.",
+  "baseCurrency": "Basiswährung"
 }

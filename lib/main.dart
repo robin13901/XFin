@@ -121,14 +121,27 @@ class _MainScreenState extends State<MainScreen> {
     l10n = AppLocalizations.of(context)!;
 
     if (!_standingOrdersExecuted) {
-      int executedCount = 0;
-      executedCount += await DatabaseProvider.instance.db.periodicBookingsDao
+      final (pbExecuted, pbFailed) = await DatabaseProvider.instance.db
+          .periodicBookingsDao
           .executePending(l10n);
-      executedCount += await DatabaseProvider.instance.db.periodicTransfersDao
+      final (ptExecuted, ptFailed) = await DatabaseProvider.instance.db
+          .periodicTransfersDao
           .executePending(l10n);
-      if (executedCount > 0 && mounted) {
-        showInfoDialog(context, l10n.standingOrdersExecuted,
-            l10n.nStandingOrdersExecuted(executedCount));
+
+      final executedCount = pbExecuted + ptExecuted;
+      final failedCount = pbFailed + ptFailed;
+
+      if (mounted && (executedCount > 0 || failedCount > 0)) {
+        String message = '';
+        if (executedCount > 0) {
+          message = l10n.nStandingOrdersExecuted(executedCount);
+        }
+        if (failedCount > 0) {
+          if (message.isNotEmpty) message += '\n\n';
+          message += l10n.nStandingOrdersFailed(failedCount);
+        }
+        showInfoDialog(
+            context, l10n.standingOrdersExecuted, message);
       }
       _standingOrdersExecuted = true;
     }

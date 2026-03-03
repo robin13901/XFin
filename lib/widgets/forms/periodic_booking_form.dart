@@ -128,10 +128,19 @@ class _PeriodicBookingFormState extends State<PeriodicBookingForm> {
       }
       if (mounted) Navigator.of(context).pop();
       if (!mounted) return;
-      int executedCount = await _db.periodicBookingsDao.executePending(_l10n);
-      if (executedCount > 0 && mounted) {
-        showInfoDialog(context, _l10n.standingOrdersExecuted,
-            _l10n.nStandingOrdersExecuted(executedCount));
+      final (pbExecuted, pbFailed) = await _db.periodicBookingsDao.executePending(_l10n);
+      final executedCount = pbExecuted;
+      final failedCount = pbFailed;
+      if (mounted && (executedCount > 0 || failedCount > 0)) {
+        String message = '';
+        if (executedCount > 0) {
+          message = _l10n.nStandingOrdersExecuted(executedCount);
+        }
+        if (failedCount > 0) {
+          if (message.isNotEmpty) message += '\n\n';
+          message += _l10n.nStandingOrdersFailed(failedCount);
+        }
+        showInfoDialog(context, _l10n.standingOrdersExecuted, message);
       }
     } catch (e) {
       if (mounted) showErrorDialog(context, e.toString());

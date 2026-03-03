@@ -1,4 +1,5 @@
 import 'package:drift/native.dart';
+import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,9 +10,11 @@ import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/providers/database_provider.dart';
 import 'package:xfin/providers/language_provider.dart';
 import 'package:xfin/providers/theme_provider.dart';
+import 'package:xfin/providers/base_currency_provider.dart';
 import 'package:xfin/screens/settings_screen.dart';
 import 'package:xfin/utils/global_constants.dart' as globals;
 import 'package:xfin/utils/format.dart' show dateFormat, dateTimeToInt;
+import 'package:xfin/database/tables.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -19,6 +22,7 @@ void main() {
   group('SettingsScreen (extended)', () {
     late ThemeProvider themeProvider;
     late LanguageProvider languageProvider;
+    late BaseCurrencyProvider baseCurrencyProvider;
     late AppLocalizations l10n;
     late AppDatabase db;
 
@@ -29,12 +33,24 @@ void main() {
       SharedPreferences.setMockInitialValues({});
       themeProvider = ThemeProvider.instance;
       languageProvider = LanguageProvider();
+      baseCurrencyProvider = BaseCurrencyProvider();
       await themeProvider.loadTheme();
       await languageProvider.loadLocale();
       l10n = await AppLocalizations.delegate.load(const Locale('en'));
 
       db = AppDatabase(NativeDatabase.memory());
       DatabaseProvider.instance.initialize(db);
+
+      // Add a base currency asset (EUR) for testing
+      await db.into(db.assets).insert(AssetsCompanion.insert(
+        name: 'Euro',
+        type: AssetTypes.fiat,
+        tickerSymbol: 'EUR',
+        currencySymbol: const Value('€'),
+      ));
+
+      globals.baseCurrencyTickerSymbol = 'EUR';
+      await baseCurrencyProvider.initialize(const Locale('en'));
 
       globals.filterStartDate = 0;
       globals.filterEndDate = 99999999;
@@ -53,6 +69,7 @@ void main() {
             ChangeNotifierProvider.value(value: themeProvider),
             ChangeNotifierProvider.value(value: languageProvider),
             ChangeNotifierProvider.value(value: DatabaseProvider.instance),
+            ChangeNotifierProvider.value(value: baseCurrencyProvider),
           ],
           child: Consumer<LanguageProvider>(
             builder: (context, languageProvider, child) {
@@ -303,6 +320,17 @@ void main() {
 
       expect(find.text(expectedStartText), findsOneWidget);
       expect(find.text(expectedEndText), findsOneWidget);
+    });
+
+    testWidgets('displays base currency information', (WidgetTester tester) async {
+      await pumpSettingsScreen(tester);
+
+      // Check that the base currency label is displayed
+      expect(find.text(l10n.baseCurrency), findsOneWidget);
+
+      // Check that the base currency value is displayed (Euro (€))
+      expect(find.textContaining('Euro'), findsOneWidget);
+      expect(find.textContaining('€'), findsOneWidget);
     });
   });
 }

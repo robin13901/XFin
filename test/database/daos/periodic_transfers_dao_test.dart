@@ -311,6 +311,19 @@ void main() {
   group('PeriodicTransfersDao executePending', () {
     test('executes pending periodic transfers and creates new transfers',
         () async {
+      // Setup: Create account with sufficient balance
+      await db.into(db.assetsOnAccounts).insert(
+        AssetsOnAccountsCompanion(
+          accountId: Value(accountId),
+          assetId: Value(assetId),
+          shares: const Value(100.0),
+          value: const Value(100.0),
+          netCostBasis: const Value(1.0),
+          brokerCostBasis: const Value(1.0),
+          buyFeeTotal: const Value(0.0),
+        ),
+      );
+
       final pastDate = DateTime.now().subtract(const Duration(days: 5));
       await periodicTransfersDao
           .insertPeriodicTransfer(PeriodicTransfersCompanion.insert(
@@ -324,8 +337,9 @@ void main() {
         cycle: const Value(Cycles.daily),
       ));
 
-      final executedCount = await periodicTransfersDao.executePending(l10n);
+      final (executedCount, failedCount) = await periodicTransfersDao.executePending(l10n);
       expect(executedCount, greaterThan(0));
+      expect(failedCount, 0);
 
       // assume transfersDao exposes a method to get created transfers; try to match booking tests style
       final newTransfers = await db.transfersDao.getAllTransfers();
@@ -458,8 +472,9 @@ void main() {
         cycle: const Value(Cycles.daily),
       ));
 
-      final executedCount = await periodicTransfersDao.executePending(l10n);
+      final (executedCount, failedCount) = await periodicTransfersDao.executePending(l10n);
       expect(executedCount, 0);
+      expect(failedCount, 0);
 
       final newTransfers = await db.transfersDao.getAllTransfers();
       expect(newTransfers, isEmpty);
@@ -469,10 +484,137 @@ void main() {
     });
 
     test('handles no periodic transfers gracefully', () async {
-      final executedCount = await periodicTransfersDao.executePending(l10n);
+      final (executedCount, failedCount) = await periodicTransfersDao.executePending(l10n);
       expect(executedCount, 0);
+      expect(failedCount, 0);
       final newTransfers = await db.transfersDao.getAllTransfers();
       expect(newTransfers, isEmpty);
+    });
+
+    test('skips execution when sending account has insufficient balance', () async {
+      // Create another account as receiver
+      final receivingAccountId = await db.into(db.accounts).insert(
+        const AccountsCompanion(
+          name: Value('Receiving Account'),
+          type: Value(AccountTypes.cash),
+        ),
+      );
+
+      // Setup: Sending account has 100 balance
+      await db.into(db.assetsOnAccounts).insert(
+        AssetsOnAccountsCompanion(
+          accountId: Value(accountId),
+          assetId: Value(assetId),
+          shares: const Value(100.0),
+          value: const Value(100.0),
+          netCostBasis: const Value(1.0),
+          brokerCostBasis: const Value(1.0),
+          buyFeeTotal: const Value(0.0),
+        ),
+      );
+
+      // Create receiving account AOA
+      await db.into(db.assetsOnAccounts).insert(
+        AssetsOnAccountsCompanion(
+          accountId: Value(receivingAccountId),
+          assetId: Value(assetId),
+          shares: const Value(0.0),
+          value: const Value(0.0),
+          netCostBasis: const Value(1.0),
+          brokerCostBasis: const Value(1.0),
+          buyFeeTotal: const Value(0.0),
+        ),
+      );
+
+      // Create periodic transfer of 150 (more than balance)
+      // Use DateTime with time component to ensure only one execution is attempted
+      final pastDate = DateTime.now().subtract(const Duration(hours: 1));
+      await periodicTransfersDao.insertPeriodicTransfer(
+        PeriodicTransfersCompanion.insert(
+          nextExecutionDate: dateTimeToInt(pastDate),
+          assetId: Value(assetId),
+          sendingAccountId: accountId,
+          receivingAccountId: receivingAccountId,
+          shares: 150.0,
+          value: 150.0,
+          notes: const Value('Large Transfer'),
+          cycle: const Value(Cycles.daily),
+        ),
+      );
+
+      final (executedCount, failedCount) = await periodicTransfersDao.executePending(l10n);
+
+      expect(executedCount, 0);
+      expect(failedCount, 1);
+
+      // Verify transfer was NOT created
+      final transfers = await db.transfersDao.getAllTransfers();
+      expect(transfers, isEmpty);
+
+      // Verify nextExecutionDate WAS updated
+      final updatedPt = (await periodicTransfersDao.getAll()).first;
+      expect(updatedPt.nextExecutionDate, greaterThan(dateTimeToInt(pastDate)));
+    });
+
+    test('executes when sending account has sufficient balance', () async {
+      // Create another account as receiver
+      final receivingAccountId = await db.into(db.accounts).insert(
+        const AccountsCompanion(
+          name: Value('Receiving Account'),
+          type: Value(AccountTypes.cash),
+        ),
+      );
+
+      // Setup: Sending account has 200 balance
+      await db.into(db.assetsOnAccounts).insert(
+        AssetsOnAccountsCompanion(
+          accountId: Value(accountId),
+          assetId: Value(assetId),
+          shares: const Value(200.0),
+          value: const Value(200.0),
+          netCostBasis: const Value(1.0),
+          brokerCostBasis: const Value(1.0),
+          buyFeeTotal: const Value(0.0),
+        ),
+      );
+
+      // Create receiving account AOA
+      await db.into(db.assetsOnAccounts).insert(
+        AssetsOnAccountsCompanion(
+          accountId: Value(receivingAccountId),
+          assetId: Value(assetId),
+          shares: const Value(0.0),
+          value: const Value(0.0),
+          netCostBasis: const Value(1.0),
+          brokerCostBasis: const Value(1.0),
+          buyFeeTotal: const Value(0.0),
+        ),
+      );
+
+      // Create periodic transfer of 50 (less than balance)
+      final pastDate = DateTime.now().subtract(const Duration(hours: 1));
+      await periodicTransfersDao.insertPeriodicTransfer(
+        PeriodicTransfersCompanion.insert(
+          nextExecutionDate: dateTimeToInt(pastDate),
+          assetId: Value(assetId),
+          sendingAccountId: accountId,
+          receivingAccountId: receivingAccountId,
+          shares: 50.0,
+          value: 50.0,
+          notes: const Value('Small Transfer'),
+          cycle: const Value(Cycles.daily),
+        ),
+      );
+
+      final (executedCount, failedCount) = await periodicTransfersDao.executePending(l10n);
+
+      expect(executedCount, 1);
+      expect(failedCount, 0);
+
+      // Verify transfer WAS created
+      final transfers = await db.transfersDao.getAllTransfers();
+      expect(transfers.length, 1);
+      expect(transfers.first.notes, 'Small Transfer');
     });
   });
 }

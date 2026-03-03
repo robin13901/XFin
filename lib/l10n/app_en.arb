@@ -162,6 +162,14 @@
       }
     }
   },
+  "nStandingOrdersFailed": "{n, plural, =1{1 standing order could not be executed due to insufficient balance} other{{n} standing orders could not be executed due to insufficient balance}}",
+  "@nStandingOrdersFailed": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
   "nextExecutionDate": "Next Execution",
   "cycle": "Cycle",
   "pleaseSelectACycle": "Please select a cycle!",
@@ -232,5 +240,6 @@
   "calendarWeekdaySat": "SAT.",
   "calendarWeekdaySun": "SUN.",
 
-  "errorLoadingData": "An unexpected error occurred while loading the data."
+  "errorLoadingData": "An unexpected error occurred while loading the data.",
+  "baseCurrency": "Base Currency"
 }

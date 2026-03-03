@@ -480,6 +480,19 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String nStandingOrdersFailed(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          '$n Daueraufträge konnten aufgrund unzureichenden Saldos nicht ausgeführt werden',
+      one:
+          '1 Dauerauftrag konnte aufgrund unzureichenden Saldos nicht ausgeführt werden',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get nextExecutionDate => 'Nächste Ausführung';
 
   @override
@@ -689,4 +702,7 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get errorLoadingData =>
       'Beim Laden der Daten ist ein unerwarteter Fehler aufgetreten.';
+
+  @override
+  String get baseCurrency => 'Basiswährung';
 }
