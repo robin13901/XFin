@@ -1375,6 +1375,186 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Base Currency'**
   String get baseCurrency;
+
+  /// No description provided for @searchBookings.
+  ///
+  /// In en, this message translates to:
+  /// **'Search bookings...'**
+  String get searchBookings;
+
+  /// No description provided for @searchTransfers.
+  ///
+  /// In en, this message translates to:
+  /// **'Search transfers...'**
+  String get searchTransfers;
+
+  /// No description provided for @searchTrades.
+  ///
+  /// In en, this message translates to:
+  /// **'Search trades...'**
+  String get searchTrades;
+
+  /// No description provided for @searchAssets.
+  ///
+  /// In en, this message translates to:
+  /// **'Search assets...'**
+  String get searchAssets;
+
+  /// No description provided for @searchAccounts.
+  ///
+  /// In en, this message translates to:
+  /// **'Search accounts...'**
+  String get searchAccounts;
+
+  /// No description provided for @filterBookings.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter Bookings'**
+  String get filterBookings;
+
+  /// No description provided for @filterTransfers.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter Transfers'**
+  String get filterTransfers;
+
+  /// No description provided for @filterTrades.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter Trades'**
+  String get filterTrades;
+
+  /// No description provided for @filterAssets.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter Assets'**
+  String get filterAssets;
+
+  /// No description provided for @filterAccounts.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter Accounts'**
+  String get filterAccounts;
+
+  /// No description provided for @addFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Filter'**
+  String get addFilter;
+
+  /// No description provided for @clearAllFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear All'**
+  String get clearAllFilters;
+
+  /// No description provided for @selectField.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Field'**
+  String get selectField;
+
+  /// No description provided for @selectOperator.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Operator'**
+  String get selectOperator;
+
+  /// No description provided for @enterValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter Value'**
+  String get enterValue;
+
+  /// No description provided for @greaterThan.
+  ///
+  /// In en, this message translates to:
+  /// **'Greater than'**
+  String get greaterThan;
+
+  /// No description provided for @lessThan.
+  ///
+  /// In en, this message translates to:
+  /// **'Less than'**
+  String get lessThan;
+
+  /// No description provided for @greaterOrEqual.
+  ///
+  /// In en, this message translates to:
+  /// **'Greater or equal'**
+  String get greaterOrEqual;
+
+  /// No description provided for @lessOrEqual.
+  ///
+  /// In en, this message translates to:
+  /// **'Less or equal'**
+  String get lessOrEqual;
+
+  /// No description provided for @equalTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Equal to'**
+  String get equalTo;
+
+  /// No description provided for @between.
+  ///
+  /// In en, this message translates to:
+  /// **'Between'**
+  String get between;
+
+  /// No description provided for @contains.
+  ///
+  /// In en, this message translates to:
+  /// **'Contains'**
+  String get contains;
+
+  /// No description provided for @startsWith.
+  ///
+  /// In en, this message translates to:
+  /// **'Starts with'**
+  String get startsWith;
+
+  /// No description provided for @before.
+  ///
+  /// In en, this message translates to:
+  /// **'Before'**
+  String get before;
+
+  /// No description provided for @after.
+  ///
+  /// In en, this message translates to:
+  /// **'After'**
+  String get after;
+
+  /// No description provided for @select.
+  ///
+  /// In en, this message translates to:
+  /// **'Select'**
+  String get select;
+
+  /// No description provided for @from.
+  ///
+  /// In en, this message translates to:
+  /// **'From'**
+  String get from;
+
+  /// No description provided for @to.
+  ///
+  /// In en, this message translates to:
+  /// **'To'**
+  String get to;
+
+  /// No description provided for @noMatchingBookings.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching entries found'**
+  String get noMatchingBookings;
+
+  /// No description provided for @accountType.
+  ///
+  /// In en, this message translates to:
+  /// **'Account Type'**
+  String get accountType;
 }
 
 class _AppLocalizationsDelegate

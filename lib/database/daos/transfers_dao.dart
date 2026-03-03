@@ -1,7 +1,9 @@
 import 'package:drift/drift.dart';
 import '../../l10n/app_localizations.dart';
+import '../../models/filter/filter_rule.dart';
 import '../../utils/global_constants.dart';
 import '../app_database.dart';
+import '../filter_builder.dart';
 import '../tables.dart';
 
 part 'transfers_dao.g.dart';
@@ -13,7 +15,10 @@ class TransfersDao extends DatabaseAccessor<AppDatabase>
 
   /// Watch transfers together with sending + receiving accounts and the asset.
   Stream<List<TransferWithAccountsAndAsset>>
-      watchTransfersWithAccountsAndAsset() {
+      watchTransfersWithAccountsAndAsset({
+    String? searchQuery,
+    List<FilterRule>? filterRules,
+  }) {
     final sending = alias(accounts, 'sending');
     final receiving = alias(accounts, 'receiving');
 
@@ -27,6 +32,21 @@ class TransfersDao extends DatabaseAccessor<AppDatabase>
     // Only show transfers where both accounts are not archived
     query.where(
         sending.isArchived.equals(false) & receiving.isArchived.equals(false));
+
+    // Apply search query (notes only for transfers)
+    if (searchQuery != null && searchQuery.isNotEmpty) {
+      final searchLower = '%${searchQuery.toLowerCase()}%';
+      query.where(transfers.notes.lower().like(searchLower));
+    }
+
+    // Apply filter rules
+    if (filterRules != null && filterRules.isNotEmpty) {
+      final builder = TransferFilterBuilder(transfers);
+      final filterExpr = builder.buildExpression(filterRules);
+      if (filterExpr != null) {
+        query.where(filterExpr);
+      }
+    }
 
     query.orderBy([
       OrderingTerm.desc(transfers.date),

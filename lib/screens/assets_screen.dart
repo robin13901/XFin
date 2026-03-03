@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
@@ -8,7 +10,12 @@ import 'package:xfin/widgets/forms/asset_form.dart';
 import 'package:xfin/widgets/charts.dart';
 import 'package:xfin/widgets/dialogs.dart';
 
+import '../models/filter/asset_filter_config.dart';
+import '../models/filter/filter_rule.dart';
 import '../providers/database_provider.dart';
+import '../widgets/filter/filter_badge.dart';
+import '../widgets/filter/filter_panel.dart';
+import '../widgets/filter/liquid_glass_search_bar.dart';
 import '../widgets/liquid_glass_widgets.dart';
 import 'asset_analysis_detail_screen.dart';
 
@@ -22,6 +29,56 @@ class AssetsScreen extends StatefulWidget {
 class _AssetsScreenState extends State<AssetsScreen> {
   int _selectedTab = 1;
   AssetTypes? _selectedType;
+
+  // Search state
+  bool _showSearchBar = false;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  Timer? _searchDebounce;
+  final FocusNode _searchFocusNode = FocusNode();
+
+  // Filter state
+  List<FilterRule> _filterRules = [];
+  bool _showFilterPanel = false;
+
+  int get _activeFilterCount => _filterRules.length;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchDebounce?.cancel();
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String value) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+      if (_searchQuery != value) {
+        setState(() => _searchQuery = value);
+      }
+    });
+  }
+
+  void _toggleSearch() {
+    setState(() {
+      _showSearchBar = !_showSearchBar;
+      if (!_showSearchBar) {
+        _searchController.clear();
+        if (_searchQuery.isNotEmpty) {
+          _searchQuery = '';
+        }
+      } else {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _searchFocusNode.requestFocus();
+        });
+      }
+    });
+  }
+
+  void _onFilterRulesChanged(List<FilterRule> rules) {
+    setState(() => _filterRules = rules);
+  }
 
   void _showAssetForm(BuildContext context, {Asset? asset}) {
     showModalBottomSheet(
@@ -226,8 +283,15 @@ class _AssetsScreenState extends State<AssetsScreen> {
 
   Widget _buildAssetsList(
       BuildContext context, AppDatabase db, AppLocalizations l10n) {
+    final statusBarHeight = MediaQuery.of(context).padding.top;
+    // Add space for search bar only when visible
+    final searchBarSpace = _showSearchBar ? 60.0 : 0.0;
+
     return StreamBuilder<List<Asset>>(
-      stream: db.assetsDao.watchAllAssets(),
+      stream: db.assetsDao.watchAllAssets(
+        searchQuery: _searchQuery.isNotEmpty ? _searchQuery : null,
+        filterRules: _filterRules.isNotEmpty ? _filterRules : null,
+      ),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -237,12 +301,18 @@ class _AssetsScreenState extends State<AssetsScreen> {
         }
         final assets = snapshot.data ?? [];
         if (assets.isEmpty) {
-          return Center(child: Text(l10n.noAssets));
+          return Center(
+            child: Text(
+              _searchQuery.isNotEmpty || _filterRules.isNotEmpty
+                  ? l10n.noMatchingBookings
+                  : l10n.noAssets,
+            ),
+          );
         }
 
         return ListView(
           padding: EdgeInsets.only(
-            top: MediaQuery.of(context).padding.top + kToolbarHeight,
+            top: statusBarHeight + kToolbarHeight + searchBarSpace,
             bottom: 96,
           ),
           children: [
@@ -298,6 +368,27 @@ class _AssetsScreenState extends State<AssetsScreen> {
   Widget build(BuildContext context) {
     final db = context.read<DatabaseProvider>().db;
     final l10n = AppLocalizations.of(context)!;
+    final statusBarHeight = MediaQuery.of(context).padding.top;
+
+    // Build app bar actions based on selected tab
+    final List<Widget> appBarActions = _selectedTab == 1
+        ? [
+            IconButton(
+              icon: Icon(
+                _showSearchBar ? Icons.search_off : Icons.search,
+                size: 22,
+              ),
+              onPressed: _toggleSearch,
+            ),
+            FilterBadge(
+              count: _activeFilterCount,
+              child: IconButton(
+                icon: const Icon(Icons.filter_list, size: 22),
+                onPressed: () => setState(() => _showFilterPanel = true),
+              ),
+            ),
+          ]
+        : [];
 
     return Scaffold(
       body: Stack(
@@ -309,7 +400,35 @@ class _AssetsScreenState extends State<AssetsScreen> {
               _buildAssetsList(context, db, l10n),
             ],
           ),
-          buildLiquidGlassAppBar(context, title: Text(l10n.assets)),
+
+          // Search bar (only visible in Assets tab) - overlay mode
+          if (_showSearchBar && _selectedTab == 1)
+            Positioned(
+              top: statusBarHeight + kToolbarHeight + 8,
+              left: 16,
+              right: 16,
+              child: LiquidGlassSearchBar(
+                controller: _searchController,
+                focusNode: _searchFocusNode,
+                hintText: l10n.searchAssets,
+                onChanged: _onSearchChanged,
+              ),
+            ),
+
+          // Filter panel
+          if (_showFilterPanel)
+            FilterPanel(
+              config: buildAssetFilterConfig(l10n),
+              currentRules: _filterRules,
+              onRulesChanged: _onFilterRulesChanged,
+              onClose: () => setState(() => _showFilterPanel = false),
+            ),
+
+          buildLiquidGlassAppBar(
+            context,
+            title: Text(l10n.assets),
+            actions: appBarActions,
+          ),
           Positioned(
             bottom: 16,
             left: 8,

@@ -1,8 +1,10 @@
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:xfin/l10n/app_localizations.dart';
+import '../../models/filter/filter_rule.dart';
 import '../../utils/global_constants.dart';
 import '../app_database.dart';
+import '../filter_builder.dart';
 import '../tables.dart';
 
 part 'accounts_dao.g.dart';
@@ -101,8 +103,32 @@ class AccountsDao extends DatabaseAccessor<AppDatabase>
     return (await query.get()).isNotEmpty;
   }
 
-  Stream<List<Account>> watchAllAccounts() =>
-      (select(accounts)..where((a) => a.isArchived.equals(false))).watch();
+  Stream<List<Account>> watchAllAccounts({
+    String? searchQuery,
+    List<FilterRule>? filterRules,
+  }) {
+    final query = select(accounts)..where((a) => a.isArchived.equals(false));
+
+    // Apply filter rules
+    if (filterRules != null && filterRules.isNotEmpty) {
+      final builder = AccountFilterBuilder(accounts);
+      final filterExpr = builder.buildExpression(filterRules);
+      if (filterExpr != null) {
+        query.where((t) => filterExpr);
+      }
+    }
+
+    return query.watch().map((results) {
+      // Apply search query post-filter
+      if (searchQuery != null && searchQuery.isNotEmpty) {
+        final searchLower = searchQuery.toLowerCase();
+        return results
+            .where((a) => a.name.toLowerCase().contains(searchLower))
+            .toList();
+      }
+      return results;
+    });
+  }
 
   Stream<List<Account>> watchCashAccounts() => (select(accounts)
         ..where((a) =>

@@ -64,3 +64,12 @@ String getAssetTypeName(AppLocalizations l10n, AssetTypes type, {bool plural = f
     (AssetTypes.derivative, true) => l10n.derivatives,
   };
 }
+
+String getAccountTypeName(AppLocalizations l10n, AccountTypes type) {
+  return switch (type) {
+    AccountTypes.cash => l10n.cash,
+    AccountTypes.bankAccount => l10n.bankAccount,
+    AccountTypes.portfolio => l10n.portfolio,
+    AccountTypes.cryptoWallet => l10n.cryptoWallet,
+  };
+}

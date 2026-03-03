@@ -705,4 +705,94 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get baseCurrency => 'Basiswährung';
+
+  @override
+  String get searchBookings => 'Buchungen durchsuchen...';
+
+  @override
+  String get searchTransfers => 'Überweisungen durchsuchen...';
+
+  @override
+  String get searchTrades => 'Trades durchsuchen...';
+
+  @override
+  String get searchAssets => 'Assets durchsuchen...';
+
+  @override
+  String get searchAccounts => 'Konten durchsuchen...';
+
+  @override
+  String get filterBookings => 'Buchungen filtern';
+
+  @override
+  String get filterTransfers => 'Überweisungen filtern';
+
+  @override
+  String get filterTrades => 'Trades filtern';
+
+  @override
+  String get filterAssets => 'Assets filtern';
+
+  @override
+  String get filterAccounts => 'Konten filtern';
+
+  @override
+  String get addFilter => 'Filter hinzufügen';
+
+  @override
+  String get clearAllFilters => 'Alle löschen';
+
+  @override
+  String get selectField => 'Feld auswählen';
+
+  @override
+  String get selectOperator => 'Operator auswählen';
+
+  @override
+  String get enterValue => 'Wert eingeben';
+
+  @override
+  String get greaterThan => 'Größer als';
+
+  @override
+  String get lessThan => 'Kleiner als';
+
+  @override
+  String get greaterOrEqual => 'Größer oder gleich';
+
+  @override
+  String get lessOrEqual => 'Kleiner oder gleich';
+
+  @override
+  String get equalTo => 'Gleich';
+
+  @override
+  String get between => 'Zwischen';
+
+  @override
+  String get contains => 'Enthält';
+
+  @override
+  String get startsWith => 'Beginnt mit';
+
+  @override
+  String get before => 'Vor';
+
+  @override
+  String get after => 'Nach';
+
+  @override
+  String get select => 'Auswählen';
+
+  @override
+  String get from => 'Von';
+
+  @override
+  String get to => 'Bis';
+
+  @override
+  String get noMatchingBookings => 'Keine Einträge gefunden';
+
+  @override
+  String get accountType => 'Kontotyp';
 }

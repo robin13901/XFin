@@ -697,4 +697,94 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get baseCurrency => 'Base Currency';
+
+  @override
+  String get searchBookings => 'Search bookings...';
+
+  @override
+  String get searchTransfers => 'Search transfers...';
+
+  @override
+  String get searchTrades => 'Search trades...';
+
+  @override
+  String get searchAssets => 'Search assets...';
+
+  @override
+  String get searchAccounts => 'Search accounts...';
+
+  @override
+  String get filterBookings => 'Filter Bookings';
+
+  @override
+  String get filterTransfers => 'Filter Transfers';
+
+  @override
+  String get filterTrades => 'Filter Trades';
+
+  @override
+  String get filterAssets => 'Filter Assets';
+
+  @override
+  String get filterAccounts => 'Filter Accounts';
+
+  @override
+  String get addFilter => 'Add Filter';
+
+  @override
+  String get clearAllFilters => 'Clear All';
+
+  @override
+  String get selectField => 'Select Field';
+
+  @override
+  String get selectOperator => 'Select Operator';
+
+  @override
+  String get enterValue => 'Enter Value';
+
+  @override
+  String get greaterThan => 'Greater than';
+
+  @override
+  String get lessThan => 'Less than';
+
+  @override
+  String get greaterOrEqual => 'Greater or equal';
+
+  @override
+  String get lessOrEqual => 'Less or equal';
+
+  @override
+  String get equalTo => 'Equal to';
+
+  @override
+  String get between => 'Between';
+
+  @override
+  String get contains => 'Contains';
+
+  @override
+  String get startsWith => 'Starts with';
+
+  @override
+  String get before => 'Before';
+
+  @override
+  String get after => 'After';
+
+  @override
+  String get select => 'Select';
+
+  @override
+  String get from => 'From';
+
+  @override
+  String get to => 'To';
+
+  @override
+  String get noMatchingBookings => 'No matching entries found';
+
+  @override
+  String get accountType => 'Account Type';
 }

@@ -1,7 +1,9 @@
 import 'package:drift/drift.dart';
 import '../../l10n/app_localizations.dart';
+import '../../models/filter/filter_rule.dart';
 import '../../utils/global_constants.dart';
 import '../app_database.dart';
+import '../filter_builder.dart';
 import '../tables.dart';
 
 part 'bookings_dao.g.dart';
@@ -25,6 +27,8 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
     required int limit,
     int? lastDate,
     double? lastValue,
+    String? searchQuery,
+    List<FilterRule>? filterRules,
   }) {
     final query = select(bookings).join([
       leftOuterJoin(accounts, accounts.id.equalsExp(bookings.accountId)),
@@ -33,6 +37,24 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
 
     query.where(accounts.isArchived.equals(false));
     query.where(assets.isArchived.equals(false));
+
+    // Apply search query (category OR notes)
+    if (searchQuery != null && searchQuery.isNotEmpty) {
+      final searchLower = '%${searchQuery.toLowerCase()}%';
+      query.where(
+        bookings.category.lower().like(searchLower) |
+            bookings.notes.lower().like(searchLower),
+      );
+    }
+
+    // Apply filter rules
+    if (filterRules != null && filterRules.isNotEmpty) {
+      final builder = BookingFilterBuilder(bookings);
+      final filterExpr = builder.buildExpression(filterRules);
+      if (filterExpr != null) {
+        query.where(filterExpr);
+      }
+    }
 
     // Keyset pagination condition
     if (lastDate != null && lastValue != null) {

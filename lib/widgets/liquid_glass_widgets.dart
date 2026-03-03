@@ -275,7 +275,7 @@ Widget buildFAB({
 }
 
 Widget buildLiquidGlassAppBar(BuildContext context,
-    {required Widget title, bool showBackButton = true}) {
+    {required Widget title, bool showBackButton = true, List<Widget>? actions}) {
   final double statusBar = MediaQuery.of(context).padding.top;
   final double height = statusBar + kToolbarHeight;
 
@@ -324,6 +324,8 @@ Widget buildLiquidGlassAppBar(BuildContext context,
                       child: title,
                     ),
                   ),
+                  if (actions != null) ...actions,
+                  const SizedBox(width: 8),
                 ],
               ),
             ),

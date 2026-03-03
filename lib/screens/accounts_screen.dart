@@ -1,21 +1,83 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/widgets/forms/account_form.dart';
 
+import '../models/filter/account_filter_config.dart';
+import '../models/filter/filter_rule.dart';
 import '../providers/base_currency_provider.dart';
 import '../providers/database_provider.dart';
 import '../utils/format.dart';
 import '../utils/modal_helper.dart';
 import '../widgets/dialogs.dart';
+import '../widgets/filter/filter_badge.dart';
+import '../widgets/filter/filter_panel.dart';
+import '../widgets/filter/liquid_glass_search_bar.dart';
 import '../widgets/liquid_glass_widgets.dart';
 
-class AccountsScreen extends StatelessWidget {
+class AccountsScreen extends StatefulWidget {
   const AccountsScreen({super.key});
 
   static void showAccountForm(BuildContext context) {
     showFormModal(context, const AccountForm());
+  }
+
+  @override
+  State<AccountsScreen> createState() => _AccountsScreenState();
+}
+
+class _AccountsScreenState extends State<AccountsScreen> {
+  // Search state
+  bool _showSearchBar = false;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  Timer? _searchDebounce;
+  final FocusNode _searchFocusNode = FocusNode();
+
+  // Filter state
+  List<FilterRule> _filterRules = [];
+  bool _showFilterPanel = false;
+
+  int get _activeFilterCount => _filterRules.length;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchDebounce?.cancel();
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String value) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+      if (_searchQuery != value) {
+        setState(() => _searchQuery = value);
+      }
+    });
+  }
+
+  void _toggleSearch() {
+    setState(() {
+      _showSearchBar = !_showSearchBar;
+      if (!_showSearchBar) {
+        _searchController.clear();
+        if (_searchQuery.isNotEmpty) {
+          _searchQuery = '';
+        }
+      } else {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _searchFocusNode.requestFocus();
+        });
+      }
+    });
+  }
+
+  void _onFilterRulesChanged(List<FilterRule> rules) {
+    setState(() => _filterRules = rules);
   }
 
   Future<void> _handleLongPress(
@@ -115,12 +177,18 @@ class AccountsScreen extends StatelessWidget {
     final db = context.read<DatabaseProvider>().db;
     final l10n = AppLocalizations.of(context)!;
     Provider.of<BaseCurrencyProvider>(context);
+    final statusBarHeight = MediaQuery.of(context).padding.top;
+    // Add space for search bar only when visible
+    final searchBarSpace = _showSearchBar ? 60.0 : 0.0;
 
     return Scaffold(
       body: Stack(
         children: [
           StreamBuilder<List<Account>>(
-            stream: db.accountsDao.watchAllAccounts(),
+            stream: db.accountsDao.watchAllAccounts(
+              searchQuery: _searchQuery.isNotEmpty ? _searchQuery : null,
+              filterRules: _filterRules.isNotEmpty ? _filterRules : null,
+            ),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
@@ -132,7 +200,7 @@ class AccountsScreen extends StatelessWidget {
 
               return ListView(
                 padding: EdgeInsets.only(
-                  top: MediaQuery.of(context).padding.top + kToolbarHeight,
+                  top: statusBarHeight + kToolbarHeight + searchBarSpace,
                   bottom: 92,
                 ),
                 children: [
@@ -140,7 +208,11 @@ class AccountsScreen extends StatelessWidget {
                     Center(
                         child: Padding(
                       padding: const EdgeInsets.all(16.0),
-                      child: Text(l10n.noActiveAccounts),
+                      child: Text(
+                        _searchQuery.isNotEmpty || _filterRules.isNotEmpty
+                            ? l10n.noMatchingBookings
+                            : l10n.noActiveAccounts,
+                      ),
                     ))
                   else
                     ...accounts.map((account) => ListTile(
@@ -193,8 +265,51 @@ class AccountsScreen extends StatelessWidget {
               );
             },
           ),
-          buildLiquidGlassAppBar(context,
-              title: Text(l10n.accounts), showBackButton: false),
+
+          // Search bar
+          if (_showSearchBar)
+            Positioned(
+              top: statusBarHeight + kToolbarHeight + 8,
+              left: 16,
+              right: 16,
+              child: LiquidGlassSearchBar(
+                controller: _searchController,
+                focusNode: _searchFocusNode,
+                hintText: l10n.searchAccounts,
+                onChanged: _onSearchChanged,
+              ),
+            ),
+
+          // Filter panel
+          if (_showFilterPanel)
+            FilterPanel(
+              config: buildAccountFilterConfig(l10n),
+              currentRules: _filterRules,
+              onRulesChanged: _onFilterRulesChanged,
+              onClose: () => setState(() => _showFilterPanel = false),
+            ),
+
+          buildLiquidGlassAppBar(
+            context,
+            title: Text(l10n.accounts),
+            showBackButton: false,
+            actions: [
+              IconButton(
+                icon: Icon(
+                  _showSearchBar ? Icons.search_off : Icons.search,
+                  size: 22,
+                ),
+                onPressed: _toggleSearch,
+              ),
+              FilterBadge(
+                count: _activeFilterCount,
+                child: IconButton(
+                  icon: const Icon(Icons.filter_list, size: 22),
+                  onPressed: () => setState(() => _showFilterPanel = true),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );

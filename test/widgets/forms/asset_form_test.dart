@@ -7,6 +7,7 @@ import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/daos/assets_dao.dart';
 import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
+import 'package:xfin/models/filter/filter_rule.dart';
 import 'package:xfin/providers/database_provider.dart';
 import 'package:xfin/widgets/forms/asset_form.dart';
 
@@ -32,7 +33,10 @@ class FakeAssetsDao extends Fake implements AssetsDao {
   Asset? _lastUpdatedAsset;
 
   @override
-  Stream<List<Asset>> watchAllAssets() => _allAssetsController.stream;
+  Stream<List<Asset>> watchAllAssets({
+    String? searchQuery,
+    List<FilterRule>? filterRules,
+  }) => _allAssetsController.stream;
 
   @override
   Future<int> insert(AssetsCompanion entry) async {

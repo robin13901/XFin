@@ -2,8 +2,10 @@ import 'dart:collection';
 
 import 'package:drift/drift.dart';
 import 'package:xfin/l10n/app_localizations.dart';
+import 'package:xfin/models/filter/filter_rule.dart';
 import 'package:xfin/utils/global_constants.dart';
 import '../app_database.dart';
+import '../filter_builder.dart';
 import '../tables.dart';
 
 part 'trades_dao.g.dart';
@@ -58,20 +60,45 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
             ]))
           .get();
 
-  Stream<List<TradeWithAsset>> watchAllTrades() {
-    return (select(trades)
-          ..orderBy([
-            (t) => OrderingTerm.desc(t.datetime),
-            (t) => OrderingTerm.desc(t.id)
-          ]))
+  Stream<List<TradeWithAsset>> watchAllTrades({
+    String? searchQuery,
+    List<FilterRule>? filterRules,
+  }) {
+    final query = select(trades)
+      ..orderBy([
+        (t) => OrderingTerm.desc(t.datetime),
+        (t) => OrderingTerm.desc(t.id)
+      ]);
+
+    // Apply filter rules
+    if (filterRules != null && filterRules.isNotEmpty) {
+      final builder = TradeFilterBuilder(trades);
+      final filterExpr = builder.buildExpression(filterRules);
+      if (filterExpr != null) {
+        query.where((t) => filterExpr);
+      }
+    }
+
+    return query
         .join([innerJoin(assets, assets.id.equalsExp(trades.assetId))])
         .watch()
         .map((rows) {
-          return rows
-              .map((r) => TradeWithAsset(
-                  trade: r.readTable(trades), asset: r.readTable(assets)))
-              .toList();
-        });
+      var results = rows
+          .map((r) => TradeWithAsset(
+              trade: r.readTable(trades), asset: r.readTable(assets)))
+          .toList();
+
+      // Apply search query on asset name (post-filter since we need joined data)
+      if (searchQuery != null && searchQuery.isNotEmpty) {
+        final searchLower = searchQuery.toLowerCase();
+        results = results
+            .where((r) => r.asset.name.toLowerCase().contains(searchLower) ||
+                r.asset.tickerSymbol.toLowerCase().contains(searchLower))
+            .toList();
+      }
+
+      return results;
+    });
   }
 
   Future<double> _computeBuyFeeDeltaForTrade(Trade t) async {
