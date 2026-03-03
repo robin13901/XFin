@@ -44,7 +44,10 @@
       "Bash(ls -la lib/l10n/*.dart)",
       "Bash(flutter gen-l10n)",
       "Bash(flutter test test/database/daos/periodic_bookings_dao_test.dart)",
-      "Bash(flutter test test/database/daos/periodic_transfers_dao_test.dart --name \"skips execution when sending account has insufficient balance\")"
+      "Bash(flutter test test/database/daos/periodic_transfers_dao_test.dart --name \"skips execution when sending account has insufficient balance\")",
+      "Bash(ls -la \"C:\\\\Users\\\\I551358\\\\.claude\\\\memory\"\" 2>/dev/null || echo \"Not found \")",
+      "Bash(flutter test test/database/daos/analysis_dao_test.dart test/database/daos/bookings_dao_test.dart)",
+      "Bash(flutter test test/database/daos/analysis_dao_test.dart --name \"getCalendarDayDetails\")"
     ]
   }
 }

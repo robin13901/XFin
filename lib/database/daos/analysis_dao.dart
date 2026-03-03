@@ -31,6 +31,22 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
     return (startOfMonth, endOfMonth);
   }
 
+  /// Berechnet die Intersection zwischen Monatsgrenzen und globalem Timeframe
+  /// Gibt (effectiveStart, effectiveEnd) zurück oder null wenn keine Überschneidung
+  (int, int)? _getMonthTimeframeIntersection(DateTime date) {
+    final (monthStart, monthEnd) = _getMonthStartEnd(date);
+
+    // Berechne Intersection mit globalem Timeframe
+    final effectiveStart = monthStart > filterStartDate ? monthStart : filterStartDate;
+    final effectiveEnd = monthEnd < filterEndDate ? monthEnd : filterEndDate;
+
+    // Keine Überschneidung wenn Start > End
+    if (effectiveStart > effectiveEnd) {
+      return null;
+    }
+
+    return (effectiveStart, effectiveEnd);
+  }
 
   int _monthStartDateTimeInt(int startDate) => startDate * 1000000;
 
@@ -177,7 +193,14 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
 
   // Totals for month
   Future<double> getTotalInflowsForMonth(DateTime date) async {
-    final (start, end) = _getMonthStartEnd(date);
+    final intersection = _getMonthTimeframeIntersection(date);
+
+    // Wenn der Monat außerhalb des Timeframes liegt, gib 0 zurück
+    if (intersection == null) {
+      return 0.0;
+    }
+
+    final (start, end) = intersection;
 
     final bookingsFuture = (selectOnly(bookings)
           ..addColumns([bookings.value.sum()])
@@ -195,7 +218,14 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
   }
 
   Future<double> getTotalOutflowsForMonth(DateTime date) async {
-    final (start, end) = _getMonthStartEnd(date);
+    final intersection = _getMonthTimeframeIntersection(date);
+
+    // Wenn der Monat außerhalb des Timeframes liegt, gib 0 zurück
+    if (intersection == null) {
+      return 0.0;
+    }
+
+    final (start, end) = intersection;
 
     final bookingsFuture = (selectOnly(bookings)
           ..addColumns([bookings.value.sum()])
@@ -217,7 +247,14 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
   }
 
   Future<double> getProfitAndLossForMonth(DateTime date) async {
-    final (start, end) = _getMonthStartEnd(date);
+    final intersection = _getMonthTimeframeIntersection(date);
+
+    // Wenn der Monat außerhalb des Timeframes liegt, gib 0 zurück
+    if (intersection == null) {
+      return 0.0;
+    }
+
+    final (start, end) = intersection;
 
     final bookingsFuture = (selectOnly(bookings)
           ..addColumns([bookings.value.sum()])
@@ -244,7 +281,14 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
   }
 
   Future<Map<String, double>> getCategoryInflowsForMonth(DateTime date) async {
-    final (start, end) = _getMonthStartEnd(date);
+    final intersection = _getMonthTimeframeIntersection(date);
+
+    // Wenn der Monat außerhalb des Timeframes liegt, gib leere Map zurück
+    if (intersection == null) {
+      return {};
+    }
+
+    final (start, end) = intersection;
 
     final bookingsFuture = (selectOnly(bookings)
           ..addColumns([bookings.category, bookings.value.sum()])
@@ -278,7 +322,14 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
   }
 
   Future<Map<String, double>> getCategoryOutflowsForMonth(DateTime date) async {
-    final (start, end) = _getMonthStartEnd(date);
+    final intersection = _getMonthTimeframeIntersection(date);
+
+    // Wenn der Monat außerhalb des Timeframes liegt, gib leere Map zurück
+    if (intersection == null) {
+      return {};
+    }
+
+    final (start, end) = intersection;
 
     final bookingsFuture = (selectOnly(bookings)
           ..addColumns([bookings.category, bookings.value.sum()])

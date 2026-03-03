@@ -9,6 +9,7 @@ import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/daos/bookings_dao.dart';
 import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
+import 'package:xfin/utils/global_constants.dart';
 
 void main() {
   late AppDatabase db;
@@ -638,6 +639,177 @@ void main() {
       acc = await (db.select(db.accounts)..where((t) => t.id.equals(accId)))
           .getSingle();
       expect(acc.balance, closeTo(475.0, 1e-9));
+    });
+  });
+
+  group('BookingsDao - distinct categories respect timeframe filter', () {
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({
+        PrefKeys.filterStartDate: 20240101,
+        PrefKeys.filterEndDate: 20240331,
+      });
+
+      // Update global constants to match SharedPreferences
+      filterStartDate = 20240101;
+      filterEndDate = 20240331;
+    });
+
+    test('getDistinctCategories returns only categories within timeframe',
+        () async {
+      // Booking outside timeframe (December 2023)
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+        date: 20231215,
+        shares: 10.0,
+        category: 'OldCategory',
+        accountId: accountId,
+        assetId: Value(baseCurrencyAssetId),
+        value: 10.0,
+      ));
+
+      // Booking inside timeframe (January 2024)
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+        date: 20240115,
+        shares: 20.0,
+        category: 'CurrentCategory1',
+        accountId: accountId,
+        assetId: Value(baseCurrencyAssetId),
+        value: 20.0,
+      ));
+
+      // Booking inside timeframe (February 2024)
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+        date: 20240220,
+        shares: 30.0,
+        category: 'CurrentCategory2',
+        accountId: accountId,
+        assetId: Value(baseCurrencyAssetId),
+        value: 30.0,
+      ));
+
+      // Booking outside timeframe (April 2024)
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+        date: 20240415,
+        shares: 40.0,
+        category: 'FutureCategory',
+        accountId: accountId,
+        assetId: Value(baseCurrencyAssetId),
+        value: 40.0,
+      ));
+
+      final categories = await bookingsDao.getDistinctCategories();
+
+      expect(categories.length, 2);
+      expect(
+          categories.toSet(), equals({'CurrentCategory1', 'CurrentCategory2'}));
+      expect(categories.contains('OldCategory'), isFalse);
+      expect(categories.contains('FutureCategory'), isFalse);
+    });
+
+    test('getDistinctCategories returns empty list when no bookings in timeframe',
+        () async {
+      // Only insert booking outside timeframe
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+        date: 20231215,
+        shares: 10.0,
+        category: 'Old',
+        accountId: accountId,
+        assetId: Value(baseCurrencyAssetId),
+        value: 10.0,
+      ));
+
+      final categories = await bookingsDao.getDistinctCategories();
+      expect(categories, isEmpty);
+    });
+
+    test(
+        'getDistinctCategories returns all categories when timeframe is unrestricted',
+        () async {
+      SharedPreferences.setMockInitialValues({
+        PrefKeys.filterStartDate: 0,
+        PrefKeys.filterEndDate: 99999999,
+      });
+
+      // Update global constants
+      filterStartDate = 0;
+      filterEndDate = 99999999;
+
+      // Booking in 2020
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+        date: 20200101,
+        shares: 10.0,
+        category: 'VeryOld',
+        accountId: accountId,
+        assetId: Value(baseCurrencyAssetId),
+        value: 10.0,
+      ));
+
+      // Booking in 2028
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+        date: 20280101,
+        shares: 30.0,
+        category: 'Future',
+        accountId: accountId,
+        assetId: Value(baseCurrencyAssetId),
+        value: 30.0,
+      ));
+
+      final categories = await bookingsDao.getDistinctCategories();
+      expect(categories.length, 2);
+      expect(categories.toSet(), equals({'VeryOld', 'Future'}));
+    });
+
+    test('watchDistinctCategories respects timeframe filter', () async {
+      // Booking outside timeframe
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+        date: 20231215,
+        shares: 10.0,
+        category: 'OldCategory',
+        accountId: accountId,
+        assetId: Value(baseCurrencyAssetId),
+        value: 10.0,
+      ));
+
+      // Booking inside timeframe
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+        date: 20240215,
+        shares: 20.0,
+        category: 'CurrentCategory',
+        accountId: accountId,
+        assetId: Value(baseCurrencyAssetId),
+        value: 20.0,
+      ));
+
+      final categories = await bookingsDao.watchDistinctCategories().first;
+
+      expect(categories.length, 1);
+      expect(categories, contains('CurrentCategory'));
+      expect(categories.contains('OldCategory'), isFalse);
+    });
+
+    test('Duplicate categories within timeframe are returned once', () async {
+      // Two bookings with same category within timeframe
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+        date: 20240115,
+        shares: 10.0,
+        category: 'Salary',
+        accountId: accountId,
+        assetId: Value(baseCurrencyAssetId),
+        value: 10.0,
+      ));
+
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+        date: 20240215,
+        shares: 20.0,
+        category: 'Salary',
+        accountId: accountId,
+        assetId: Value(baseCurrencyAssetId),
+        value: 20.0,
+      ));
+
+      final categories = await bookingsDao.getDistinctCategories();
+
+      expect(categories.length, 1);
+      expect(categories.first, 'Salary');
     });
   });
 }

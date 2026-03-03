@@ -590,4 +590,255 @@ void main() {
     });
   });
 
+  group('AnalysisDao - month methods respect timeframe filter', () {
+    setUp(() async {
+      // Set timeframe: January 2024 to March 2024
+      SharedPreferences.setMockInitialValues({
+        PrefKeys.filterStartDate: 20240101,
+        PrefKeys.filterEndDate: 20240331,
+      });
+
+      filterStartDate = 20240101;
+      filterEndDate = 20240331;
+
+      await db.into(db.accounts).insert(AccountsCompanion.insert(
+        name: 'TestAcc',
+        type: AccountTypes.cash,
+        initialBalance: const Value(1000.0),
+      ));
+
+      await db.into(db.assets).insert(AssetsCompanion.insert(
+        name: 'TestAsset',
+        type: AssetTypes.stock,
+        tickerSymbol: 'TST',
+      ));
+    });
+
+    test('getTotalInflowsForMonth returns 0 for month outside timeframe',
+        () async {
+      // Insert booking in December 2023 (outside timeframe)
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+        date: 20231215,
+        shares: 100.0,
+        value: 100.0,
+        category: 'Outside',
+        accountId: 1,
+      ));
+
+      final result =
+          await analysisDao.getTotalInflowsForMonth(DateTime(2023, 12, 15));
+      expect(result, 0.0);
+    });
+
+    test(
+        'getTotalInflowsForMonth returns correct value for month inside timeframe',
+        () async {
+      // Insert booking in February 2024 (inside timeframe)
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+        date: 20240215,
+        shares: 100.0,
+        value: 100.0,
+        category: 'Inside',
+        accountId: 1,
+      ));
+
+      final result =
+          await analysisDao.getTotalInflowsForMonth(DateTime(2024, 2, 15));
+      expect(result, 100.0);
+    });
+
+    test('getTotalInflowsForMonth handles partial month overlap correctly',
+        () async {
+      // Set timeframe starting mid-month
+      SharedPreferences.setMockInitialValues({
+        PrefKeys.filterStartDate: 20240115,
+        PrefKeys.filterEndDate: 20240331,
+      });
+      filterStartDate = 20240115;
+      filterEndDate = 20240331;
+
+      // Booking before timeframe start
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+        date: 20240110,
+        shares: 50.0,
+        value: 50.0,
+        category: 'Early',
+        accountId: 1,
+      ));
+
+      // Booking inside timeframe
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+        date: 20240120,
+        shares: 75.0,
+        value: 75.0,
+        category: 'Inside',
+        accountId: 1,
+      ));
+
+      final result =
+          await analysisDao.getTotalInflowsForMonth(DateTime(2024, 1, 15));
+      expect(result, 75.0); // Only the 75 from Jan 20
+    });
+
+    test('getTotalOutflowsForMonth returns 0 for month outside timeframe',
+        () async {
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+        date: 20231215,
+        shares: -100.0,
+        value: -100.0,
+        category: 'Outside',
+        accountId: 1,
+      ));
+
+      final result =
+          await analysisDao.getTotalOutflowsForMonth(DateTime(2023, 12, 15));
+      expect(result, 0.0);
+    });
+
+    test('getProfitAndLossForMonth returns 0 for month outside timeframe',
+        () async {
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+        date: 20231215,
+        shares: 100.0,
+        value: 100.0,
+        category: 'Outside',
+        accountId: 1,
+      ));
+
+      final result =
+          await analysisDao.getProfitAndLossForMonth(DateTime(2023, 12, 15));
+      expect(result, 0.0);
+    });
+
+    test(
+        'getCategoryInflowsForMonth returns empty map for month outside timeframe',
+        () async {
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+        date: 20231215,
+        shares: 100.0,
+        value: 100.0,
+        category: 'Outside',
+        accountId: 1,
+      ));
+
+      final result =
+          await analysisDao.getCategoryInflowsForMonth(DateTime(2023, 12, 15));
+      expect(result, isEmpty);
+    });
+
+    test(
+        'getCategoryOutflowsForMonth returns empty map for month outside timeframe',
+        () async {
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+        date: 20231215,
+        shares: -100.0,
+        value: -100.0,
+        category: 'Outside',
+        accountId: 1,
+      ));
+
+      final result =
+          await analysisDao.getCategoryOutflowsForMonth(DateTime(2023, 12, 15));
+      expect(result, isEmpty);
+    });
+
+    test('Month methods return all data when timeframe is unrestricted',
+        () async {
+      // Set unrestricted timeframe
+      SharedPreferences.setMockInitialValues({
+        PrefKeys.filterStartDate: 0,
+        PrefKeys.filterEndDate: 99999999,
+      });
+      filterStartDate = 0;
+      filterEndDate = 99999999;
+
+      // Insert booking in December 2023
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+        date: 20231215,
+        shares: 100.0,
+        value: 100.0,
+        category: 'VeryOld',
+        accountId: 1,
+      ));
+
+      final result =
+          await analysisDao.getTotalInflowsForMonth(DateTime(2023, 12, 15));
+      expect(result, 100.0); // Should now be included
+    });
+
+    test('getCategoryInflowsForMonth filters categories by timeframe',
+        () async {
+      // Insert bookings in different months
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+        date: 20231215, // Outside timeframe
+        shares: 50.0,
+        value: 50.0,
+        category: 'OldCategory',
+        accountId: 1,
+      ));
+
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+        date: 20240215, // Inside timeframe
+        shares: 100.0,
+        value: 100.0,
+        category: 'CurrentCategory',
+        accountId: 1,
+      ));
+
+      final result =
+          await analysisDao.getCategoryInflowsForMonth(DateTime(2024, 2, 15));
+
+      // Should only contain CurrentCategory, not OldCategory
+      expect(result.containsKey('CurrentCategory'), isTrue);
+      expect(result.containsKey('OldCategory'), isFalse);
+      expect(result['CurrentCategory'], 100.0);
+    });
+
+    test('Trades outside timeframe are excluded from month totals', () async {
+      // Set strict timeframe
+      SharedPreferences.setMockInitialValues({
+        PrefKeys.filterStartDate: 20240201,
+        PrefKeys.filterEndDate: 20240229,
+      });
+      filterStartDate = 20240201;
+      filterEndDate = 20240229;
+
+      // Trade in January 2024 (outside timeframe)
+      await db.into(db.trades).insert(TradesCompanion.insert(
+        datetime: 20240115120000,
+        assetId: 2,
+        type: TradeTypes.buy,
+        sourceAccountValueDelta: -10.0,
+        targetAccountValueDelta: 10.0,
+        shares: 1.0,
+        costBasis: 1.0,
+        profitAndLoss: const Value(50.0),
+        sourceAccountId: 1,
+        targetAccountId: 1,
+      ));
+
+      // Trade in February 2024 (inside timeframe)
+      await db.into(db.trades).insert(TradesCompanion.insert(
+        datetime: 20240215120000,
+        assetId: 2,
+        type: TradeTypes.buy,
+        sourceAccountValueDelta: -10.0,
+        targetAccountValueDelta: 10.0,
+        shares: 1.0,
+        costBasis: 1.0,
+        profitAndLoss: const Value(75.0),
+        sourceAccountId: 1,
+        targetAccountId: 1,
+      ));
+
+      final janResult =
+          await analysisDao.getTotalInflowsForMonth(DateTime(2024, 1, 15));
+      final febResult =
+          await analysisDao.getTotalInflowsForMonth(DateTime(2024, 2, 15));
+
+      expect(janResult, 0.0); // January is outside timeframe
+      expect(febResult, 75.0); // February includes the 75 PnL trade
+    });
+  });
+
 }

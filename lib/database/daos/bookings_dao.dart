@@ -71,14 +71,16 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
 
   Stream<List<String>> watchDistinctCategories() {
     final query = selectOnly(bookings, distinct: true)
-      ..addColumns([bookings.category]);
+      ..addColumns([bookings.category])
+      ..where(bookings.date.isBetweenValues(filterStartDate, filterEndDate));
     return query.watch().map(
         (rows) => rows.map((row) => row.read(bookings.category)!).toList());
   }
 
   Future<List<String>> getDistinctCategories() async {
     final query = selectOnly(bookings, distinct: true)
-      ..addColumns([bookings.category]);
+      ..addColumns([bookings.category])
+      ..where(bookings.date.isBetweenValues(filterStartDate, filterEndDate));
 
     final rows = await query.get();
     return rows.map((row) => row.read(bookings.category)!).toList();
