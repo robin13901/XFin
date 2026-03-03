@@ -58,7 +58,9 @@
       "Bash(flutter test --reporter expanded)",
       "Bash(flutter test test/widgets/liquid_glass_widgets_test.dart)",
       "Bash(flutter analyze lib/widgets/liquid_glass_widgets.dart)",
-      "Bash(flutter analyze test/widgets/liquid_glass_widgets_test.dart)"
+      "Bash(flutter analyze test/widgets/liquid_glass_widgets_test.dart)",
+      "Bash(claude mcp:*)",
+      "Bash(claude:*)"
     ]
   }
 }
