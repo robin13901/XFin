@@ -272,5 +272,14 @@
   "from": "Von",
   "to": "Bis",
   "noMatchingBookings": "Keine Einträge gefunden",
-  "accountType": "Kontotyp"
+  "accountType": "Kontotyp",
+  "accountInformation": "Kontoinformation",
+  "transactionStatistics": "Transaktionsstatistik",
+  "assetHoldings": "Vermögenswerte",
+  "currentBalance": "Aktueller Kontostand",
+  "netChange": "Nettoveränderung",
+  "totalInflows": "Gesamteinzahlungen",
+  "totalOutflows": "Gesamtauszahlungen",
+  "eventsPerMonth": "Ereignisse pro Monat",
+  "noAssetHoldings": "Keine Vermögenswerte"
 }

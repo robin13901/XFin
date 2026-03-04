@@ -787,4 +787,31 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get accountType => 'Account Type';
+
+  @override
+  String get accountInformation => 'Account Information';
+
+  @override
+  String get transactionStatistics => 'Transaction Statistics';
+
+  @override
+  String get assetHoldings => 'Asset Holdings';
+
+  @override
+  String get currentBalance => 'Current Balance';
+
+  @override
+  String get netChange => 'Net Change';
+
+  @override
+  String get totalInflows => 'Total Inflows';
+
+  @override
+  String get totalOutflows => 'Total Outflows';
+
+  @override
+  String get eventsPerMonth => 'Events per Month';
+
+  @override
+  String get noAssetHoldings => 'No asset holdings';
 }

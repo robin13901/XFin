@@ -1555,6 +1555,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Account Type'**
   String get accountType;
+
+  /// No description provided for @accountInformation.
+  ///
+  /// In en, this message translates to:
+  /// **'Account Information'**
+  String get accountInformation;
+
+  /// No description provided for @transactionStatistics.
+  ///
+  /// In en, this message translates to:
+  /// **'Transaction Statistics'**
+  String get transactionStatistics;
+
+  /// No description provided for @assetHoldings.
+  ///
+  /// In en, this message translates to:
+  /// **'Asset Holdings'**
+  String get assetHoldings;
+
+  /// No description provided for @currentBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'Current Balance'**
+  String get currentBalance;
+
+  /// No description provided for @netChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Net Change'**
+  String get netChange;
+
+  /// No description provided for @totalInflows.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Inflows'**
+  String get totalInflows;
+
+  /// No description provided for @totalOutflows.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Outflows'**
+  String get totalOutflows;
+
+  /// No description provided for @eventsPerMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Events per Month'**
+  String get eventsPerMonth;
+
+  /// No description provided for @noAssetHoldings.
+  ///
+  /// In en, this message translates to:
+  /// **'No asset holdings'**
+  String get noAssetHoldings;
 }
 
 class _AppLocalizationsDelegate

@@ -17,6 +17,7 @@ import '../widgets/filter/filter_badge.dart';
 import '../widgets/filter/filter_panel.dart';
 import '../widgets/filter/liquid_glass_search_bar.dart';
 import '../widgets/liquid_glass_widgets.dart';
+import 'account_detail_screen.dart';
 
 class AccountsScreen extends StatefulWidget {
   const AccountsScreen({super.key});
@@ -226,7 +227,13 @@ class _AccountsScreenState extends State<AccountsScreen> {
                             ),
                           ),
                           onTap: () {
-                            // TODO: Navigate to account analysis screen.
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => AccountDetailScreen(
+                                    accountId: account.id),
+                              ),
+                            );
                           },
                           onLongPress: () =>
                               _handleLongPress(context, db, account, l10n),

@@ -272,5 +272,14 @@
   "from": "From",
   "to": "To",
   "noMatchingBookings": "No matching entries found",
-  "accountType": "Account Type"
+  "accountType": "Account Type",
+  "accountInformation": "Account Information",
+  "transactionStatistics": "Transaction Statistics",
+  "assetHoldings": "Asset Holdings",
+  "currentBalance": "Current Balance",
+  "netChange": "Net Change",
+  "totalInflows": "Total Inflows",
+  "totalOutflows": "Total Outflows",
+  "eventsPerMonth": "Events per Month",
+  "noAssetHoldings": "No asset holdings"
 }

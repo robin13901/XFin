@@ -1,8 +1,12 @@
+import 'dart:math';
+
 import 'package:drift/drift.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/foundation.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import '../../models/filter/filter_rule.dart';
 import '../../utils/global_constants.dart';
+import '../../utils/format.dart';
 import '../app_database.dart';
 import '../filter_builder.dart';
 import '../tables.dart';
@@ -380,6 +384,141 @@ class AccountsDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
+Future<AccountDetailsData> getAccountDetails(int accountId) async {
+    final futures = await Future.wait([
+      getAccount(accountId),
+      getBalanceDeltasByDate(accountId),
+      (select(bookings)..where((b) => b.accountId.equals(accountId))).get(),
+      (select(transfers)
+            ..where((t) =>
+                t.sendingAccountId.equals(accountId) |
+                t.receivingAccountId.equals(accountId)))
+          .get(),
+      (select(trades)
+            ..where((t) =>
+                t.sourceAccountId.equals(accountId) |
+                t.targetAccountId.equals(accountId)))
+          .get(),
+      db.assetsOnAccountsDao.getAOAsForAccount(accountId),
+      db.assetsDao.getAllAssets(),
+    ]);
+
+    final account = futures[0] as Account;
+    final deltas = futures[1] as List<(int date, double delta)>;
+    final accountBookings = futures[2] as List<Booking>;
+    final accountTransfers = futures[3] as List<Transfer>;
+    final accountTrades = futures[4] as List<Trade>;
+    final aoas = futures[5] as List<AssetOnAccount>;
+    final allAssets = futures[6] as List<Asset>;
+
+    // Build balance history
+    final balanceHistory = _buildBalanceHistory(account, deltas);
+
+    // Build asset holdings (exclude base currency assetId=1)
+    final assetMap = {for (final a in allAssets) a.id: a};
+    final assetHoldings = aoas
+        .where((aoa) => aoa.assetId != 1 && aoa.shares.abs() > 1e-9)
+        .map((aoa) => AccountAssetHolding(
+              label: assetMap[aoa.assetId]?.name ?? 'Asset ${aoa.assetId}',
+              value: aoa.value,
+              assetId: aoa.assetId,
+            ))
+        .toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    // Calculate statistics
+    final totalInflows = accountBookings
+            .where((b) => b.value > 0)
+            .fold(0.0, (s, b) => s + b.value) +
+        accountTransfers
+            .where((t) => t.receivingAccountId == accountId)
+            .fold(0.0, (s, t) => s + t.value);
+    final totalOutflows = accountBookings
+            .where((b) => b.value < 0)
+            .fold(0.0, (s, b) => s + b.value.abs()) +
+        accountTransfers
+            .where((t) => t.sendingAccountId == accountId)
+            .fold(0.0, (s, t) => s + t.value);
+
+    // Event frequency calculation
+    final firstTs = balanceHistory.first.x.toInt();
+    final lastTs = balanceHistory.last.x.toInt();
+    final monthSpan =
+        max(1.0, (lastTs - firstTs) / const Duration(days: 30).inMilliseconds);
+    final eventCount =
+        accountBookings.length + accountTransfers.length + accountTrades.length;
+
+    return AccountDetailsData(
+      account: account,
+      balanceHistory: balanceHistory,
+      bookingCount: accountBookings.length,
+      transferCount: accountTransfers.length,
+      tradeCount: accountTrades.length,
+      totalInflows: totalInflows,
+      totalOutflows: totalOutflows,
+      netChange: account.balance - account.initialBalance,
+      eventFrequency: eventCount / monthSpan,
+      assetHoldings: assetHoldings,
+    );
+  }
+
+  List<FlSpot> _buildBalanceHistory(
+      Account account, List<(int date, double delta)> deltas) {
+    final history = <FlSpot>[];
+
+    if (deltas.isEmpty) {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      history.add(
+          FlSpot(today.millisecondsSinceEpoch.toDouble(), account.balance));
+      return history;
+    }
+
+    // Work backwards from current balance to reconstruct history
+    double runningBalance = account.balance;
+    final Map<DateTime, double> balanceByDate = {};
+
+    // Process deltas in reverse chronological order
+    final sortedDeltas = deltas.toList()..sort((a, b) => b.$1.compareTo(a.$1));
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    balanceByDate[today] = runningBalance;
+
+    for (final (dateInt, delta) in sortedDeltas) {
+      final date = intToDateTime(dateInt)!;
+      final dateOnly = DateTime(date.year, date.month, date.day);
+      runningBalance -= delta;
+      balanceByDate[dateOnly] = runningBalance;
+    }
+
+    // Fill in gaps between dates
+    final sortedDates = balanceByDate.keys.toList()..sort();
+    final firstDate = sortedDates.first;
+    double lastBalance = balanceByDate[firstDate]!;
+
+    for (var date = firstDate;
+        !date.isAfter(today);
+        date = date.add(const Duration(days: 1))) {
+      final dateOnly = DateTime(date.year, date.month, date.day);
+      if (balanceByDate.containsKey(dateOnly)) {
+        lastBalance = balanceByDate[dateOnly]!;
+      }
+      history.add(FlSpot(dateOnly.millisecondsSinceEpoch.toDouble(),
+          normalize(lastBalance)));
+      if (balanceByDate.containsKey(dateOnly)) {
+        // Add the delta for subsequent days
+        final deltaIndex =
+            sortedDeltas.indexWhere((d) => intToDateTime(d.$1) == dateOnly);
+        if (deltaIndex != -1) {
+          lastBalance += sortedDeltas[deltaIndex].$2;
+        }
+      }
+    }
+
+    return history;
+  }
+
 // --- TEMP: DB REBUILD --------------------------------------------------------
   Future<void> insertAllEventsFromCsv(AppLocalizations l10n) {
     return transaction(() async {
@@ -580,4 +719,42 @@ Ledger Nano X;cryptoWallet;0.0;0
   select datetime, type, source_account_id, target_account_id, asset_id, shares, cost_basis, fee, tax from trades order by datetime, type, shares*cost_basis;
 ''';
 // -----------------------------------------------------------------------------
+}
+
+class AccountDetailsData {
+  final Account account;
+  final List<FlSpot> balanceHistory;
+  final int bookingCount;
+  final int transferCount;
+  final int tradeCount;
+  final double totalInflows;
+  final double totalOutflows;
+  final double netChange;
+  final double eventFrequency;
+  final List<AccountAssetHolding> assetHoldings;
+
+  const AccountDetailsData({
+    required this.account,
+    required this.balanceHistory,
+    required this.bookingCount,
+    required this.transferCount,
+    required this.tradeCount,
+    required this.totalInflows,
+    required this.totalOutflows,
+    required this.netChange,
+    required this.eventFrequency,
+    required this.assetHoldings,
+  });
+}
+
+class AccountAssetHolding {
+  final String label;
+  final double value;
+  final int assetId;
+
+  const AccountAssetHolding({
+    required this.label,
+    required this.value,
+    required this.assetId,
+  });
 }

@@ -795,4 +795,31 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get accountType => 'Kontotyp';
+
+  @override
+  String get accountInformation => 'Kontoinformation';
+
+  @override
+  String get transactionStatistics => 'Transaktionsstatistik';
+
+  @override
+  String get assetHoldings => 'Vermögenswerte';
+
+  @override
+  String get currentBalance => 'Aktueller Kontostand';
+
+  @override
+  String get netChange => 'Nettoveränderung';
+
+  @override
+  String get totalInflows => 'Gesamteinzahlungen';
+
+  @override
+  String get totalOutflows => 'Gesamtauszahlungen';
+
+  @override
+  String get eventsPerMonth => 'Ereignisse pro Monat';
+
+  @override
+  String get noAssetHoldings => 'Keine Vermögenswerte';
 }
