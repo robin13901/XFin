@@ -1,7 +1,7 @@
 # Roadmap — Milestone 1.1.0: Code Quality & Architecture
 
 ## Overview
-6 phases focused on internal quality improvements. No new features. Ordered by dependency and impact.
+7 phases focused on internal quality improvements. No new features. Ordered by dependency and impact.
 
 ---
 
@@ -55,6 +55,12 @@
 **Requirements**: R4.1, R4.2, R4.3
 **Effort**: Medium
 **Risk**: Medium (structural changes)
+**Plans:** 3 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — Split form_fields.dart into mixin-based modules with barrel file
+- [ ] 03-02-PLAN.md — Extract calendar_screen.dart widgets into screens/calendar/ subdirectory
+- [ ] 03-03-PLAN.md — Extract timeframe helpers and data classes from analysis_dao.dart
 
 ### Tasks
 1. Split `form_fields.dart` (602 lines) into focused modules:
@@ -142,12 +148,40 @@
 
 ---
 
+## Phase 7: Test Coverage — Filter Models & Filter Widgets
+**Goal**: Add comprehensive tests for all filter model classes and filter widget files.
+**Requirements**: R1.2, R1.3, R1.4
+**Effort**: Medium (7 model files + 2 widget files to test)
+**Risk**: Low (additive, no existing code changes)
+
+### Tasks
+1. Add `test/models/filter/filter_config_test.dart` (base FilterConfig)
+2. Add `test/models/filter/booking_filter_config_test.dart`
+3. Add `test/models/filter/transfer_filter_config_test.dart`
+4. Add `test/models/filter/account_filter_config_test.dart`
+5. Add `test/models/filter/trade_filter_config_test.dart`
+6. Add `test/models/filter/asset_filter_config_test.dart`
+7. Add `test/widgets/filter/filter_panel_test.dart`
+8. Add `test/widgets/filter/filter_rule_editor_test.dart`
+9. Expand existing `test/models/filter/filter_rule_test.dart` if coverage gaps found
+10. Expand existing `test/widgets/filter/filter_badge_test.dart`, `filter_value_inputs_test.dart`, `liquid_glass_search_bar_test.dart` if coverage gaps found
+11. Run full test suite + `flutter analyze`
+
+### Success Criteria
+- Every file under `lib/models/filter/` has a corresponding test with 100% statement coverage
+- Every file under `lib/widgets/filter/` has a corresponding test with 100% statement coverage
+- Existing tests for `filter_rule`, `filter_badge`, `filter_value_inputs`, and `liquid_glass_search_bar` are expanded to cover any gaps
+- All tests pass, zero analyze issues
+
+---
+
 ## Phase Dependencies
 ```
 Phase 1 (cleanup) ──→ Phase 2 (search/filter mixin)
                   ──→ Phase 3 (refactor large files) ──→ Phase 4 (widget tests)
                                                      ──→ Phase 5 (utility tests)
 Phase 1 ──→ Phase 6 (error handling)
+Phase 2 ──→ Phase 7 (filter model & widget tests)
 ```
 
-Phase 1 should be done first (clean baseline). Phases 2, 3, and 6 can be done in parallel after Phase 1. Phases 4 and 5 depend on Phase 3 (test the refactored structure).
+Phase 1 should be done first (clean baseline). Phases 2, 3, and 6 can be done in parallel after Phase 1. Phases 4 and 5 depend on Phase 3 (test the refactored structure). Phase 7 depends on Phase 2 (filter mixin may affect filter widget behavior).
