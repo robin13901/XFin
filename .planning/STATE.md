@@ -1,9 +1,34 @@
 # State — Milestone 1.1.0: Code Quality & Architecture
 
 ## Current Phase
-Phase 2: Extract Search/Filter Mixin — **NOT PLANNED** (next to plan)
+Phase 3: Refactor Large Files — **DONE**
 
 ## Completed Phases
+### Phase 3: Refactor Large Files — **DONE**
+- **Plan 01**: Split `form_fields.dart` (602 lines) into 4 mixin modules under `lib/widgets/form_fields/`:
+  - `date_fields.dart` (150 lines) — DateFieldsMixin
+  - `dropdown_fields.dart` (227 lines) — DropdownFieldsMixin
+  - `text_fields.dart` (224 lines) — TextFieldsMixin
+  - `layout_fields.dart` (60 lines) — LayoutFieldsMixin
+  - `form_fields.dart` (25 lines) — Barrel/FormFields class composing all mixins
+  - Updated 9 consumer import paths
+- **Plan 02**: Extracted `calendar_screen.dart` (922 lines → 410 lines) into focused modules:
+  - `lib/utils/snappy_scroll_physics.dart` (30 lines) — Reusable public scroll physics
+  - `lib/screens/calendar/calendar_data.dart` (13 lines) — CalendarScreenData
+  - `lib/screens/calendar/month_summary.dart` (186 lines) — MonthHeader, MonthSummarySection, CategoryListWrapper
+  - `lib/screens/calendar/month_grid.dart` (183 lines) — MonthGrid
+  - `lib/screens/calendar/day_details.dart` (124 lines) — DayDetailsPager, DayDetailsPage, SimpleDetailRow
+- **Plan 03**: Extracted timeframe helpers and data classes from `analysis_dao.dart`:
+  - `lib/utils/timeframe_helper.dart` — 4 pure functions (getMonthStartEnd, getMonthTimeframeIntersection, monthStartDateTimeInt, monthEndDateTimeInt)
+  - `lib/database/models/analysis_models.dart` — MonthlyAnalysisSnapshot, CalendarDayDetails
+  - `test/utils/timeframe_helper_test.dart` — 20 new tests
+  - getMonthTimeframeIntersection now takes filterStart/filterEnd as parameters (pure function)
+- All 686 tests pass, zero flutter analyze issues
+
+### Phase 2: Extract Search/Filter Mixin — **DONE**
+- Created SearchFilterMixin extracting common search/filter pattern
+- Refactored 5 screens to use mixin, eliminating ~350 lines of duplicated code
+
 ### Phase 1: Dead Code Cleanup & DAO Consistency — **DONE**
 - Removed commented-out CSV import code from trades_dao.dart (70+ lines)
 - Removed unused `_onDbChanged()` method and `// ignore: unused_element` from bookings_screen.dart

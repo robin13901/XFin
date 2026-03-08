@@ -58,9 +58,9 @@
 **Plans:** 3 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Split form_fields.dart into mixin-based modules with barrel file
-- [ ] 03-02-PLAN.md — Extract calendar_screen.dart widgets into screens/calendar/ subdirectory
-- [ ] 03-03-PLAN.md — Extract timeframe helpers and data classes from analysis_dao.dart
+- [x] 03-01-PLAN.md — Split form_fields.dart into mixin-based modules with barrel file
+- [x] 03-02-PLAN.md — Extract calendar_screen.dart widgets into screens/calendar/ subdirectory
+- [x] 03-03-PLAN.md — Extract timeframe helpers and data classes from analysis_dao.dart
 
 ### Tasks
 1. Split `form_fields.dart` (602 lines) into focused modules:
