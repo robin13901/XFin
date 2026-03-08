@@ -3,7 +3,9 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:xfin/utils/format.dart';
 import 'package:xfin/utils/global_constants.dart';
+import 'package:xfin/utils/timeframe_helper.dart';
 import '../app_database.dart';
+import '../models/analysis_models.dart';
 import '../tables.dart';
 
 part 'analysis_dao.g.dart';
@@ -17,36 +19,6 @@ part 'analysis_dao.g.dart';
 class AnalysisDao extends DatabaseAccessor<AppDatabase>
     with _$AnalysisDaoMixin {
   AnalysisDao(super.db);
-
-  (int, int) _getMonthStartEnd(DateTime date) {
-    final startOfMonth = date.year * 10000 + date.month * 100 + 1;
-    final lastDayOfMonth = DateTime(date.year, date.month + 1, 0);
-    final endOfMonth = lastDayOfMonth.year * 10000 +
-        lastDayOfMonth.month * 100 +
-        lastDayOfMonth.day;
-    return (startOfMonth, endOfMonth);
-  }
-
-  /// Berechnet die Intersection zwischen Monatsgrenzen und globalem Timeframe
-  /// Gibt (effectiveStart, effectiveEnd) zurück oder null wenn keine Überschneidung
-  (int, int)? _getMonthTimeframeIntersection(DateTime date) {
-    final (monthStart, monthEnd) = _getMonthStartEnd(date);
-
-    // Berechne Intersection mit globalem Timeframe
-    final effectiveStart = monthStart > filterStartDate ? monthStart : filterStartDate;
-    final effectiveEnd = monthEnd < filterEndDate ? monthEnd : filterEndDate;
-
-    // Keine Überschneidung wenn Start > End
-    if (effectiveStart > effectiveEnd) {
-      return null;
-    }
-
-    return (effectiveStart, effectiveEnd);
-  }
-
-  int _monthStartDateTimeInt(int startDate) => startDate * 1000000;
-
-  int _monthEndDateTimeInt(int endDate) => endDate * 1000000 + 235959;
 
   Future<int> _getDaysInTimeFrame() async {
     final prefs = await SharedPreferences.getInstance();
@@ -106,8 +78,8 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
           ..where(
             trades.profitAndLoss.isBiggerThanValue(0) &
                 trades.datetime.isBetweenValues(
-                    _monthStartDateTimeInt(startOfMonth),
-                    _monthEndDateTimeInt(endOfMonth),
+                    monthStartDateTimeInt(startOfMonth),
+                    monthEndDateTimeInt(endOfMonth),
                   ),
           ))
         .map((row) => row.read(trades.profitAndLoss.sum()) ?? 0.0)
@@ -120,8 +92,8 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
           ..addColumns([trades.profitAndLoss.sum()])
           ..where(trades.profitAndLoss.isSmallerThanValue(0) &
               trades.datetime.isBetweenValues(
-                  _monthStartDateTimeInt(startOfMonth),
-                  _monthEndDateTimeInt(endOfMonth),
+                  monthStartDateTimeInt(startOfMonth),
+                  monthEndDateTimeInt(endOfMonth),
                 )))
         .map((row) => row.read(trades.profitAndLoss.sum()) ?? 0.0)
         .getSingle();
@@ -131,8 +103,8 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
     return (selectOnly(trades)
           ..addColumns([trades.fee.sum()])
           ..where(trades.datetime.isBetweenValues(
-              _monthStartDateTimeInt(startOfMonth),
-              _monthEndDateTimeInt(endOfMonth),
+              monthStartDateTimeInt(startOfMonth),
+              monthEndDateTimeInt(endOfMonth),
             )))
         .map((row) => row.read(trades.fee.sum()) ?? 0.0)
         .getSingle();
@@ -142,8 +114,8 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
     return (selectOnly(trades)
           ..addColumns([trades.tax.sum()])
           ..where(trades.datetime.isBetweenValues(
-              _monthStartDateTimeInt(startOfMonth),
-              _monthEndDateTimeInt(endOfMonth),
+              monthStartDateTimeInt(startOfMonth),
+              monthEndDateTimeInt(endOfMonth),
             )))
         .map((row) => row.read(trades.tax.sum()) ?? 0.0)
         .getSingle();
@@ -189,7 +161,7 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
 
   // Totals for month
   Future<double> getTotalInflowsForMonth(DateTime date) async {
-    final intersection = _getMonthTimeframeIntersection(date);
+    final intersection = getMonthTimeframeIntersection(date, filterStart: filterStartDate, filterEnd: filterEndDate);
 
     // Wenn der Monat außerhalb des Timeframes liegt, gib 0 zurück
     if (intersection == null) {
@@ -214,7 +186,7 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
   }
 
   Future<double> getTotalOutflowsForMonth(DateTime date) async {
-    final intersection = _getMonthTimeframeIntersection(date);
+    final intersection = getMonthTimeframeIntersection(date, filterStart: filterStartDate, filterEnd: filterEndDate);
 
     // Wenn der Monat außerhalb des Timeframes liegt, gib 0 zurück
     if (intersection == null) {
@@ -243,7 +215,7 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
   }
 
   Future<double> getProfitAndLossForMonth(DateTime date) async {
-    final intersection = _getMonthTimeframeIntersection(date);
+    final intersection = getMonthTimeframeIntersection(date, filterStart: filterStartDate, filterEnd: filterEndDate);
 
     // Wenn der Monat außerhalb des Timeframes liegt, gib 0 zurück
     if (intersection == null) {
@@ -264,8 +236,8 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
     final tradeFuture = (selectOnly(trades)
           ..addColumns([tradeResultExpression])
           ..where(trades.datetime.isBetweenValues(
-              _monthStartDateTimeInt(start),
-              _monthEndDateTimeInt(end),
+              monthStartDateTimeInt(start),
+              monthEndDateTimeInt(end),
             )))
         .map((row) => row.read(tradeResultExpression) ?? 0.0)
         .getSingle();
@@ -277,7 +249,7 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
   }
 
   Future<Map<String, double>> getCategoryInflowsForMonth(DateTime date) async {
-    final intersection = _getMonthTimeframeIntersection(date);
+    final intersection = getMonthTimeframeIntersection(date, filterStart: filterStartDate, filterEnd: filterEndDate);
 
     // Wenn der Monat außerhalb des Timeframes liegt, gib leere Map zurück
     if (intersection == null) {
@@ -318,7 +290,7 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
   }
 
   Future<Map<String, double>> getCategoryOutflowsForMonth(DateTime date) async {
-    final intersection = _getMonthTimeframeIntersection(date);
+    final intersection = getMonthTimeframeIntersection(date, filterStart: filterStartDate, filterEnd: filterEndDate);
 
     // Wenn der Monat außerhalb des Timeframes liegt, gib leere Map zurück
     if (intersection == null) {
@@ -727,43 +699,4 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
 
     return spots;
   }
-}
-
-class MonthlyAnalysisSnapshot {
-  final double inflows;
-  final double outflows;
-  final double profit;
-  final Map<String, double> categoryInflows;
-  final Map<String, double> categoryOutflows;
-
-  const MonthlyAnalysisSnapshot({
-    required this.inflows,
-    required this.outflows,
-    required this.profit,
-    required this.categoryInflows,
-    required this.categoryOutflows,
-  });
-}
-
-
-class CalendarDayDetails {
-  final DateTime day;
-  final double inflow;
-  final double outflow;
-  final double tradeNet;
-  final double net;
-  final List<Booking> bookings;
-  final List<Transfer> transfers;
-  final List<Trade> trades;
-
-  const CalendarDayDetails({
-    required this.day,
-    required this.inflow,
-    required this.outflow,
-    required this.tradeNet,
-    required this.net,
-    required this.bookings,
-    required this.transfers,
-    required this.trades,
-  });
 }

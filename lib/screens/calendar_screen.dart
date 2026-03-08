@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../app_theme.dart';
 import '../database/app_database.dart';
-import '../database/daos/analysis_dao.dart';
+import '../database/models/analysis_models.dart';
 import '../database/tables.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/database_provider.dart';

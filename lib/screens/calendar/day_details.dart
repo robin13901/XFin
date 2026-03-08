@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 
-import 'package:xfin/database/daos/analysis_dao.dart';
+import 'package:xfin/database/models/analysis_models.dart';
 import 'package:xfin/utils/snappy_scroll_physics.dart';
 import 'package:xfin/widgets/liquid_glass_widgets.dart';
 

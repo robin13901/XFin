@@ -1,4 +1,4 @@
-import 'package:xfin/database/daos/analysis_dao.dart';
+import 'package:xfin/database/models/analysis_models.dart';
 
 class CalendarScreenData {
   final DateTime month;
