@@ -168,7 +168,7 @@ class AssetsDao extends DatabaseAccessor<AppDatabase> with _$AssetsDaoMixin {
 
   Future<List<Asset>> getAllAssets() async => (select(assets)).get();
 
-  Future getAssetByTickerSymbol(String tickerSymbol) async =>
+  Future<Asset> getAssetByTickerSymbol(String tickerSymbol) async =>
       (select(assets)..where((a) => a.tickerSymbol.equals(tickerSymbol)))
           .getSingle();
 

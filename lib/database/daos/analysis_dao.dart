@@ -9,14 +9,10 @@ import '../tables.dart';
 part 'analysis_dao.g.dart';
 
 @DriftAccessor(tables: [
-  Accounts,
   Bookings,
   Transfers,
   Trades,
   PeriodicBookings,
-  PeriodicTransfers,
-  Goals,
-  AssetsOnAccounts
 ])
 class AnalysisDao extends DatabaseAccessor<AppDatabase>
     with _$AnalysisDaoMixin {

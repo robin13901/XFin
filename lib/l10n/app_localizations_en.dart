@@ -810,6 +810,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get totalOutflows => 'Total Outflows';
 
   @override
+  String get totalVolume => 'Total Volume';
+
+  @override
   String get eventsPerMonth => 'Events per Month';
 
   @override

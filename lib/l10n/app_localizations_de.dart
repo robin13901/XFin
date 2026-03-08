@@ -812,10 +812,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get netChange => 'Nettoveränderung';
 
   @override
-  String get totalInflows => 'Gesamteinzahlungen';
+  String get totalInflows => 'Gesamtzuflüsse';
 
   @override
-  String get totalOutflows => 'Gesamtauszahlungen';
+  String get totalOutflows => 'Gesamtabflüsse';
+
+  @override
+  String get totalVolume => 'Gesamtvolumen';
 
   @override
   String get eventsPerMonth => 'Ereignisse pro Monat';

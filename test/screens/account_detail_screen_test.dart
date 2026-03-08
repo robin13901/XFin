@@ -151,7 +151,7 @@ void main() {
 
   testWidgets('shows trades count for portfolio accounts',
       (tester) => tester.runAsync(() async {
-            // Create a portfolio account instead
+            // Create a portfolio account with a trade
             db = AppDatabase(NativeDatabase.memory());
             DatabaseProvider.instance.initialize(db);
 
@@ -168,6 +168,27 @@ void main() {
                       balance: const Value(5000.0),
                       initialBalance: const Value(1000.0),
                     ));
+
+            final clearingAccountId =
+                await db.into(db.accounts).insert(AccountsCompanion.insert(
+                      name: 'Clearing',
+                      type: AccountTypes.cash,
+                      balance: const Value(10000.0),
+                      initialBalance: const Value(10000.0),
+                    ));
+
+            // Insert a trade so tradeCount > 0
+            await db.into(db.trades).insert(TradesCompanion.insert(
+                  datetime: 20240101120000,
+                  type: TradeTypes.buy,
+                  sourceAccountId: clearingAccountId,
+                  targetAccountId: testAccountId,
+                  assetId: 1,
+                  shares: 10.0,
+                  costBasis: 100.0,
+                  sourceAccountValueDelta: -1000.0,
+                  targetAccountValueDelta: 1000.0,
+                ));
 
             await pumpScreen(tester);
             await tester.pumpAndSettle();

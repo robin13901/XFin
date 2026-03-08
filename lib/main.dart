@@ -19,6 +19,7 @@ import 'package:xfin/utils/global_constants.dart';
 import 'package:xfin/widgets/dialogs.dart';
 import 'package:xfin/widgets/liquid_glass_widgets.dart';
 import 'package:xfin/widgets/more_pane.dart';
+import 'package:xfin/widgets/nav_bar_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -152,7 +153,10 @@ class _MainScreenState extends State<MainScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          Center(child: _widgetOptions.elementAt(_selectedIndex)),
+          Center(child: NavBarController(
+            visible: _navBarVisible,
+            child: _widgetOptions.elementAt(_selectedIndex),
+          )),
           Positioned(
             bottom: 16,
             left: 8,

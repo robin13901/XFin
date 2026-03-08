@@ -52,7 +52,7 @@ class AnalysisLineChartSection extends StatelessWidget {
     required this.onPointerDown,
     required this.onPointerUpOrCancel,
     required this.valueFormatter,
-    this.showSma200Toggle = false,
+    this.showSma200Toggle = true,
     this.valueLabel = "",
     this.topRight,
   });
@@ -377,38 +377,46 @@ class AnalysisLineChartSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        Wrap(
-          spacing: 12,
-          runSpacing: 4,
-          alignment: WrapAlignment.center,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _buildIndicatorToggle(isDark, showSma, Colors.orange, '30-SMA', (v) => onShowSmaChanged(v)),
+            _buildCompactIndicatorToggle(isDark, showSma, Colors.orange, 'SMA', (v) => onShowSmaChanged(v)),
+            const SizedBox(width: 8),
             if (showSma200Toggle)
-              _buildIndicatorToggle(isDark, showSma200, Colors.green, '200-SMA', (v) => onShowSma200Changed?.call(v)),
-            _buildIndicatorToggle(isDark, showEma, Colors.purple, '30-EMA', (v) => onShowEmaChanged(v)),
-            _buildIndicatorToggle(isDark, showBb, Colors.blue, '20-BB', (v) => onShowBbChanged(v)),
+              _buildCompactIndicatorToggle(isDark, showSma200, Colors.green, 'SMA₂₀₀', (v) => onShowSma200Changed?.call(v)),
+            if (showSma200Toggle)
+              const SizedBox(width: 8),
+            _buildCompactIndicatorToggle(isDark, showEma, Colors.purple, 'EMA', (v) => onShowEmaChanged(v)),
+            const SizedBox(width: 8),
+            _buildCompactIndicatorToggle(isDark, showBb, Colors.blue, 'BB', (v) => onShowBbChanged(v)),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildIndicatorToggle(bool isDark, bool selected, Color color, String label, ValueChanged<bool> onChanged) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Checkbox(
-          value: selected,
-          activeColor: color,
-          onChanged: (value) => onChanged(value ?? false),
-        ),
-        Text(
-          label,
-          style: TextStyle(
-            color: selected ? color : isDark ? Colors.white : Colors.black,
+  Widget _buildCompactIndicatorToggle(bool isDark, bool selected, Color color, String label, ValueChanged<bool> onChanged) {
+    return GestureDetector(
+      onTap: () => onChanged(!selected),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? color.withValues(alpha: 0.2) : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected ? color : (isDark ? Colors.white38 : Colors.black26),
+            width: 1.5,
           ),
         ),
-      ],
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: selected ? color : (isDark ? Colors.white70 : Colors.black54),
+          ),
+        ),
+      ),
     );
   }
 

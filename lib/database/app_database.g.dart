@@ -4593,8 +4593,14 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $AssetsOnAccountsTable assetsOnAccounts =
       $AssetsOnAccountsTable(this);
   late final $GoalsTable goals = $GoalsTable(this);
+  late final Index accountsIsArchived = Index('accounts_is_archived',
+      'CREATE INDEX accounts_is_archived ON accounts (is_archived)');
   late final Index bookingsAccountIdDate = Index('bookings_account_id_date',
       'CREATE INDEX bookings_account_id_date ON bookings (account_id, date)');
+  late final Index bookingsAssetId = Index('bookings_asset_id',
+      'CREATE INDEX bookings_asset_id ON bookings (asset_id)');
+  late final Index bookingsDateShares = Index('bookings_date_shares',
+      'CREATE INDEX bookings_date_shares ON bookings (date, shares)');
   late final Index transfersSendingAccountIdDate = Index(
       'transfers_sending_account_id_date',
       'CREATE INDEX transfers_sending_account_id_date ON transfers (sending_account_id, date)');
@@ -4644,7 +4650,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         periodicTransfers,
         assetsOnAccounts,
         goals,
+        accountsIsArchived,
         bookingsAccountIdDate,
+        bookingsAssetId,
+        bookingsDateShares,
         transfersSendingAccountIdDate,
         transfersReceivingAccountIdDate,
         tradesAssetIdDatetime,

@@ -13,6 +13,7 @@ import 'package:xfin/database/daos/trades_dao.dart';
 import '../database/tables.dart';
 import '../models/filter/filter_rule.dart';
 import '../models/filter/trade_filter_config.dart';
+import '../mixins/nav_bar_visibility_mixin.dart';
 import '../providers/database_provider.dart';
 import '../widgets/filter/filter_badge.dart';
 import '../widgets/filter/filter_panel.dart';
@@ -28,9 +29,13 @@ class TradesScreen extends StatefulWidget {
 }
 
 class _TradesScreenState extends State<TradesScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, NavBarVisibilityMixin<TradesScreen> {
   late final AnimationController _sheetAnimController;
   late final AppDatabase db;
+  final ValueNotifier<bool> _navBarVisible = ValueNotifier<bool>(true);
+
+  @override
+  ValueNotifier<bool>? get localNavBarVisible => _navBarVisible;
 
   // Preload futures
   late final Future<List<Asset>> _assetsFuture;
@@ -61,6 +66,7 @@ class _TradesScreenState extends State<TradesScreen>
     db = context.read<DatabaseProvider>().db;
     _assetsFuture = db.assetsDao.getAllAssets();
     _accountsFuture = db.accountsDao.getAllAccounts();
+    _searchFocusNode.addListener(_onSearchFocusChanged);
   }
 
   @override
@@ -68,8 +74,14 @@ class _TradesScreenState extends State<TradesScreen>
     _sheetAnimController.dispose();
     _searchController.dispose();
     _searchDebounce?.cancel();
+    _searchFocusNode.removeListener(_onSearchFocusChanged);
     _searchFocusNode.dispose();
+    _navBarVisible.dispose();
     super.dispose();
+  }
+
+  void _onSearchFocusChanged() {
+    setSearchFocused(_searchFocusNode.hasFocus);
   }
 
   void _onSearchChanged(String value) {
@@ -85,6 +97,7 @@ class _TradesScreenState extends State<TradesScreen>
     setState(() {
       _showSearchBar = !_showSearchBar;
       if (!_showSearchBar) {
+        _searchFocusNode.unfocus();
         _searchController.clear();
         if (_searchQuery.isNotEmpty) {
           _searchQuery = '';
@@ -127,6 +140,7 @@ class _TradesScreenState extends State<TradesScreen>
     final statusBarHeight = MediaQuery.of(context).padding.top;
     // Add space for search bar only when visible
     final searchBarSpace = _showSearchBar ? 60.0 : 0.0;
+    updateKeyboardVisibility(context);
 
     return Scaffold(
       body: Stack(
@@ -247,7 +261,10 @@ class _TradesScreenState extends State<TradesScreen>
               config: buildTradeFilterConfig(l10n, db),
               currentRules: _filterRules,
               onRulesChanged: _onFilterRulesChanged,
-              onClose: () => setState(() => _showFilterPanel = false),
+              onClose: () {
+                setState(() => _showFilterPanel = false);
+                setFilterPanelOpen(false);
+              },
             ),
 
           buildLiquidGlassAppBar(
@@ -265,12 +282,21 @@ class _TradesScreenState extends State<TradesScreen>
                 count: _activeFilterCount,
                 child: IconButton(
                   icon: const Icon(Icons.filter_list, size: 22),
-                  onPressed: () => setState(() => _showFilterPanel = true),
+                  onPressed: () {
+                    setState(() => _showFilterPanel = true);
+                    setFilterPanelOpen(true);
+                  },
                 ),
               ),
             ],
           ),
-          buildFAB(context: context, onTap: () => _showTradeForm(context)),
+          ValueListenableBuilder<bool>(
+            valueListenable: _navBarVisible,
+            builder: (context, visible, child) {
+              return visible ? child! : const SizedBox.shrink();
+            },
+            child: buildFAB(context: context, onTap: () => _showTradeForm(context)),
+          ),
         ],
       ),
     );

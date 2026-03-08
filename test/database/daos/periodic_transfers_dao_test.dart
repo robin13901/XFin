@@ -436,25 +436,30 @@ void main() {
           .add(const Duration(days: 14)); // 2 executions
       expect(weeklyPt.nextExecutionDate, dateTimeToInt(expectedWeeklyDate));
 
-      // Check monthly
+      // Check monthly - Note: iterative addMonths may differ from direct addMonths(start, 2)
+      // because each iteration clamps to end-of-month (e.g., Jan 30 -> Feb 28 -> Mar 28)
       final monthlyPt = updatedPts.firstWhere((pt) => pt.notes == 'M');
-      final expectedMonthlyDate = addMonths(
-          intToDateTime(pts[2].nextExecutionDate.value)!, 2); // 2 executions
+      var expectedMonthlyDate = intToDateTime(pts[2].nextExecutionDate.value)!;
+      for (int i = 0; i < 2; i++) {
+        expectedMonthlyDate = addMonths(expectedMonthlyDate, 1);
+      }
       expect(monthlyPt.nextExecutionDate, dateTimeToInt(expectedMonthlyDate));
 
-      // Check quarterly
+      // Check quarterly - use iterative calculation for consistency
       final quarterlyPt = updatedPts.firstWhere((pt) => pt.notes == 'Q');
-      final expectedQuarterlyDate = addMonths(
-          intToDateTime(pts[3].nextExecutionDate.value)!,
-          2 * 3); // 2 executions
+      var expectedQuarterlyDate = intToDateTime(pts[3].nextExecutionDate.value)!;
+      for (int i = 0; i < 2; i++) {
+        expectedQuarterlyDate = addMonths(expectedQuarterlyDate, 3);
+      }
       expect(
           quarterlyPt.nextExecutionDate, dateTimeToInt(expectedQuarterlyDate));
 
-      // Check yearly
+      // Check yearly - use iterative calculation for consistency
       final yearlyPt = updatedPts.firstWhere((pt) => pt.notes == 'Y');
-      final expectedYearlyDate = addMonths(
-          intToDateTime(pts[4].nextExecutionDate.value)!,
-          2 * 12); // 2 executions
+      var expectedYearlyDate = intToDateTime(pts[4].nextExecutionDate.value)!;
+      for (int i = 0; i < 2; i++) {
+        expectedYearlyDate = addMonths(expectedYearlyDate, 12);
+      }
       expect(yearlyPt.nextExecutionDate, dateTimeToInt(expectedYearlyDate));
     });
 

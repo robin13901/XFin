@@ -43,6 +43,7 @@ class LiquidGlassSearchBar extends StatelessWidget {
                     controller: controller,
                     focusNode: focusNode,
                     onChanged: onChanged,
+                    textCapitalization: TextCapitalization.words,
                     style: theme.textTheme.bodyMedium?.copyWith(color: textColor),
                     decoration: InputDecoration(
                       hintText: hintText,

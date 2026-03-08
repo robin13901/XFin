@@ -8,6 +8,7 @@ import 'package:xfin/l10n/app_localizations.dart';
 import '../database/daos/transfers_dao.dart';
 import '../models/filter/filter_rule.dart';
 import '../models/filter/transfer_filter_config.dart';
+import '../mixins/nav_bar_visibility_mixin.dart';
 import '../providers/database_provider.dart';
 import '../utils/format.dart';
 import '../widgets/dialogs.dart';
@@ -25,10 +26,14 @@ class TransfersScreen extends StatefulWidget {
 }
 
 class _TransfersScreenState extends State<TransfersScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, NavBarVisibilityMixin<TransfersScreen> {
   late final AnimationController _sheetAnimController;
   late final AppDatabase db;
   late final Future<List<Asset>> assetsFuture;
+  final ValueNotifier<bool> _navBarVisible = ValueNotifier<bool>(true);
+
+  @override
+  ValueNotifier<bool>? get localNavBarVisible => _navBarVisible;
 
   // Search state
   bool _showSearchBar = false;
@@ -50,6 +55,7 @@ class _TransfersScreenState extends State<TransfersScreen>
     assetsFuture = db.assetsDao.getAllAssets();
     _sheetAnimController =
         AnimationController(vsync: this, duration: Duration.zero)..value = 1.0;
+    _searchFocusNode.addListener(_onSearchFocusChanged);
   }
 
   @override
@@ -57,8 +63,14 @@ class _TransfersScreenState extends State<TransfersScreen>
     _sheetAnimController.dispose();
     _searchController.dispose();
     _searchDebounce?.cancel();
+    _searchFocusNode.removeListener(_onSearchFocusChanged);
     _searchFocusNode.dispose();
+    _navBarVisible.dispose();
     super.dispose();
+  }
+
+  void _onSearchFocusChanged() {
+    setSearchFocused(_searchFocusNode.hasFocus);
   }
 
   Future<void> _showTransferForm(
@@ -87,6 +99,7 @@ class _TransfersScreenState extends State<TransfersScreen>
     setState(() {
       _showSearchBar = !_showSearchBar;
       if (!_showSearchBar) {
+        _searchFocusNode.unfocus();
         _searchController.clear();
         if (_searchQuery.isNotEmpty) {
           _searchQuery = '';
@@ -109,6 +122,7 @@ class _TransfersScreenState extends State<TransfersScreen>
     final statusBarHeight = MediaQuery.of(context).padding.top;
     // Add space for search bar only when visible
     final searchBarSpace = _showSearchBar ? 60.0 : 0.0;
+    updateKeyboardVisibility(context);
 
     return Scaffold(
       body: Stack(
@@ -220,7 +234,10 @@ class _TransfersScreenState extends State<TransfersScreen>
               config: buildTransferFilterConfig(l10n, db),
               currentRules: _filterRules,
               onRulesChanged: _onFilterRulesChanged,
-              onClose: () => setState(() => _showFilterPanel = false),
+              onClose: () {
+                setState(() => _showFilterPanel = false);
+                setFilterPanelOpen(false);
+              },
             ),
 
           buildLiquidGlassAppBar(
@@ -238,13 +255,22 @@ class _TransfersScreenState extends State<TransfersScreen>
                 count: _activeFilterCount,
                 child: IconButton(
                   icon: const Icon(Icons.filter_list, size: 22),
-                  onPressed: () => setState(() => _showFilterPanel = true),
+                  onPressed: () {
+                    setState(() => _showFilterPanel = true);
+                    setFilterPanelOpen(true);
+                  },
                 ),
               ),
             ],
           ),
-          buildFAB(
-              context: context, onTap: () => _showTransferForm(context, null)),
+          ValueListenableBuilder<bool>(
+            valueListenable: _navBarVisible,
+            builder: (context, visible, child) {
+              return visible ? child! : const SizedBox.shrink();
+            },
+            child: buildFAB(
+                context: context, onTap: () => _showTransferForm(context, null)),
+          ),
         ],
       ),
     );

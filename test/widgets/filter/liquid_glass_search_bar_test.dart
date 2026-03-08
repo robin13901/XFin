@@ -72,5 +72,12 @@ void main() {
 
       expect(find.byIcon(Icons.search), findsOneWidget);
     });
+
+    testWidgets('has TextCapitalization.words', (tester) async {
+      await tester.pumpWidget(buildTestWidget());
+
+      final textField = tester.widget<TextField>(find.byType(TextField));
+      expect(textField.textCapitalization, TextCapitalization.words);
+    });
   });
 }

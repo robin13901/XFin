@@ -8,6 +8,7 @@ import 'package:xfin/widgets/forms/account_form.dart';
 
 import '../models/filter/account_filter_config.dart';
 import '../models/filter/filter_rule.dart';
+import '../mixins/nav_bar_visibility_mixin.dart';
 import '../providers/base_currency_provider.dart';
 import '../providers/database_provider.dart';
 import '../utils/format.dart';
@@ -30,7 +31,8 @@ class AccountsScreen extends StatefulWidget {
   State<AccountsScreen> createState() => _AccountsScreenState();
 }
 
-class _AccountsScreenState extends State<AccountsScreen> {
+class _AccountsScreenState extends State<AccountsScreen>
+    with NavBarVisibilityMixin<AccountsScreen> {
   // Search state
   bool _showSearchBar = false;
   final TextEditingController _searchController = TextEditingController();
@@ -45,11 +47,23 @@ class _AccountsScreenState extends State<AccountsScreen> {
   int get _activeFilterCount => _filterRules.length;
 
   @override
+  void initState() {
+    super.initState();
+    _searchFocusNode.addListener(_onSearchFocusChanged);
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     _searchDebounce?.cancel();
+    _searchFocusNode.removeListener(_onSearchFocusChanged);
     _searchFocusNode.dispose();
+    restoreNavBarVisibility();
     super.dispose();
+  }
+
+  void _onSearchFocusChanged() {
+    setSearchFocused(_searchFocusNode.hasFocus);
   }
 
   void _onSearchChanged(String value) {
@@ -65,6 +79,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
     setState(() {
       _showSearchBar = !_showSearchBar;
       if (!_showSearchBar) {
+        _searchFocusNode.unfocus();
         _searchController.clear();
         if (_searchQuery.isNotEmpty) {
           _searchQuery = '';
@@ -181,6 +196,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
     final statusBarHeight = MediaQuery.of(context).padding.top;
     // Add space for search bar only when visible
     final searchBarSpace = _showSearchBar ? 60.0 : 0.0;
+    updateKeyboardVisibility(context);
 
     return Scaffold(
       body: Stack(
@@ -229,9 +245,11 @@ class _AccountsScreenState extends State<AccountsScreen> {
                           onTap: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(
-                                builder: (_) => AccountDetailScreen(
-                                    accountId: account.id),
+                              PageRouteBuilder(
+                                pageBuilder: (_, __, ___) =>
+                                    AccountDetailScreen(accountId: account.id),
+                                transitionDuration: Duration.zero,
+                                reverseTransitionDuration: Duration.zero,
                               ),
                             );
                           },
@@ -293,7 +311,10 @@ class _AccountsScreenState extends State<AccountsScreen> {
               config: buildAccountFilterConfig(l10n),
               currentRules: _filterRules,
               onRulesChanged: _onFilterRulesChanged,
-              onClose: () => setState(() => _showFilterPanel = false),
+              onClose: () {
+                setState(() => _showFilterPanel = false);
+                setFilterPanelOpen(false);
+              },
             ),
 
           buildLiquidGlassAppBar(
@@ -312,7 +333,10 @@ class _AccountsScreenState extends State<AccountsScreen> {
                 count: _activeFilterCount,
                 child: IconButton(
                   icon: const Icon(Icons.filter_list, size: 22),
-                  onPressed: () => setState(() => _showFilterPanel = true),
+                  onPressed: () {
+                    setState(() => _showFilterPanel = true);
+                    setFilterPanelOpen(true);
+                  },
                 ),
               ),
             ],

@@ -245,10 +245,10 @@ void main() {
         await pumpWidget(tester);
         await tester.pumpAndSettle();
 
-        // The indicator checkboxes may be off-screen; ensure they are visible before tapping
-        final smaFinder = find.text('30-SMA');
-        final emaFinder = find.text('30-EMA');
-        final bbFinder = find.text('20-BB');
+        // The indicator toggles may be off-screen; ensure they are visible before tapping
+        final smaFinder = find.text('SMA');
+        final emaFinder = find.text('EMA');
+        final bbFinder = find.text('BB');
 
         // Scroll until visible if necessary
         if (smaFinder.evaluate().isEmpty) {

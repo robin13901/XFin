@@ -51,6 +51,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   late AppDatabase db;
   String _selectedRange = '1W';
   bool _showSma = false;
+  bool _showSma200 = false;
   bool _showEma = false;
   bool _showBb = false;
   bool _showInflows = true;
@@ -184,10 +185,13 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                       selectedRange: _selectedRange,
                       onRangeSelected: _onRangeSelected,
                       showSma: _showSma,
+                      showSma200: _showSma200,
                       showEma: _showEma,
                       showBb: _showBb,
                       onShowSmaChanged: (value) =>
                           setState(() => _showSma = value),
+                      onShowSma200Changed: (value) =>
+                          setState(() => _showSma200 = value),
                       onShowEmaChanged: (value) =>
                           setState(() => _showEma = value),
                       onShowBbChanged: (value) => setState(() => _showBb = value),

@@ -8,7 +8,7 @@ import '../tables.dart';
 
 part 'transfers_dao.g.dart';
 
-@DriftAccessor(tables: [Transfers, Accounts, Assets, AssetsOnAccounts])
+@DriftAccessor(tables: [Transfers, Accounts, Assets])
 class TransfersDao extends DatabaseAccessor<AppDatabase>
     with _$TransfersDaoMixin {
   TransfersDao(super.db);

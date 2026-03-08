@@ -29,6 +29,7 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
   late Future<AccountDetailsData> _future;
   String _range = '1W';
   bool _showSma = false;
+  bool _showSma200 = false;
   bool _showEma = false;
   bool _showBb = false;
   LineBarSpot? _touchedSpot;
@@ -85,12 +86,13 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
                         });
                       },
                       showSma: _showSma,
-                      showSma200: false,
+                      showSma200: _showSma200,
                       showEma: _showEma,
                       showBb: _showBb,
-                      showSma200Toggle: false,
                       onShowSmaChanged: (value) =>
                           setState(() => _showSma = value),
+                      onShowSma200Changed: (value) =>
+                          setState(() => _showSma200 = value),
                       onShowEmaChanged: (value) =>
                           setState(() => _showEma = value),
                       onShowBbChanged: (value) =>
@@ -113,28 +115,38 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
                           .titleMedium
                           ?.copyWith(fontWeight: FontWeight.w700),
                     ),
-                    StatTile(
-                      label: l10n.currentBalance,
-                      value: formatCurrency(data.account.balance),
-                    ),
-                    StatTile(
-                      label: l10n.initialBalance,
-                      value: formatCurrency(data.account.initialBalance),
-                    ),
-                    StatTile(
-                      label: l10n.netChange,
-                      value: formatCurrency(data.netChange),
-                      valueStyle: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                        color: data.netChange >= 0 ? AppColors.green : AppColors.red,
-                      ),
-                    ),
-                    StatTile(
-                      label: l10n.accountType,
-                      value: getAccountTypeName(l10n, data.account.type),
-                    ),
                     const SizedBox(height: 12),
+                    // Design A: Card Grid for Account Information
+                    DashboardCardGrid(
+                      items: [
+                        DashboardCardItem(
+                          label: l10n.currentBalance,
+                          value: formatCurrency(data.account.balance),
+                          icon: Icons.account_balance_wallet,
+                          iconColor: Colors.blue,
+                        ),
+                        DashboardCardItem(
+                          label: l10n.initialBalance,
+                          value: formatCurrency(data.account.initialBalance),
+                          icon: Icons.flag,
+                          iconColor: Colors.orange,
+                        ),
+                        DashboardCardItem(
+                          label: l10n.netChange,
+                          value: formatCurrency(data.netChange),
+                          icon: data.netChange >= 0 ? Icons.trending_up : Icons.trending_down,
+                          iconColor: data.netChange >= 0 ? AppColors.green : AppColors.red,
+                          valueColor: data.netChange >= 0 ? AppColors.green : AppColors.red,
+                        ),
+                        DashboardCardItem(
+                          label: l10n.accountType,
+                          value: getAccountTypeName(l10n, data.account.type),
+                          icon: _getAccountTypeIcon(data.account.type),
+                          iconColor: Colors.purple,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
                     SectionTitle(
                       title: l10n.transactionStatistics,
                       style: Theme.of(context)
@@ -142,33 +154,58 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
                           .titleMedium
                           ?.copyWith(fontWeight: FontWeight.w700),
                     ),
-                    StatTile(
-                      label: l10n.bookings,
-                      value: data.bookingCount.toString(),
-                    ),
-                    StatTile(
-                      label: l10n.transfers,
-                      value: data.transferCount.toString(),
-                    ),
-                    if (data.account.type == AccountTypes.portfolio ||
-                        data.account.type == AccountTypes.cryptoWallet)
-                      StatTile(
-                        label: l10n.trades,
-                        value: data.tradeCount.toString(),
-                      ),
-                    StatTile(
-                      label: l10n.totalInflows,
-                      value: formatCurrency(data.totalInflows),
-                    ),
-                    StatTile(
-                      label: l10n.totalOutflows,
-                      value: formatCurrency(data.totalOutflows),
-                    ),
-                    StatTile(
-                      label: l10n.eventsPerMonth,
-                      value: data.eventFrequency.toStringAsFixed(1),
-                    ),
                     const SizedBox(height: 12),
+                    // Design B: Stats List for Transaction Statistics
+                    DashboardStatsList(
+                      items: [
+                        DashboardStatItem(
+                          label: l10n.bookings,
+                          value: data.bookingCount.toString(),
+                          icon: Icons.receipt_long,
+                          accentColor: Colors.blue,
+                        ),
+                        DashboardStatItem(
+                          label: l10n.transfers,
+                          value: data.transferCount.toString(),
+                          icon: Icons.swap_horiz,
+                          accentColor: Colors.orange,
+                        ),
+                        if (data.tradeCount > 0)
+                          DashboardStatItem(
+                            label: l10n.trades,
+                            value: data.tradeCount.toString(),
+                            icon: Icons.candlestick_chart,
+                            accentColor: Colors.purple,
+                          ),
+                        DashboardStatItem(
+                          label: l10n.totalInflows,
+                          value: formatCurrency(data.totalInflows),
+                          icon: Icons.arrow_downward,
+                          accentColor: AppColors.green,
+                          valueColor: AppColors.green,
+                        ),
+                        DashboardStatItem(
+                          label: l10n.totalOutflows,
+                          value: formatCurrency(data.totalOutflows),
+                          icon: Icons.arrow_upward,
+                          accentColor: AppColors.red,
+                          valueColor: AppColors.red,
+                        ),
+                        DashboardStatItem(
+                          label: l10n.totalVolume,
+                          value: formatCurrency(data.totalVolume),
+                          icon: Icons.width_full_outlined,
+                          accentColor: Colors.indigoAccent,
+                        ),
+                        DashboardStatItem(
+                          label: l10n.eventsPerMonth,
+                          value: data.eventFrequency.toStringAsFixed(1),
+                          icon: Icons.calendar_month,
+                          accentColor: Colors.teal,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
                     SectionTitle(
                       title: l10n.assetHoldings,
                       style: Theme.of(context)
@@ -209,5 +246,18 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
         },
       ),
     );
+  }
+
+  IconData _getAccountTypeIcon(AccountTypes type) {
+    switch (type) {
+      case AccountTypes.cash:
+        return Icons.payments;
+      case AccountTypes.bankAccount:
+        return Icons.account_balance;
+      case AccountTypes.portfolio:
+        return Icons.show_chart;
+      case AccountTypes.cryptoWallet:
+        return Icons.currency_bitcoin;
+    }
   }
 }

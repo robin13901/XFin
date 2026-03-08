@@ -280,6 +280,7 @@
   "netChange": "Net Change",
   "totalInflows": "Total Inflows",
   "totalOutflows": "Total Outflows",
+  "totalVolume": "Total Volume",
   "eventsPerMonth": "Events per Month",
   "noAssetHoldings": "No asset holdings"
 }

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter test test/screens/account_detail_screen_test.dart --name \"shows trades count\")",
+      "Bash(flutter test test/screens/account_detail_screen_test.dart --name \"shows asset holdings\")",
+      "Bash(flutter test test/screens/accounts_screen_test.dart test/screens/bookings_screen_test.dart)",
+      "Bash(flutter test test/screens/ test/widgets/nav_bar_controller_test.dart test/mixins/nav_bar_visibility_mixin_test.dart test/widgets/filter/filter_value_inputs_test.dart test/widgets/filter/liquid_glass_search_bar_test.dart)",
+      "Bash(flutter test test/mixins/nav_bar_visibility_mixin_test.dart)"
+    ]
+  }
+}

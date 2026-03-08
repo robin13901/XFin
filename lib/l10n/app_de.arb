@@ -278,8 +278,9 @@
   "assetHoldings": "Vermögenswerte",
   "currentBalance": "Aktueller Kontostand",
   "netChange": "Nettoveränderung",
-  "totalInflows": "Gesamteinzahlungen",
-  "totalOutflows": "Gesamtauszahlungen",
+  "totalInflows": "Gesamtzuflüsse",
+  "totalOutflows": "Gesamtabflüsse",
+  "totalVolume": "Gesamtvolumen",
   "eventsPerMonth": "Ereignisse pro Monat",
   "noAssetHoldings": "Keine Vermögenswerte"
 }

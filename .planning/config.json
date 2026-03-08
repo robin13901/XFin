@@ -1,0 +1,19 @@
+{
+  "project_name": "XFin",
+  "milestone": "1.1.0",
+  "milestone_title": "Code Quality & Architecture",
+  "created": "2026-03-08",
+  "workflow": {
+    "research": false,
+    "planning": true,
+    "verification": true,
+    "testing": true,
+    "commits": true
+  },
+  "preferences": {
+    "test_command": "flutter test",
+    "lint_command": "flutter analyze",
+    "language": "dart",
+    "framework": "flutter"
+  }
+}

@@ -7,7 +7,7 @@ import '../tables.dart';
 
 part 'periodic_bookings_dao.g.dart';
 
-@DriftAccessor(tables: [PeriodicBookings, Accounts])
+@DriftAccessor(tables: [PeriodicBookings, Accounts, Assets])
 class PeriodicBookingsDao extends DatabaseAccessor<AppDatabase>
     with _$PeriodicBookingsDaoMixin {
   PeriodicBookingsDao(super.db);

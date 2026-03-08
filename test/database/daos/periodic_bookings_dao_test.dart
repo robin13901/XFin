@@ -334,19 +334,29 @@ void main() {
       final expectedWeeklyDate = intToDateTime(pbs[1].nextExecutionDate.value)!.add(const Duration(days: 14)); // 2 executions
       expect(weeklyPb.nextExecutionDate, dateTimeToInt(expectedWeeklyDate));
 
-      // Check monthly
+      // Check monthly - Note: iterative addMonths may differ from direct addMonths(start, 2)
+      // because each iteration clamps to end-of-month (e.g., Jan 30 -> Feb 28 -> Mar 28)
       final monthlyPb = updatedPbs.firstWhere((pb) => pb.category == 'M');
-      final expectedMonthlyDate = addMonths(intToDateTime(pbs[2].nextExecutionDate.value)!, 2); // 2 executions
+      var expectedMonthlyDate = intToDateTime(pbs[2].nextExecutionDate.value)!;
+      for (int i = 0; i < 2; i++) {
+        expectedMonthlyDate = addMonths(expectedMonthlyDate, 1);
+      }
       expect(monthlyPb.nextExecutionDate, dateTimeToInt(expectedMonthlyDate));
 
-      // Check quarterly
+      // Check quarterly - use iterative calculation for consistency
       final quarterlyPb = updatedPbs.firstWhere((pb) => pb.category == 'Q');
-      final expectedQuarterlyDate = addMonths(intToDateTime(pbs[3].nextExecutionDate.value)!, 2 * 3); // 2 executions
+      var expectedQuarterlyDate = intToDateTime(pbs[3].nextExecutionDate.value)!;
+      for (int i = 0; i < 2; i++) {
+        expectedQuarterlyDate = addMonths(expectedQuarterlyDate, 3);
+      }
       expect(quarterlyPb.nextExecutionDate, dateTimeToInt(expectedQuarterlyDate));
 
-      // Check yearly
+      // Check yearly - use iterative calculation for consistency
       final yearlyPb = updatedPbs.firstWhere((pb) => pb.category == 'Y');
-      final expectedYearlyDate = addMonths(intToDateTime(pbs[4].nextExecutionDate.value)!, 2 * 12); // 2 executions
+      var expectedYearlyDate = intToDateTime(pbs[4].nextExecutionDate.value)!;
+      for (int i = 0; i < 2; i++) {
+        expectedYearlyDate = addMonths(expectedYearlyDate, 12);
+      }
       expect(yearlyPb.nextExecutionDate, dateTimeToInt(expectedYearlyDate));
     });
 

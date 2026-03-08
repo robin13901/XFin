@@ -60,7 +60,9 @@
       "Bash(flutter analyze lib/widgets/liquid_glass_widgets.dart)",
       "Bash(flutter analyze test/widgets/liquid_glass_widgets_test.dart)",
       "Bash(claude mcp:*)",
-      "Bash(claude:*)"
+      "Bash(claude:*)",
+      "Bash(flutter test test/screens/account_detail_screen_test.dart)",
+      "Bash(flutter test test/database/daos/trades_dao_test.dart test/database/daos/periodic_transfers_dao_test.dart)"
     ]
   }
 }

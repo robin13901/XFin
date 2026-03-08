@@ -1,0 +1,29 @@
+{
+  "task_types": {
+    "dead-code-cleanup": {
+      "best_approach": "sequential",
+      "average_tasks": 5,
+      "success_rate": 100,
+      "sample_size": 1,
+      "notes": "Low risk, fast iteration. Always run tests after each removal.",
+      "common_deviations": ["Skip renaming widely-used public APIs"]
+    },
+    "drift-table-declaration-audit": {
+      "best_approach": "sequential-conservative",
+      "average_tasks": 10,
+      "success_rate": 100,
+      "sample_size": 1,
+      "notes": "Must regenerate .g.dart files after changes. Be conservative — keep declarations if unsure.",
+      "common_deviations": ["Some DAOs access tables via db.otherDao, not needing direct declaration"]
+    },
+    "flutter-widget-test-fix": {
+      "best_approach": "debug-first",
+      "average_tasks": 3,
+      "success_rate": 100,
+      "sample_size": 1,
+      "notes": "When FutureBuilder shows error state, catch the actual exception in test to diagnose. Common issue: wrong datetime format in test data.",
+      "common_deviations": []
+    }
+  },
+  "updated_at": "2026-03-08"
+}

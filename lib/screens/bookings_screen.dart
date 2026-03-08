@@ -7,6 +7,7 @@ import 'package:xfin/l10n/app_localizations.dart';
 
 import '../constants/spacing.dart';
 import '../mixins/database_provider_mixin.dart';
+import '../mixins/nav_bar_visibility_mixin.dart';
 import '../models/filter/booking_filter_config.dart';
 import '../models/filter/filter_rule.dart';
 import '../utils/format.dart';
@@ -30,7 +31,7 @@ class BookingsScreen extends StatefulWidget {
 }
 
 class _BookingsScreenState extends State<BookingsScreen>
-    with DatabaseProviderMixin<BookingsScreen> {
+    with DatabaseProviderMixin<BookingsScreen>, NavBarVisibilityMixin<BookingsScreen> {
   late final ScrollController _scrollController;
   final List<BookingWithAccountAndAsset> _items = [];
 
@@ -61,6 +62,7 @@ class _BookingsScreenState extends State<BookingsScreen>
   void initState() {
     super.initState();
     _scrollController = ScrollController()..addListener(_onScroll);
+    _searchFocusNode.addListener(_onSearchFocusChanged);
   }
 
   @override
@@ -72,14 +74,6 @@ class _BookingsScreenState extends State<BookingsScreen>
     }
   }
 
-  // ignore: unused_element
-  void _onDbChanged() {
-    if (!mounted) return;
-    setState(() {
-      _loadInitial();
-    });
-  }
-
   @override
   void dispose() {
     _pageSub?.cancel();
@@ -87,8 +81,14 @@ class _BookingsScreenState extends State<BookingsScreen>
     _scrollController.dispose();
     _searchController.dispose();
     _searchDebounce?.cancel();
+    _searchFocusNode.removeListener(_onSearchFocusChanged);
     _searchFocusNode.dispose();
+    restoreNavBarVisibility();
     super.dispose();
+  }
+
+  void _onSearchFocusChanged() {
+    setSearchFocused(_searchFocusNode.hasFocus);
   }
 
   void _onScroll() {
@@ -159,6 +159,7 @@ class _BookingsScreenState extends State<BookingsScreen>
   }
 
   void _hideSearch() {
+    _searchFocusNode.unfocus();
     setState(() {
       _showSearchBar = false;
       _searchController.clear();
@@ -180,6 +181,7 @@ class _BookingsScreenState extends State<BookingsScreen>
     final statusBarHeight = MediaQuery.of(context).padding.top;
     // Add space for search bar only when visible
     final searchBarSpace = _showSearchBar ? 60.0 : 0.0;
+    updateKeyboardVisibility(context);
 
     return Scaffold(
       body: Stack(
@@ -278,7 +280,10 @@ class _BookingsScreenState extends State<BookingsScreen>
               config: buildBookingFilterConfig(l10n, db),
               currentRules: _filterRules,
               onRulesChanged: _onFilterRulesChanged,
-              onClose: () => setState(() => _showFilterPanel = false),
+              onClose: () {
+                setState(() => _showFilterPanel = false);
+                setFilterPanelOpen(false);
+              },
             ),
 
           // App bar with actions
@@ -298,7 +303,10 @@ class _BookingsScreenState extends State<BookingsScreen>
                 count: _activeFilterCount,
                 child: IconButton(
                   icon: const Icon(Icons.filter_list, size: 22),
-                  onPressed: () => setState(() => _showFilterPanel = true),
+                  onPressed: () {
+                    setState(() => _showFilterPanel = true);
+                    setFilterPanelOpen(true);
+                  },
                 ),
               ),
             ],

@@ -7,7 +7,7 @@ import '../../providers/theme_provider.dart';
 import '../../utils/format.dart';
 
 /// Input widget for numeric filter values
-class NumericFilterInput extends StatelessWidget {
+class NumericFilterInput extends StatefulWidget {
   final double? value;
   final ValueChanged<double?> onChanged;
   final String? label;
@@ -20,21 +20,38 @@ class NumericFilterInput extends StatelessWidget {
   });
 
   @override
+  State<NumericFilterInput> createState() => _NumericFilterInputState();
+}
+
+class _NumericFilterInputState extends State<NumericFilterInput> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.value?.toString() ?? '');
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return TextField(
-      controller: TextEditingController(
-        text: value?.toString() ?? '',
-      ),
+      controller: _controller,
       keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
       decoration: InputDecoration(
-        labelText: label,
+        labelText: widget.label,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
       onChanged: (text) {
         final parsed = double.tryParse(text);
-        onChanged(parsed);
+        widget.onChanged(parsed);
       },
     );
   }
@@ -93,7 +110,7 @@ class NumericRangeInput extends StatelessWidget {
 }
 
 /// Input widget for text filter values
-class TextFilterInput extends StatelessWidget {
+class TextFilterInput extends StatefulWidget {
   final String? value;
   final ValueChanged<String> onChanged;
   final String? label;
@@ -106,16 +123,36 @@ class TextFilterInput extends StatelessWidget {
   });
 
   @override
+  State<TextFilterInput> createState() => _TextFilterInputState();
+}
+
+class _TextFilterInputState extends State<TextFilterInput> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.value ?? '');
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return TextField(
-      controller: TextEditingController(text: value ?? ''),
+      controller: _controller,
+      textCapitalization: TextCapitalization.words,
       decoration: InputDecoration(
-        labelText: label,
+        labelText: widget.label,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
-      onChanged: onChanged,
+      onChanged: widget.onChanged,
     );
   }
 }

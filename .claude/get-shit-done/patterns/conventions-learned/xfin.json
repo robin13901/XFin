@@ -1,0 +1,44 @@
+{
+  "project": "XFin",
+  "tech_stack": {
+    "language": "dart",
+    "framework": "flutter",
+    "database": "drift",
+    "state_management": "provider",
+    "testing": ["flutter_test", "mockito", "mocktail"]
+  },
+  "naming_conventions": {
+    "files": "snake_case",
+    "classes": "PascalCase",
+    "variables": "camelCase",
+    "private_methods": "_camelCase",
+    "test_files": "{source_name}_test.dart",
+    "dao_pattern": {
+      "raw_crud": "_insert(), _update(), _delete() (private)",
+      "business_logic": "createEntity(), updateEntity(), deleteEntity() (public)",
+      "simple_dao_variant": "Direct CRUD methods public when no transaction side effects needed"
+    }
+  },
+  "architecture": {
+    "database_layer": "Drift DAOs with @DriftAccessor declarations",
+    "state": "Provider + ChangeNotifier",
+    "ui": "Liquid Glass design system",
+    "localization": "ARB files (EN + DE) via AppLocalizations",
+    "testing": "In-memory SQLite for database tests, mockito/mocktail for widget tests"
+  },
+  "conventions": {
+    "trade_datetime_format": "YYYYMMDDHHMMSS integer (e.g., 20240101120000)",
+    "booking_date_format": "YYYYMMDD integer (e.g., 20240101)",
+    "base_currency": "assetId=1, costBasis always 1, set at app init",
+    "test_helpers": "test/widgets/test_helpers.dart for common test utilities",
+    "drift_table_declarations": "Only declare tables used directly via generated mixin accessors",
+    "drift_regeneration": "dart run build_runner build --delete-conflicting-outputs"
+  },
+  "quality_gates": {
+    "test_command": "flutter test",
+    "lint_command": "flutter analyze",
+    "test_count": "634+",
+    "analyze_target": "zero issues"
+  },
+  "captured_at": "2026-03-08"
+}

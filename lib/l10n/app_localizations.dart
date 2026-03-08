@@ -1598,6 +1598,12 @@ abstract class AppLocalizations {
   /// **'Total Outflows'**
   String get totalOutflows;
 
+  /// No description provided for @totalVolume.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Volume'**
+  String get totalVolume;
+
   /// No description provided for @eventsPerMonth.
   ///
   /// In en, this message translates to:

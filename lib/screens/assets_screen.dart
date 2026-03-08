@@ -12,6 +12,7 @@ import 'package:xfin/widgets/dialogs.dart';
 
 import '../models/filter/asset_filter_config.dart';
 import '../models/filter/filter_rule.dart';
+import '../mixins/nav_bar_visibility_mixin.dart';
 import '../providers/database_provider.dart';
 import '../widgets/filter/filter_badge.dart';
 import '../widgets/filter/filter_panel.dart';
@@ -26,9 +27,14 @@ class AssetsScreen extends StatefulWidget {
   State<AssetsScreen> createState() => _AssetsScreenState();
 }
 
-class _AssetsScreenState extends State<AssetsScreen> {
+class _AssetsScreenState extends State<AssetsScreen>
+    with NavBarVisibilityMixin<AssetsScreen> {
   int _selectedTab = 1;
   AssetTypes? _selectedType;
+  final ValueNotifier<bool> _navBarVisible = ValueNotifier<bool>(true);
+
+  @override
+  ValueNotifier<bool>? get localNavBarVisible => _navBarVisible;
 
   // Search state
   bool _showSearchBar = false;
@@ -44,11 +50,23 @@ class _AssetsScreenState extends State<AssetsScreen> {
   int get _activeFilterCount => _filterRules.length;
 
   @override
+  void initState() {
+    super.initState();
+    _searchFocusNode.addListener(_onSearchFocusChanged);
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     _searchDebounce?.cancel();
+    _searchFocusNode.removeListener(_onSearchFocusChanged);
     _searchFocusNode.dispose();
+    _navBarVisible.dispose();
     super.dispose();
+  }
+
+  void _onSearchFocusChanged() {
+    setSearchFocused(_searchFocusNode.hasFocus);
   }
 
   void _onSearchChanged(String value) {
@@ -64,6 +82,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
     setState(() {
       _showSearchBar = !_showSearchBar;
       if (!_showSearchBar) {
+        _searchFocusNode.unfocus();
         _searchController.clear();
         if (_searchQuery.isNotEmpty) {
           _searchQuery = '';
@@ -369,6 +388,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
     final db = context.read<DatabaseProvider>().db;
     final l10n = AppLocalizations.of(context)!;
     final statusBarHeight = MediaQuery.of(context).padding.top;
+    updateKeyboardVisibility(context);
 
     // Build app bar actions based on selected tab
     final List<Widget> appBarActions = _selectedTab == 1
@@ -384,7 +404,10 @@ class _AssetsScreenState extends State<AssetsScreen> {
               count: _activeFilterCount,
               child: IconButton(
                 icon: const Icon(Icons.filter_list, size: 22),
-                onPressed: () => setState(() => _showFilterPanel = true),
+                onPressed: () {
+                  setState(() => _showFilterPanel = true);
+                  setFilterPanelOpen(true);
+                },
               ),
             ),
           ]
@@ -421,7 +444,10 @@ class _AssetsScreenState extends State<AssetsScreen> {
               config: buildAssetFilterConfig(l10n),
               currentRules: _filterRules,
               onRulesChanged: _onFilterRulesChanged,
-              onClose: () => setState(() => _showFilterPanel = false),
+              onClose: () {
+                setState(() => _showFilterPanel = false);
+                setFilterPanelOpen(false);
+              },
             ),
 
           buildLiquidGlassAppBar(
@@ -433,21 +459,29 @@ class _AssetsScreenState extends State<AssetsScreen> {
             bottom: 16,
             left: 8,
             right: 8,
-            child: LiquidGlassBottomNav(
-              icons: const [
-                Icons.analytics_outlined,
-                Icons.account_balance_wallet_outlined
-              ],
-              labels: const ['Analysis', 'Assets'],
-              keys: const [Key('assets_nav_analysis'), Key('assets_nav_list')],
-              currentIndex: _selectedTab,
-              onTap: (i) => setState(() => _selectedTab = i),
-              onLeftTap: null,
-              leftVisibleForIndices: const {},
-              keepLeftPlaceholder: true,
-              rightIcon: Icons.add,
-              rightVisibleForIndices: const {1},
-              onRightTap: () => _showAssetForm(context),
+            child: ValueListenableBuilder<bool>(
+              valueListenable: _navBarVisible,
+              builder: (context, visible, child) {
+                return visible
+                    ? RepaintBoundary(child: child!)
+                    : const SizedBox.shrink();
+              },
+              child: LiquidGlassBottomNav(
+                icons: const [
+                  Icons.analytics_outlined,
+                  Icons.account_balance_wallet_outlined
+                ],
+                labels: const ['Analysis', 'Assets'],
+                keys: const [Key('assets_nav_analysis'), Key('assets_nav_list')],
+                currentIndex: _selectedTab,
+                onTap: (i) => setState(() => _selectedTab = i),
+                onLeftTap: null,
+                leftVisibleForIndices: const {},
+                keepLeftPlaceholder: true,
+                rightIcon: Icons.add,
+                rightVisibleForIndices: const {1},
+                onRightTap: () => _showAssetForm(context),
+              ),
             ),
           ),
         ],
