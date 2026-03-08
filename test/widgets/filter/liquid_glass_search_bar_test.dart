@@ -79,5 +79,35 @@ void main() {
       final textField = tester.widget<TextField>(find.byType(TextField));
       expect(textField.textCapitalization, TextCapitalization.words);
     });
+
+    testWidgets('hides clear button when text is empty', (tester) async {
+      await tester.pumpWidget(buildTestWidget());
+
+      expect(find.byIcon(Icons.clear), findsNothing);
+    });
+
+    testWidgets('uses custom focusNode when provided', (tester) async {
+      final focusNode = FocusNode();
+      addTearDown(focusNode.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Padding(
+              padding: const EdgeInsets.all(16),
+              child: LiquidGlassSearchBar(
+                controller: controller,
+                hintText: 'Search...',
+                onChanged: (value) => lastChangedValue = value,
+                focusNode: focusNode,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final textField = tester.widget<TextField>(find.byType(TextField));
+      expect(textField.focusNode, same(focusNode));
+    });
   });
 }

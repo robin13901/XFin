@@ -1,9 +1,28 @@
 # State — Milestone 1.1.0: Code Quality & Architecture
 
 ## Current Phase
-Phase 3: Refactor Large Files — **DONE**
+Phase 7: Filter Model & Widget Tests — **DONE**
 
 ## Completed Phases
+### Phase 7: Filter Model & Widget Tests — **DONE**
+- **Plan 01**: Expanded `filter_rule_test.dart` (+14 tests) and created `filter_config_test.dart` (7 tests):
+  - FilterRule: copyWith, equality/inequality for fieldId/operator/lists, _valueEquals branches, hashCode, identity
+  - FilterConfig: DropdownOption, getField hit/miss, getFieldsByType match/empty
+- **Plan 02**: Created 5 entity-specific filter config builder tests (30 tests total):
+  - `booking_filter_config_test.dart` — 7 tests (fields, types, dropdown loading for assetId/accountId)
+  - `transfer_filter_config_test.dart` — 8 tests (fields, types, dropdown loading for assetId/sendingAccountId/receivingAccountId)
+  - `account_filter_config_test.dart` — 7 tests (fields, types, AccountTypes enum dropdown)
+  - `trade_filter_config_test.dart` — 9 tests (10 fields, TradeTypes dropdown, assetId/sourceAccountId/targetAccountId)
+  - `asset_filter_config_test.dart` — 7 tests (fields, types, AssetTypes enum dropdown)
+  - Shared helper: `filter_config_test_helper.dart` for non-widget l10n access
+- **Plan 03**: Created `filter_panel_test.dart` (19 tests), `filter_rule_editor_test.dart` (16 tests), expanded 3 existing files (+19 tests):
+  - FilterPanel: header, edit/view mode, add/delete/clear rules, formatValue branches (null, empty list, list truncation, date, date range, unknown field)
+  - FilterRuleEditor: 3-step flow (field→operator→value), auto-select single operator, save/cancel, pre-fill, field change resets, all input type dispatching
+  - filter_value_inputs: NumericRangeInput, DropdownFilterInput (loading/rendering/selection), DateFilterInput, DateRangeInput, getOperatorDisplayName
+  - filter_badge: boundary values (9, 10, 999)
+  - liquid_glass_search_bar: empty state, custom focusNode
+- All 794 tests pass, zero flutter analyze issues
+
 ### Phase 3: Refactor Large Files — **DONE**
 - **Plan 01**: Split `form_fields.dart` (602 lines) into 4 mixin modules under `lib/widgets/form_fields/`:
   - `date_fields.dart` (150 lines) — DateFieldsMixin

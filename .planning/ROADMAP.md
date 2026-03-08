@@ -153,6 +153,12 @@ Plans:
 **Requirements**: R1.2, R1.3, R1.4
 **Effort**: Medium (7 model files + 2 widget files to test)
 **Risk**: Low (additive, no existing code changes)
+**Plans:** 3 plans
+
+Plans:
+- [x] 07-01-PLAN.md — Filter model unit tests (filter_rule expansion, filter_config)
+- [x] 07-02-PLAN.md — Filter config builder tests (5 entity configs)
+- [x] 07-03-PLAN.md — Filter widget tests (filter_panel, filter_rule_editor, expand existing)
 
 ### Tasks
 1. Add `test/models/filter/filter_config_test.dart` (base FilterConfig)

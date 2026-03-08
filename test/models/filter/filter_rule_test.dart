@@ -187,5 +187,161 @@ void main() {
 
       expect(rule1, isNot(equals(rule2)));
     });
+
+    test('copyWith preserves unchanged fields', () {
+      const original = FilterRule(
+        fieldId: 'v',
+        operator: FilterOperator.greaterThan,
+        value: 100.0,
+      );
+      final copied = original.copyWith(fieldId: 'x');
+      expect(copied.fieldId, 'x');
+      expect(copied.operator, FilterOperator.greaterThan);
+      expect(copied.value, 100.0);
+    });
+
+    test('copyWith changes operator only', () {
+      const original = FilterRule(
+        fieldId: 'value',
+        operator: FilterOperator.greaterThan,
+        value: 50.0,
+      );
+      final copied = original.copyWith(operator: FilterOperator.lessThan);
+      expect(copied.fieldId, 'value');
+      expect(copied.operator, FilterOperator.lessThan);
+      expect(copied.value, 50.0);
+    });
+
+    test('inequality for different fieldId', () {
+      const rule1 = FilterRule(
+        fieldId: 'value',
+        operator: FilterOperator.greaterThan,
+        value: 100.0,
+      );
+      const rule2 = FilterRule(
+        fieldId: 'shares',
+        operator: FilterOperator.greaterThan,
+        value: 100.0,
+      );
+      expect(rule1, isNot(equals(rule2)));
+    });
+
+    test('inequality for different operator', () {
+      const rule1 = FilterRule(
+        fieldId: 'value',
+        operator: FilterOperator.greaterThan,
+        value: 100.0,
+      );
+      const rule2 = FilterRule(
+        fieldId: 'value',
+        operator: FilterOperator.lessThan,
+        value: 100.0,
+      );
+      expect(rule1, isNot(equals(rule2)));
+    });
+
+    test('equality for empty list values', () {
+      const rule1 = FilterRule(
+        fieldId: 'ids',
+        operator: FilterOperator.inList,
+        value: <int>[],
+      );
+      const rule2 = FilterRule(
+        fieldId: 'ids',
+        operator: FilterOperator.inList,
+        value: <int>[],
+      );
+      expect(rule1, equals(rule2));
+    });
+
+    test('inequality for lists of different length', () {
+      const rule1 = FilterRule(
+        fieldId: 'ids',
+        operator: FilterOperator.inList,
+        value: [1, 2],
+      );
+      const rule2 = FilterRule(
+        fieldId: 'ids',
+        operator: FilterOperator.inList,
+        value: [1, 2, 3],
+      );
+      expect(rule1, isNot(equals(rule2)));
+    });
+
+    test('inequality when one value is List and other is scalar', () {
+      const rule1 = FilterRule(
+        fieldId: 'value',
+        operator: FilterOperator.greaterThan,
+        value: [100.0],
+      );
+      const rule2 = FilterRule(
+        fieldId: 'value',
+        operator: FilterOperator.greaterThan,
+        value: 100.0,
+      );
+      expect(rule1, isNot(equals(rule2)));
+    });
+
+    test('inequality when values are Lists with different elements', () {
+      const rule1 = FilterRule(
+        fieldId: 'ids',
+        operator: FilterOperator.inList,
+        value: [1, 2],
+      );
+      const rule2 = FilterRule(
+        fieldId: 'ids',
+        operator: FilterOperator.inList,
+        value: [1, 3],
+      );
+      expect(rule1, isNot(equals(rule2)));
+    });
+
+    test('hashCode is consistent for equal rules', () {
+      const rule1 = FilterRule(
+        fieldId: 'value',
+        operator: FilterOperator.greaterThan,
+        value: 100.0,
+      );
+      const rule2 = FilterRule(
+        fieldId: 'value',
+        operator: FilterOperator.greaterThan,
+        value: 100.0,
+      );
+      expect(rule1.hashCode, equals(rule2.hashCode));
+    });
+
+    test('hashCode differs for unequal rules', () {
+      const rule1 = FilterRule(
+        fieldId: 'value',
+        operator: FilterOperator.greaterThan,
+        value: 100.0,
+      );
+      const rule2 = FilterRule(
+        fieldId: 'shares',
+        operator: FilterOperator.lessThan,
+        value: 200.0,
+      );
+      // hashCodes *may* collide, but for these distinct inputs they should not
+      expect(rule1.hashCode, isNot(equals(rule2.hashCode)));
+    });
+
+    test('is not equal to non-FilterRule object', () {
+      const rule = FilterRule(
+        fieldId: 'value',
+        operator: FilterOperator.greaterThan,
+        value: 100.0,
+      );
+      // ignore: unrelated_type_equality_checks
+      expect(rule == 'not a rule', isFalse);
+    });
+
+    test('identical rules are equal', () {
+      const rule = FilterRule(
+        fieldId: 'value',
+        operator: FilterOperator.greaterThan,
+        value: 100.0,
+      );
+      expect(rule == rule, isTrue);
+    });
   });
 }

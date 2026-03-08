@@ -53,5 +53,24 @@ void main() {
       final text = tester.widget<Text>(find.text('1'));
       expect(text.style?.color, Colors.black);
     });
+
+    testWidgets('shows exact count for 9', (tester) async {
+      await tester.pumpWidget(buildTestWidget(count: 9));
+
+      expect(find.text('9'), findsOneWidget);
+      expect(find.text('9+'), findsNothing);
+    });
+
+    testWidgets('shows 9+ for 10', (tester) async {
+      await tester.pumpWidget(buildTestWidget(count: 10));
+
+      expect(find.text('9+'), findsOneWidget);
+    });
+
+    testWidgets('shows 9+ for very large count', (tester) async {
+      await tester.pumpWidget(buildTestWidget(count: 999));
+
+      expect(find.text('9+'), findsOneWidget);
+    });
   });
 }
