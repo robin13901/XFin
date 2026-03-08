@@ -8,8 +8,8 @@ import 'package:xfin/l10n/app_localizations.dart';
 import '../constants/spacing.dart';
 import '../mixins/database_provider_mixin.dart';
 import '../mixins/nav_bar_visibility_mixin.dart';
+import '../mixins/search_filter_mixin.dart';
 import '../models/filter/booking_filter_config.dart';
-import '../models/filter/filter_rule.dart';
 import '../utils/format.dart';
 import '../utils/modal_helper.dart';
 import '../widgets/dialogs.dart';
@@ -31,7 +31,7 @@ class BookingsScreen extends StatefulWidget {
 }
 
 class _BookingsScreenState extends State<BookingsScreen>
-    with DatabaseProviderMixin<BookingsScreen>, NavBarVisibilityMixin<BookingsScreen> {
+    with DatabaseProviderMixin<BookingsScreen>, NavBarVisibilityMixin<BookingsScreen>, SearchFilterMixin<BookingsScreen> {
   late final ScrollController _scrollController;
   final List<BookingWithAccountAndAsset> _items = [];
 
@@ -45,24 +45,10 @@ class _BookingsScreenState extends State<BookingsScreen>
 
   bool _initialized = false;
 
-  // Search state
-  bool _showSearchBar = false;
-  final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
-  Timer? _searchDebounce;
-  final FocusNode _searchFocusNode = FocusNode();
-
-  // Filter state
-  List<FilterRule> _filterRules = [];
-  bool _showFilterPanel = false;
-
-  int get _activeFilterCount => _filterRules.length;
-
   @override
   void initState() {
     super.initState();
     _scrollController = ScrollController()..addListener(_onScroll);
-    _searchFocusNode.addListener(_onSearchFocusChanged);
   }
 
   @override
@@ -79,16 +65,13 @@ class _BookingsScreenState extends State<BookingsScreen>
     _pageSub?.cancel();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
-    _searchController.dispose();
-    _searchDebounce?.cancel();
-    _searchFocusNode.removeListener(_onSearchFocusChanged);
-    _searchFocusNode.dispose();
     restoreNavBarVisibility();
     super.dispose();
   }
 
-  void _onSearchFocusChanged() {
-    setSearchFocused(_searchFocusNode.hasFocus);
+  @override
+  void onSearchFilterChanged() {
+    _loadInitial();
   }
 
   void _onScroll() {
@@ -122,8 +105,8 @@ class _BookingsScreenState extends State<BookingsScreen>
     _pageSub = db.bookingsDao
         .watchBookingsPage(
       limit: limit,
-      searchQuery: _searchQuery.isNotEmpty ? _searchQuery : null,
-      filterRules: _filterRules.isNotEmpty ? _filterRules : null,
+      searchQuery: searchQuery.isNotEmpty ? searchQuery : null,
+      filterRules: filterRules.isNotEmpty ? filterRules : null,
     )
         .listen((page) {
       if (!mounted) return;
@@ -140,47 +123,10 @@ class _BookingsScreenState extends State<BookingsScreen>
     });
   }
 
-  void _onSearchChanged(String value) {
-    _searchDebounce?.cancel();
-    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
-      if (_searchQuery != value) {
-        setState(() => _searchQuery = value);
-        _loadInitial();
-      }
-    });
-  }
-
-  void _showSearch() {
-    setState(() => _showSearchBar = true);
-    // Request focus after frame builds
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _searchFocusNode.requestFocus();
-    });
-  }
-
-  void _hideSearch() {
-    _searchFocusNode.unfocus();
-    setState(() {
-      _showSearchBar = false;
-      _searchController.clear();
-      if (_searchQuery.isNotEmpty) {
-        _searchQuery = '';
-        _loadInitial();
-      }
-    });
-  }
-
-  void _onFilterRulesChanged(List<FilterRule> rules) {
-    setState(() => _filterRules = rules);
-    _loadInitial();
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final statusBarHeight = MediaQuery.of(context).padding.top;
-    // Add space for search bar only when visible
-    final searchBarSpace = _showSearchBar ? 60.0 : 0.0;
     updateKeyboardVisibility(context);
 
     return Scaffold(
@@ -191,7 +137,7 @@ class _BookingsScreenState extends State<BookingsScreen>
           else if (_items.isEmpty)
             Center(
               child: Text(
-                _searchQuery.isNotEmpty || _filterRules.isNotEmpty
+                searchQuery.isNotEmpty || filterRules.isNotEmpty
                     ? l10n.noMatchingBookings
                     : l10n.noBookingsYet,
               ),
@@ -261,29 +207,26 @@ class _BookingsScreenState extends State<BookingsScreen>
             ),
 
           // Search bar (below app bar) - overlay mode
-          if (_showSearchBar)
+          if (showSearchBar)
             Positioned(
               top: statusBarHeight + kToolbarHeight + 8,
               left: 16,
               right: 16,
               child: LiquidGlassSearchBar(
-                controller: _searchController,
-                focusNode: _searchFocusNode,
+                controller: searchController,
+                focusNode: searchFocusNode,
                 hintText: l10n.searchBookings,
-                onChanged: _onSearchChanged,
+                onChanged: onSearchChanged,
               ),
             ),
 
           // Filter panel overlay
-          if (_showFilterPanel)
+          if (showFilterPanel)
             FilterPanel(
               config: buildBookingFilterConfig(l10n, db),
-              currentRules: _filterRules,
-              onRulesChanged: _onFilterRulesChanged,
-              onClose: () {
-                setState(() => _showFilterPanel = false);
-                setFilterPanelOpen(false);
-              },
+              currentRules: filterRules,
+              onRulesChanged: onFilterRulesChanged,
+              onClose: closeFilterPanel,
             ),
 
           // App bar with actions
@@ -294,19 +237,16 @@ class _BookingsScreenState extends State<BookingsScreen>
             actions: [
               IconButton(
                 icon: Icon(
-                  _showSearchBar ? Icons.search_off : Icons.search,
+                  showSearchBar ? Icons.search_off : Icons.search,
                   size: 22,
                 ),
-                onPressed: _showSearchBar ? _hideSearch : _showSearch,
+                onPressed: toggleSearch,
               ),
               FilterBadge(
-                count: _activeFilterCount,
+                count: activeFilterCount,
                 child: IconButton(
                   icon: const Icon(Icons.filter_list, size: 22),
-                  onPressed: () {
-                    setState(() => _showFilterPanel = true);
-                    setFilterPanelOpen(true);
-                  },
+                  onPressed: openFilterPanel,
                 ),
               ),
             ],

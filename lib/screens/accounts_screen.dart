@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
@@ -7,8 +5,8 @@ import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/widgets/forms/account_form.dart';
 
 import '../models/filter/account_filter_config.dart';
-import '../models/filter/filter_rule.dart';
 import '../mixins/nav_bar_visibility_mixin.dart';
+import '../mixins/search_filter_mixin.dart';
 import '../providers/base_currency_provider.dart';
 import '../providers/database_provider.dart';
 import '../utils/format.dart';
@@ -32,68 +30,11 @@ class AccountsScreen extends StatefulWidget {
 }
 
 class _AccountsScreenState extends State<AccountsScreen>
-    with NavBarVisibilityMixin<AccountsScreen> {
-  // Search state
-  bool _showSearchBar = false;
-  final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
-  Timer? _searchDebounce;
-  final FocusNode _searchFocusNode = FocusNode();
-
-  // Filter state
-  List<FilterRule> _filterRules = [];
-  bool _showFilterPanel = false;
-
-  int get _activeFilterCount => _filterRules.length;
-
-  @override
-  void initState() {
-    super.initState();
-    _searchFocusNode.addListener(_onSearchFocusChanged);
-  }
-
+    with NavBarVisibilityMixin<AccountsScreen>, SearchFilterMixin<AccountsScreen> {
   @override
   void dispose() {
-    _searchController.dispose();
-    _searchDebounce?.cancel();
-    _searchFocusNode.removeListener(_onSearchFocusChanged);
-    _searchFocusNode.dispose();
     restoreNavBarVisibility();
     super.dispose();
-  }
-
-  void _onSearchFocusChanged() {
-    setSearchFocused(_searchFocusNode.hasFocus);
-  }
-
-  void _onSearchChanged(String value) {
-    _searchDebounce?.cancel();
-    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
-      if (_searchQuery != value) {
-        setState(() => _searchQuery = value);
-      }
-    });
-  }
-
-  void _toggleSearch() {
-    setState(() {
-      _showSearchBar = !_showSearchBar;
-      if (!_showSearchBar) {
-        _searchFocusNode.unfocus();
-        _searchController.clear();
-        if (_searchQuery.isNotEmpty) {
-          _searchQuery = '';
-        }
-      } else {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _searchFocusNode.requestFocus();
-        });
-      }
-    });
-  }
-
-  void _onFilterRulesChanged(List<FilterRule> rules) {
-    setState(() => _filterRules = rules);
   }
 
   Future<void> _handleLongPress(
@@ -194,8 +135,6 @@ class _AccountsScreenState extends State<AccountsScreen>
     final l10n = AppLocalizations.of(context)!;
     Provider.of<BaseCurrencyProvider>(context);
     final statusBarHeight = MediaQuery.of(context).padding.top;
-    // Add space for search bar only when visible
-    final searchBarSpace = _showSearchBar ? 60.0 : 0.0;
     updateKeyboardVisibility(context);
 
     return Scaffold(
@@ -203,8 +142,8 @@ class _AccountsScreenState extends State<AccountsScreen>
         children: [
           StreamBuilder<List<Account>>(
             stream: db.accountsDao.watchAllAccounts(
-              searchQuery: _searchQuery.isNotEmpty ? _searchQuery : null,
-              filterRules: _filterRules.isNotEmpty ? _filterRules : null,
+              searchQuery: searchQuery.isNotEmpty ? searchQuery : null,
+              filterRules: filterRules.isNotEmpty ? filterRules : null,
             ),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
@@ -226,7 +165,7 @@ class _AccountsScreenState extends State<AccountsScreen>
                         child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Text(
-                        _searchQuery.isNotEmpty || _filterRules.isNotEmpty
+                        searchQuery.isNotEmpty || filterRules.isNotEmpty
                             ? l10n.noMatchingBookings
                             : l10n.noActiveAccounts,
                       ),
@@ -292,29 +231,26 @@ class _AccountsScreenState extends State<AccountsScreen>
           ),
 
           // Search bar
-          if (_showSearchBar)
+          if (showSearchBar)
             Positioned(
               top: statusBarHeight + kToolbarHeight + 8,
               left: 16,
               right: 16,
               child: LiquidGlassSearchBar(
-                controller: _searchController,
-                focusNode: _searchFocusNode,
+                controller: searchController,
+                focusNode: searchFocusNode,
                 hintText: l10n.searchAccounts,
-                onChanged: _onSearchChanged,
+                onChanged: onSearchChanged,
               ),
             ),
 
           // Filter panel
-          if (_showFilterPanel)
+          if (showFilterPanel)
             FilterPanel(
               config: buildAccountFilterConfig(l10n),
-              currentRules: _filterRules,
-              onRulesChanged: _onFilterRulesChanged,
-              onClose: () {
-                setState(() => _showFilterPanel = false);
-                setFilterPanelOpen(false);
-              },
+              currentRules: filterRules,
+              onRulesChanged: onFilterRulesChanged,
+              onClose: closeFilterPanel,
             ),
 
           buildLiquidGlassAppBar(
@@ -324,19 +260,16 @@ class _AccountsScreenState extends State<AccountsScreen>
             actions: [
               IconButton(
                 icon: Icon(
-                  _showSearchBar ? Icons.search_off : Icons.search,
+                  showSearchBar ? Icons.search_off : Icons.search,
                   size: 22,
                 ),
-                onPressed: _toggleSearch,
+                onPressed: toggleSearch,
               ),
               FilterBadge(
-                count: _activeFilterCount,
+                count: activeFilterCount,
                 child: IconButton(
                   icon: const Icon(Icons.filter_list, size: 22),
-                  onPressed: () {
-                    setState(() => _showFilterPanel = true);
-                    setFilterPanelOpen(true);
-                  },
+                  onPressed: openFilterPanel,
                 ),
               ),
             ],

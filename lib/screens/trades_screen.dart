@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -11,9 +9,9 @@ import 'package:xfin/widgets/dialogs.dart';
 import 'package:xfin/database/daos/trades_dao.dart';
 
 import '../database/tables.dart';
-import '../models/filter/filter_rule.dart';
 import '../models/filter/trade_filter_config.dart';
 import '../mixins/nav_bar_visibility_mixin.dart';
+import '../mixins/search_filter_mixin.dart';
 import '../providers/database_provider.dart';
 import '../widgets/filter/filter_badge.dart';
 import '../widgets/filter/filter_panel.dart';
@@ -29,7 +27,7 @@ class TradesScreen extends StatefulWidget {
 }
 
 class _TradesScreenState extends State<TradesScreen>
-    with SingleTickerProviderStateMixin, NavBarVisibilityMixin<TradesScreen> {
+    with SingleTickerProviderStateMixin, NavBarVisibilityMixin<TradesScreen>, SearchFilterMixin<TradesScreen> {
   late final AnimationController _sheetAnimController;
   late final AppDatabase db;
   final ValueNotifier<bool> _navBarVisible = ValueNotifier<bool>(true);
@@ -40,19 +38,6 @@ class _TradesScreenState extends State<TradesScreen>
   // Preload futures
   late final Future<List<Asset>> _assetsFuture;
   late final Future<List<Account>> _accountsFuture;
-
-  // Search state
-  bool _showSearchBar = false;
-  final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
-  Timer? _searchDebounce;
-  final FocusNode _searchFocusNode = FocusNode();
-
-  // Filter state
-  List<FilterRule> _filterRules = [];
-  bool _showFilterPanel = false;
-
-  int get _activeFilterCount => _filterRules.length;
 
   @override
   void initState() {
@@ -66,52 +51,13 @@ class _TradesScreenState extends State<TradesScreen>
     db = context.read<DatabaseProvider>().db;
     _assetsFuture = db.assetsDao.getAllAssets();
     _accountsFuture = db.accountsDao.getAllAccounts();
-    _searchFocusNode.addListener(_onSearchFocusChanged);
   }
 
   @override
   void dispose() {
     _sheetAnimController.dispose();
-    _searchController.dispose();
-    _searchDebounce?.cancel();
-    _searchFocusNode.removeListener(_onSearchFocusChanged);
-    _searchFocusNode.dispose();
     _navBarVisible.dispose();
     super.dispose();
-  }
-
-  void _onSearchFocusChanged() {
-    setSearchFocused(_searchFocusNode.hasFocus);
-  }
-
-  void _onSearchChanged(String value) {
-    _searchDebounce?.cancel();
-    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
-      if (_searchQuery != value) {
-        setState(() => _searchQuery = value);
-      }
-    });
-  }
-
-  void _toggleSearch() {
-    setState(() {
-      _showSearchBar = !_showSearchBar;
-      if (!_showSearchBar) {
-        _searchFocusNode.unfocus();
-        _searchController.clear();
-        if (_searchQuery.isNotEmpty) {
-          _searchQuery = '';
-        }
-      } else {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _searchFocusNode.requestFocus();
-        });
-      }
-    });
-  }
-
-  void _onFilterRulesChanged(List<FilterRule> rules) {
-    setState(() => _filterRules = rules);
   }
 
   Future<void> _showTradeForm(BuildContext context, {Trade? trade}) async {
@@ -138,8 +84,6 @@ class _TradesScreenState extends State<TradesScreen>
     formatter.minimumFractionDigits = 2;
     formatter.maximumFractionDigits = 2;
     final statusBarHeight = MediaQuery.of(context).padding.top;
-    // Add space for search bar only when visible
-    final searchBarSpace = _showSearchBar ? 60.0 : 0.0;
     updateKeyboardVisibility(context);
 
     return Scaffold(
@@ -147,8 +91,8 @@ class _TradesScreenState extends State<TradesScreen>
         children: [
           StreamBuilder<List<TradeWithAsset>>(
             stream: db.tradesDao.watchAllTrades(
-              searchQuery: _searchQuery.isNotEmpty ? _searchQuery : null,
-              filterRules: _filterRules.isNotEmpty ? _filterRules : null,
+              searchQuery: searchQuery.isNotEmpty ? searchQuery : null,
+              filterRules: filterRules.isNotEmpty ? filterRules : null,
             ),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
@@ -161,7 +105,7 @@ class _TradesScreenState extends State<TradesScreen>
               if (tradesWithAssets.isEmpty) {
                 return Center(
                   child: Text(
-                    _searchQuery.isNotEmpty || _filterRules.isNotEmpty
+                    searchQuery.isNotEmpty || filterRules.isNotEmpty
                         ? l10n.noMatchingBookings
                         : l10n.noTrades,
                   ),
@@ -242,29 +186,26 @@ class _TradesScreenState extends State<TradesScreen>
           ),
 
           // Search bar - overlay mode
-          if (_showSearchBar)
+          if (showSearchBar)
             Positioned(
               top: statusBarHeight + kToolbarHeight + 8,
               left: 16,
               right: 16,
               child: LiquidGlassSearchBar(
-                controller: _searchController,
-                focusNode: _searchFocusNode,
+                controller: searchController,
+                focusNode: searchFocusNode,
                 hintText: l10n.searchTrades,
-                onChanged: _onSearchChanged,
+                onChanged: onSearchChanged,
               ),
             ),
 
           // Filter panel
-          if (_showFilterPanel)
+          if (showFilterPanel)
             FilterPanel(
               config: buildTradeFilterConfig(l10n, db),
-              currentRules: _filterRules,
-              onRulesChanged: _onFilterRulesChanged,
-              onClose: () {
-                setState(() => _showFilterPanel = false);
-                setFilterPanelOpen(false);
-              },
+              currentRules: filterRules,
+              onRulesChanged: onFilterRulesChanged,
+              onClose: closeFilterPanel,
             ),
 
           buildLiquidGlassAppBar(
@@ -273,19 +214,16 @@ class _TradesScreenState extends State<TradesScreen>
             actions: [
               IconButton(
                 icon: Icon(
-                  _showSearchBar ? Icons.search_off : Icons.search,
+                  showSearchBar ? Icons.search_off : Icons.search,
                   size: 22,
                 ),
-                onPressed: _toggleSearch,
+                onPressed: toggleSearch,
               ),
               FilterBadge(
-                count: _activeFilterCount,
+                count: activeFilterCount,
                 child: IconButton(
                   icon: const Icon(Icons.filter_list, size: 22),
-                  onPressed: () {
-                    setState(() => _showFilterPanel = true);
-                    setFilterPanelOpen(true);
-                  },
+                  onPressed: openFilterPanel,
                 ),
               ),
             ],

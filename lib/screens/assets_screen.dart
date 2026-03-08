@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
@@ -11,8 +9,8 @@ import 'package:xfin/widgets/charts.dart';
 import 'package:xfin/widgets/dialogs.dart';
 
 import '../models/filter/asset_filter_config.dart';
-import '../models/filter/filter_rule.dart';
 import '../mixins/nav_bar_visibility_mixin.dart';
+import '../mixins/search_filter_mixin.dart';
 import '../providers/database_provider.dart';
 import '../widgets/filter/filter_badge.dart';
 import '../widgets/filter/filter_panel.dart';
@@ -28,7 +26,7 @@ class AssetsScreen extends StatefulWidget {
 }
 
 class _AssetsScreenState extends State<AssetsScreen>
-    with NavBarVisibilityMixin<AssetsScreen> {
+    with NavBarVisibilityMixin<AssetsScreen>, SearchFilterMixin<AssetsScreen> {
   int _selectedTab = 1;
   AssetTypes? _selectedType;
   final ValueNotifier<bool> _navBarVisible = ValueNotifier<bool>(true);
@@ -36,67 +34,10 @@ class _AssetsScreenState extends State<AssetsScreen>
   @override
   ValueNotifier<bool>? get localNavBarVisible => _navBarVisible;
 
-  // Search state
-  bool _showSearchBar = false;
-  final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
-  Timer? _searchDebounce;
-  final FocusNode _searchFocusNode = FocusNode();
-
-  // Filter state
-  List<FilterRule> _filterRules = [];
-  bool _showFilterPanel = false;
-
-  int get _activeFilterCount => _filterRules.length;
-
-  @override
-  void initState() {
-    super.initState();
-    _searchFocusNode.addListener(_onSearchFocusChanged);
-  }
-
   @override
   void dispose() {
-    _searchController.dispose();
-    _searchDebounce?.cancel();
-    _searchFocusNode.removeListener(_onSearchFocusChanged);
-    _searchFocusNode.dispose();
     _navBarVisible.dispose();
     super.dispose();
-  }
-
-  void _onSearchFocusChanged() {
-    setSearchFocused(_searchFocusNode.hasFocus);
-  }
-
-  void _onSearchChanged(String value) {
-    _searchDebounce?.cancel();
-    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
-      if (_searchQuery != value) {
-        setState(() => _searchQuery = value);
-      }
-    });
-  }
-
-  void _toggleSearch() {
-    setState(() {
-      _showSearchBar = !_showSearchBar;
-      if (!_showSearchBar) {
-        _searchFocusNode.unfocus();
-        _searchController.clear();
-        if (_searchQuery.isNotEmpty) {
-          _searchQuery = '';
-        }
-      } else {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _searchFocusNode.requestFocus();
-        });
-      }
-    });
-  }
-
-  void _onFilterRulesChanged(List<FilterRule> rules) {
-    setState(() => _filterRules = rules);
   }
 
   void _showAssetForm(BuildContext context, {Asset? asset}) {
@@ -303,13 +244,11 @@ class _AssetsScreenState extends State<AssetsScreen>
   Widget _buildAssetsList(
       BuildContext context, AppDatabase db, AppLocalizations l10n) {
     final statusBarHeight = MediaQuery.of(context).padding.top;
-    // Add space for search bar only when visible
-    final searchBarSpace = _showSearchBar ? 60.0 : 0.0;
 
     return StreamBuilder<List<Asset>>(
       stream: db.assetsDao.watchAllAssets(
-        searchQuery: _searchQuery.isNotEmpty ? _searchQuery : null,
-        filterRules: _filterRules.isNotEmpty ? _filterRules : null,
+        searchQuery: searchQuery.isNotEmpty ? searchQuery : null,
+        filterRules: filterRules.isNotEmpty ? filterRules : null,
       ),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -322,7 +261,7 @@ class _AssetsScreenState extends State<AssetsScreen>
         if (assets.isEmpty) {
           return Center(
             child: Text(
-              _searchQuery.isNotEmpty || _filterRules.isNotEmpty
+              searchQuery.isNotEmpty || filterRules.isNotEmpty
                   ? l10n.noMatchingBookings
                   : l10n.noAssets,
             ),
@@ -395,19 +334,16 @@ class _AssetsScreenState extends State<AssetsScreen>
         ? [
             IconButton(
               icon: Icon(
-                _showSearchBar ? Icons.search_off : Icons.search,
+                showSearchBar ? Icons.search_off : Icons.search,
                 size: 22,
               ),
-              onPressed: _toggleSearch,
+              onPressed: toggleSearch,
             ),
             FilterBadge(
-              count: _activeFilterCount,
+              count: activeFilterCount,
               child: IconButton(
                 icon: const Icon(Icons.filter_list, size: 22),
-                onPressed: () {
-                  setState(() => _showFilterPanel = true);
-                  setFilterPanelOpen(true);
-                },
+                onPressed: openFilterPanel,
               ),
             ),
           ]
@@ -425,29 +361,26 @@ class _AssetsScreenState extends State<AssetsScreen>
           ),
 
           // Search bar (only visible in Assets tab) - overlay mode
-          if (_showSearchBar && _selectedTab == 1)
+          if (showSearchBar && _selectedTab == 1)
             Positioned(
               top: statusBarHeight + kToolbarHeight + 8,
               left: 16,
               right: 16,
               child: LiquidGlassSearchBar(
-                controller: _searchController,
-                focusNode: _searchFocusNode,
+                controller: searchController,
+                focusNode: searchFocusNode,
                 hintText: l10n.searchAssets,
-                onChanged: _onSearchChanged,
+                onChanged: onSearchChanged,
               ),
             ),
 
           // Filter panel
-          if (_showFilterPanel)
+          if (showFilterPanel)
             FilterPanel(
               config: buildAssetFilterConfig(l10n),
-              currentRules: _filterRules,
-              onRulesChanged: _onFilterRulesChanged,
-              onClose: () {
-                setState(() => _showFilterPanel = false);
-                setFilterPanelOpen(false);
-              },
+              currentRules: filterRules,
+              onRulesChanged: onFilterRulesChanged,
+              onClose: closeFilterPanel,
             ),
 
           buildLiquidGlassAppBar(

@@ -1,14 +1,12 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 
 import '../database/daos/transfers_dao.dart';
-import '../models/filter/filter_rule.dart';
 import '../models/filter/transfer_filter_config.dart';
 import '../mixins/nav_bar_visibility_mixin.dart';
+import '../mixins/search_filter_mixin.dart';
 import '../providers/database_provider.dart';
 import '../utils/format.dart';
 import '../widgets/dialogs.dart';
@@ -26,7 +24,7 @@ class TransfersScreen extends StatefulWidget {
 }
 
 class _TransfersScreenState extends State<TransfersScreen>
-    with SingleTickerProviderStateMixin, NavBarVisibilityMixin<TransfersScreen> {
+    with SingleTickerProviderStateMixin, NavBarVisibilityMixin<TransfersScreen>, SearchFilterMixin<TransfersScreen> {
   late final AnimationController _sheetAnimController;
   late final AppDatabase db;
   late final Future<List<Asset>> assetsFuture;
@@ -35,19 +33,6 @@ class _TransfersScreenState extends State<TransfersScreen>
   @override
   ValueNotifier<bool>? get localNavBarVisible => _navBarVisible;
 
-  // Search state
-  bool _showSearchBar = false;
-  final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
-  Timer? _searchDebounce;
-  final FocusNode _searchFocusNode = FocusNode();
-
-  // Filter state
-  List<FilterRule> _filterRules = [];
-  bool _showFilterPanel = false;
-
-  int get _activeFilterCount => _filterRules.length;
-
   @override
   void initState() {
     super.initState();
@@ -55,22 +40,13 @@ class _TransfersScreenState extends State<TransfersScreen>
     assetsFuture = db.assetsDao.getAllAssets();
     _sheetAnimController =
         AnimationController(vsync: this, duration: Duration.zero)..value = 1.0;
-    _searchFocusNode.addListener(_onSearchFocusChanged);
   }
 
   @override
   void dispose() {
     _sheetAnimController.dispose();
-    _searchController.dispose();
-    _searchDebounce?.cancel();
-    _searchFocusNode.removeListener(_onSearchFocusChanged);
-    _searchFocusNode.dispose();
     _navBarVisible.dispose();
     super.dispose();
-  }
-
-  void _onSearchFocusChanged() {
-    setSearchFocused(_searchFocusNode.hasFocus);
   }
 
   Future<void> _showTransferForm(
@@ -86,42 +62,10 @@ class _TransfersScreenState extends State<TransfersScreen>
     );
   }
 
-  void _onSearchChanged(String value) {
-    _searchDebounce?.cancel();
-    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
-      if (_searchQuery != value) {
-        setState(() => _searchQuery = value);
-      }
-    });
-  }
-
-  void _toggleSearch() {
-    setState(() {
-      _showSearchBar = !_showSearchBar;
-      if (!_showSearchBar) {
-        _searchFocusNode.unfocus();
-        _searchController.clear();
-        if (_searchQuery.isNotEmpty) {
-          _searchQuery = '';
-        }
-      } else {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _searchFocusNode.requestFocus();
-        });
-      }
-    });
-  }
-
-  void _onFilterRulesChanged(List<FilterRule> rules) {
-    setState(() => _filterRules = rules);
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final statusBarHeight = MediaQuery.of(context).padding.top;
-    // Add space for search bar only when visible
-    final searchBarSpace = _showSearchBar ? 60.0 : 0.0;
     updateKeyboardVisibility(context);
 
     return Scaffold(
@@ -129,8 +73,8 @@ class _TransfersScreenState extends State<TransfersScreen>
         children: [
           StreamBuilder<List<TransferWithAccountsAndAsset>>(
             stream: db.transfersDao.watchTransfersWithAccountsAndAsset(
-              searchQuery: _searchQuery.isNotEmpty ? _searchQuery : null,
-              filterRules: _filterRules.isNotEmpty ? _filterRules : null,
+              searchQuery: searchQuery.isNotEmpty ? searchQuery : null,
+              filterRules: filterRules.isNotEmpty ? filterRules : null,
             ),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
@@ -144,7 +88,7 @@ class _TransfersScreenState extends State<TransfersScreen>
               if (items.isEmpty) {
                 return Center(
                   child: Text(
-                    _searchQuery.isNotEmpty || _filterRules.isNotEmpty
+                    searchQuery.isNotEmpty || filterRules.isNotEmpty
                         ? l10n.noMatchingBookings
                         : l10n.noTransfersYet,
                   ),
@@ -215,29 +159,26 @@ class _TransfersScreenState extends State<TransfersScreen>
           ),
 
           // Search bar - overlay mode
-          if (_showSearchBar)
+          if (showSearchBar)
             Positioned(
               top: statusBarHeight + kToolbarHeight + 8,
               left: 16,
               right: 16,
               child: LiquidGlassSearchBar(
-                controller: _searchController,
-                focusNode: _searchFocusNode,
+                controller: searchController,
+                focusNode: searchFocusNode,
                 hintText: l10n.searchTransfers,
-                onChanged: _onSearchChanged,
+                onChanged: onSearchChanged,
               ),
             ),
 
           // Filter panel
-          if (_showFilterPanel)
+          if (showFilterPanel)
             FilterPanel(
               config: buildTransferFilterConfig(l10n, db),
-              currentRules: _filterRules,
-              onRulesChanged: _onFilterRulesChanged,
-              onClose: () {
-                setState(() => _showFilterPanel = false);
-                setFilterPanelOpen(false);
-              },
+              currentRules: filterRules,
+              onRulesChanged: onFilterRulesChanged,
+              onClose: closeFilterPanel,
             ),
 
           buildLiquidGlassAppBar(
@@ -246,19 +187,16 @@ class _TransfersScreenState extends State<TransfersScreen>
             actions: [
               IconButton(
                 icon: Icon(
-                  _showSearchBar ? Icons.search_off : Icons.search,
+                  showSearchBar ? Icons.search_off : Icons.search,
                   size: 22,
                 ),
-                onPressed: _toggleSearch,
+                onPressed: toggleSearch,
               ),
               FilterBadge(
-                count: _activeFilterCount,
+                count: activeFilterCount,
                 child: IconButton(
                   icon: const Icon(Icons.filter_list, size: 22),
-                  onPressed: () {
-                    setState(() => _showFilterPanel = true);
-                    setFilterPanelOpen(true);
-                  },
+                  onPressed: openFilterPanel,
                 ),
               ),
             ],

@@ -54,11 +54,16 @@ lib/
 | Goals | Financial targets |
 
 ## Current State
-- **Version**: 1.0.0+1
-- **Test Suite**: 59 test files, 512+ tests
+- **Version**: 1.2.0 (UX Polish shipped)
+- **Test Suite**: 62 test files, 650+ tests
 - **Static Analysis**: Zero issues (flutter analyze clean)
 - **Screens**: 11 functional screens with search/filter
 - **Platforms**: Mobile (iOS/Android), Desktop, Web (via platform connection abstraction)
+- **Active Milestone**: 1.1.0 (Code Quality & Architecture) — Phase 1 complete, Phase 2 next
+
+## Shipped Milestones
+- **v1.2.0**: UX Polish — Filter/search UX fixes (nav bar hiding, input focus, capitalization)
+
 
 ## Team & Workflow
 - Solo developer
