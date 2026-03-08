@@ -4,7 +4,7 @@ import '../database/app_database.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/database_provider.dart';
 import '../utils/validators.dart';
-import '../widgets/form_fields.dart';
+import '../widgets/form_fields/form_fields.dart';
 
 /// Mixin that handles common form initialization for stateful widgets.
 ///

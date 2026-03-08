@@ -7,7 +7,7 @@ import 'package:oktoast/oktoast.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/l10n/app_localizations.dart';
-import 'package:xfin/widgets/form_fields.dart';
+import 'package:xfin/widgets/form_fields/form_fields.dart';
 import '../../database/tables.dart';
 import '../../providers/database_provider.dart';
 import '../../utils/validators.dart';

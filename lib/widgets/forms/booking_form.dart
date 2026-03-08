@@ -10,7 +10,7 @@ import 'package:xfin/utils/format.dart';
 import '../../database/tables.dart';
 import '../../providers/database_provider.dart';
 import '../../utils/validators.dart';
-import '../form_fields.dart';
+import '../form_fields/form_fields.dart';
 
 class BookingForm extends StatefulWidget {
   final Booking? booking;

@@ -7,7 +7,7 @@ import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/providers/base_currency_provider.dart';
 import 'package:xfin/providers/database_provider.dart';
 import 'package:xfin/utils/validators.dart';
-import 'package:xfin/widgets/form_fields.dart';
+import 'package:xfin/widgets/form_fields/form_fields.dart';
 
 import '../test_helpers.dart';
 

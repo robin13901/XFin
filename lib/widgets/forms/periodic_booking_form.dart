@@ -11,7 +11,7 @@ import '../../providers/database_provider.dart';
 import '../../utils/cycles_helper.dart';
 import '../../utils/validators.dart';
 import '../dialogs.dart';
-import '../form_fields.dart';
+import '../form_fields/form_fields.dart';
 
 class PeriodicBookingForm extends StatefulWidget {
   final PeriodicBooking? periodicBooking;
