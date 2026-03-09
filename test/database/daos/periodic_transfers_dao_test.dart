@@ -17,6 +17,7 @@ void main() {
   late PeriodicTransfersDao periodicTransfersDao;
   late AppLocalizations l10n;
   late int accountId;
+  late int receiverAccountId;
   late int assetId;
 
   setUp(() async {
@@ -33,6 +34,14 @@ void main() {
     accountId = await db.into(db.accounts).insert(
           const AccountsCompanion(
             name: Value('Test Account'),
+            type: Value(AccountTypes.cash),
+          ),
+        );
+
+    // Insert a second account for transfers
+    receiverAccountId = await db.into(db.accounts).insert(
+          const AccountsCompanion(
+            name: Value('Receiver Account'),
             type: Value(AccountTypes.cash),
           ),
         );
@@ -330,7 +339,7 @@ void main() {
         nextExecutionDate: dateTimeToInt(pastDate),
         assetId: Value(assetId),
         sendingAccountId: accountId,
-        receivingAccountId: accountId,
+        receivingAccountId: receiverAccountId,
         shares: 10.0,
         value: 10.0,
         notes: const Value('Daily Transfer'),
@@ -361,7 +370,7 @@ void main() {
               dateTimeToInt(now.subtract(const Duration(days: 2))),
           assetId: Value(assetId),
           sendingAccountId: accountId,
-          receivingAccountId: accountId,
+          receivingAccountId: receiverAccountId,
           shares: 1,
           value: 1,
           notes: const Value('D'),
@@ -373,7 +382,7 @@ void main() {
               dateTimeToInt(now.subtract(const Duration(days: 10))),
           assetId: Value(assetId),
           sendingAccountId: accountId,
-          receivingAccountId: accountId,
+          receivingAccountId: receiverAccountId,
           shares: 1,
           value: 1,
           notes: const Value('W'),
@@ -385,7 +394,7 @@ void main() {
               dateTimeToInt(now.subtract(const Duration(days: 35))),
           assetId: Value(assetId),
           sendingAccountId: accountId,
-          receivingAccountId: accountId,
+          receivingAccountId: receiverAccountId,
           shares: 1,
           value: 1,
           notes: const Value('M'),
@@ -397,7 +406,7 @@ void main() {
               dateTimeToInt(now.subtract(const Duration(days: 100))),
           assetId: Value(assetId),
           sendingAccountId: accountId,
-          receivingAccountId: accountId,
+          receivingAccountId: receiverAccountId,
           shares: 1,
           value: 1,
           notes: const Value('Q'),
@@ -409,7 +418,7 @@ void main() {
               dateTimeToInt(now.subtract(const Duration(days: 400))),
           assetId: Value(assetId),
           sendingAccountId: accountId,
-          receivingAccountId: accountId,
+          receivingAccountId: receiverAccountId,
           shares: 1,
           value: 1,
           notes: const Value('Y'),
