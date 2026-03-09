@@ -1,10 +1,10 @@
 # State — Milestone 1.1.0: Code Quality & Architecture
 
 ## Current Phase
-Phase 6: Error Handling Improvement — Plan 01 **DONE**, Plan 02 next
+Phase 6: Error Handling Improvement — Plan 01 **DONE**, Plan 02 **DONE** -- Phase Complete
 
 ## Completed Phases
-### Phase 6: Error Handling Improvement — Plan 01 DONE
+### Phase 6: Error Handling Improvement — Plan 01 DONE, Plan 02 DONE
 - **Plan 01**: DAO Validation & Localized Error Messages
   - Created `DaoValidationException` with clean `toString()` (no "Exception:" prefix)
   - Added validation to 4 DAOs: trades (shares > 0, insufficient shares), transfers (same-account, shares > 0), bookings (non-zero shares), assets_on_accounts (consistent exception type)
@@ -13,6 +13,11 @@ Phase 6: Error Handling Improvement — Plan 01 **DONE**, Plan 02 next
   - Added 2 localization strings: `transferSameAccount`, `sharesRequired` (EN + DE)
   - Fixed 2 periodic transfer tests using same-account transfers
   - All 959 tests pass, zero flutter analyze issues
+- **Plan 02**: Error Path Tests
+  - Created `dao_exception_test.dart` with 3 unit tests for DaoValidationException
+  - Added validation test groups to 4 DAO test files (12 new tests total)
+  - Covers: zero shares, same-account transfers, insufficient shares, inconsistent balance history
+  - All 971 tests pass, zero flutter analyze issues
 
 ### Phase 5: Test Coverage — Utilities & Providers — **DONE**
 - **Plan 01**: Created 4 test files (37 tests total):
@@ -105,6 +110,7 @@ Phase 6: Error Handling Improvement — Plan 01 **DONE**, Plan 02 next
 - Search/filter extraction: Mixin approach chosen over base class (preserves screen independence)
 - accounts_dao.insert() and assets_dao.insert() kept public (used by 15+ test files and 2 production files)
 - DaoValidationException uses `toString() => message` for clean UI display (no "Exception:" prefix)
+- Assets_on_accounts_dao inconsistency test uses trade update scenario (base currency bookings skip recalculation for assetId==1)
 
 ## Discovered Issues
 ### From Code Analysis (2026-03-08)

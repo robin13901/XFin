@@ -141,7 +141,7 @@ Plans:
 
 Plans:
 - [x] 06-01-PLAN.md — DAO validation & localized error messages (DaoValidationException, 4 DAOs, 2 forms)
-- [ ] 06-02-PLAN.md — Error path tests (~12 new tests across 5 test files)
+- [x] 06-02-PLAN.md — Error path tests (12 new tests across 5 test files)
 
 ### Tasks
 1. Audit all DAO write methods for missing precondition validation
