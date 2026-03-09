@@ -140,7 +140,7 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 06-01-PLAN.md — DAO validation & localized error messages (DaoValidationException, 4 DAOs, 2 forms)
+- [x] 06-01-PLAN.md — DAO validation & localized error messages (DaoValidationException, 4 DAOs, 2 forms)
 - [ ] 06-02-PLAN.md — Error path tests (~12 new tests across 5 test files)
 
 ### Tasks

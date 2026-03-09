@@ -1,9 +1,19 @@
 # State — Milestone 1.1.0: Code Quality & Architecture
 
 ## Current Phase
-Phase 5: Test Coverage — Utilities & Providers — **DONE**
+Phase 6: Error Handling Improvement — Plan 01 **DONE**, Plan 02 next
 
 ## Completed Phases
+### Phase 6: Error Handling Improvement — Plan 01 DONE
+- **Plan 01**: DAO Validation & Localized Error Messages
+  - Created `DaoValidationException` with clean `toString()` (no "Exception:" prefix)
+  - Added validation to 4 DAOs: trades (shares > 0, insufficient shares), transfers (same-account, shares > 0), bookings (non-zero shares), assets_on_accounts (consistent exception type)
+  - Added l10n param to `applyTradeToDb()` for localized error messages
+  - Added try/catch + `showErrorDialog()` to booking_form and transfer_form
+  - Added 2 localization strings: `transferSameAccount`, `sharesRequired` (EN + DE)
+  - Fixed 2 periodic transfer tests using same-account transfers
+  - All 959 tests pass, zero flutter analyze issues
+
 ### Phase 5: Test Coverage — Utilities & Providers — **DONE**
 - **Plan 01**: Created 4 test files (37 tests total):
   - `spacing_test.dart` (15 tests): numeric constants (tiny=4, small=8, medium=16, large=24, huge=32), vertical SizedBox height/width, horizontal SizedBox width/height
@@ -94,6 +104,7 @@ Phase 5: Test Coverage — Utilities & Providers — **DONE**
 - Phase ordering: Cleanup first, then parallel refactoring + testing
 - Search/filter extraction: Mixin approach chosen over base class (preserves screen independence)
 - accounts_dao.insert() and assets_dao.insert() kept public (used by 15+ test files and 2 production files)
+- DaoValidationException uses `toString() => message` for clean UI display (no "Exception:" prefix)
 
 ## Discovered Issues
 ### From Code Analysis (2026-03-08)
