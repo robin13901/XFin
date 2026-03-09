@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:xfin/database/app_database.dart';
+import 'package:xfin/database/dao_exception.dart';
 import 'package:xfin/database/daos/transfers_dao.dart';
 import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
@@ -373,6 +374,118 @@ void main() {
       expect(sut.shares, closeTo(0.5, 1e-9));
       expect(sut.costBasis, closeTo(100, 1e-9));
       expect(sut.value, closeTo(50, 1e-9));
+    });
+  });
+
+  group('validation', () {
+    test('createTransfer throws DaoValidationException on same sending and receiving account',
+        () async {
+      expect(
+        () => transfersDao.createTransfer(
+          TransfersCompanion.insert(
+            date: 20250101,
+            sendingAccountId: accA,
+            receivingAccountId: accA,
+            assetId: Value(assetId),
+            shares: 10.0,
+            value: 10.0,
+          ),
+          l10n,
+        ),
+        throwsA(isA<DaoValidationException>()),
+      );
+    });
+
+    test('createTransfer throws DaoValidationException on zero shares',
+        () async {
+      expect(
+        () => transfersDao.createTransfer(
+          TransfersCompanion.insert(
+            date: 20250101,
+            sendingAccountId: accA,
+            receivingAccountId: accB,
+            assetId: Value(assetId),
+            shares: 0,
+            value: 0,
+          ),
+          l10n,
+        ),
+        throwsA(isA<DaoValidationException>()),
+      );
+    });
+
+    test('updateTransfer throws DaoValidationException on same sending and receiving account',
+        () async {
+      // Create a valid transfer first
+      await transfersDao.createTransfer(
+        TransfersCompanion.insert(
+          date: 20250101,
+          sendingAccountId: accA,
+          receivingAccountId: accB,
+          assetId: Value(assetId),
+          shares: 10.0,
+          value: 10.0,
+        ),
+        l10n,
+      );
+
+      final transfers = await transfersDao.getAllTransfers();
+      final old = transfers.first;
+
+      // Try to update with same accounts
+      expect(
+        () => transfersDao.updateTransfer(
+          old,
+          TransfersCompanion(
+            id: Value(old.id),
+            date: const Value(20250101),
+            sendingAccountId: Value(accA),
+            receivingAccountId: Value(accA),
+            assetId: Value(assetId),
+            shares: const Value(10.0),
+            value: const Value(10.0),
+          ),
+          l10n,
+        ),
+        throwsA(isA<DaoValidationException>()),
+      );
+    });
+
+    test('updateTransfer throws DaoValidationException on zero shares',
+        () async {
+      // Create a valid transfer first
+      await transfersDao.createTransfer(
+        TransfersCompanion.insert(
+          date: 20250101,
+          sendingAccountId: accA,
+          receivingAccountId: accB,
+          assetId: Value(assetId),
+          shares: 10.0,
+          value: 10.0,
+        ),
+        l10n,
+      );
+
+      final transfers = await transfersDao.getAllTransfers();
+      final old = transfers.first;
+
+      // Try to update with zero shares
+      expect(
+        () => transfersDao.updateTransfer(
+          old,
+          TransfersCompanion(
+            id: Value(old.id),
+            date: const Value(20250101),
+            sendingAccountId: Value(accA),
+            receivingAccountId: Value(accB),
+            assetId: Value(assetId),
+            shares: const Value(0),
+            value: const Value(0),
+          ),
+          l10n,
+        ),
+        throwsA(isA<DaoValidationException>()),
+      );
     });
   });
 }

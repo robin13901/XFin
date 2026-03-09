@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:xfin/database/app_database.dart';
+import 'package:xfin/database/dao_exception.dart';
 import 'package:xfin/database/daos/bookings_dao.dart';
 import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
@@ -810,6 +811,60 @@ void main() {
 
       expect(categories.length, 1);
       expect(categories.first, 'Salary');
+    });
+  });
+
+  group('validation', () {
+    test('createBooking throws DaoValidationException on zero shares',
+        () async {
+      final booking = BookingsCompanion.insert(
+        date: 20250101,
+        shares: 0,
+        category: 'Salary',
+        accountId: accountId,
+        assetId: Value(baseCurrencyAssetId),
+        value: 0,
+      );
+
+      expect(
+        () => bookingsDao.createBooking(booking, l10n),
+        throwsA(isA<DaoValidationException>()),
+      );
+    });
+
+    test('updateBooking throws DaoValidationException on zero shares',
+        () async {
+      // Create a valid booking first
+      await bookingsDao.createBooking(
+        BookingsCompanion.insert(
+          date: 20250101,
+          shares: 50.0,
+          category: 'Salary',
+          accountId: accountId,
+          assetId: Value(baseCurrencyAssetId),
+          value: 50.0,
+        ),
+        l10n,
+      );
+
+      final booking = (await bookingsDao.getAllBookings()).first;
+
+      // Try to update with zero shares
+      expect(
+        () => bookingsDao.updateBooking(
+          booking,
+          BookingsCompanion(
+            id: Value(booking.id),
+            date: const Value(20250101),
+            accountId: Value(accountId),
+            assetId: Value(baseCurrencyAssetId),
+            category: const Value('Salary'),
+            shares: const Value(0),
+          ),
+          l10n,
+        ),
+        throwsA(isA<DaoValidationException>()),
+      );
     });
   });
 }

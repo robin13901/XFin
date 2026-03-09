@@ -4,6 +4,7 @@ import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:xfin/database/app_database.dart';
+import 'package:xfin/database/dao_exception.dart';
 import 'package:xfin/database/daos/trades_dao.dart';
 import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
@@ -1915,6 +1916,65 @@ void main() {
             ..where((a) => a.id.equals(sourceAccount.id)))
           .getSingle();
       expect(source.balance.isFinite, true);
+    });
+  });
+
+  group('validation', () {
+    test('insertTrade throws DaoValidationException on zero shares', () async {
+      final trade = TradesCompanion(
+        datetime: const drift.Value(20250101120000),
+        assetId: drift.Value(assetOne.id),
+        type: const drift.Value(TradeTypes.buy),
+        shares: const drift.Value(0),
+        costBasis: const drift.Value(10.0),
+        fee: const drift.Value(0),
+        tax: const drift.Value(0),
+        sourceAccountId: drift.Value(sourceAccount.id),
+        targetAccountId: drift.Value(targetAccount.id),
+      );
+
+      expect(
+        () => tradesDao.insertTrade(trade, l10n),
+        throwsA(isA<DaoValidationException>()),
+      );
+    });
+
+    test('sell throws DaoValidationException when insufficient shares',
+        () async {
+      // Buy a small amount first
+      await tradesDao.insertTrade(
+        TradesCompanion(
+          datetime: const drift.Value(20250101120000),
+          assetId: drift.Value(assetOne.id),
+          type: const drift.Value(TradeTypes.buy),
+          shares: const drift.Value(5.0),
+          costBasis: const drift.Value(10.0),
+          fee: const drift.Value(0),
+          tax: const drift.Value(0),
+          sourceAccountId: drift.Value(sourceAccount.id),
+          targetAccountId: drift.Value(targetAccount.id),
+        ),
+        l10n,
+      );
+
+      // Attempt to sell more than owned
+      expect(
+        () => tradesDao.insertTrade(
+          TradesCompanion(
+            datetime: const drift.Value(20250102120000),
+            assetId: drift.Value(assetOne.id),
+            type: const drift.Value(TradeTypes.sell),
+            shares: const drift.Value(10.0),
+            costBasis: const drift.Value(10.0),
+            fee: const drift.Value(0),
+            tax: const drift.Value(0),
+            sourceAccountId: drift.Value(sourceAccount.id),
+            targetAccountId: drift.Value(targetAccount.id),
+          ),
+          l10n,
+        ),
+        throwsA(isA<DaoValidationException>()),
+      );
     });
   });
 }

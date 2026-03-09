@@ -5,6 +5,7 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:test/test.dart';
 import 'package:xfin/database/app_database.dart';
+import 'package:xfin/database/dao_exception.dart';
 import 'package:xfin/database/daos/assets_on_accounts_dao.dart';
 import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
@@ -3057,6 +3058,91 @@ void main() {
         portAcc2 = await db.accountsDao.getAccount(portfolio2.id);
         expect(portAcc2.balance, closeTo(0, 1e-9));
       });
+    });
+  });
+
+  group('validation', () {
+    test(
+        'recalculateSubsequentEvents throws DaoValidationException on inconsistent balance history',
+        () async {
+      // Setup: cash account with balance 1000, portfolio account, and a stock asset
+      final cashAccId =
+          await db.into(db.accounts).insert(AccountsCompanion.insert(
+                name: 'CashAcc',
+                type: AccountTypes.cash,
+                initialBalance: const Value(1000),
+                balance: const Value(1000),
+              ));
+      final portfolioAccId =
+          await db.into(db.accounts).insert(AccountsCompanion.insert(
+                name: 'PortfolioAcc',
+                type: AccountTypes.portfolio,
+                initialBalance: const Value(0),
+                balance: const Value(0),
+              ));
+      final stockId = await db.into(db.assets).insert(AssetsCompanion.insert(
+            name: 'TestStock',
+            type: AssetTypes.stock,
+            tickerSymbol: 'TST',
+          ));
+
+      // Ensure base currency AOA on cash account
+      await db
+          .into(db.assetsOnAccounts)
+          .insert(AssetsOnAccountsCompanion.insert(
+            accountId: cashAccId,
+            assetId: baseCurrencyAsset.id,
+            shares: const Value(1000),
+            value: const Value(1000),
+          ));
+
+      // Buy stock for 800 (cash: 1000 -> 200)
+      await db.tradesDao.insertTrade(
+        TradesCompanion(
+          datetime: const Value(20250101120000),
+          assetId: Value(stockId),
+          type: const Value(TradeTypes.buy),
+          shares: const Value(10.0),
+          costBasis: const Value(80.0),
+          fee: const Value(0),
+          tax: const Value(0),
+          sourceAccountId: Value(cashAccId),
+          targetAccountId: Value(portfolioAccId),
+        ),
+        l10n,
+      );
+
+      // Buy more stock for 800 (cash: 200 -> -600, but this time it has cash left)
+      // Actually, buy for 150 (cash: 200 -> 50)
+      await db.tradesDao.insertTrade(
+        TradesCompanion(
+          datetime: const Value(20250102120000),
+          assetId: Value(stockId),
+          type: const Value(TradeTypes.buy),
+          shares: const Value(3.0),
+          costBasis: const Value(50.0),
+          fee: const Value(0),
+          tax: const Value(0),
+          sourceAccountId: Value(cashAccId),
+          targetAccountId: Value(portfolioAccId),
+        ),
+        l10n,
+      );
+
+      // Now update the first trade to buy for 999 (cash: 1000 -> 1, then 1 - 150 = -149)
+      // This goes through updateTrade, which calls recalculateSubsequentEvents,
+      // which will detect the cash account balance goes negative.
+      expect(
+        () => db.tradesDao.updateTrade(
+          const TradesCompanion(
+            id: Value(1),
+            shares: Value(10.0),
+            costBasis: Value(99.9),
+          ),
+          l10n,
+        ),
+        throwsA(isA<DaoValidationException>()),
+      );
     });
   });
 }
