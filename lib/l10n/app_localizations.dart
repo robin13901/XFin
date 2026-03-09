@@ -1615,6 +1615,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No asset holdings'**
   String get noAssetHoldings;
+
+  /// No description provided for @transferSameAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending and receiving accounts cannot be the same'**
+  String get transferSameAccount;
+
+  /// No description provided for @sharesRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Shares must not be zero'**
+  String get sharesRequired;
 }
 
 class _AppLocalizationsDelegate

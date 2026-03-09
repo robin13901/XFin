@@ -282,5 +282,7 @@
   "totalOutflows": "Gesamtabflüsse",
   "totalVolume": "Gesamtvolumen",
   "eventsPerMonth": "Ereignisse pro Monat",
-  "noAssetHoldings": "Keine Vermögenswerte"
+  "noAssetHoldings": "Keine Vermögenswerte",
+  "transferSameAccount": "Sende- und Empfangskonto dürfen nicht identisch sein",
+  "sharesRequired": "Die Anteile dürfen nicht null sein"
 }

@@ -817,4 +817,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noAssetHoldings => 'No asset holdings';
+
+  @override
+  String get transferSameAccount =>
+      'Sending and receiving accounts cannot be the same';
+
+  @override
+  String get sharesRequired => 'Shares must not be zero';
 }

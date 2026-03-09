@@ -825,4 +825,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get noAssetHoldings => 'Keine Vermögenswerte';
+
+  @override
+  String get transferSameAccount =>
+      'Sende- und Empfangskonto dürfen nicht identisch sein';
+
+  @override
+  String get sharesRequired => 'Die Anteile dürfen nicht null sein';
 }

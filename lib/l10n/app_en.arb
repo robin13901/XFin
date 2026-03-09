@@ -282,5 +282,7 @@
   "totalOutflows": "Total Outflows",
   "totalVolume": "Total Volume",
   "eventsPerMonth": "Events per Month",
-  "noAssetHoldings": "No asset holdings"
+  "noAssetHoldings": "No asset holdings",
+  "transferSameAccount": "Sending and receiving accounts cannot be the same",
+  "sharesRequired": "Shares must not be zero"
 }
