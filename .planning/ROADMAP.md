@@ -110,15 +110,21 @@ Plans:
 ---
 
 ## Phase 5: Test Coverage — Utilities & Providers
-**Goal**: Close remaining test coverage gaps.
+**Goal**: Close remaining test coverage gaps for utility files and providers.
 **Requirements**: R2.1, R2.2
 **Effort**: Small
 **Risk**: Low
+**Plans:** 1 plan
+
+Plans:
+- [ ] 05-01-PLAN.md — Unit/widget tests for spacing, modal_helper, snappy_scroll_physics, database_provider
 
 ### Tasks
-1. Add `test/utils/modal_helper_test.dart`
-2. Add `test/constants/spacing_test.dart` (if non-trivial)
-3. Run full test suite
+1. Add `test/constants/spacing_test.dart`
+2. Add `test/utils/modal_helper_test.dart`
+3. Add `test/utils/snappy_scroll_physics_test.dart`
+4. Add `test/providers/database_provider_test.dart`
+5. Run full test suite
 
 ### Success Criteria
 - All utility and provider files have test coverage
