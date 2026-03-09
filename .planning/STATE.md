@@ -1,9 +1,28 @@
 # State — Milestone 1.1.0: Code Quality & Architecture
 
 ## Current Phase
-Phase 7: Filter Model & Widget Tests — **DONE**
+Phase 4: Test Coverage — Widget Tests — **DONE**
 
 ## Completed Phases
+### Phase 4: Test Coverage — Widget Tests — **DONE**
+- **Plan 01**: Created `inflow_outflow_toggle_test.dart` (21 tests) and `dialogs_test.dart` (24 tests):
+  - InflowOutflowToggle: rendering, selected/unselected states, tap callbacks, dark/light theme colors, border/padding/animation
+  - Dialogs: showInfoDialog, showErrorDialog, showDeleteDialog for all 7 entity types, confirm/cancel with real DB, early return on no entity
+- **Plan 02**: Created `charts_test.dart` (24 tests) and `reusables_test.dart` (20 tests):
+  - AllocationItem: construction with required/optional fields, zero/negative values
+  - AllocationPieChart: rendering, empty items, percentage title threshold (8%), zero total, chartColors
+  - AllocationBreakdownSection: title, ListTiles, currency/percentage formatting, onItemTap, color cycling
+  - Reusables: buildLiquidGlassFAB positioning/icon/tap, constructor initialization, buildAssetsDropdown, buildEnumDropdown
+- **Plan 03**: Created `analysis_line_chart_section_test.dart` (39 tests):
+  - Header display: formatted value, profit/loss arrows with colors, range text for all ranges, valueLabel + topRight
+  - Range selection: 4 buttons, selected styling, callbacks, data slicing (1W=7 points, MAX=all)
+  - Indicator toggles: SMA/EMA/BB/SMA200 render/hide/callbacks, selected/unselected decoration
+  - Chart rendering: LineChart present, indicator lines with correct colors, edge cases (<7, <30 points, single point)
+  - getRangeText: all 4 German labels
+  - Touch interaction: date formatting, touched value, day-over-day profit, profit vs startValue, zero profit
+  - Profit calculation: MAX vs startValue, filtered range vs first data point, empty valueLabel hidden
+- All 922 tests pass, zero flutter analyze issues
+
 ### Phase 7: Filter Model & Widget Tests — **DONE**
 - **Plan 01**: Expanded `filter_rule_test.dart` (+14 tests) and created `filter_config_test.dart` (7 tests):
   - FilterRule: copyWith, equality/inequality for fieldId/operator/lists, _valueEquals branches, hashCode, identity

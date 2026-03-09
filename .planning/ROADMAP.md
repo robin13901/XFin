@@ -84,21 +84,23 @@ Plans:
 
 ## Phase 4: Test Coverage — Widget Tests
 **Goal**: Add tests for all untested widget files.
-**Requirements**: R1.1, R1.2, R1.3, R1.4, R1.5, R1.6, R1.7, R1.8, R1.9
-**Effort**: Large (9 widget files to test)
+**Requirements**: R1.5, R1.6, R1.7, R1.8, R1.9 (R1.1-R1.4 completed in Phases 3/7)
+**Effort**: Medium (5 remaining widget files to test)
 **Risk**: Low (additive, no existing code changes)
+**Plans:** 3 plans
+
+Plans:
+- [x] 04-01-PLAN.md — Simple widgets (inflow_outflow_toggle, dialogs)
+- [x] 04-02-PLAN.md — Moderate widgets (charts, reusables)
+- [x] 04-03-PLAN.md — Complex widget (analysis_line_chart_section)
 
 ### Tasks
-1. Add `test/widgets/form_fields_test.dart` (or per-module tests after Phase 3 split)
-2. Add `test/widgets/filter/filter_panel_test.dart`
-3. Add `test/widgets/filter/filter_rule_editor_test.dart`
-4. Add `test/widgets/filter/filter_value_inputs_test.dart`
-5. Add `test/widgets/charts_test.dart`
-6. Add `test/widgets/dialogs_test.dart`
-7. Add `test/widgets/reusables_test.dart`
-8. Add `test/widgets/inflow_outflow_toggle_test.dart`
-9. Add `test/widgets/analysis_line_chart_section_test.dart`
-10. Run full test suite to verify
+1. Add `test/widgets/inflow_outflow_toggle_test.dart`
+2. Add `test/widgets/dialogs_test.dart`
+3. Add `test/widgets/charts_test.dart`
+4. Add `test/widgets/reusables_test.dart`
+5. Add `test/widgets/analysis_line_chart_section_test.dart`
+6. Run full test suite to verify
 
 ### Success Criteria
 - Every widget file under `lib/widgets/` has a corresponding test
