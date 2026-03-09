@@ -137,6 +137,11 @@ Plans:
 **Requirements**: R6.1, R6.2, R6.3
 **Effort**: Medium
 **Risk**: Medium (changes behavior of write operations)
+**Plans:** 2 plans
+
+Plans:
+- [ ] 06-01-PLAN.md — DAO validation & localized error messages (DaoValidationException, 4 DAOs, 2 forms)
+- [ ] 06-02-PLAN.md — Error path tests (~12 new tests across 5 test files)
 
 ### Tasks
 1. Audit all DAO write methods for missing precondition validation
