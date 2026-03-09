@@ -1,9 +1,17 @@
 # State — Milestone 1.1.0: Code Quality & Architecture
 
 ## Current Phase
-Phase 4: Test Coverage — Widget Tests — **DONE**
+Phase 5: Test Coverage — Utilities & Providers — **DONE**
 
 ## Completed Phases
+### Phase 5: Test Coverage — Utilities & Providers — **DONE**
+- **Plan 01**: Created 4 test files (37 tests total):
+  - `spacing_test.dart` (15 tests): numeric constants (tiny=4, small=8, medium=16, large=24, huge=32), vertical SizedBox height/width, horizontal SizedBox width/height
+  - `modal_helper_test.dart` (4 tests): showFormModal opens sheet, isScrollControlled, returns value on pop, returns null on dismiss
+  - `snappy_scroll_physics_test.dart` (12 tests): minFlingDistance, minFlingVelocity, maxFlingVelocity, applyTo returns correct type, carriedMomentum clamping/sign/zero, spring properties
+  - `database_provider_test.dart` (6 tests): singleton pattern, instance setter, initialize sets db + notifies, replaceDatabase closes old + sets new + notifies, db getter
+- All 959 tests pass, zero flutter analyze issues
+
 ### Phase 4: Test Coverage — Widget Tests — **DONE**
 - **Plan 01**: Created `inflow_outflow_toggle_test.dart` (21 tests) and `dialogs_test.dart` (24 tests):
   - InflowOutflowToggle: rendering, selected/unselected states, tap callbacks, dark/light theme colors, border/padding/animation

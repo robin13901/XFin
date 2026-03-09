@@ -117,7 +117,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 05-01-PLAN.md — Unit/widget tests for spacing, modal_helper, snappy_scroll_physics, database_provider
+- [x] 05-01-PLAN.md — Unit/widget tests for spacing, modal_helper, snappy_scroll_physics, database_provider
 
 ### Tasks
 1. Add `test/constants/spacing_test.dart`
