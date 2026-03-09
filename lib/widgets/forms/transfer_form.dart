@@ -11,6 +11,7 @@ import 'package:xfin/widgets/form_fields/form_fields.dart';
 import '../../database/tables.dart';
 import '../../providers/database_provider.dart';
 import '../../utils/validators.dart';
+import '../dialogs.dart';
 
 class TransferForm extends StatefulWidget {
   final Transfer? transfer;
@@ -184,13 +185,18 @@ class _TransferFormState extends State<TransferForm> {
       companion = companion.copyWith(id: drift.Value(widget.transfer!.id));
     }
 
-    if (widget.transfer != null) {
-      await _db.transfersDao.updateTransfer(widget.transfer!, companion, _l10n);
-    } else {
-      await _db.transfersDao.createTransfer(companion, _l10n);
-    }
+    try {
+      if (widget.transfer != null) {
+        await _db.transfersDao
+            .updateTransfer(widget.transfer!, companion, _l10n);
+      } else {
+        await _db.transfersDao.createTransfer(companion, _l10n);
+      }
 
-    if (mounted) Navigator.of(context).pop();
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) showErrorDialog(context, e.toString());
+    }
   }
 
   @override

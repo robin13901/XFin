@@ -10,6 +10,7 @@ import 'package:xfin/utils/format.dart';
 import '../../database/tables.dart';
 import '../../providers/database_provider.dart';
 import '../../utils/validators.dart';
+import '../dialogs.dart';
 import '../form_fields/form_fields.dart';
 
 class BookingForm extends StatefulWidget {
@@ -310,10 +311,14 @@ class _BookingFormState extends State<BookingForm> {
       companion = companion.copyWith(id: drift.Value(original.id));
     }
 
-    original != null
-        ? await _db.bookingsDao.updateBooking(original, companion, _l10n)
-        : await _db.bookingsDao.createBooking(companion, _l10n);
+    try {
+      original != null
+          ? await _db.bookingsDao.updateBooking(original, companion, _l10n)
+          : await _db.bookingsDao.createBooking(companion, _l10n);
 
-    if (mounted) Navigator.of(context).pop();
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) showErrorDialog(context, e.toString());
+    }
   }
 }
