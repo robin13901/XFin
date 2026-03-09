@@ -3,6 +3,7 @@ import '../../l10n/app_localizations.dart';
 import '../../models/filter/filter_rule.dart';
 import '../../utils/global_constants.dart';
 import '../app_database.dart';
+import '../dao_exception.dart';
 import '../filter_builder.dart';
 import '../tables.dart';
 
@@ -165,6 +166,10 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
 
   Future<void> createBooking(BookingsCompanion b, AppLocalizations l10n) {
     return transaction(() async {
+      if (b.shares.value == 0) {
+        throw DaoValidationException(l10n.sharesRequired);
+      }
+
       if (!b.costBasis.present) {
         b = await calculateCostBasisAndValue(b);
       } else if (!b.value.present) {
@@ -190,6 +195,10 @@ class BookingsDao extends DatabaseAccessor<AppDatabase>
   Future<void> updateBooking(
       Booking bOld, BookingsCompanion bNew, AppLocalizations l10n) {
     return transaction(() async {
+      if (bNew.shares.value == 0) {
+        throw DaoValidationException(l10n.sharesRequired);
+      }
+
       bNew = await calculateCostBasisAndValue(bNew, bOld: bOld);
 
       await _update(bNew);

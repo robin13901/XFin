@@ -5,6 +5,7 @@ import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/models/filter/filter_rule.dart';
 import 'package:xfin/utils/global_constants.dart';
 import '../app_database.dart';
+import '../dao_exception.dart';
 import '../filter_builder.dart';
 import '../tables.dart';
 
@@ -143,7 +144,8 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
 
   /// Computes trade values and inserts/updates it
   Future<void> applyTradeToDb(
-      TradesCompanion t, ListQueue<Map<String, double>> fifo) async {
+      TradesCompanion t, ListQueue<Map<String, double>> fifo,
+      AppLocalizations l10n) async {
     final shares = t.shares.value;
     final costBasis = t.costBasis.value;
     final fee = t.fee.value;
@@ -164,7 +166,7 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
     } else {
       clearingValueDelta = movedValue - fee - tax;
       if (fifo.fold(0.0, (sum, lot) => sum + lot['shares']!) < shares) {
-        throw Exception('Not enough shares to process this sell.');
+        throw DaoValidationException(l10n.insufficientShares);
       }
       (portfolioValueDelta, buyFeeTotalDelta) = consumeFiFo(fifo, shares);
       pnl = clearingValueDelta + portfolioValueDelta - fee + tax;
@@ -189,6 +191,10 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
 
   Future<void> insertTrade(TradesCompanion t, AppLocalizations l10n) {
     return db.transaction(() async {
+      if (t.shares.value <= 0) {
+        throw DaoValidationException(l10n.sharesRequired);
+      }
+
       final fifo = await db.assetsOnAccountsDao.buildFiFoQueue(
         t.assetId.value,
         t.targetAccountId.value,
@@ -197,7 +203,7 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
         upToId: 0,
       );
 
-      await applyTradeToDb(t, fifo);
+      await applyTradeToDb(t, fifo, l10n);
 
       await db.assetsOnAccountsDao.recalculateSubsequentEvents(
         l10n: l10n,
@@ -245,7 +251,7 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
         upToId: originalTrade.id,
       );
 
-      await applyTradeToDb(updatedTrade, fifo);
+      await applyTradeToDb(updatedTrade, fifo, l10n);
 
       final recalcUpToId = t.id.value + 1;
       await db.assetsOnAccountsDao.recalculateSubsequentEvents(

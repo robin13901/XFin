@@ -3,6 +3,7 @@ import '../../l10n/app_localizations.dart';
 import '../../models/filter/filter_rule.dart';
 import '../../utils/global_constants.dart';
 import '../app_database.dart';
+import '../dao_exception.dart';
 import '../filter_builder.dart';
 import '../tables.dart';
 
@@ -128,6 +129,13 @@ class TransfersDao extends DatabaseAccessor<AppDatabase>
 
   Future<void> createTransfer(TransfersCompanion t, AppLocalizations l10n) {
     return transaction(() async {
+      if (t.sendingAccountId.value == t.receivingAccountId.value) {
+        throw DaoValidationException(l10n.transferSameAccount);
+      }
+      if (t.shares.value <= 0) {
+        throw DaoValidationException(l10n.sharesRequired);
+      }
+
       if (!t.costBasis.present) t = await _calculateCostBasisAndValue(t);
 
       final transferId = await _insert(t);
@@ -169,6 +177,13 @@ class TransfersDao extends DatabaseAccessor<AppDatabase>
   Future<void> updateTransfer(
       Transfer tOld, TransfersCompanion tNew, AppLocalizations l10n) {
     return transaction(() async {
+      if (tNew.sendingAccountId.value == tNew.receivingAccountId.value) {
+        throw DaoValidationException(l10n.transferSameAccount);
+      }
+      if (tNew.shares.value <= 0) {
+        throw DaoValidationException(l10n.sharesRequired);
+      }
+
       tNew = await _calculateCostBasisAndValue(tNew, tOld: tOld);
       tNew = tNew.copyWith(id: Value(tOld.id));
 

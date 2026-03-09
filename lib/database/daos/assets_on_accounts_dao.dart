@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import '../../utils/global_constants.dart';
 import '../app_database.dart';
+import '../dao_exception.dart';
 import '../tables.dart';
 
 part 'assets_on_accounts_dao.g.dart';
@@ -243,7 +244,7 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
       for (final accountId in accounts) {
         final inconsistent = await db.accountsDao.leadsToInconsistentBalanceHistory(accountId: accountId);
         if (inconsistent) {
-          throw Exception(l10n.actionCancelledDueToDataInconsistency);
+          throw DaoValidationException(l10n.actionCancelledDueToDataInconsistency);
         }
       }
     });
@@ -395,7 +396,7 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
         final t = e.trade!;
         accounts.add(t.sourceAccountId);
         accounts.add(t.targetAccountId);
-        await db.tradesDao.applyTradeToDb(t.toCompanion(false), fifo);
+        await db.tradesDao.applyTradeToDb(t.toCompanion(false), fifo, l10n);
       }
       accounts.add(accountId);
     }
