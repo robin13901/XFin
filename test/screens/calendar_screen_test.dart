@@ -129,7 +129,6 @@ void main() {
 
     final pageView = tester.widget<PageView>(find.byType(PageView).first);
     expect(pageView.allowImplicitScrolling, isTrue);
-    expect(pageView.physics, isA<BouncingScrollPhysics>());
   });
 
   testWidgets('tap day opens animated details dialog with paged sections',
@@ -253,5 +252,30 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(CircularProgressIndicator), findsNothing);
     }
+  });
+
+  testWidgets('month header animates smoothly when swiping between months',
+      (tester) async {
+    await pumpCalendar(tester);
+
+    // Verify AnimatedSwitcher is present for the header transition
+    expect(find.byType(AnimatedSwitcher), findsOneWidget);
+
+    // Get current month label
+    final now = DateTime.now();
+    final currentLabel = DateFormat('MMMM yyyy', 'en').format(now);
+    final capitalizedCurrent = currentLabel[0].toUpperCase() + currentLabel.substring(1);
+    expect(find.text(capitalizedCurrent), findsOneWidget);
+
+    // Swipe to next month
+    await tester.fling(find.byType(PageView).first, const Offset(-320, 0), 700);
+    await tester.pumpAndSettle();
+
+    // Verify new month label appears
+    final nextMonth = DateTime(now.year, now.month + 1);
+    final nextLabel = DateFormat('MMMM yyyy', 'en').format(nextMonth);
+    final capitalizedNext = nextLabel[0].toUpperCase() + nextLabel.substring(1);
+    expect(find.text(capitalizedNext), findsOneWidget);
+    expect(find.text(capitalizedCurrent), findsNothing);
   });
 }

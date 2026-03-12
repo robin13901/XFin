@@ -3,7 +3,6 @@ import 'package:intl/intl.dart';
 import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 
 import 'package:xfin/database/models/analysis_models.dart';
-import 'package:xfin/utils/snappy_scroll_physics.dart';
 import 'package:xfin/widgets/liquid_glass_widgets.dart';
 
 class DayDetailsPage {
@@ -84,7 +83,6 @@ class DayDetailsPagerState extends State<DayDetailsPager> {
                   const SizedBox(height: 10),
                   Expanded(
                     child: PageView.builder(
-                      physics: const BouncingScrollPhysics(parent: SnappyPageScrollPhysics()),
                       itemCount: widget.pages.length,
                       onPageChanged: (i) => setState(() => _index = i),
                       itemBuilder: (context, i) {

@@ -9,12 +9,37 @@ import '../l10n/app_localizations.dart';
 import '../providers/database_provider.dart';
 import '../utils/format.dart';
 import '../utils/global_constants.dart';
-import '../utils/snappy_scroll_physics.dart';
 import '../widgets/liquid_glass_widgets.dart';
 import 'calendar/calendar_data.dart';
 import 'calendar/day_details.dart';
 import 'calendar/month_grid.dart';
 import 'calendar/month_summary.dart';
+
+/// Slightly more sensitive [PageScrollPhysics]: boosts weak fling velocities
+/// so that light swipes reliably snap to the next month instead of bouncing
+/// back. All other behaviour (spring, snap, overscroll) stays stock.
+class _CalendarPagePhysics extends PageScrollPhysics {
+  const _CalendarPagePhysics({super.parent});
+
+  @override
+  _CalendarPagePhysics applyTo(ScrollPhysics? ancestor) {
+    return _CalendarPagePhysics(parent: buildParent(ancestor));
+  }
+
+  @override
+  Simulation? createBallisticSimulation(
+      ScrollMetrics position, double velocity) {
+    // Default PageScrollPhysics only adjusts the target page by ±0.5 when
+    // |velocity| > tolerance (~7 px/s).  A slow, short swipe can end below
+    // that threshold and snap back.  Boosting weak-but-intentional velocities
+    // ensures the ±0.5 kicks in and the page commits to moving forward.
+    const double minBoost = 300.0;
+    if (velocity.abs() > 1.0 && velocity.abs() < minBoost) {
+      velocity = velocity.sign * minBoost;
+    }
+    return super.createBallisticSimulation(position, velocity);
+  }
+}
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -30,16 +55,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
   late final DateTime _baseMonth;
   late final PageController _pageController;
   late final ScrollController _scrollController;
-  int _currentPageIndex = _initialPage;
+
+  /// Drives header + summary rebuilds without touching the PageView or scroll wrapper.
+  final ValueNotifier<int> _pageNotifier = ValueNotifier<int>(_initialPage);
 
   bool _showInflows = true;
   bool _showAllCategories = false;
 
   final Map<int, Future<CalendarScreenData>> _monthFutureCache = {};
   final Map<int, CalendarScreenData> _monthDataCache = {};
-  late Future<CalendarScreenData> _selectedMonthFuture;
-
-  DateTime get _selectedMonth => _monthAtPage(_currentPageIndex);
 
   @override
   void initState() {
@@ -48,14 +72,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
     _baseMonth = DateTime(now.year, now.month);
     _pageController = PageController(initialPage: _initialPage);
     _scrollController = ScrollController();
-    _selectedMonthFuture = _ensureMonthData(_selectedMonth);
-    _prefetchNeighborsAfterDisplay(_selectedMonth);
+    final initialMonth = _monthAtPage(_initialPage);
+    _ensureMonthData(initialMonth);
+    _prefetchNeighborsAfterDisplay(initialMonth);
   }
 
   @override
   void dispose() {
     _pageController.dispose();
     _scrollController.dispose();
+    _pageNotifier.dispose();
     super.dispose();
   }
 
@@ -109,12 +135,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   void _onMonthChanged(int pageIndex) {
+    _showAllCategories = false;
+    _pageNotifier.value = pageIndex;
     final month = _monthAtPage(pageIndex);
-    setState(() {
-      _currentPageIndex = pageIndex;
-      _showAllCategories = false;
-      _selectedMonthFuture = _ensureMonthData(month);
-    });
+    _ensureMonthData(month);
     _prefetchNeighborsAfterDisplay(month);
   }
 
@@ -298,7 +322,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final selectedMonth = _selectedMonth;
 
     return Scaffold(
       body: Stack(
@@ -314,38 +337,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                MonthHeader(month: selectedMonth),
+                _buildAnimatedMonthHeader(),
                 const SizedBox(height: 12),
                 _buildCalendarPager(),
                 const SizedBox(height: 20),
-                FutureBuilder<CalendarScreenData>(
-                  future: _selectedMonthFuture,
-                  builder: (context, snapshot) {
-                    // Show previous data while loading to avoid flicker
-                    final data = snapshot.data ?? _monthDataCache[_monthCacheKey(selectedMonth)];
-                    if (data == null) {
-                      return const SizedBox(height: 200);
-                    }
-
-                    return MonthSummarySection(
-                      key: ValueKey(_monthCacheKey(selectedMonth)),
-                      data: data,
-                      showInflows: _showInflows,
-                      showAllCategories: _showAllCategories,
-                      onInflowOutflowChanged: (showInflows) {
-                        setState(() {
-                          _showInflows = showInflows;
-                          _showAllCategories = false;
-                        });
-                      },
-                      onShowAllChanged: (showAll) {
-                        setState(() {
-                          _showAllCategories = showAll;
-                        });
-                      },
-                    );
-                  },
-                ),
+                _buildMonthSummary(),
               ],
             ),
           ),
@@ -355,19 +351,90 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
+  /// Month label with a smooth crossfade when the page changes.
+  Widget _buildAnimatedMonthHeader() {
+    return ValueListenableBuilder<int>(
+      valueListenable: _pageNotifier,
+      builder: (context, pageIndex, _) {
+        final month = _monthAtPage(pageIndex);
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 250),
+          switchInCurve: Curves.easeOut,
+          switchOutCurve: Curves.easeIn,
+          transitionBuilder: (child, animation) {
+            return FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 0.25),
+                  end: Offset.zero,
+                ).animate(animation),
+                child: child,
+              ),
+            );
+          },
+          child: MonthHeader(
+            key: ValueKey(_monthCacheKey(month)),
+            month: month,
+          ),
+        );
+      },
+    );
+  }
+
+  /// Summary section scoped to [_pageNotifier] so the PageView never rebuilds.
+  Widget _buildMonthSummary() {
+    return ValueListenableBuilder<int>(
+      valueListenable: _pageNotifier,
+      builder: (context, pageIndex, _) {
+        final month = _monthAtPage(pageIndex);
+        final monthKey = _monthCacheKey(month);
+        final future = _ensureMonthData(month);
+
+        return FutureBuilder<CalendarScreenData>(
+          future: future,
+          builder: (context, snapshot) {
+            final data = snapshot.data ?? _monthDataCache[monthKey];
+            if (data == null) {
+              return const SizedBox(height: 200);
+            }
+
+            return MonthSummarySection(
+              key: ValueKey(monthKey),
+              data: data,
+              showInflows: _showInflows,
+              showAllCategories: _showAllCategories,
+              onInflowOutflowChanged: (showInflows) {
+                setState(() {
+                  _showInflows = showInflows;
+                  _showAllCategories = false;
+                });
+              },
+              onShowAllChanged: (showAll) {
+                setState(() {
+                  _showAllCategories = showAll;
+                });
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildCalendarPager() {
     return SizedBox(
       height: _calendarPagerViewportHeight(),
       child: PageView.builder(
         controller: _pageController,
-        physics: const BouncingScrollPhysics(parent: SnappyPageScrollPhysics()),
+        physics: const _CalendarPagePhysics(),
         allowImplicitScrolling: true,
         onPageChanged: _onMonthChanged,
         itemBuilder: (context, index) {
           final month = _monthAtPage(index);
           final monthKey = _monthCacheKey(month);
 
-          // Check if data is already cached synchronously
+          // Fast path: data already resolved — render instantly
           final cachedData = _monthDataCache[monthKey];
           if (cachedData != null) {
             return MonthGrid(
@@ -378,17 +445,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
             );
           }
 
-          // Otherwise use FutureBuilder
+          // Slow path: render grid structure immediately (day numbers visible),
+          // then fill in flow data once the future resolves
           return FutureBuilder<CalendarScreenData>(
             key: ValueKey(monthKey),
             future: _ensureMonthData(month),
             builder: (context, snapshot) {
-              if (!snapshot.hasData) {
-                return const SizedBox.shrink();
-              }
               return MonthGrid(
                 month: month,
-                dayNetFlow: snapshot.data!.dayNetFlow,
+                dayNetFlow: snapshot.data?.dayNetFlow ?? const {},
                 onDayTap: _openDayDetails,
               );
             },
