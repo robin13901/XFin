@@ -240,6 +240,46 @@ void main() {
   }
 
   group('TradeForm - initial loading & UI', () {
+    testWidgets('archived accounts are excluded from dropdowns (preloaded path)', (tester) async {
+      const archivedAcc = Account(
+        id: 13,
+        name: 'Archived Acc',
+        balance: 500.0,
+        initialBalance: 500.0,
+        type: AccountTypes.cash,
+        isArchived: true,
+      );
+      await db.into(db.accounts).insert(archivedAcc.toCompanion(false));
+
+      // Pass archived account in preloaded list — form should filter it out
+      await pumpWidget(tester,
+          preloadedAssetsParam: preloadedAssets,
+          preloadedAccountsParam: [...preloadedAccounts, archivedAcc]);
+
+      // Open clearing dropdown
+      final clearingDropdown = find.byKey(const Key('clearing_dropdown'));
+      await tester.ensureVisible(clearingDropdown);
+      await tester.tap(clearingDropdown);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Cash A'), findsOneWidget);
+      expect(find.text('Archived Acc'), findsNothing);
+
+      await tester.tap(find.text('Cash A'));
+      await tester.pumpAndSettle();
+
+      // Open portfolio dropdown
+      final portfolioDropdown = find.byKey(const Key('portfolio_dropdown'));
+      await tester.ensureVisible(portfolioDropdown);
+      await tester.tap(portfolioDropdown);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Portfolio A'), findsOneWidget);
+      expect(find.text('Archived Acc'), findsNothing);
+
+      await tester.pumpWidget(Container());
+    });
+
     testWidgets('loads assets/accounts and excludes base currency asset', (tester) async {
       // Show form, pass preloaded lists so TradeForm uses them synchronously
       await pumpWidget(tester, preloadedAssetsParam: preloadedAssets, preloadedAccountsParam: preloadedAccounts);

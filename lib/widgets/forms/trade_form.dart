@@ -87,7 +87,9 @@ class _TradeFormState extends State<TradeForm> {
       _allAssets = widget.preloadedAssets!;
       _dropdownAssets = _allAssets.where((a) => a.id != 1).toList();
 
-      final allAccounts = widget.preloadedAccounts!;
+      final allAccounts = widget.preloadedAccounts!
+          .where((a) => !a.isArchived)
+          .toList();
       _clearingAccounts = allAccounts;
       _investmentAccounts =
           allAccounts.where((a) => a.type != AccountTypes.bankAccount).toList();
@@ -112,7 +114,9 @@ class _TradeFormState extends State<TradeForm> {
 
   Future<void> _loadInitialData(Trade? t) async {
     _allAssets = await _db.assetsDao.getAllAssets();
-    final allAccounts = await _db.accountsDao.getAllAccounts();
+    final allAccounts = (await _db.accountsDao.getAllAccounts())
+        .where((a) => !a.isArchived)
+        .toList();
 
     if (t != null) {
       _assetId = t.assetId;

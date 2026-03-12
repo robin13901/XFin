@@ -180,6 +180,34 @@ void main() {
           accountId: 1, assetId: 1, shares: const Value(100), value: const Value(100)));
     });
 
+    testWidgets('archived accounts are excluded from dropdown',
+            (tester) => tester.runAsync(() async {
+          // Insert an archived account
+          await db.accountsDao.insert(
+            const AccountsCompanion(
+              name: Value('Archived Account'),
+              balance: Value(50.0),
+              initialBalance: Value(50.0),
+              type: Value(AccountTypes.cash),
+              isArchived: Value(true),
+            ),
+          );
+
+          await pumpWidget(tester);
+
+          // Open account dropdown
+          final accDropdown = dropdownByLabel(l10n.account);
+          expect(accDropdown, findsOneWidget);
+          await tester.tap(accDropdown);
+          await tester.pumpAndSettle();
+
+          // Active account should be visible, archived should not
+          expect(find.text('Test Account'), findsOneWidget);
+          expect(find.text('Archived Account'), findsNothing);
+
+          await tester.pumpWidget(Container());
+        }));
+
     testWidgets('form initializes empty for new booking',
             (tester) => tester.runAsync(() async {
           await pumpWidget(tester);

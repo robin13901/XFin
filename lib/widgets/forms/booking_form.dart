@@ -99,7 +99,9 @@ class _BookingFormState extends State<BookingForm> {
     ]);
 
     _allAssets = results[0] as List<Asset>;
-    _allAccounts = results[1] as List<Account>;
+    _allAccounts = (results[1] as List<Account>)
+        .where((a) => !a.isArchived)
+        .toList();
     _distinctCategories = results[2] as List<String>;
     _assetMap = {for (final a in _allAssets) a.id: a};
   }
