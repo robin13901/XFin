@@ -160,8 +160,8 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
   }
 
   // Totals for month
-  Future<double> getTotalInflowsForMonth(DateTime date) async {
-    final intersection = getMonthTimeframeIntersection(date, filterStart: filterStartDate, filterEnd: filterEndDate);
+  Future<double> getTotalInflowsForMonth(DateTime date, {int? filterStart, int? filterEnd}) async {
+    final intersection = getMonthTimeframeIntersection(date, filterStart: filterStart ?? filterStartDate, filterEnd: filterEnd ?? filterEndDate);
 
     // Wenn der Monat außerhalb des Timeframes liegt, gib 0 zurück
     if (intersection == null) {
@@ -185,8 +185,8 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
     return bookingsTotal + positivePnLTotal;
   }
 
-  Future<double> getTotalOutflowsForMonth(DateTime date) async {
-    final intersection = getMonthTimeframeIntersection(date, filterStart: filterStartDate, filterEnd: filterEndDate);
+  Future<double> getTotalOutflowsForMonth(DateTime date, {int? filterStart, int? filterEnd}) async {
+    final intersection = getMonthTimeframeIntersection(date, filterStart: filterStart ?? filterStartDate, filterEnd: filterEnd ?? filterEndDate);
 
     // Wenn der Monat außerhalb des Timeframes liegt, gib 0 zurück
     if (intersection == null) {
@@ -214,8 +214,8 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
     return bookingsTotal + negativePnLTotal - tradingFeesTotal - taxTotal;
   }
 
-  Future<double> getProfitAndLossForMonth(DateTime date) async {
-    final intersection = getMonthTimeframeIntersection(date, filterStart: filterStartDate, filterEnd: filterEndDate);
+  Future<double> getProfitAndLossForMonth(DateTime date, {int? filterStart, int? filterEnd}) async {
+    final intersection = getMonthTimeframeIntersection(date, filterStart: filterStart ?? filterStartDate, filterEnd: filterEnd ?? filterEndDate);
 
     // Wenn der Monat außerhalb des Timeframes liegt, gib 0 zurück
     if (intersection == null) {
@@ -248,8 +248,8 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
     return bookingsTotal + tradeTotal;
   }
 
-  Future<Map<String, double>> getCategoryInflowsForMonth(DateTime date) async {
-    final intersection = getMonthTimeframeIntersection(date, filterStart: filterStartDate, filterEnd: filterEndDate);
+  Future<Map<String, double>> getCategoryInflowsForMonth(DateTime date, {int? filterStart, int? filterEnd}) async {
+    final intersection = getMonthTimeframeIntersection(date, filterStart: filterStart ?? filterStartDate, filterEnd: filterEnd ?? filterEndDate);
 
     // Wenn der Monat außerhalb des Timeframes liegt, gib leere Map zurück
     if (intersection == null) {
@@ -289,8 +289,8 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
     return sortedMap;
   }
 
-  Future<Map<String, double>> getCategoryOutflowsForMonth(DateTime date) async {
-    final intersection = getMonthTimeframeIntersection(date, filterStart: filterStartDate, filterEnd: filterEndDate);
+  Future<Map<String, double>> getCategoryOutflowsForMonth(DateTime date, {int? filterStart, int? filterEnd}) async {
+    final intersection = getMonthTimeframeIntersection(date, filterStart: filterStart ?? filterStartDate, filterEnd: filterEnd ?? filterEndDate);
 
     // Wenn der Monat außerhalb des Timeframes liegt, gib leere Map zurück
     if (intersection == null) {
@@ -578,13 +578,13 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
     return result;
   }
 
-  Future<MonthlyAnalysisSnapshot> getMonthlyAnalysisSnapshot(DateTime date) async {
+  Future<MonthlyAnalysisSnapshot> getMonthlyAnalysisSnapshot(DateTime date, {int? filterStart, int? filterEnd}) async {
     final results = await Future.wait([
-      getTotalInflowsForMonth(date),
-      getTotalOutflowsForMonth(date),
-      getProfitAndLossForMonth(date),
-      getCategoryInflowsForMonth(date),
-      getCategoryOutflowsForMonth(date),
+      getTotalInflowsForMonth(date, filterStart: filterStart, filterEnd: filterEnd),
+      getTotalOutflowsForMonth(date, filterStart: filterStart, filterEnd: filterEnd),
+      getProfitAndLossForMonth(date, filterStart: filterStart, filterEnd: filterEnd),
+      getCategoryInflowsForMonth(date, filterStart: filterStart, filterEnd: filterEnd),
+      getCategoryOutflowsForMonth(date, filterStart: filterStart, filterEnd: filterEnd),
     ]);
 
     return MonthlyAnalysisSnapshot(

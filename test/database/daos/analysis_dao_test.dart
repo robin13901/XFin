@@ -845,4 +845,148 @@ void main() {
     });
   });
 
+  group('AnalysisDao - custom filterStart/filterEnd override (Calendar Screen)', () {
+    setUp(() async {
+      // Set a restrictive global timeframe: only March 2024
+      SharedPreferences.setMockInitialValues({
+        PrefKeys.filterStartDate: 20240301,
+        PrefKeys.filterEndDate: 20240331,
+      });
+      filterStartDate = 20240301;
+      filterEndDate = 20240331;
+
+      await db.into(db.accounts).insert(AccountsCompanion.insert(
+        name: 'Acc',
+        type: AccountTypes.cash,
+        initialBalance: const Value(0),
+      ));
+      await db.into(db.assets).insert(AssetsCompanion.insert(
+        name: 'Ast',
+        type: AssetTypes.stock,
+        tickerSymbol: 'AST',
+      ));
+
+      // Insert data in January 2024 — outside the global timeframe
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+        date: 20240115,
+        shares: 200.0,
+        value: 200.0,
+        category: 'Salary',
+        accountId: 1,
+      ));
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+        date: 20240120,
+        shares: -50.0,
+        value: -50.0,
+        category: 'Rent',
+        accountId: 1,
+      ));
+      await db.into(db.trades).insert(TradesCompanion.insert(
+        datetime: 20240118120000,
+        assetId: 2,
+        type: TradeTypes.sell,
+        sourceAccountValueDelta: 0,
+        targetAccountValueDelta: 0,
+        shares: 1,
+        costBasis: 1,
+        profitAndLoss: const Value(80.0),
+        fee: const Value(3.0),
+        tax: const Value(1.0),
+        sourceAccountId: 1,
+        targetAccountId: 1,
+      ));
+    });
+
+    test('getTotalInflowsForMonth returns data with unrestricted filter override', () async {
+      // Without override: global timeframe excludes January
+      final withoutOverride = await analysisDao.getTotalInflowsForMonth(DateTime(2024, 1));
+      expect(withoutOverride, 0.0);
+
+      // With override: bypass global timeframe
+      final withOverride = await analysisDao.getTotalInflowsForMonth(
+        DateTime(2024, 1),
+        filterStart: 0,
+        filterEnd: 99999999,
+      );
+      expect(withOverride, closeTo(280.0, 1e-9)); // 200 booking + 80 positive PnL
+    });
+
+    test('getTotalOutflowsForMonth returns data with unrestricted filter override', () async {
+      final withoutOverride = await analysisDao.getTotalOutflowsForMonth(DateTime(2024, 1));
+      expect(withoutOverride, 0.0);
+
+      final withOverride = await analysisDao.getTotalOutflowsForMonth(
+        DateTime(2024, 1),
+        filterStart: 0,
+        filterEnd: 99999999,
+      );
+      // -50 booking + 0 negative PnL - 3 fees - 1 tax = -54
+      expect(withOverride, closeTo(-54.0, 1e-9));
+    });
+
+    test('getProfitAndLossForMonth returns data with unrestricted filter override', () async {
+      final withoutOverride = await analysisDao.getProfitAndLossForMonth(DateTime(2024, 1));
+      expect(withoutOverride, 0.0);
+
+      final withOverride = await analysisDao.getProfitAndLossForMonth(
+        DateTime(2024, 1),
+        filterStart: 0,
+        filterEnd: 99999999,
+      );
+      // bookings: 200 + (-50) = 150
+      // trades: 80 - 3 - 1 = 76
+      // total: 150 + 76 = 226
+      expect(withOverride, closeTo(226.0, 1e-9));
+    });
+
+    test('getCategoryInflowsForMonth returns data with unrestricted filter override', () async {
+      final withoutOverride = await analysisDao.getCategoryInflowsForMonth(DateTime(2024, 1));
+      expect(withoutOverride, isEmpty);
+
+      final withOverride = await analysisDao.getCategoryInflowsForMonth(
+        DateTime(2024, 1),
+        filterStart: 0,
+        filterEnd: 99999999,
+      );
+      expect(withOverride['Salary'], closeTo(200.0, 1e-9));
+      expect(withOverride['Profit aus Trades'], closeTo(80.0, 1e-9));
+    });
+
+    test('getCategoryOutflowsForMonth returns data with unrestricted filter override', () async {
+      final withoutOverride = await analysisDao.getCategoryOutflowsForMonth(DateTime(2024, 1));
+      expect(withoutOverride, isEmpty);
+
+      final withOverride = await analysisDao.getCategoryOutflowsForMonth(
+        DateTime(2024, 1),
+        filterStart: 0,
+        filterEnd: 99999999,
+      );
+      expect(withOverride['Rent'], closeTo(-50.0, 1e-9));
+      expect(withOverride['Trading Gebühren'], closeTo(-3.0, 1e-9));
+      expect(withOverride['Steuern'], closeTo(-1.0, 1e-9));
+    });
+
+    test('getMonthlyAnalysisSnapshot returns data with unrestricted filter override', () async {
+      // Without override: all zeros/empty
+      final withoutOverride = await analysisDao.getMonthlyAnalysisSnapshot(DateTime(2024, 1));
+      expect(withoutOverride.inflows, 0.0);
+      expect(withoutOverride.outflows, 0.0);
+      expect(withoutOverride.profit, 0.0);
+      expect(withoutOverride.categoryInflows, isEmpty);
+      expect(withoutOverride.categoryOutflows, isEmpty);
+
+      // With override: full data returned
+      final withOverride = await analysisDao.getMonthlyAnalysisSnapshot(
+        DateTime(2024, 1),
+        filterStart: 0,
+        filterEnd: 99999999,
+      );
+      expect(withOverride.inflows, closeTo(280.0, 1e-9));
+      expect(withOverride.outflows, closeTo(-54.0, 1e-9));
+      expect(withOverride.profit, closeTo(226.0, 1e-9));
+      expect(withOverride.categoryInflows, isNotEmpty);
+      expect(withOverride.categoryOutflows, isNotEmpty);
+    });
+  });
+
 }

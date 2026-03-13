@@ -99,7 +99,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     final results = await Future.wait([
       db.analysisDao.getDailyNetFlowInRange(start: start, end: end),
-      db.analysisDao.getMonthlyAnalysisSnapshot(month),
+      db.analysisDao.getMonthlyAnalysisSnapshot(month, filterStart: 0, filterEnd: 99999999),
     ]);
 
     final data = CalendarScreenData(
