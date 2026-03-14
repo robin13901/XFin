@@ -10,6 +10,9 @@ import '../database/app_database.dart';
 import '../providers/base_currency_provider.dart';
 import '../providers/database_provider.dart';
 import '../providers/language_provider.dart';
+import '../providers/theme_provider.dart';
+import '../widgets/aurora_background.dart';
+import '../widgets/liquid_glass_widgets.dart';
 
 class CurrencySelectionScreen extends StatefulWidget {
   const CurrencySelectionScreen({super.key});
@@ -75,47 +78,60 @@ class _CurrencySelectionScreenState extends State<CurrencySelectionScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.selectCurrency),
-        automaticallyImplyLeading: false, // Prevent going back
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              l10n.currencySelectionPrompt,
-              style: Theme.of(context).textTheme.titleLarge,
+      backgroundColor:
+          ThemeProvider.instance.isAurora ? Colors.transparent : null,
+      body: Stack(
+        children: [
+          buildAuroraLayer(context),
+          Padding(
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).padding.top + kToolbarHeight + 16,
+              left: 16,
+              right: 16,
+              bottom: 16,
             ),
-            const SizedBox(height: 24),
-            Expanded(
-              child: ListView.builder(
-                itemCount: _availableCurrencies.length,
-                itemBuilder: (context, index) {
-                  final currency = _availableCurrencies[index];
-                  return ListTile(
-                    title: Text(currency),
-                    leading: Icon(
-                      _selectedCurrency == currency
-                          ? Icons.radio_button_checked
-                          : Icons.radio_button_off,
-                    ),
-                    onTap: () {
-                      _onCurrencySelected(currency);
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.currencySelectionPrompt,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 24),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: _availableCurrencies.length,
+                    itemBuilder: (context, index) {
+                      final currency = _availableCurrencies[index];
+                      return ListTile(
+                        title: Text(currency),
+                        leading: Icon(
+                          _selectedCurrency == currency
+                              ? Icons.radio_button_checked
+                              : Icons.radio_button_off,
+                        ),
+                        onTap: () {
+                          _onCurrencySelected(currency);
+                        },
+                      );
                     },
-                  );
-                },
-              ),
+                  ),
+                ),
+                Center(
+                  child: ElevatedButton(
+                    onPressed: _confirmSelection,
+                    child: Text(l10n.confirm),
+                  ),
+                ),
+              ],
             ),
-            Center(
-              child: ElevatedButton(
-                onPressed: _confirmSelection,
-                child: Text(l10n.confirm),
-              ),
-            ),
-          ],
-        ),
+          ),
+          buildLiquidGlassAppBar(
+            context,
+            title: Text(l10n.selectCurrency),
+            showBackButton: false,
+          ),
+        ],
       ),
     );
   }

@@ -8,7 +8,9 @@ import '../models/filter/transfer_filter_config.dart';
 import '../mixins/nav_bar_visibility_mixin.dart';
 import '../mixins/search_filter_mixin.dart';
 import '../providers/database_provider.dart';
+import '../providers/theme_provider.dart';
 import '../utils/format.dart';
+import '../widgets/aurora_background.dart';
 import '../widgets/dialogs.dart';
 import '../widgets/filter/filter_badge.dart';
 import '../widgets/filter/filter_panel.dart';
@@ -69,8 +71,11 @@ class _TransfersScreenState extends State<TransfersScreen>
     updateKeyboardVisibility(context);
 
     return Scaffold(
+      backgroundColor:
+          ThemeProvider.instance.isAurora ? Colors.transparent : null,
       body: Stack(
         children: [
+          buildAuroraLayer(context),
           StreamBuilder<List<TransferWithAccountsAndAsset>>(
             stream: db.transfersDao.watchTransfersWithAccountsAndAsset(
               searchQuery: searchQuery.isNotEmpty ? searchQuery : null,

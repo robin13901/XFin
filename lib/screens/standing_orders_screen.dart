@@ -6,7 +6,9 @@ import 'package:xfin/l10n/app_localizations.dart';
 import '../database/daos/periodic_bookings_dao.dart';
 import '../database/daos/periodic_transfers_dao.dart';
 import '../providers/database_provider.dart';
+import '../providers/theme_provider.dart';
 import '../utils/format.dart';
+import '../widgets/aurora_background.dart';
 import '../widgets/dialogs.dart';
 import '../widgets/forms/periodic_booking_form.dart';
 import '../widgets/forms/periodic_transfer_form.dart';
@@ -191,8 +193,11 @@ class _StandingOrdersScreenState extends State<StandingOrdersScreen> {
     l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
+      backgroundColor:
+          ThemeProvider.instance.isAurora ? Colors.transparent : null,
       body: Stack(
         children: [
+          buildAuroraLayer(context),
           Column(
             children: [
               Expanded(

@@ -6,6 +6,7 @@ import 'dart:math';
 import '../app_theme.dart';
 import '../database/app_database.dart';
 import '../providers/database_provider.dart';
+import '../providers/theme_provider.dart';
 import '../utils/format.dart';
 import '../widgets/analysis_line_chart_section.dart';
 import '../widgets/category_widgets.dart';
@@ -154,21 +155,25 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: FutureBuilder<AnalysisData>(
-        future: _analysisDataFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          } else if (!snapshot.hasData ||
-              snapshot.data!.balanceHistory.isEmpty) {
-            return const Center(child: Text('No data available.'));
-          }
+      backgroundColor:
+          ThemeProvider.instance.isAurora ? Colors.transparent : null,
+      body: Stack(
+        children: [
+          FutureBuilder<AnalysisData>(
+            future: _analysisDataFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              } else if (snapshot.hasError) {
+                return Center(child: Text('Error: ${snapshot.error}'));
+              } else if (!snapshot.hasData ||
+                  snapshot.data!.balanceHistory.isEmpty) {
+                return const Center(child: Text('No data available.'));
+              }
 
-          final analysisData = snapshot.data!;
-          final allData = analysisData.balanceHistory;
-          return SingleChildScrollView(
+              final analysisData = snapshot.data!;
+              final allData = analysisData.balanceHistory;
+              return SingleChildScrollView(
             controller: _controller,
             physics: _chartPointerCount > 0
                 ? const NeverScrollableScrollPhysics()
@@ -231,6 +236,8 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             ),
           );
         },
+      ),
+        ],
       ),
     );
   }

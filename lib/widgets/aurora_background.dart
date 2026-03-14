@@ -2,6 +2,31 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../providers/theme_provider.dart';
+
+/// Aurora colours shared across all screens.
+const auroraColors = [
+  Color(0xFF1A5CFF), // vivid blue
+  Color(0xFF6B3FA0), // deep purple
+  Color(0xFF3D5AFE), // indigo
+];
+
+/// Builds the aurora background layer for use as the first child
+/// inside a [Stack].  Returns [SizedBox.shrink] when aurora is off.
+Widget buildAuroraLayer(BuildContext context) {
+  if (!ThemeProvider.instance.isAurora) return const SizedBox.shrink();
+  return Positioned.fill(
+    child: ColoredBox(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: const AuroraBackground(
+        colors: auroraColors,
+        speed: 2.0,
+        opacity: 0.6,
+      ),
+    ),
+  );
+}
+
 /// Animated aurora background.
 ///
 /// Renders several large, inherently soft radial-gradient "blobs" that drift

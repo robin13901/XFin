@@ -12,6 +12,8 @@ import '../models/filter/asset_filter_config.dart';
 import '../mixins/nav_bar_visibility_mixin.dart';
 import '../mixins/search_filter_mixin.dart';
 import '../providers/database_provider.dart';
+import '../providers/theme_provider.dart';
+import '../widgets/aurora_background.dart';
 import '../widgets/filter/filter_badge.dart';
 import '../widgets/filter/filter_panel.dart';
 import '../widgets/filter/liquid_glass_search_bar.dart';
@@ -350,8 +352,11 @@ class _AssetsScreenState extends State<AssetsScreen>
         : [];
 
     return Scaffold(
+      backgroundColor:
+          ThemeProvider.instance.isAurora ? Colors.transparent : null,
       body: Stack(
         children: [
+          buildAuroraLayer(context),
           IndexedStack(
             index: _selectedTab,
             children: [

@@ -7,8 +7,10 @@ import '../database/models/analysis_models.dart';
 import '../database/tables.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/database_provider.dart';
+import '../providers/theme_provider.dart';
 import '../utils/format.dart';
 import '../utils/global_constants.dart';
+import '../widgets/aurora_background.dart';
 import '../widgets/liquid_glass_widgets.dart';
 import 'calendar/calendar_data.dart';
 import 'calendar/day_details.dart';
@@ -324,8 +326,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
+      backgroundColor:
+          ThemeProvider.instance.isAurora ? Colors.transparent : null,
       body: Stack(
         children: [
+          buildAuroraLayer(context),
           SingleChildScrollView(
             controller: _scrollController,
             padding: EdgeInsets.only(

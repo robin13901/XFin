@@ -9,6 +9,7 @@ import '../mixins/nav_bar_visibility_mixin.dart';
 import '../mixins/search_filter_mixin.dart';
 import '../providers/base_currency_provider.dart';
 import '../providers/database_provider.dart';
+import '../providers/theme_provider.dart';
 import '../utils/format.dart';
 import '../utils/modal_helper.dart';
 import '../widgets/dialogs.dart';
@@ -138,6 +139,8 @@ class _AccountsScreenState extends State<AccountsScreen>
     updateKeyboardVisibility(context);
 
     return Scaffold(
+      backgroundColor:
+          ThemeProvider.instance.isAurora ? Colors.transparent : null,
       body: Stack(
         children: [
           StreamBuilder<List<Account>>(

@@ -18,6 +18,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:xfin/utils/global_constants.dart';
 import 'package:xfin/widgets/dialogs.dart';
 import 'package:xfin/widgets/liquid_glass_widgets.dart';
+import 'package:xfin/widgets/aurora_background.dart';
 import 'package:xfin/widgets/more_pane.dart';
 import 'package:xfin/widgets/nav_bar_controller.dart';
 
@@ -151,8 +152,11 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor:
+          ThemeProvider.instance.isAurora ? Colors.transparent : null,
       body: Stack(
         children: [
+          buildAuroraLayer(context),
           Center(child: NavBarController(
             visible: _navBarVisible,
             child: _widgetOptions.elementAt(_selectedIndex),

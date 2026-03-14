@@ -7,8 +7,10 @@ import 'package:xfin/l10n/app_localizations.dart';
 
 import '../database/daos/assets_dao.dart';
 import '../providers/database_provider.dart';
+import '../providers/theme_provider.dart';
 import '../utils/format.dart';
 import '../widgets/analysis_line_chart_section.dart';
+import '../widgets/aurora_background.dart';
 import '../widgets/charts.dart';
 import '../widgets/common_widgets.dart';
 import '../widgets/liquid_glass_widgets.dart';
@@ -48,6 +50,8 @@ class _AssetAnalysisDetailScreenState extends State<AssetAnalysisDetailScreen> {
   Widget build(BuildContext context) {
     AppLocalizations l10n = AppLocalizations.of(context)!;
     return Scaffold(
+      backgroundColor:
+          ThemeProvider.instance.isAurora ? Colors.transparent : null,
       body: FutureBuilder<AssetAnalysisDetailsData>(
         future: _future,
         builder: (context, snapshot) {
@@ -60,6 +64,7 @@ class _AssetAnalysisDetailScreenState extends State<AssetAnalysisDetailScreen> {
           final data = snapshot.data!;
           return Stack(
             children: [
+              buildAuroraLayer(context),
               SingleChildScrollView(
                 physics: _chartPointerCount > 0
                     ? const NeverScrollableScrollPhysics()

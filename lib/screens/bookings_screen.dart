@@ -10,6 +10,7 @@ import '../mixins/database_provider_mixin.dart';
 import '../mixins/nav_bar_visibility_mixin.dart';
 import '../mixins/search_filter_mixin.dart';
 import '../models/filter/booking_filter_config.dart';
+import '../providers/theme_provider.dart';
 import '../utils/format.dart';
 import '../utils/modal_helper.dart';
 import '../widgets/dialogs.dart';
@@ -130,6 +131,8 @@ class _BookingsScreenState extends State<BookingsScreen>
     updateKeyboardVisibility(context);
 
     return Scaffold(
+      backgroundColor:
+          ThemeProvider.instance.isAurora ? Colors.transparent : null,
       body: Stack(
         children: [
           if (_items.isEmpty && _isLoading)

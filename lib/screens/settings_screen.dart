@@ -146,13 +146,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  /// Aurora colours for the Dark Aurora theme.
-  static const _auroraColors = [
-    Color(0xFF1A5CFF), // vivid blue
-    Color(0xFF6B3FA0), // deep purple
-    Color(0xFF3D5AFE), // indigo
-  ];
-
   /// String key used by the theme dropdown. We can't extend [ThemeMode] so we
   /// use a string union: system | light | dark | darkAurora.
   static String _themeKey(ThemeProvider tp) {
@@ -172,17 +165,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: Stack(
         children: [
           // ── Aurora background (only for Dark Aurora) ───────────
-          if (showAurora)
-            Positioned.fill(
-              child: ColoredBox(
-                color: Theme.of(context).scaffoldBackgroundColor,
-                child: const AuroraBackground(
-                  colors: _auroraColors,
-                  speed: 2.0,
-                  opacity: 0.6,
-                ),
-              ),
-            ),
+          buildAuroraLayer(context),
 
           // ── Scrollable content ────────────────────────────────
           ListView(
