@@ -129,6 +129,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dark => 'Dark';
 
   @override
+  String get darkAurora => 'Aurora';
+
+  @override
   String get insufficientBalance => 'Insufficient balance';
 
   @override

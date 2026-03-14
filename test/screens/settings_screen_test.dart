@@ -12,9 +12,18 @@ import 'package:xfin/providers/language_provider.dart';
 import 'package:xfin/providers/theme_provider.dart';
 import 'package:xfin/providers/base_currency_provider.dart';
 import 'package:xfin/screens/settings_screen.dart';
+import 'package:xfin/widgets/aurora_background.dart';
 import 'package:xfin/utils/global_constants.dart' as globals;
 import 'package:xfin/utils/format.dart' show dateFormat, dateTimeToInt;
 import 'package:xfin/database/tables.dart';
+
+/// Pumps enough frames for Material animations to play out without
+/// waiting for the infinite aurora background animation to settle.
+Future<void> pumpFrames(WidgetTester tester, {int count = 10}) async {
+  for (int i = 0; i < count; i++) {
+    await tester.pump(const Duration(milliseconds: 50));
+  }
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -88,7 +97,9 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      // Use pumpFrames instead of pumpAndSettle because the aurora
+      // background animation runs indefinitely.
+      await pumpFrames(tester);
     }
 
     testWidgets('renders base items', (WidgetTester tester) async {
@@ -105,7 +116,7 @@ void main() {
       expect(exportTile, findsOneWidget);
 
       await tester.tap(exportTile);
-      await tester.pumpAndSettle();
+      await pumpFrames(tester);
 
       // If export throws (platform channels, share, etc.), capture and ignore it.
       final exception = tester.takeException();
@@ -122,7 +133,7 @@ void main() {
 
       // Tap import tile -> shows confirmation dialog
       await tester.tap(importTile);
-      await tester.pumpAndSettle();
+      await pumpFrames(tester);
 
       // Dialog should show title and warning
       expect(find.text(l10n.importDatabase), findsWidgets); // list tile + dialog title
@@ -130,7 +141,7 @@ void main() {
 
       // Confirm import
       await tester.tap(find.text(l10n.confirm));
-      await tester.pumpAndSettle();
+      await pumpFrames(tester);
 
       // The import flow tries to read DatabaseProvider and call DbBackup.importDatabaseFromPicker.
       // We capture and ignore any exceptions that may occur inside.
@@ -148,7 +159,7 @@ void main() {
       expect(sinceStartBtn, findsOneWidget);
 
       await tester.tap(sinceStartBtn);
-      await tester.pumpAndSettle();
+      await pumpFrames(tester);
 
       // Check SharedPreferences and global variable
       final prefs = await SharedPreferences.getInstance();
@@ -177,7 +188,7 @@ void main() {
 
       // Tap the pick-date button (second OutlinedButton)
       await tester.tap(outlinedButtonsInStart.at(1));
-      await tester.pumpAndSettle();
+      await pumpFrames(tester);
 
       // DatePicker should be visible. Pick today's day.
       final now = DateTime.now();
@@ -187,13 +198,13 @@ void main() {
       final dayFinder = find.text(dayStr);
       expect(dayFinder, findsWidgets);
       await tester.tap(dayFinder.first);
-      await tester.pumpAndSettle();
+      await pumpFrames(tester);
 
       // Press the OK button on the date picker
       final okFinder = find.text('OK');
       expect(okFinder, findsOneWidget);
       await tester.tap(okFinder);
-      await tester.pumpAndSettle();
+      await pumpFrames(tester);
 
       // If any exception occurred inside saving or side-effects, capture and ignore.
       var exception = tester.takeException();
@@ -210,7 +221,7 @@ void main() {
 
       // Now test canceling the date picker: tap pick button again and press CANCEL
       await tester.tap(outlinedButtonsInStart.at(1));
-      await tester.pumpAndSettle();
+      await pumpFrames(tester);
 
       final cancelFinder = find.text('CANCEL');
       // Some locales may use 'CANCEL' or 'Cancel' — try a couple.
@@ -222,7 +233,7 @@ void main() {
           await tester.tap(cancelLower.first);
         }
       }
-      await tester.pumpAndSettle();
+      await pumpFrames(tester);
 
       // No change expected beyond previous persisted value — re-check
       final prefsAfter = await SharedPreferences.getInstance();
@@ -239,7 +250,7 @@ void main() {
       expect(todayBtn, findsOneWidget);
 
       await tester.tap(todayBtn);
-      await tester.pumpAndSettle();
+      await pumpFrames(tester);
 
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getInt(globals.PrefKeys.filterEndDate), 99999999);
@@ -258,7 +269,7 @@ void main() {
 
       // Tap the pick-date button (second OutlinedButton)
       await tester.tap(outlinedButtonsInEnd.at(1));
-      await tester.pumpAndSettle();
+      await pumpFrames(tester);
 
       // DatePicker should be visible. Pick today's day.
       final now = DateTime.now();
@@ -267,13 +278,13 @@ void main() {
       final dayFinder = find.text(dayStr);
       expect(dayFinder, findsWidgets);
       await tester.tap(dayFinder.first);
-      await tester.pumpAndSettle();
+      await pumpFrames(tester);
 
       // Press OK
       final okFinder = find.text('OK');
       expect(okFinder, findsOneWidget);
       await tester.tap(okFinder);
-      await tester.pumpAndSettle();
+      await pumpFrames(tester);
 
       // Capture any incidental exception thrown in handlers and ignore
       var exception = tester.takeException();
@@ -289,7 +300,7 @@ void main() {
 
       // Now test canceling the date picker: tap pick button again and press CANCEL (no change)
       await tester.tap(outlinedButtonsInEnd.at(1));
-      await tester.pumpAndSettle();
+      await pumpFrames(tester);
 
       final cancelFinder = find.text('CANCEL');
       if (cancelFinder.evaluate().isNotEmpty) {
@@ -300,7 +311,7 @@ void main() {
           await tester.tap(cancelLower.first);
         }
       }
-      await tester.pumpAndSettle();
+      await pumpFrames(tester);
 
       final prefsAfter = await SharedPreferences.getInstance();
       expect(prefsAfter.getInt(globals.PrefKeys.filterEndDate), expectedInt);
@@ -331,6 +342,29 @@ void main() {
       // Check that the base currency value is displayed (Euro (€))
       expect(find.textContaining('Euro'), findsOneWidget);
       expect(find.textContaining('€'), findsOneWidget);
+    });
+
+    testWidgets('does not render aurora in default theme', (WidgetTester tester) async {
+      await themeProvider.setThemeMode(ThemeMode.dark);
+      await pumpSettingsScreen(tester);
+
+      // AuroraBackground should NOT be in the tree for plain dark theme
+      expect(find.byType(AuroraBackground), findsNothing);
+    });
+
+    testWidgets('renders aurora background in Dark Aurora theme', (WidgetTester tester) async {
+      await themeProvider.setThemeMode(ThemeMode.dark, aurora: true);
+      await pumpSettingsScreen(tester);
+
+      expect(find.byType(AuroraBackground), findsOneWidget);
+    });
+
+    testWidgets('dropdown shows Dark Aurora option', (WidgetTester tester) async {
+      await themeProvider.setThemeMode(ThemeMode.dark, aurora: true);
+      await pumpSettingsScreen(tester);
+
+      // When Dark Aurora is the selected value it's visible in the collapsed dropdown
+      expect(find.text(l10n.darkAurora), findsOneWidget);
     });
   });
 }

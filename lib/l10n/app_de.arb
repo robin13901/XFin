@@ -37,6 +37,7 @@
   "system": "System",
   "light": "Hell",
   "dark": "Dunkel",
+  "darkAurora": "Aurora",
   "insufficientBalance": "Unzureichender Kontostand",
   "insufficientShares": "Nicht genügend Anteile",
   "mergeBookings": "Buchungen zusammenführen?",

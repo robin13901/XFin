@@ -326,6 +326,12 @@ abstract class AppLocalizations {
   /// **'Dark'**
   String get dark;
 
+  /// No description provided for @darkAurora.
+  ///
+  /// In en, this message translates to:
+  /// **'Aurora'**
+  String get darkAurora;
+
   /// No description provided for @insufficientBalance.
   ///
   /// In en, this message translates to:

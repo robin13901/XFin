@@ -14,6 +14,7 @@ import 'package:xfin/utils/format.dart';
 import 'package:xfin/utils/global_constants.dart';
 
 import '../providers/database_provider.dart';
+import '../widgets/aurora_background.dart';
 import '../widgets/liquid_glass_widgets.dart';
 import '../providers/base_currency_provider.dart';
 
@@ -145,151 +146,232 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  /// Aurora colours for the Dark Aurora theme.
+  static const _auroraColors = [
+    Color(0xFF1A5CFF), // vivid blue
+    Color(0xFF6B3FA0), // deep purple
+    Color(0xFF3D5AFE), // indigo
+  ];
+
+  /// String key used by the theme dropdown. We can't extend [ThemeMode] so we
+  /// use a string union: system | light | dark | darkAurora.
+  static String _themeKey(ThemeProvider tp) {
+    if (tp.isAurora) return 'darkAurora';
+    return tp.themeMode.name; // 'system' | 'light' | 'dark'
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final languageProvider = Provider.of<LanguageProvider>(context);
     final l10n = AppLocalizations.of(context)!;
+    final showAurora = themeProvider.isAurora;
 
     return Scaffold(
+      backgroundColor: showAurora ? Colors.transparent : null,
       body: Stack(
         children: [
+          // ── Aurora background (only for Dark Aurora) ───────────
+          if (showAurora)
+            Positioned.fill(
+              child: ColoredBox(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                child: const AuroraBackground(
+                  colors: _auroraColors,
+                  speed: 2.0,
+                  opacity: 0.6,
+                ),
+              ),
+            ),
+
+          // ── Scrollable content ────────────────────────────────
           ListView(
+            addRepaintBoundaries: false,
+            physics: const ClampingScrollPhysics(),
             padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + kToolbarHeight,
+              top: MediaQuery.of(context).padding.top + kToolbarHeight + 12,
+              left: showAurora ? 16 : 0,
+              right: showAurora ? 16 : 0,
+              bottom: 24,
             ),
             children: [
-              ListTile(
-                title: Text(l10n.theme),
-                trailing: DropdownButton<ThemeMode>(
-                  value: themeProvider.themeMode,
-                  onChanged: (ThemeMode? newValue) {
-                    if (newValue != null) {
-                      themeProvider.setThemeMode(newValue);
-                    }
-                  },
-                  items: [
-                    DropdownMenuItem(
-                      value: ThemeMode.system,
-                      child: Text(l10n.system),
-                    ),
-                    DropdownMenuItem(
-                      value: ThemeMode.light,
-                      child: Text(l10n.light),
-                    ),
-                    DropdownMenuItem(
-                      value: ThemeMode.dark,
-                      child: Text(l10n.dark),
-                    ),
-                  ],
-                ),
-              ),
-              ListTile(
-                title: Text(l10n.language),
-                trailing: DropdownButton<Locale>(
-                  value: languageProvider.appLocale,
-                  onChanged: (Locale? newValue) {
-                    if (newValue != null) {
-                      languageProvider.setLocale(newValue);
-                    }
-                  },
-                  items: [
-                    DropdownMenuItem(
-                      value: const Locale('en'),
-                      child: Text(l10n.english),
-                    ),
-                    DropdownMenuItem(
-                      value: const Locale('de'),
-                      child: Text(l10n.german),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(),
-              ListTile(
-                title: Text(l10n.startDate),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    OutlinedButton(
-                      style: _outlinedStyle(context, _isSinceStartSelected),
-                      onPressed: () async {
-                        setState(() {
-                          _isSinceStartSelected = true;
-                          _startDate = null;
-                        });
-                        await _saveStartPref(0);
+              // ── Appearance ──
+              _wrapCard(
+                showAurora: showAurora,
+                children: [
+                  ListTile(
+                    title: Text(l10n.theme),
+                    trailing: DropdownButton<String>(
+                      value: _themeKey(themeProvider),
+                      onChanged: (String? key) {
+                        if (key == null) return;
+                        switch (key) {
+                          case 'system':
+                            themeProvider.setThemeMode(ThemeMode.system);
+                          case 'light':
+                            themeProvider.setThemeMode(ThemeMode.light);
+                          case 'dark':
+                            themeProvider.setThemeMode(ThemeMode.dark);
+                          case 'darkAurora':
+                            themeProvider.setThemeMode(ThemeMode.dark, aurora: true);
+                        }
                       },
-                      child: Text(l10n.sinceStart),
+                      items: [
+                        DropdownMenuItem(value: 'system', child: Text(l10n.system)),
+                        DropdownMenuItem(value: 'light', child: Text(l10n.light)),
+                        DropdownMenuItem(value: 'dark', child: Text(l10n.dark)),
+                        DropdownMenuItem(value: 'darkAurora', child: Text(l10n.darkAurora)),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    OutlinedButton(
-                      style: _outlinedStyle(context, !_isSinceStartSelected),
-                      onPressed: () => _pickStartDate(context),
-                      child: Text(
-                        _isSinceStartSelected
-                            ? l10n.pickDate
-                            : dateFormat.format(_startDate!),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              ListTile(
-                title: Text(l10n.endDate),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    OutlinedButton(
-                      style: _outlinedStyle(context, _isTodaySelected),
-                      onPressed: () async {
-                        setState(() {
-                          _isTodaySelected = true;
-                          _endDate = null;
-                        });
-                        await _saveEndPref(99999999);
+                  ),
+                  ListTile(
+                    title: Text(l10n.language),
+                    trailing: DropdownButton<Locale>(
+                      value: languageProvider.appLocale,
+                      onChanged: (Locale? newValue) {
+                        if (newValue != null) {
+                          languageProvider.setLocale(newValue);
+                        }
                       },
-                      child: Text(l10n.today),
+                      items: [
+                        DropdownMenuItem(
+                          value: const Locale('en'),
+                          child: Text(l10n.english),
+                        ),
+                        DropdownMenuItem(
+                          value: const Locale('de'),
+                          child: Text(l10n.german),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    OutlinedButton(
-                      style: _outlinedStyle(context, !_isTodaySelected),
-                      onPressed: () => _pickEndDate(context),
-                      child: Text(
-                        _isTodaySelected
-                            ? l10n.pickDate
-                            : dateFormat.format(_endDate!),
-                      ),
+                  ),
+                ],
+              ),
+
+              SizedBox(height: showAurora ? 14 : 0),
+              if (!showAurora) const Divider(),
+
+              // ── Date Range ──
+              _wrapCard(
+                showAurora: showAurora,
+                children: [
+                  ListTile(
+                    title: Text(l10n.startDate),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        OutlinedButton(
+                          style:
+                              _outlinedStyle(context, _isSinceStartSelected),
+                          onPressed: () async {
+                            setState(() {
+                              _isSinceStartSelected = true;
+                              _startDate = null;
+                            });
+                            await _saveStartPref(0);
+                          },
+                          child: Text(l10n.sinceStart),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton(
+                          style:
+                              _outlinedStyle(context, !_isSinceStartSelected),
+                          onPressed: () => _pickStartDate(context),
+                          child: Text(
+                            _isSinceStartSelected
+                                ? l10n.pickDate
+                                : dateFormat.format(_startDate!),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                  ListTile(
+                    title: Text(l10n.endDate),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        OutlinedButton(
+                          style: _outlinedStyle(context, _isTodaySelected),
+                          onPressed: () async {
+                            setState(() {
+                              _isTodaySelected = true;
+                              _endDate = null;
+                            });
+                            await _saveEndPref(99999999);
+                          },
+                          child: Text(l10n.today),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton(
+                          style: _outlinedStyle(context, !_isTodaySelected),
+                          onPressed: () => _pickEndDate(context),
+                          child: Text(
+                            _isTodaySelected
+                                ? l10n.pickDate
+                                : dateFormat.format(_endDate!),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const Divider(),
-              ListTile(
-                leading: const Icon(Icons.upload_file),
-                title: Text(l10n.exportDatabase),
-                onTap: () => _exportDb(context, l10n),
+
+              SizedBox(height: showAurora ? 14 : 0),
+              if (!showAurora) const Divider(),
+
+              // ── Database ──
+              _wrapCard(
+                showAurora: showAurora,
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.upload_file),
+                    title: Text(l10n.exportDatabase),
+                    onTap: () => _exportDb(context, l10n),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.download_rounded),
+                    title: Text(l10n.importDatabase),
+                    onTap: () => _importDb(context, l10n),
+                  ),
+                ],
               ),
-              ListTile(
-                leading: const Icon(Icons.download_rounded),
-                title: Text(l10n.importDatabase),
-                onTap: () => _importDb(context, l10n),
-              ),
-              const Divider(),
-              ListTile(
-                title: Text(l10n.baseCurrency),
-                trailing: _baseCurrencyAsset == null
-                    ? const CircularProgressIndicator()
-                    : Text(
-                        '${_baseCurrencyAsset!.name} (${_baseCurrencyAsset!.currencySymbol ?? _baseCurrencyAsset!.tickerSymbol})',
-                        style: Theme.of(context).textTheme.bodyLarge,
-                      ),
+
+              SizedBox(height: showAurora ? 14 : 0),
+              if (!showAurora) const Divider(),
+
+              // ── Info ──
+              _wrapCard(
+                showAurora: showAurora,
+                children: [
+                  ListTile(
+                    title: Text(l10n.baseCurrency),
+                    trailing: _baseCurrencyAsset == null
+                        ? const CircularProgressIndicator()
+                        : Text(
+                            '${_baseCurrencyAsset!.name} (${_baseCurrencyAsset!.currencySymbol ?? _baseCurrencyAsset!.tickerSymbol})',
+                            style: Theme.of(context).textTheme.bodyLarge,
+                          ),
+                  ),
+                ],
               ),
             ],
           ),
+
+          // ── Glass app bar ─────────────────────────────────────
           buildLiquidGlassAppBar(context, title: Text(l10n.settings)),
         ],
       ),
     );
+  }
+
+  /// Wraps [children] in a glass card when aurora is active,
+  /// otherwise returns a plain [Column].
+  Widget _wrapCard({required bool showAurora, required List<Widget> children}) {
+    if (showAurora) {
+      return buildLiquidGlassCard(children: children);
+    }
+    return Column(mainAxisSize: MainAxisSize.min, children: children);
   }
 }

@@ -129,6 +129,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get dark => 'Dunkel';
 
   @override
+  String get darkAurora => 'Aurora';
+
+  @override
   String get insufficientBalance => 'Unzureichender Kontostand';
 
   @override

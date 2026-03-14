@@ -37,6 +37,7 @@
   "system": "System",
   "light": "Light",
   "dark": "Dark",
+  "darkAurora": "Aurora",
   "insufficientBalance": "Insufficient balance",
   "insufficientShares": "Not enough shares",
   "mergeBookings": "Merge bookings?",

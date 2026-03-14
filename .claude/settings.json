@@ -7,7 +7,10 @@
       "Bash(flutter test test/screens/ test/widgets/nav_bar_controller_test.dart test/mixins/nav_bar_visibility_mixin_test.dart test/widgets/filter/filter_value_inputs_test.dart test/widgets/filter/liquid_glass_search_bar_test.dart)",
       "Bash(flutter test test/mixins/nav_bar_visibility_mixin_test.dart)",
       "Bash(flutter test:*)",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Read(//c/SAPDevelop/AtlantaTestSuiteAnalyzer/**)",
+      "Bash(find \"c:/SAPDevelop/AtlantaTestSuiteAnalyzer/dashboard/src\" -name \"*.css\" -exec wc -l {} +)",
+      "Bash(flutter analyze:*)"
     ]
   }
 }

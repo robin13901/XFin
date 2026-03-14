@@ -336,6 +336,30 @@ Widget buildLiquidGlassAppBar(BuildContext context,
   );
 }
 
+/// A glass-morphism section card for grouping content on top of
+/// coloured / animated backgrounds.  Uses [settings] if provided,
+/// otherwise falls back to the shared [liquidGlassSettings].
+Widget buildLiquidGlassCard({
+  required List<Widget> children,
+  double borderRadius = 20,
+  EdgeInsetsGeometry padding = const EdgeInsets.symmetric(vertical: 4),
+  LiquidGlassSettings? settings,
+}) {
+  return LiquidGlassLayer(
+    settings: settings ?? liquidGlassSettings,
+    child: LiquidGlass.grouped(
+      shape: LiquidRoundedSuperellipse(borderRadius: borderRadius),
+      child: Container(
+        padding: padding,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: children,
+        ),
+      ),
+    ),
+  );
+}
+
 /// A simple model for menu items shown in the panel
 class GlassMenuItem {
   final String label;
