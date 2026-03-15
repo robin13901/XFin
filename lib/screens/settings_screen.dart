@@ -169,7 +169,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           // ── Scrollable content ────────────────────────────────
           ListView(
-            addRepaintBoundaries: false,
             physics: const ClampingScrollPhysics(),
             padding: EdgeInsets.only(
               top: MediaQuery.of(context).padding.top + kToolbarHeight + 12,

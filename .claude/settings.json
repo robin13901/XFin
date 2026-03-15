@@ -10,7 +10,12 @@
       "Bash(xargs grep:*)",
       "Read(//c/SAPDevelop/AtlantaTestSuiteAnalyzer/**)",
       "Bash(find \"c:/SAPDevelop/AtlantaTestSuiteAnalyzer/dashboard/src\" -name \"*.css\" -exec wc -l {} +)",
-      "Bash(flutter analyze:*)"
+      "Bash(flutter analyze:*)",
+      "Read(//c/Users/I551358/AppData/Local/Pub/Cache/**)",
+      "mcp__filesystem__read_text_file",
+      "Bash(flutter pub:*)",
+      "Bash(dart analyze:*)",
+      "Bash(git checkout:*)"
     ]
   }
 }

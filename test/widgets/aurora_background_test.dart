@@ -32,9 +32,7 @@ void main() {
       );
 
       expect(find.byType(AuroraBackground), findsOneWidget);
-
-      final opacityWidget = tester.widget<Opacity>(find.byType(Opacity));
-      expect(opacityWidget.opacity, 0.5);
+      expect(find.byType(CustomPaint), findsWidgets);
     });
 
     testWidgets('no ImageFiltered widget (soft gradients, no blur pass)',

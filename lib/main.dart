@@ -157,10 +157,10 @@ class _MainScreenState extends State<MainScreen> {
       body: Stack(
         children: [
           buildAuroraLayer(context),
-          Center(child: NavBarController(
+          Center(child: RepaintBoundary(child: NavBarController(
             visible: _navBarVisible,
             child: _widgetOptions.elementAt(_selectedIndex),
-          )),
+          ))),
           Positioned(
             bottom: 16,
             left: 8,
