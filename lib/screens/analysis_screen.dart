@@ -9,6 +9,7 @@ import '../providers/database_provider.dart';
 import '../providers/theme_provider.dart';
 import '../utils/format.dart';
 import '../widgets/analysis_line_chart_section.dart';
+import '../widgets/aurora_background.dart';
 import '../widgets/category_widgets.dart';
 import '../widgets/common_widgets.dart';
 import '../widgets/inflow_outflow_toggle.dart';
@@ -154,11 +155,13 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final showAurora = ThemeProvider.instance.isAurora;
+
     return Scaffold(
-      backgroundColor:
-          ThemeProvider.instance.isAurora ? Colors.transparent : null,
+      backgroundColor: showAurora ? Colors.transparent : null,
       body: Stack(
         children: [
+          buildAuroraLayer(context),
           FutureBuilder<AnalysisData>(
             future: _analysisDataFuture,
             builder: (context, snapshot) {
@@ -179,57 +182,78 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                 ? const NeverScrollableScrollPhysics()
                 : null,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(8, 56, 8, 16),
+              padding: EdgeInsets.fromLTRB(
+                showAurora ? 10 : 8,
+                56,
+                showAurora ? 10 : 8,
+                16,
+              ),
               child: Column(
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: AnalysisLineChartSection(
-                      allData: allData,
-                      startValue: analysisData.sumOfInitialBalances,
-                      selectedRange: _selectedRange,
-                      onRangeSelected: _onRangeSelected,
-                      showSma: _showSma,
-                      showSma200: _showSma200,
-                      showEma: _showEma,
-                      showBb: _showBb,
-                      onShowSmaChanged: (value) =>
-                          setState(() => _showSma = value),
-                      onShowSma200Changed: (value) =>
-                          setState(() => _showSma200 = value),
-                      onShowEmaChanged: (value) =>
-                          setState(() => _showEma = value),
-                      onShowBbChanged: (value) => setState(() => _showBb = value),
-                      touchedSpot: _touchedSpot,
-                      onTouchedSpotChanged: (spot) =>
-                          setState(() => _touchedSpot = spot),
-                      onPointerDown: () => setState(() => _chartPointerCount += 1),
-                      onPointerUpOrCancel: () {
-                        setState(() {
-                          _chartPointerCount = max(0, _chartPointerCount - 1);
-                        });
-                      },
-                      valueFormatter: formatCurrency,
-                    ),
+                  // ── Chart ──
+                  _wrapCard(
+                    showAurora: showAurora,
+                    padding: const EdgeInsets.all(16.0),
+                    children: [
+                      AnalysisLineChartSection(
+                        allData: allData,
+                        startValue: analysisData.sumOfInitialBalances,
+                        selectedRange: _selectedRange,
+                        onRangeSelected: _onRangeSelected,
+                        showSma: _showSma,
+                        showSma200: _showSma200,
+                        showEma: _showEma,
+                        showBb: _showBb,
+                        onShowSmaChanged: (value) =>
+                            setState(() => _showSma = value),
+                        onShowSma200Changed: (value) =>
+                            setState(() => _showSma200 = value),
+                        onShowEmaChanged: (value) =>
+                            setState(() => _showEma = value),
+                        onShowBbChanged: (value) =>
+                            setState(() => _showBb = value),
+                        touchedSpot: _touchedSpot,
+                        onTouchedSpotChanged: (spot) =>
+                            setState(() => _touchedSpot = spot),
+                        onPointerDown: () =>
+                            setState(() => _chartPointerCount += 1),
+                        onPointerUpOrCancel: () {
+                          setState(() {
+                            _chartPointerCount =
+                                max(0, _chartPointerCount - 1);
+                          });
+                        },
+                        valueFormatter: formatCurrency,
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: _buildMonthlySummary(analysisData),
+
+                  SizedBox(height: showAurora ? 14 : 8),
+
+                  // ── Monthly Summary ──
+                  _wrapCard(
+                    showAurora: showAurora,
+                    padding: const EdgeInsets.all(16.0),
+                    children: [
+                      _buildMonthlySummary(analysisData),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Column(
-                      children: [
-                        _buildInflowOutflowSwitch(),
-                        const SizedBox(height: 32),
-                        _buildCategoryPieChart(analysisData),
-                        const SizedBox(height: 32),
-                        _buildCategoryList(analysisData),
-                      ],
-                    ),
+
+                  SizedBox(height: showAurora ? 14 : 8),
+
+                  // ── Categories ──
+                  _wrapCard(
+                    showAurora: showAurora,
+                    padding: const EdgeInsets.all(16.0),
+                    children: [
+                      _buildInflowOutflowSwitch(),
+                      const SizedBox(height: 32),
+                      _buildCategoryPieChart(analysisData),
+                      const SizedBox(height: 32),
+                      _buildCategoryList(analysisData),
+                    ],
                   ),
+
                   const SizedBox(height: 64),
                 ],
               ),
@@ -350,6 +374,36 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           });
         });
       },
+    );
+  }
+
+  /// Wraps [children] in a lightweight glass-style card when aurora is active,
+  /// otherwise returns a plain [Padding] with a [Column].
+  ///
+  /// Uses a simple [DecoratedBox] instead of [LiquidGlassLayer] because the
+  /// analysis screen contains heavy repaint content (line chart, pie chart)
+  /// that would cause severe jank with real-time shader blur layers.
+  Widget _wrapCard({
+    required bool showAurora,
+    required List<Widget> children,
+    EdgeInsetsGeometry padding = EdgeInsets.zero,
+  }) {
+    final content = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: children,
+    );
+    if (!showAurora) {
+      return Padding(padding: padding, child: content);
+    }
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0x33000000),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
+        ),
+      ),
+      child: Padding(padding: padding, child: content),
     );
   }
 }

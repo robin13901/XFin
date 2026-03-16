@@ -4,14 +4,17 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/daos/accounts_dao.dart';
 import 'package:xfin/database/daos/analysis_dao.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/providers/database_provider.dart';
+import 'package:xfin/providers/theme_provider.dart';
 import 'package:xfin/screens/analysis_screen.dart';
 import 'package:xfin/utils/format.dart';
+import 'package:xfin/widgets/aurora_background.dart';
 
 class _MockAppDatabase extends Mock implements AppDatabase {}
 
@@ -43,6 +46,7 @@ void main() {
   });
 
   setUp(() {
+    SharedPreferences.setMockInitialValues({});
     mockDb = _MockAppDatabase();
     DatabaseProvider.instance.initialize(mockDb);
     mockAnalysisDao = _MockAnalysisDao();
@@ -418,6 +422,50 @@ void main() {
 
         await tester.pumpWidget(Container());
       });
+    });
+
+    testWidgets('does not render aurora background in default theme',
+        (tester) async {
+      final themeProvider = ThemeProvider.instance;
+      await themeProvider.loadTheme();
+      // Ensure aurora is off
+      await themeProvider.setThemeMode(ThemeMode.dark);
+
+      await tester.runAsync(() async {
+        await pumpWidget(tester);
+        await tester.pumpAndSettle();
+
+        expect(find.byType(AuroraBackground), findsNothing);
+
+        await tester.pumpWidget(Container());
+      });
+    });
+
+    testWidgets('renders aurora background and glass cards in Dark Aurora theme',
+        (tester) async {
+      final themeProvider = ThemeProvider.instance;
+      await themeProvider.loadTheme();
+      await themeProvider.setThemeMode(ThemeMode.dark, aurora: true);
+
+      await tester.runAsync(() async {
+        await pumpWidget(tester);
+        // Use pump frames instead of pumpAndSettle because the aurora
+        // background animation never settles.
+        for (int i = 0; i < 10; i++) {
+          await tester.pump(const Duration(milliseconds: 50));
+        }
+
+        // Aurora background should be present
+        expect(find.byType(AuroraBackground), findsOneWidget);
+
+        // Monthly summary should still be visible inside glass cards
+        expect(find.text('Monatliche Übersicht'), findsOneWidget);
+
+        await tester.pumpWidget(Container());
+      });
+
+      // Reset to non-aurora for subsequent tests
+      await themeProvider.setThemeMode(ThemeMode.dark);
     });
   });
 }
