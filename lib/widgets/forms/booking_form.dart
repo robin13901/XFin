@@ -16,7 +16,19 @@ import '../form_fields/form_fields.dart';
 class BookingForm extends StatefulWidget {
   final Booking? booking;
 
-  const BookingForm({super.key, this.booking});
+  /// Optional preloaded data — when provided the form renders immediately
+  /// with zero database delay.
+  final List<Asset>? preloadedAssets;
+  final List<Account>? preloadedAccounts;
+  final List<String>? preloadedCategories;
+
+  const BookingForm({
+    super.key,
+    this.booking,
+    this.preloadedAssets,
+    this.preloadedAccounts,
+    this.preloadedCategories,
+  });
 
   @override
   State<BookingForm> createState() => _BookingFormState();
@@ -50,7 +62,7 @@ class _BookingFormState extends State<BookingForm> {
   List<String> _distinctCategories = [];
   Map<int, Asset> _assetMap = {};
 
-  bool _renderHeavy = false;
+  bool _ready = false;
   bool _hideCostBasis = false;
 
   @override
@@ -84,11 +96,24 @@ class _BookingFormState extends State<BookingForm> {
     _hideCostBasis = _sharesCtrl.text.trim().startsWith('-');
     _sharesCtrl.addListener(_onSharesChanged);
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadStaticData().then((_) {
-        if (mounted) setState(() => _renderHeavy = true);
+    // Fast path: use preloaded data synchronously.
+    final pa = widget.preloadedAssets;
+    final pc = widget.preloadedAccounts;
+    final pg = widget.preloadedCategories;
+    if (pa != null && pc != null && pg != null) {
+      _allAssets = pa;
+      _allAccounts = pc.where((a) => !a.isArchived).toList();
+      _distinctCategories = pg;
+      _assetMap = {for (final a in _allAssets) a.id: a};
+      _ready = true;
+    } else {
+      // Fallback: async load (rarely reached when screen preloads).
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadStaticData().then((_) {
+          if (mounted) setState(() => _ready = true);
+        });
       });
-    });
+    }
   }
 
   Future<void> _loadStaticData() async {
@@ -128,10 +153,9 @@ class _BookingFormState extends State<BookingForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: MediaQuery
-          .of(context)
-          .viewInsets,
+    // BottomInsetPadding isolates the MediaQuery.viewInsets dependency so
+    // the form tree does NOT rebuild on every keyboard-animation frame.
+    return BottomInsetPadding(
       child: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -147,7 +171,7 @@ class _BookingFormState extends State<BookingForm> {
                     assets: _allAssets,
                     assetId: _assetId,
                     onAssetChanged: (v) => setState(() => _assetId = v)),
-                if (_renderHeavy) ...[
+                if (_ready) ...[
                   const SizedBox(height: 16),
                   _sharesRow(),
                   const SizedBox(height: 16),

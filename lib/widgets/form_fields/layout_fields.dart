@@ -58,3 +58,23 @@ mixin LayoutFieldsMixin {
     );
   }
 }
+
+/// Isolates the [MediaQuery.viewInsetsOf] dependency so only this widget
+/// — not the entire form tree — rebuilds on each keyboard-animation frame.
+///
+/// Wrap the outermost widget of every bottom-sheet form with this instead
+/// of `Padding(padding: MediaQuery.of(context).viewInsets, …)`.
+class BottomInsetPadding extends StatelessWidget {
+  final Widget child;
+  const BottomInsetPadding({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.viewInsetsOf(context).bottom,
+      ),
+      child: child,
+    );
+  }
+}

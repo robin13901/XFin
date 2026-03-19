@@ -195,8 +195,7 @@ class _TradeFormState extends State<TradeForm> {
   Widget build(BuildContext context) {
     Asset asset = _allAssets.firstWhere((a) => a.id == _assetId);
 
-    return Padding(
-      padding: MediaQuery.of(context).viewInsets,
+    return BottomInsetPadding(
       child: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16.0),

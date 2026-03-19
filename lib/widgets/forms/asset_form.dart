@@ -107,8 +107,7 @@ class _AssetFormState extends State<AssetForm> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final validator = Validator(l10n);
-    return Padding(
-      padding: MediaQuery.of(context).viewInsets,
+    return BottomInsetPadding(
       child: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16.0),

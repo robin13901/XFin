@@ -149,8 +149,7 @@ class _PeriodicBookingFormState extends State<PeriodicBookingForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: MediaQuery.of(context).viewInsets,
+    return BottomInsetPadding(
       child: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16.0),

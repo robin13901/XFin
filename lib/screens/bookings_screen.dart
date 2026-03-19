@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/daos/bookings_dao.dart';
 import 'package:xfin/l10n/app_localizations.dart';
@@ -10,9 +12,9 @@ import '../mixins/database_provider_mixin.dart';
 import '../mixins/nav_bar_visibility_mixin.dart';
 import '../mixins/search_filter_mixin.dart';
 import '../models/filter/booking_filter_config.dart';
+import '../providers/database_provider.dart';
 import '../providers/theme_provider.dart';
 import '../utils/format.dart';
-import '../utils/modal_helper.dart';
 import '../widgets/dialogs.dart';
 import '../widgets/filter/filter_badge.dart';
 import '../widgets/filter/filter_panel.dart';
@@ -23,17 +25,37 @@ import '../widgets/liquid_glass_widgets.dart';
 class BookingsScreen extends StatefulWidget {
   const BookingsScreen({super.key});
 
-  static void showBookingForm(BuildContext context, Booking? booking) {
-    showFormModal(context, BookingForm(booking: booking));
+  /// Show the booking form with preloaded data.
+  ///
+  /// Looks up the [BookingsScreenState] via the given [key] (preferred) or
+  /// by walking the ancestor tree from [context].  Falls back to a plain
+  /// async-loading form if neither yields a state.
+  static Future<void> showBookingForm(
+    BuildContext context,
+    Booking? booking, {
+    GlobalKey<BookingsScreenState>? key,
+  }) {
+    final state = key?.currentState ??
+        context.findAncestorStateOfType<BookingsScreenState>();
+    if (state != null) {
+      return state._showBookingForm(context, booking);
+    }
+    // Fallback: open without preloaded data.
+    return showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => BookingForm(booking: booking),
+    );
   }
 
   @override
-  State<BookingsScreen> createState() => _BookingsScreenState();
+  State<BookingsScreen> createState() => BookingsScreenState();
 }
 
-class _BookingsScreenState extends State<BookingsScreen>
-    with DatabaseProviderMixin<BookingsScreen>, NavBarVisibilityMixin<BookingsScreen>, SearchFilterMixin<BookingsScreen> {
+class BookingsScreenState extends State<BookingsScreen>
+    with SingleTickerProviderStateMixin, DatabaseProviderMixin<BookingsScreen>, NavBarVisibilityMixin<BookingsScreen>, SearchFilterMixin<BookingsScreen> {
   late final ScrollController _scrollController;
+  late final AnimationController _sheetAnimController;
   final List<BookingWithAccountAndAsset> _items = [];
 
   bool _isLoading = false;
@@ -46,10 +68,25 @@ class _BookingsScreenState extends State<BookingsScreen>
 
   bool _initialized = false;
 
+  // Preloaded form data — fetched eagerly so the form opens instantly.
+  late Future<List<Asset>> _assetsFuture;
+  late Future<List<Account>> _accountsFuture;
+  late Future<List<String>> _categoriesFuture;
+
   @override
   void initState() {
     super.initState();
     _scrollController = ScrollController()..addListener(_onScroll);
+
+    // Zero-duration controller so the bottom-sheet appears instantly.
+    _sheetAnimController =
+        AnimationController(vsync: this, duration: Duration.zero)..value = 1.0;
+
+    // Start preloading form data immediately (background).
+    final appDb = context.read<DatabaseProvider>().db;
+    _assetsFuture = appDb.assetsDao.getAllAssets();
+    _accountsFuture = appDb.accountsDao.getAllAccounts();
+    _categoriesFuture = appDb.bookingsDao.getDistinctCategories();
   }
 
   @override
@@ -66,8 +103,61 @@ class _BookingsScreenState extends State<BookingsScreen>
     _pageSub?.cancel();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    _sheetAnimController.dispose();
     restoreNavBarVisibility();
     super.dispose();
+  }
+
+  /// Show the booking form with preloaded data — no delay.
+  Future<void> _showBookingForm(BuildContext context, Booking? booking) async {
+    final assets = await _assetsFuture;
+    final accounts = await _accountsFuture;
+    final categories = await _categoriesFuture;
+
+    if (!context.mounted) return;
+
+    final isAurora = ThemeProvider.instance.isAurora;
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      transitionAnimationController: _sheetAnimController,
+      backgroundColor: isAurora ? Colors.transparent : null,
+      builder: (_) {
+        final form = BookingForm(
+          booking: booking,
+          preloadedAssets: assets,
+          preloadedAccounts: accounts,
+          preloadedCategories: categories,
+        );
+        if (!isAurora) return form;
+
+        // Lightweight glass-blur card wrapping the form.
+        return ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xCC111214),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(20)),
+                border: Border(
+                  top: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.08),
+                  ),
+                ),
+              ),
+              child: form,
+            ),
+          ),
+        );
+      },
+    );
+
+    // Refresh preload cache after form closes (data may have changed).
+    _assetsFuture = db.assetsDao.getAllAssets();
+    _accountsFuture = db.accountsDao.getAllAccounts();
+    _categoriesFuture = db.bookingsDao.getDistinctCategories();
   }
 
   @override
@@ -202,7 +292,7 @@ class _BookingsScreenState extends State<BookingsScreen>
                           style: Theme.of(context).textTheme.bodySmall),
                     ],
                   ),
-                  onTap: () => BookingsScreen.showBookingForm(context, booking),
+                  onTap: () => _showBookingForm(context, booking),
                   onLongPress: () =>
                       showDeleteDialog(context, booking: booking),
                 );

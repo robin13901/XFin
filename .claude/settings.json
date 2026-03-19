@@ -15,7 +15,24 @@
       "mcp__filesystem__read_text_file",
       "Bash(flutter pub:*)",
       "Bash(dart analyze:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(taskkill //F //IM node.exe)",
+      "Bash(npm list:*)",
+      "Bash(pip list:*)",
+      "Bash(where hai-proxy:*)",
+      "Bash(where hai:*)",
+      "Bash(where hyperspace:*)",
+      "Bash(C:/SAPDevelop/hai/hai.exe --version)",
+      "Bash(C:/SAPDevelop/hai/hai.exe version:*)",
+      "Read(//c/SAPDevelop/hai/**)",
+      "Bash(C:/SAPDevelop/hai/hai.exe --help)",
+      "Bash(C:/SAPDevelop/hai/hai.exe help:*)",
+      "Bash(echo $PROCESSOR_ARCHITECTURE)",
+      "Bash(npm view:*)",
+      "mcp__fetch__fetch",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(grep -n \"buildAuroraLayer\\\\|AuroraBackground\\\\|buildLiquidGlassAppBar\" /c/SAPDevelop/Privat/XFin/lib/screens/*.dart)"
     ]
   }
 }

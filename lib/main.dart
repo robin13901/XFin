@@ -108,13 +108,14 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
   bool _standingOrdersExecuted = false;
   final GlobalKey _navBarKey = GlobalKey();
+  final GlobalKey<BookingsScreenState> _bookingsKey = GlobalKey<BookingsScreenState>();
   late AppLocalizations l10n;
   final ValueNotifier<bool> _navBarVisible = ValueNotifier<bool>(true);
 
-  static const List<Widget> _widgetOptions = <Widget>[
-    AnalysisScreen(),
-    AccountsScreen(),
-    BookingsScreen(),
+  late final List<Widget> _widgetOptions = <Widget>[
+    const AnalysisScreen(),
+    const AccountsScreen(),
+    BookingsScreen(key: _bookingsKey),
   ];
 
   @override
@@ -197,7 +198,7 @@ class _MainScreenState extends State<MainScreen> {
                   if (_selectedIndex == 1) {
                     AccountsScreen.showAccountForm(context);
                   } else if (_selectedIndex == 2) {
-                    BookingsScreen.showBookingForm(context, null);
+                    BookingsScreen.showBookingForm(context, null, key: _bookingsKey);
                   }
                 },
                 leftVisibleForIndices: const {1, 2},
