@@ -175,9 +175,24 @@ class _TradesScreenState extends State<TradesScreen>
                     );
                   }
 
+                  final titleText =
+                      '${trade.type.name.toUpperCase()} ${preciseDecimal(trade.shares)} ${asset.tickerSymbol} @ ${formatCurrency(trade.costBasis)}';
+
+                  if (trade.type == TradeTypes.sell) {
+                    return _SellTradeListItem(
+                      trade: trade,
+                      asset: asset,
+                      titleText: titleText,
+                      subtitleWidgets: subtitleWidgets,
+                      onTap: () => _showTradeForm(context, trade: trade),
+                      onLongPress: () =>
+                          showDeleteDialog(context, trade: trade),
+                      tradesDao: db.tradesDao,
+                    );
+                  }
+
                   return ListTile(
-                    title: Text(
-                        '${trade.type.name.toUpperCase()} ${preciseDecimal(trade.shares)} ${asset.tickerSymbol} @ ${formatCurrency(trade.costBasis)}'),
+                    title: Text(titleText),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: subtitleWidgets,
@@ -242,6 +257,150 @@ class _TradesScreenState extends State<TradesScreen>
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SellTradeListItem extends StatefulWidget {
+  final Trade trade;
+  final Asset asset;
+  final String titleText;
+  final List<Text> subtitleWidgets;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
+  final TradesDao tradesDao;
+
+  const _SellTradeListItem({
+    required this.trade,
+    required this.asset,
+    required this.titleText,
+    required this.subtitleWidgets,
+    required this.onTap,
+    required this.onLongPress,
+    required this.tradesDao,
+  });
+
+  @override
+  State<_SellTradeListItem> createState() => _SellTradeListItemState();
+}
+
+class _SellTradeListItemState extends State<_SellTradeListItem> {
+  List<ConsumedLot>? _lots;
+  bool _isLoading = false;
+  bool _isExpanded = false;
+
+  Future<void> _loadLots() async {
+    if (_lots != null || _isLoading) return;
+    setState(() => _isLoading = true);
+    final lots =
+        await widget.tradesDao.getFiFoLotsForSellTrade(widget.trade);
+    if (mounted) setState(() { _lots = lots; _isLoading = false; });
+  }
+
+  void _toggleExpansion() {
+    setState(() => _isExpanded = !_isExpanded);
+    if (_isExpanded) _loadLots();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ListTile(
+          title: Text(widget.titleText),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: widget.subtitleWidgets,
+          ),
+          trailing: IconButton(
+            icon: Icon(
+              _isExpanded ? Icons.expand_less : Icons.expand_more,
+              size: 20,
+            ),
+            onPressed: _toggleExpansion,
+          ),
+          onTap: widget.onTap,
+          onLongPress: widget.onLongPress,
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          child: _isExpanded
+              ? Padding(
+                  padding: const EdgeInsets.only(
+                      left: 16, right: 16, bottom: 8),
+                  child: _buildLotsContent(l10n),
+                )
+              : const SizedBox.shrink(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLotsContent(AppLocalizations l10n) {
+    if (_isLoading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 4),
+        child: SizedBox(
+          width: 16,
+          height: 16,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+
+    if (_lots == null || _lots!.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final isCrypto = widget.asset.type == AssetTypes.crypto;
+    final sellDate = intToDateTime(widget.trade.datetime);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Divider(height: 1),
+        const SizedBox(height: 4),
+        Text(
+          l10n.fifoLots,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+        ),
+        const SizedBox(height: 2),
+        ..._lots!.map((lot) {
+          final lotDate = lot.datetime > 0 ? intToDateTime(lot.datetime) : null;
+          final dateStr =
+              lotDate != null ? dateTimeFormat.format(lotDate) : '–';
+
+          Color? lotColor;
+          if (isCrypto && sellDate != null && lotDate != null) {
+            final held = sellDate.difference(lotDate);
+            lotColor =
+                held.inDays >= 365 ? Colors.green : Colors.orange;
+          }
+
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 1),
+            child: Row(
+              children: [
+                Text(
+                  dateStr,
+                  style: TextStyle(fontSize: 12, color: lotColor),
+                ),
+                const Spacer(),
+                Text(
+                  l10n.lotShares(
+                    preciseDecimal(lot.shares),
+                    formatCurrency(lot.costBasis),
+                    formatCurrency(lot.shares * lot.costBasis),
+                  ),
+                  style: TextStyle(fontSize: 12, color: lotColor),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
     );
   }
 }

@@ -1633,6 +1633,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Shares must not be zero'**
   String get sharesRequired;
+
+  /// No description provided for @fifoLots.
+  ///
+  /// In en, this message translates to:
+  /// **'Consumed Buys'**
+  String get fifoLots;
+
+  /// No description provided for @lotShares.
+  ///
+  /// In en, this message translates to:
+  /// **'{shares} @ {costBasis} ≈ {value}'**
+  String lotShares(String shares, String costBasis, String value);
 }
 
 class _AppLocalizationsDelegate

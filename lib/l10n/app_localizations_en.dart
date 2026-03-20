@@ -827,4 +827,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sharesRequired => 'Shares must not be zero';
+
+  @override
+  String get fifoLots => 'Consumed Buys';
+
+  @override
+  String lotShares(String shares, String costBasis, String value) {
+    return '$shares @ $costBasis ≈ $value';
+  }
 }

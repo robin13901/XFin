@@ -204,9 +204,15 @@ class AssetsOnAccountsDao extends DatabaseAccessor<AppDatabase>
       final shares = (e['shares'] as num).toDouble();
       final costBasis = (e['costBasis'] as num).toDouble();
       final fee = (e['fee'] as num).toDouble();
+      final datetime = (e['datetime'] as int).toDouble();
 
       if (e['in'] as bool) {
-        fifo.add({'shares': shares, 'costBasis': costBasis, 'fee': fee});
+        fifo.add({
+          'shares': shares,
+          'costBasis': costBasis,
+          'fee': fee,
+          'datetime': datetime,
+        });
       } else {
         consumeFiFo(fifo, shares);
       }

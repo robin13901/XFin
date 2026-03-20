@@ -108,6 +108,19 @@ DateTime addMonths(DateTime date, int months) {
   );
 }
 
+class ConsumedLot {
+  final double shares;
+  final double costBasis;
+  final double fee;
+  final int datetime;
+  const ConsumedLot({
+    required this.shares,
+    required this.costBasis,
+    required this.fee,
+    this.datetime = 0,
+  });
+}
+
 (double, double) consumeFiFo(ListQueue<Map<String, double>> fifo, shares) {
   double consumedValue = 0, consumedFee = 0;
   while (shares > 0 && fifo.isNotEmpty) {
@@ -131,6 +144,44 @@ DateTime addMonths(DateTime date, int months) {
   }
 
   return (consumedValue, consumedFee);
+}
+
+(double, double, List<ConsumedLot>) consumeFiFoDetailed(
+    ListQueue<Map<String, double>> fifo, double shares) {
+  double consumedValue = 0, consumedFee = 0;
+  final lots = <ConsumedLot>[];
+  while (shares > 0 && fifo.isNotEmpty) {
+    final currentLot = fifo.first;
+    final lotShares = currentLot['shares']!;
+    final lotCostBasis = currentLot['costBasis']!;
+    final lotFee = currentLot['fee'] ?? 0.0;
+    final lotDatetime = (currentLot['datetime'] ?? 0).toInt();
+
+    if (lotShares <= shares + 1e-12) {
+      consumedValue -= lotShares * lotCostBasis;
+      consumedFee -= lotFee;
+      lots.add(ConsumedLot(
+          shares: lotShares,
+          costBasis: lotCostBasis,
+          fee: lotFee,
+          datetime: lotDatetime));
+      shares -= lotShares;
+      fifo.removeFirst();
+    } else {
+      final usedFee = (shares / lotShares) * lotFee;
+      consumedValue -= shares * lotCostBasis;
+      consumedFee -= usedFee;
+      lots.add(ConsumedLot(
+          shares: shares,
+          costBasis: lotCostBasis,
+          fee: usedFee,
+          datetime: lotDatetime));
+      currentLot['shares'] = lotShares - shares;
+      currentLot['fee'] = lotFee - usedFee;
+      shares = 0;
+    }
+  }
+  return (consumedValue, consumedFee, lots);
 }
 
 class CategoryAutocompleteHelper {

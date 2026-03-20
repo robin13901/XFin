@@ -1919,6 +1919,131 @@ void main() {
     });
   });
 
+  group('getFiFoLotsForSellTrade', () {
+    test('returns consumed lots for a sell trade (multi-lot)', () async {
+      // Buy 2 @ 10, fee 1
+      await tradesDao.insertTrade(
+          TradesCompanion(
+            datetime: const drift.Value(20250101000000),
+            assetId: drift.Value(assetOne.id),
+            type: const drift.Value(TradeTypes.buy),
+            shares: const drift.Value(2),
+            costBasis: const drift.Value(10),
+            fee: const drift.Value(1),
+            tax: const drift.Value(0),
+            sourceAccountId: drift.Value(sourceAccount.id),
+            targetAccountId: drift.Value(targetAccount.id),
+          ),
+          l10n);
+
+      // Buy 3 @ 15, fee 2
+      await tradesDao.insertTrade(
+          TradesCompanion(
+            datetime: const drift.Value(20250102000000),
+            assetId: drift.Value(assetOne.id),
+            type: const drift.Value(TradeTypes.buy),
+            shares: const drift.Value(3),
+            costBasis: const drift.Value(15),
+            fee: const drift.Value(2),
+            tax: const drift.Value(0),
+            sourceAccountId: drift.Value(sourceAccount.id),
+            targetAccountId: drift.Value(targetAccount.id),
+          ),
+          l10n);
+
+      // Sell 3 @ 20 — consumes 2@10 (full lot 1) + 1@15 (partial lot 2)
+      await tradesDao.insertTrade(
+          TradesCompanion(
+            datetime: const drift.Value(20250103000000),
+            assetId: drift.Value(assetOne.id),
+            type: const drift.Value(TradeTypes.sell),
+            shares: const drift.Value(3),
+            costBasis: const drift.Value(20),
+            fee: const drift.Value(0),
+            tax: const drift.Value(0),
+            sourceAccountId: drift.Value(sourceAccount.id),
+            targetAccountId: drift.Value(targetAccount.id),
+          ),
+          l10n);
+
+      final sellTrade = await tradesDao.getTrade(3);
+      final lots = await tradesDao.getFiFoLotsForSellTrade(sellTrade);
+
+      expect(lots.length, 2);
+
+      // First lot: 2 shares @ 10, fee 1, bought on 20250101
+      expect(lots[0].shares, closeTo(2.0, 1e-9));
+      expect(lots[0].costBasis, closeTo(10.0, 1e-9));
+      expect(lots[0].fee, closeTo(1.0, 1e-9));
+      expect(lots[0].datetime, 20250101000000);
+
+      // Second lot: 1 share @ 15, fee 2*(1/3), bought on 20250102
+      expect(lots[1].shares, closeTo(1.0, 1e-9));
+      expect(lots[1].costBasis, closeTo(15.0, 1e-9));
+      expect(lots[1].fee, closeTo(2.0 / 3.0, 1e-9));
+      expect(lots[1].datetime, 20250102000000);
+    });
+
+    test('returns empty list for a buy trade', () async {
+      await tradesDao.insertTrade(
+          TradesCompanion(
+            datetime: const drift.Value(20250101000000),
+            assetId: drift.Value(assetOne.id),
+            type: const drift.Value(TradeTypes.buy),
+            shares: const drift.Value(5),
+            costBasis: const drift.Value(10),
+            fee: const drift.Value(1),
+            tax: const drift.Value(0),
+            sourceAccountId: drift.Value(sourceAccount.id),
+            targetAccountId: drift.Value(targetAccount.id),
+          ),
+          l10n);
+
+      final buyTrade = await tradesDao.getTrade(1);
+      final lots = await tradesDao.getFiFoLotsForSellTrade(buyTrade);
+
+      expect(lots, isEmpty);
+    });
+
+    test('returns single lot for sell consuming one buy exactly', () async {
+      await tradesDao.insertTrade(
+          TradesCompanion(
+            datetime: const drift.Value(20250101000000),
+            assetId: drift.Value(assetOne.id),
+            type: const drift.Value(TradeTypes.buy),
+            shares: const drift.Value(5),
+            costBasis: const drift.Value(20),
+            fee: const drift.Value(3),
+            tax: const drift.Value(0),
+            sourceAccountId: drift.Value(sourceAccount.id),
+            targetAccountId: drift.Value(targetAccount.id),
+          ),
+          l10n);
+
+      await tradesDao.insertTrade(
+          TradesCompanion(
+            datetime: const drift.Value(20250102000000),
+            assetId: drift.Value(assetOne.id),
+            type: const drift.Value(TradeTypes.sell),
+            shares: const drift.Value(5),
+            costBasis: const drift.Value(25),
+            fee: const drift.Value(0),
+            tax: const drift.Value(0),
+            sourceAccountId: drift.Value(sourceAccount.id),
+            targetAccountId: drift.Value(targetAccount.id),
+          ),
+          l10n);
+
+      final sellTrade = await tradesDao.getTrade(2);
+      final lots = await tradesDao.getFiFoLotsForSellTrade(sellTrade);
+
+      expect(lots.length, 1);
+      expect(lots[0].shares, closeTo(5.0, 1e-9));
+      expect(lots[0].costBasis, closeTo(20.0, 1e-9));
+      expect(lots[0].fee, closeTo(3.0, 1e-9));
+    });
+  });
+
   group('validation', () {
     test('insertTrade throws DaoValidationException on zero shares', () async {
       final trade = TradesCompanion(

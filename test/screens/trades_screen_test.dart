@@ -404,5 +404,53 @@ void main() {
 
               await tester.pumpWidget(Container());
             }));
+
+    testWidgets(
+        'sell trades show expand icon, buy trades do not',
+        (tester) => tester.runAsync(() async {
+              await pumpWidget(tester);
+              await tester.pumpAndSettle();
+
+              // Sell trades should have expand_more icons
+              expect(find.byIcon(Icons.expand_more), findsNWidgets(2));
+
+              // Buy trade (BUY 5 TSS) should be a plain ListTile without expand icon
+              final buyTileFinder = find.ancestor(
+                  of: find.textContaining('BUY 5 TSS'),
+                  matching: find.byType(ListTile));
+              expect(buyTileFinder, findsOneWidget);
+              expect(
+                  find.descendant(
+                      of: buyTileFinder,
+                      matching: find.byIcon(Icons.expand_more)),
+                  findsNothing);
+
+              await tester.pumpWidget(Container());
+            }));
+
+    testWidgets(
+        'tapping expand icon shows FIFO lot details for sell trade',
+        (tester) => tester.runAsync(() async {
+              final l10n = await pumpWidget(tester);
+              await tester.pumpAndSettle();
+
+              // Before expansion, no "Cost Lots" text visible
+              expect(find.text(l10n.fifoLots), findsNothing);
+
+              // Tap the first expand_more icon (for the most recent sell trade)
+              await tester.tap(find.byIcon(Icons.expand_more).first);
+              await tester.pumpAndSettle();
+
+              // After expansion, the icon should flip to expand_less
+              expect(find.byIcon(Icons.expand_less), findsOneWidget);
+
+              // "Cost Lots" header should be visible
+              expect(find.text(l10n.fifoLots), findsOneWidget);
+
+              // At least one lot detail row should appear (containing '@')
+              expect(find.textContaining('@'), findsWidgets);
+
+              await tester.pumpWidget(Container());
+            }));
   });
 }

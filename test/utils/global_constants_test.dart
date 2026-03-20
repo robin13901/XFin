@@ -102,6 +102,107 @@ void main() {
     });
   });
 
+  group('consumeFiFoDetailed', () {
+    test('multi-lot consumption returns individual lot details', () {
+      final fifo = ListQueue<Map<String, double>>();
+      fifo.add({'shares': 2.0, 'costBasis': 10.0, 'fee': 1.0});
+      fifo.add({'shares': 3.0, 'costBasis': 20.0, 'fee': 2.0});
+
+      final (consumedValue, consumedFee, lots) =
+          consumeFiFoDetailed(fifo, 4.0);
+
+      // Aggregates should match consumeFiFo behavior
+      expect(consumedValue, closeTo(-60.0, 1e-9));
+      expect(consumedFee, closeTo(-2.333333333333333, 1e-9));
+
+      // Two lots consumed
+      expect(lots.length, 2);
+
+      // First lot: fully consumed (2 shares @ 10, fee 1)
+      expect(lots[0].shares, closeTo(2.0, 1e-9));
+      expect(lots[0].costBasis, closeTo(10.0, 1e-9));
+      expect(lots[0].fee, closeTo(1.0, 1e-9));
+
+      // Second lot: partially consumed (2 of 3 shares @ 20, fee 2*(2/3))
+      expect(lots[1].shares, closeTo(2.0, 1e-9));
+      expect(lots[1].costBasis, closeTo(20.0, 1e-9));
+      expect(lots[1].fee, closeTo(1.333333333333333, 1e-9));
+
+      // Remaining queue
+      expect(fifo.length, 1);
+      expect(fifo.first['shares']!, closeTo(1.0, 1e-9));
+    });
+
+    test('partial lot consumption returns single lot', () {
+      final fifo = ListQueue<Map<String, double>>();
+      fifo.add({'shares': 5.0, 'costBasis': 7.0, 'fee': 1.5});
+
+      final (consumedValue, consumedFee, lots) =
+          consumeFiFoDetailed(fifo, 2.0);
+
+      expect(consumedValue, closeTo(-14.0, 1e-9));
+      expect(consumedFee, closeTo(-0.6, 1e-9));
+
+      expect(lots.length, 1);
+      expect(lots[0].shares, closeTo(2.0, 1e-9));
+      expect(lots[0].costBasis, closeTo(7.0, 1e-9));
+      expect(lots[0].fee, closeTo(0.6, 1e-9));
+
+      expect(fifo.length, 1);
+      expect(fifo.first['shares']!, closeTo(3.0, 1e-9));
+    });
+
+    test('exact lot boundary consumption', () {
+      final fifo = ListQueue<Map<String, double>>();
+      fifo.add({'shares': 3.0, 'costBasis': 10.0, 'fee': 0.5});
+
+      final (consumedValue, consumedFee, lots) =
+          consumeFiFoDetailed(fifo, 3.0);
+
+      expect(consumedValue, closeTo(-30.0, 1e-9));
+      expect(consumedFee, closeTo(-0.5, 1e-9));
+
+      expect(lots.length, 1);
+      expect(lots[0].shares, closeTo(3.0, 1e-9));
+      expect(lots[0].costBasis, closeTo(10.0, 1e-9));
+      expect(lots[0].fee, closeTo(0.5, 1e-9));
+
+      expect(fifo.isEmpty, true);
+    });
+
+    test('empty queue returns empty lots', () {
+      final fifo = ListQueue<Map<String, double>>();
+
+      final (consumedValue, consumedFee, lots) =
+          consumeFiFoDetailed(fifo, 5.0);
+
+      expect(consumedValue, closeTo(0.0, 1e-9));
+      expect(consumedFee, closeTo(0.0, 1e-9));
+      expect(lots, isEmpty);
+    });
+
+    test('aggregate values match consumeFiFo', () {
+      // Build two identical queues
+      final fifo1 = ListQueue<Map<String, double>>();
+      fifo1.add({'shares': 4.0, 'costBasis': 12.0, 'fee': 2.0});
+      fifo1.add({'shares': 6.0, 'costBasis': 8.0, 'fee': 1.0});
+
+      final fifo2 = ListQueue<Map<String, double>>();
+      fifo2.add({'shares': 4.0, 'costBasis': 12.0, 'fee': 2.0});
+      fifo2.add({'shares': 6.0, 'costBasis': 8.0, 'fee': 1.0});
+
+      final (v1, f1) = consumeFiFo(fifo1, 7.0);
+      final (v2, f2, _) = consumeFiFoDetailed(fifo2, 7.0);
+
+      expect(v1, closeTo(v2, 1e-9));
+      expect(f1, closeTo(f2, 1e-9));
+
+      // Queue state should also match
+      expect(fifo1.length, fifo2.length);
+      expect(fifo1.first['shares']!, closeTo(fifo2.first['shares']!, 1e-9));
+    });
+  });
+
   group('CategoryAutocompleteHelper', () {
     final categories = [
       'Rent',

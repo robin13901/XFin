@@ -283,6 +283,21 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
     });
   }
 
+  /// Returns the FIFO lots consumed by a specific sell trade.
+  /// Returns empty list for buy trades.
+  Future<List<ConsumedLot>> getFiFoLotsForSellTrade(Trade trade) async {
+    if (trade.type != TradeTypes.sell) return [];
+    final fifo = await db.assetsOnAccountsDao.buildFiFoQueue(
+      trade.assetId,
+      trade.targetAccountId,
+      upToDatetime: trade.datetime,
+      upToType: trade.type.name,
+      upToId: trade.id,
+    );
+    final (_, _, lots) = consumeFiFoDetailed(fifo, trade.shares);
+    return lots;
+  }
+
   Future<List<Trade>> loadTradesForAssetAndAccount(int assetId, int accountId) {
     return (select(trades)
           ..where((t) =>

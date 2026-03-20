@@ -285,5 +285,20 @@
   "eventsPerMonth": "Ereignisse pro Monat",
   "noAssetHoldings": "Keine Vermögenswerte",
   "transferSameAccount": "Sende- und Empfangskonto dürfen nicht identisch sein",
-  "sharesRequired": "Die Anteile dürfen nicht null sein"
+  "sharesRequired": "Die Anteile dürfen nicht null sein",
+  "fifoLots": "Konsumierte K\u00e4ufe",
+  "lotShares": "{shares} @ {costBasis} \u2248 {value}",
+  "@lotShares": {
+    "placeholders": {
+      "shares": {
+        "type": "String"
+      },
+      "costBasis": {
+        "type": "String"
+      },
+      "value": {
+        "type": "String"
+      }
+    }
+  }
 }

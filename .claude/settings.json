@@ -32,7 +32,9 @@
       "mcp__fetch__fetch",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(grep -n \"buildAuroraLayer\\\\|AuroraBackground\\\\|buildLiquidGlassAppBar\" /c/SAPDevelop/Privat/XFin/lib/screens/*.dart)"
+      "Bash(grep -n \"buildAuroraLayer\\\\|AuroraBackground\\\\|buildLiquidGlassAppBar\" /c/SAPDevelop/Privat/XFin/lib/screens/*.dart)",
+      "Bash(gh issue:*)",
+      "Bash(gh auth:*)"
     ]
   }
 }

@@ -285,5 +285,20 @@
   "eventsPerMonth": "Events per Month",
   "noAssetHoldings": "No asset holdings",
   "transferSameAccount": "Sending and receiving accounts cannot be the same",
-  "sharesRequired": "Shares must not be zero"
+  "sharesRequired": "Shares must not be zero",
+  "fifoLots": "Consumed Buys",
+  "lotShares": "{shares} @ {costBasis} \u2248 {value}",
+  "@lotShares": {
+    "placeholders": {
+      "shares": {
+        "type": "String"
+      },
+      "costBasis": {
+        "type": "String"
+      },
+      "value": {
+        "type": "String"
+      }
+    }
+  }
 }
