@@ -42,7 +42,8 @@
       "Bash(find /c/SAPDevelop/Privat/XFin/lib -name \"*.dart\" -type f ! -path \"*/.*\" -exec grep -l \"static final\\\\|static const\\\\|static.*=\" {})",
       "Bash(grep -r \"FutureBuilder\\\\|StreamBuilder\\\\|Future<\" /c/SAPDevelop/Privat/XFin/lib/screens/*.dart)",
       "mcp__filesystem__write_file",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(find /c/SAPDevelop/Privat/XFin/lib/widgets -name *nav* -o -name *bottom*)"
     ]
   }
 }

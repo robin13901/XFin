@@ -248,10 +248,9 @@ class _StandingOrdersScreenState extends State<StandingOrdersScreen>
                 ],
                 currentIndex: _selectedIndex,
                 onTap: (i) => setState(() => _selectedIndex = i),
-                onLeftTap: () {
-                  // No left tap functionality needed for now
-                },
+                onLeftTap: null,
                 leftVisibleForIndices: const {},
+                keepLeftPlaceholder: true,
                 rightIcon: Icons.add,
                 onRightTap: () {
                   if (_selectedIndex == 0) {
