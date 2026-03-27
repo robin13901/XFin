@@ -329,12 +329,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   ListTile(
                     title: Text(l10n.baseCurrency),
-                    trailing: _baseCurrencyAsset == null
-                        ? const CircularProgressIndicator()
-                        : Text(
-                            '${_baseCurrencyAsset!.name} (${_baseCurrencyAsset!.currencySymbol ?? _baseCurrencyAsset!.tickerSymbol})',
-                            style: Theme.of(context).textTheme.bodyLarge,
-                          ),
+                    trailing: Text(
+                      _baseCurrencyAsset != null
+                          ? '${_baseCurrencyAsset!.name} (${_baseCurrencyAsset!.currencySymbol ?? _baseCurrencyAsset!.tickerSymbol})'
+                          : '${BaseCurrencyProvider.symbol} (${context.read<BaseCurrencyProvider>().tickerSymbol})',
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
                   ),
                 ],
               ),
