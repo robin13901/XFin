@@ -32,6 +32,7 @@ class _TradeFormState extends State<TradeForm> {
   late AppDatabase _db;
   late Validator _validator;
   late FormFields _formFields;
+  bool _formFieldsInitialized = false;
 
   // Controllers
   late TextEditingController _dateController;
@@ -52,14 +53,22 @@ class _TradeFormState extends State<TradeForm> {
   List<Account> _investmentAccounts = [];
   double _ownedShares = 0;
 
+  // Cached dropdown items — built once, reused on every rebuild.
+  List<DropdownMenuItem<int>> _assetItems = const [];
+  List<DropdownMenuItem<int>> _clearingAccountItems = const [];
+  List<DropdownMenuItem<int>> _investmentAccountItems = const [];
+
   bool get _isEditing => widget.trade != null;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _l10n = AppLocalizations.of(context)!;
-    _validator = Validator(_l10n);
-    _formFields = FormFields(_l10n, _validator, context);
+    if (!_formFieldsInitialized) {
+      _formFieldsInitialized = true;
+      _l10n = AppLocalizations.of(context)!;
+      _validator = Validator(_l10n);
+      _formFields = FormFields(_l10n, _validator, context);
+    }
   }
 
   @override
@@ -93,6 +102,7 @@ class _TradeFormState extends State<TradeForm> {
       _clearingAccounts = allAccounts;
       _investmentAccounts =
           allAccounts.where((a) => a.type != AccountTypes.bankAccount).toList();
+      _buildCaches();
 
       if (t != null) {
         _assetId = t.assetId;
@@ -131,12 +141,26 @@ class _TradeFormState extends State<TradeForm> {
         _investmentAccounts = allAccounts
             .where((a) => a.type != AccountTypes.bankAccount)
             .toList();
+        _buildCaches();
       });
 
       if (_assetId != null && _portfolioAccountId != null) {
         await _fetchOwnedShares();
       }
     }
+  }
+
+  /// Build cached dropdown items from loaded data.
+  void _buildCaches() {
+    _assetItems = _dropdownAssets
+        .map((a) => DropdownMenuItem(value: a.id, child: Text(a.name)))
+        .toList();
+    _clearingAccountItems = _clearingAccounts
+        .map((a) => DropdownMenuItem(value: a.id, child: Text(a.name)))
+        .toList();
+    _investmentAccountItems = _investmentAccounts
+        .map((a) => DropdownMenuItem(value: a.id, child: Text(a.name)))
+        .toList();
   }
 
   @override
@@ -227,6 +251,7 @@ class _TradeFormState extends State<TradeForm> {
                 _formFields.assetsDropdown(
                     assets: _dropdownAssets,
                     value: _isEditing ? _assetId : null,
+                    cachedItems: _assetItems,
                     onChanged: (v) {
                       setState(() => _assetId = v);
                       // fetch owned shares when portfolio account is selected already
@@ -288,6 +313,7 @@ class _TradeFormState extends State<TradeForm> {
                     accounts: _clearingAccounts,
                     value: _clearingAccountId,
                     customValidator: validateClearingAccount,
+                    cachedItems: _clearingAccountItems,
                     onChanged: _isEditing
                         ? null
                         : (v) => setState(() => _clearingAccountId = v)),
@@ -297,6 +323,7 @@ class _TradeFormState extends State<TradeForm> {
                     label: _l10n.investmentAccount,
                     accounts: _investmentAccounts,
                     value: _portfolioAccountId,
+                    cachedItems: _investmentAccountItems,
                     onChanged: _isEditing
                         ? null
                         : (v) {

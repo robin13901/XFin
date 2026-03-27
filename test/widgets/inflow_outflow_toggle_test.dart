@@ -55,20 +55,19 @@ void main() {
       expect(find.text('Expense'), findsOneWidget);
     });
 
-    testWidgets('inflow segment is selected when showInflows is true',
+    testWidgets('inflow segment is selected when showInflows is true (light)',
         (tester) async {
-      await pumpToggle(tester, showInflows: true);
+      await pumpToggle(tester, showInflows: true, brightness: Brightness.light);
 
-      // Find the AnimatedContainers for each segment
       final animatedContainers =
           tester.widgetList<AnimatedContainer>(find.byType(AnimatedContainer));
       expect(animatedContainers.length, 2);
 
-      // First segment (inflow) should have indigoAccent
+      // First segment (inflow) should have black (light theme selected color)
       final inflowContainer = animatedContainers.first;
       final inflowDecoration =
           inflowContainer.decoration as BoxDecoration;
-      expect(inflowDecoration.color, Colors.indigoAccent);
+      expect(inflowDecoration.color, Colors.black.withAlpha(15));
 
       // Second segment (outflow) should be transparent
       final outflowContainer = animatedContainers.last;
@@ -77,9 +76,30 @@ void main() {
       expect(outflowDecoration.color, Colors.transparent);
     });
 
-    testWidgets('outflow segment is selected when showInflows is false',
+    testWidgets('inflow segment is selected when showInflows is true (dark)',
         (tester) async {
-      await pumpToggle(tester, showInflows: false);
+      await pumpToggle(tester, showInflows: true, brightness: Brightness.dark);
+
+      final animatedContainers =
+          tester.widgetList<AnimatedContainer>(find.byType(AnimatedContainer));
+      expect(animatedContainers.length, 2);
+
+      // First segment (inflow) should have white38 (dark theme selected color)
+      final inflowContainer = animatedContainers.first;
+      final inflowDecoration =
+          inflowContainer.decoration as BoxDecoration;
+      expect(inflowDecoration.color, Colors.white.withAlpha(15));
+
+      // Second segment (outflow) should be transparent
+      final outflowContainer = animatedContainers.last;
+      final outflowDecoration =
+          outflowContainer.decoration as BoxDecoration;
+      expect(outflowDecoration.color, Colors.transparent);
+    });
+
+    testWidgets('outflow segment is selected when showInflows is false (light)',
+        (tester) async {
+      await pumpToggle(tester, showInflows: false, brightness: Brightness.light);
 
       final animatedContainers =
           tester.widgetList<AnimatedContainer>(find.byType(AnimatedContainer));
@@ -91,11 +111,32 @@ void main() {
           inflowContainer.decoration as BoxDecoration;
       expect(inflowDecoration.color, Colors.transparent);
 
-      // Second segment (outflow) should have indigoAccent
+      // Second segment (outflow) should have black (light theme selected color)
       final outflowContainer = animatedContainers.last;
       final outflowDecoration =
           outflowContainer.decoration as BoxDecoration;
-      expect(outflowDecoration.color, Colors.indigoAccent);
+      expect(outflowDecoration.color, Colors.black.withAlpha(15));
+    });
+
+    testWidgets('outflow segment is selected when showInflows is false (dark)',
+        (tester) async {
+      await pumpToggle(tester, showInflows: false, brightness: Brightness.dark);
+
+      final animatedContainers =
+          tester.widgetList<AnimatedContainer>(find.byType(AnimatedContainer));
+      expect(animatedContainers.length, 2);
+
+      // First segment (inflow) should be transparent
+      final inflowContainer = animatedContainers.first;
+      final inflowDecoration =
+          inflowContainer.decoration as BoxDecoration;
+      expect(inflowDecoration.color, Colors.transparent);
+
+      // Second segment (outflow) should have white38 (dark theme selected color)
+      final outflowContainer = animatedContainers.last;
+      final outflowDecoration =
+          outflowContainer.decoration as BoxDecoration;
+      expect(outflowDecoration.color, Colors.white.withAlpha(15));
     });
 
     testWidgets('tapping inflow segment calls onChanged with true',
@@ -130,10 +171,16 @@ void main() {
       expect(receivedValue, isFalse);
     });
 
-    testWidgets('selected text color is white', (tester) async {
-      await pumpToggle(tester, showInflows: true);
+    testWidgets('selected text color is black in light theme', (tester) async {
+      await pumpToggle(tester, showInflows: true, brightness: Brightness.light);
 
-      // Inflow text should be white (selected)
+      final inflowText = tester.widget<Text>(find.text('Inflows'));
+      expect(inflowText.style?.color, Colors.black);
+    });
+
+    testWidgets('selected text color is white in dark theme', (tester) async {
+      await pumpToggle(tester, showInflows: true, brightness: Brightness.dark);
+
       final inflowText = tester.widget<Text>(find.text('Inflows'));
       expect(inflowText.style?.color, Colors.white);
     });

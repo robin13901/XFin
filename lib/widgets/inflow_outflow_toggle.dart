@@ -51,9 +51,10 @@ class InflowOutflowToggle extends StatelessWidget {
     required String label,
     required VoidCallback onTap,
   }) {
-    const selectedColor = Colors.indigoAccent;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final selectedColor = isDark ? Colors.white.withAlpha(15) : Colors.black.withAlpha(15);
     final textColor = isSelected
-        ? Colors.white
+        ? (isDark ? Colors.white : Colors.black)
         : Theme.of(context).textTheme.bodyLarge?.color;
 
     return Expanded(

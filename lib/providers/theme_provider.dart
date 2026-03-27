@@ -16,8 +16,8 @@ class ThemeProvider with ChangeNotifier {
   /// Whether the "Dark Aurora" variant is active (dark theme + aurora bg).
   bool get isAurora => _isAurora;
 
-  Future<void> loadTheme() async {
-    final prefs = await SharedPreferences.getInstance();
+  Future<void> loadTheme([SharedPreferences? prefsOverride]) async {
+    final prefs = prefsOverride ?? await SharedPreferences.getInstance();
     String themeName = prefs.getString(_themeKey) ?? 'system';
     _themeMode = ThemeMode.values.byName(themeName);
     _isAurora = prefs.getBool(_auroraKey) ?? false;

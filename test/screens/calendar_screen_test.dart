@@ -191,10 +191,22 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    // Find the today marker by its primary-colored circular Container.
     final todayDay = DateTime.now().day.toString();
-    final todayText = find.text(todayDay).first;
-    final textWidget = tester.widget<Text>(todayText);
-    expect(textWidget.style?.color, ThemeData.dark().colorScheme.onPrimary);
+    final allDayTexts = find.text(todayDay).evaluate();
+    Text? todayTextWidget;
+    ThemeData? resolvedTheme;
+    for (final element in allDayTexts) {
+      final widget = element.widget as Text;
+      final theme = Theme.of(element);
+      if (widget.style?.color == theme.colorScheme.onPrimary) {
+        todayTextWidget = widget;
+        resolvedTheme = theme;
+        break;
+      }
+    }
+    expect(todayTextWidget != null, isTrue, reason: 'Should find today text with onPrimary color');
+    expect(todayTextWidget!.style?.color, resolvedTheme!.colorScheme.onPrimary);
   });
 
   testWidgets('calendar grid rows expand to fill available space regardless of row count',

@@ -34,7 +34,15 @@
       "Bash(git commit:*)",
       "Bash(grep -n \"buildAuroraLayer\\\\|AuroraBackground\\\\|buildLiquidGlassAppBar\" /c/SAPDevelop/Privat/XFin/lib/screens/*.dart)",
       "Bash(gh issue:*)",
-      "Bash(gh auth:*)"
+      "Bash(gh auth:*)",
+      "WebSearch",
+      "mcp__context7__resolve-library-id",
+      "Bash(grep -r \"Future<List\\\\|Future<.*Map\\\\|Future<.*Set\" /c/SAPDevelop/Privat/XFin/lib/database/daos/*.dart)",
+      "mcp__context7__query-docs",
+      "Bash(find /c/SAPDevelop/Privat/XFin/lib -name \"*.dart\" -type f ! -path \"*/.*\" -exec grep -l \"static final\\\\|static const\\\\|static.*=\" {})",
+      "Bash(grep -r \"FutureBuilder\\\\|StreamBuilder\\\\|Future<\" /c/SAPDevelop/Privat/XFin/lib/screens/*.dart)",
+      "mcp__filesystem__write_file",
+      "Bash(git stash:*)"
     ]
   }
 }

@@ -23,6 +23,12 @@ class AccountsScreen extends StatefulWidget {
   const AccountsScreen({super.key});
 
   static void showAccountForm(BuildContext context) {
+    final state = context.findAncestorStateOfType<_AccountsScreenState>();
+    if (state != null) {
+      state._showAccountForm(context);
+      return;
+    }
+    // Fallback: open without instant animation.
     showFormModal(context, const AccountForm());
   }
 
@@ -31,11 +37,30 @@ class AccountsScreen extends StatefulWidget {
 }
 
 class _AccountsScreenState extends State<AccountsScreen>
-    with NavBarVisibilityMixin<AccountsScreen>, SearchFilterMixin<AccountsScreen> {
+    with SingleTickerProviderStateMixin, NavBarVisibilityMixin<AccountsScreen>, SearchFilterMixin<AccountsScreen> {
+  late final AnimationController _sheetAnimController;
+
+  @override
+  void initState() {
+    super.initState();
+    _sheetAnimController =
+        AnimationController(vsync: this, duration: Duration.zero)..value = 1.0;
+  }
+
   @override
   void dispose() {
+    _sheetAnimController.dispose();
     restoreNavBarVisibility();
     super.dispose();
+  }
+
+  void _showAccountForm(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      transitionAnimationController: _sheetAnimController,
+      builder: (_) => const AccountForm(),
+    );
   }
 
   Future<void> _handleLongPress(

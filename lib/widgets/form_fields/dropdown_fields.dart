@@ -23,6 +23,7 @@ mixin DropdownFieldsMixin {
     bool enabled = true,
     String? label,
     String? Function(Account?)? customValidator,
+    List<DropdownMenuItem<int>>? cachedItems,
   }) {
     return DropdownButtonFormField<int>(
       key: key,
@@ -32,9 +33,10 @@ mixin DropdownFieldsMixin {
         enabled: enabled,
         border: const OutlineInputBorder(),
       ),
-      items: accounts
-          .map((a) => DropdownMenuItem(value: a.id, child: Text(a.name)))
-          .toList(),
+      items: cachedItems ??
+          accounts
+              .map((a) => DropdownMenuItem(value: a.id, child: Text(a.name)))
+              .toList(),
       onChanged: enabled ? onChanged : null,
       validator: (_) {
         if (customValidator != null && value != null) {
@@ -53,6 +55,7 @@ mixin DropdownFieldsMixin {
     Key? key,
     bool enabled = true,
     String? label,
+    List<DropdownMenuItem<int>>? cachedItems,
   }) {
     return DropdownButtonFormField<int>(
       key: const Key('assets_dropdown'),
@@ -63,9 +66,10 @@ mixin DropdownFieldsMixin {
         enabled: enabled,
         border: const OutlineInputBorder(),
       ),
-      items: assets
-          .map((a) => DropdownMenuItem(value: a.id, child: Text(a.name)))
-          .toList(),
+      items: cachedItems ??
+          assets
+              .map((a) => DropdownMenuItem(value: a.id, child: Text(a.name)))
+              .toList(),
       onChanged: enabled ? onChanged : null,
       validator: validator.validateAssetSelected,
     );

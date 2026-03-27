@@ -111,7 +111,7 @@ class BookingsScreenState extends State<BookingsScreen>
   /// Show the booking form with preloaded data — no delay.
   Future<void> _showBookingForm(BuildContext context, Booking? booking) async {
     final assets = await _assetsFuture;
-    final accounts = await _accountsFuture;
+    final accounts = (await _accountsFuture).where((a) => !a.isArchived).toList();
     final categories = await _categoriesFuture;
 
     if (!context.mounted) return;

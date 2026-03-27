@@ -9,6 +9,7 @@ import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/utils/format.dart';
 import '../../database/tables.dart';
 import '../../providers/database_provider.dart';
+import '../../utils/global_constants.dart';
 import '../../utils/validators.dart';
 import '../dialogs.dart';
 import '../form_fields/form_fields.dart';
@@ -41,6 +42,7 @@ class _BookingFormState extends State<BookingForm> {
   late AppLocalizations _l10n;
   late Validator _validator;
   late FormFields _formFields;
+  bool _formFieldsInitialized = false;
 
   // Controllers
   late TextEditingController _dateCtrl;
@@ -62,18 +64,26 @@ class _BookingFormState extends State<BookingForm> {
   List<String> _distinctCategories = [];
   Map<int, Asset> _assetMap = {};
 
+  // Cached widget data — built once, reused on every rebuild.
+  List<DropdownMenuItem<int>> _accountItems = const [];
+  List<DropdownMenuItem<int>> _assetItems = const [];
+  CategoryAutocompleteHelper? _categoryHelper;
+
   bool _ready = false;
-  bool _hideCostBasis = false;
+
+  // Isolates cost-basis visibility changes from the rest of the form.
+  late final ValueNotifier<bool> _hideCostBasis;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _db = context
-        .read<DatabaseProvider>()
-        .db;
-    _l10n = AppLocalizations.of(context)!;
-    _validator = Validator(_l10n);
-    _formFields = FormFields(_l10n, _validator, context);
+    _db = context.read<DatabaseProvider>().db;
+    if (!_formFieldsInitialized) {
+      _formFieldsInitialized = true;
+      _l10n = AppLocalizations.of(context)!;
+      _validator = Validator(_l10n);
+      _formFields = FormFields(_l10n, _validator, context);
+    }
   }
 
   @override
@@ -93,7 +103,7 @@ class _BookingFormState extends State<BookingForm> {
     _catCtrl = TextEditingController(text: b?.category);
     _notesCtrl = TextEditingController(text: b?.notes);
 
-    _hideCostBasis = _sharesCtrl.text.trim().startsWith('-');
+    _hideCostBasis = ValueNotifier(_sharesCtrl.text.trim().startsWith('-'));
     _sharesCtrl.addListener(_onSharesChanged);
 
     // Fast path: use preloaded data synchronously.
@@ -104,7 +114,7 @@ class _BookingFormState extends State<BookingForm> {
       _allAssets = pa;
       _allAccounts = pc.where((a) => !a.isArchived).toList();
       _distinctCategories = pg;
-      _assetMap = {for (final a in _allAssets) a.id: a};
+      _buildCaches();
       _ready = true;
     } else {
       // Fallback: async load (rarely reached when screen preloads).
@@ -114,6 +124,19 @@ class _BookingFormState extends State<BookingForm> {
         });
       });
     }
+  }
+
+  /// Build cached dropdown items and helpers from loaded data.
+  void _buildCaches() {
+    _assetMap = {for (final a in _allAssets) a.id: a};
+    _assetItems = _allAssets
+        .map((a) => DropdownMenuItem(value: a.id, child: Text(a.name)))
+        .toList();
+    _accountItems = _allAccounts
+        .map((a) => DropdownMenuItem(value: a.id, child: Text(a.name)))
+        .toList();
+    _categoryHelper =
+        CategoryAutocompleteHelper(_distinctCategories, maxResults: 6);
   }
 
   Future<void> _loadStaticData() async {
@@ -128,19 +151,20 @@ class _BookingFormState extends State<BookingForm> {
         .where((a) => !a.isArchived)
         .toList();
     _distinctCategories = results[2] as List<String>;
-    _assetMap = {for (final a in _allAssets) a.id: a};
+    _buildCaches();
   }
 
   void _onSharesChanged() {
     final shouldHide = _sharesCtrl.text.trim().startsWith('-');
-    if (shouldHide != _hideCostBasis) {
-      setState(() => _hideCostBasis = shouldHide);
+    if (shouldHide != _hideCostBasis.value) {
+      _hideCostBasis.value = shouldHide;
     }
   }
 
   @override
   void dispose() {
     _sharesCtrl.removeListener(_onSharesChanged);
+    _hideCostBasis.dispose();
     _dateCtrl.dispose();
     _sharesCtrl.dispose();
     _costBasisCtrl.dispose();
@@ -170,12 +194,14 @@ class _BookingFormState extends State<BookingForm> {
                     onDateChanged: (v) => setState(() => _date = v),
                     assets: _allAssets,
                     assetId: _assetId,
-                    onAssetChanged: (v) => setState(() => _assetId = v)),
+                    onAssetChanged: (v) => setState(() => _assetId = v),
+                    cachedAssetItems: _assetItems),
                 if (_ready) ...[
                   const SizedBox(height: 16),
                   _sharesRow(),
                   const SizedBox(height: 16),
-                  _formFields.categoryField(_catCtrl, _distinctCategories),
+                  _formFields.categoryField(_catCtrl, _distinctCategories,
+                      cachedHelper: _categoryHelper),
                   const SizedBox(height: 16),
                   _formFields.accountDropdown(
                     accounts: _allAccounts,
@@ -183,6 +209,7 @@ class _BookingFormState extends State<BookingForm> {
                     onChanged: (v) {
                       if (v != _accountId) setState(() => _accountId = v);
                     },
+                    cachedItems: _accountItems,
                   )
                 ],
                 const SizedBox(height: 16),
@@ -202,11 +229,16 @@ class _BookingFormState extends State<BookingForm> {
   }
 
   Widget _sharesRow() {
-    return _formFields.sharesAndCostBasisRow(
-      _sharesCtrl,
-      _costBasisCtrl,
-      _assetMap[_assetId],
-      hideCostBasis: _hideCostBasis,
+    return ValueListenableBuilder<bool>(
+      valueListenable: _hideCostBasis,
+      builder: (context, hide, _) {
+        return _formFields.sharesAndCostBasisRow(
+          _sharesCtrl,
+          _costBasisCtrl,
+          _assetMap[_assetId],
+          hideCostBasis: hide,
+        );
+      },
     );
   }
 

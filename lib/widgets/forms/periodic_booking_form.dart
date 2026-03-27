@@ -35,6 +35,7 @@ class _PeriodicBookingFormState extends State<PeriodicBookingForm> {
   late AppLocalizations _l10n;
   late Validator _validator;
   late FormFields _formFields;
+  bool _formFieldsInitialized = false;
 
   // Controllers
   late TextEditingController _dateCtrl;
@@ -53,14 +54,22 @@ class _PeriodicBookingFormState extends State<PeriodicBookingForm> {
   List<Account> _accounts = [];
   List<String> _distinctCategories = [];
 
+  // Cached dropdown items
+  List<DropdownMenuItem<int>> _accountItems = const [];
+  List<DropdownMenuItem<int>> _assetItems = const [];
+  CategoryAutocompleteHelper? _categoryHelper;
+
   bool get _isEditing => widget.periodicBooking != null;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _l10n = AppLocalizations.of(context)!;
-    _validator = Validator(_l10n);
-    _formFields = FormFields(_l10n, _validator, context);
+    if (!_formFieldsInitialized) {
+      _formFieldsInitialized = true;
+      _l10n = AppLocalizations.of(context)!;
+      _validator = Validator(_l10n);
+      _formFields = FormFields(_l10n, _validator, context);
+    }
   }
 
   @override
@@ -75,7 +84,10 @@ class _PeriodicBookingFormState extends State<PeriodicBookingForm> {
 
     _db.bookingsDao
         .getDistinctCategories()
-        .then((v) => setState(() => _distinctCategories = v));
+        .then((v) => setState(() {
+          _distinctCategories = v;
+          _categoryHelper = CategoryAutocompleteHelper(v, maxResults: 6);
+        }));
 
     _dateCtrl = TextEditingController(text: dateFormat.format(_nextExecDate));
     _sharesCtrl = TextEditingController(text: pb?.shares.toString() ?? '');
@@ -84,6 +96,12 @@ class _PeriodicBookingFormState extends State<PeriodicBookingForm> {
 
     _assets = widget.preloadedAssets ?? [];
     _accounts = widget.preloadedAccounts ?? [];
+    _assetItems = _assets
+        .map((a) => DropdownMenuItem(value: a.id, child: Text(a.name)))
+        .toList();
+    _accountItems = _accounts
+        .map((a) => DropdownMenuItem(value: a.id, child: Text(a.name)))
+        .toList();
 
     if (_isEditing) _accountId = widget.periodicBooking!.accountId;
   }
@@ -167,7 +185,8 @@ class _PeriodicBookingFormState extends State<PeriodicBookingForm> {
                     onDateChanged: (v) => setState(() => _nextExecDate = v),
                     assets: _assets,
                     assetsEditable: false,
-                    assetId: _assetId),
+                    assetId: _assetId,
+                    cachedAssetItems: _assetItems),
                 const SizedBox(height: 16),
                 _formFields.cyclesDropdown(
                     cycles: Cycles.values,
@@ -178,12 +197,14 @@ class _PeriodicBookingFormState extends State<PeriodicBookingForm> {
                 _formFields.accountDropdown(
                     accounts: _accounts,
                     value: _accountId,
+                    cachedItems: _accountItems,
                     onChanged: (v) => setState(() => _accountId = v)),
                 const SizedBox(height: 16),
                 _formFields.sharesField(
                     _sharesCtrl, _assets.firstWhere((a) => a.id == _assetId)),
                 const SizedBox(height: 16),
-                _formFields.categoryField(_categoryCtrl, _distinctCategories),
+                _formFields.categoryField(_categoryCtrl, _distinctCategories,
+                    cachedHelper: _categoryHelper),
                 const SizedBox(height: 12),
                 _formFields.notesField(_notesCtrl),
                 const SizedBox(height: 20),

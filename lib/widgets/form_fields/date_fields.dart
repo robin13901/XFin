@@ -24,6 +24,7 @@ mixin DateFieldsMixin {
     Key? key,
     bool enabled = true,
     String? label,
+    List<DropdownMenuItem<int>>? cachedItems,
   });
 
   Widget dateAndAssetRow({
@@ -36,6 +37,7 @@ mixin DateFieldsMixin {
     String? Function(DateTime?)? customDateValidator,
     String? dateLabel,
     bool assetsEditable = true,
+    List<DropdownMenuItem<int>>? cachedAssetItems,
   }) {
     Future<void> pickDate() async {
       final picked = await showDatePicker(
@@ -74,7 +76,7 @@ mixin DateFieldsMixin {
         const SizedBox(width: 16),
         Expanded(
           child: assetsDropdown(
-              assets: assets, value: assetId, onChanged: onAssetChanged, enabled: assetsEditable),
+              assets: assets, value: assetId, onChanged: onAssetChanged, enabled: assetsEditable, cachedItems: cachedAssetItems),
         ),
       ],
     );

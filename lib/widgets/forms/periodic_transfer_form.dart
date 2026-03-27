@@ -35,6 +35,7 @@ class _PeriodicTransferFormState extends State<PeriodicTransferForm> {
   late AppLocalizations _l10n;
   late Validator _validator;
   late FormFields _formFields;
+  bool _formFieldsInitialized = false;
 
   // Controllers
   late TextEditingController _dateCtrl;
@@ -52,14 +53,21 @@ class _PeriodicTransferFormState extends State<PeriodicTransferForm> {
   List<Asset> _assets = [];
   List<Account> _accounts = [];
 
+  // Cached dropdown items
+  List<DropdownMenuItem<int>> _assetItems = const [];
+  List<DropdownMenuItem<int>> _accountItems = const [];
+
   bool get _isEditing => widget.periodicTransfer != null;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _l10n = AppLocalizations.of(context)!;
-    _validator = Validator(_l10n);
-    _formFields = FormFields(_l10n, _validator, context);
+    if (!_formFieldsInitialized) {
+      _formFieldsInitialized = true;
+      _l10n = AppLocalizations.of(context)!;
+      _validator = Validator(_l10n);
+      _formFields = FormFields(_l10n, _validator, context);
+    }
   }
 
   @override
@@ -79,6 +87,12 @@ class _PeriodicTransferFormState extends State<PeriodicTransferForm> {
 
     _assets = widget.preloadedAssets ?? [];
     _accounts = widget.preloadedAccounts ?? [];
+    _assetItems = _assets
+        .map((a) => DropdownMenuItem(value: a.id, child: Text(a.name)))
+        .toList();
+    _accountItems = _accounts
+        .map((a) => DropdownMenuItem(value: a.id, child: Text(a.name)))
+        .toList();
 
     if (_isEditing) {
       _sendingAccountId = widget.periodicTransfer!.sendingAccountId;
@@ -171,6 +185,7 @@ class _PeriodicTransferFormState extends State<PeriodicTransferForm> {
                   assetsEditable: true,
                   assetId: _assetId,
                   onAssetChanged: (v) => setState(() => _assetId = v),
+                  cachedAssetItems: _assetItems,
                 ),
                 const SizedBox(height: 16),
                 _formFields.cyclesDropdown(
@@ -186,6 +201,7 @@ class _PeriodicTransferFormState extends State<PeriodicTransferForm> {
                   onChanged: (v) => setState(() => _sendingAccountId = v),
                   label: _l10n.sendingAccount,
                   key: const Key('sending_account_dropdown'),
+                  cachedItems: _accountItems,
                 ),
                 const SizedBox(height: 16),
                 _formFields.accountDropdown(
@@ -194,6 +210,7 @@ class _PeriodicTransferFormState extends State<PeriodicTransferForm> {
                   onChanged: (v) => setState(() => _receivingAccountId = v),
                   label: _l10n.receivingAccount,
                   key: const Key('receiving_account_dropdown'),
+                  cachedItems: _accountItems,
                 ),
                 const SizedBox(height: 16),
                 _formFields.sharesField(

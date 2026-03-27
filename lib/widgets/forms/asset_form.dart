@@ -25,6 +25,7 @@ class _AssetFormState extends State<AssetForm> {
   late AppLocalizations _l10n;
   late Validator _validator;
   late FormFields _formFields;
+  bool _formFieldsInitialized = false;
 
   late TextEditingController _nameController;
   late TextEditingController _tickerSymbolController;
@@ -37,9 +38,12 @@ class _AssetFormState extends State<AssetForm> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _db = context.read<DatabaseProvider>().db;
-    _l10n = AppLocalizations.of(context)!;
-    _validator = Validator(_l10n);
-    _formFields = FormFields(_l10n, _validator, context);
+    if (!_formFieldsInitialized) {
+      _formFieldsInitialized = true;
+      _l10n = AppLocalizations.of(context)!;
+      _validator = Validator(_l10n);
+      _formFields = FormFields(_l10n, _validator, context);
+    }
   }
 
   @override

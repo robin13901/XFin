@@ -2,17 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:oktoast/oktoast.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:xfin/app_theme.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/connection/connection.dart' as connection;
 import 'package:xfin/providers/database_provider.dart';
 import 'package:xfin/providers/language_provider.dart';
 import 'package:xfin/providers/theme_provider.dart';
-import 'package:xfin/providers/base_currency_provider.dart'; // Import the new provider
+import 'package:xfin/providers/base_currency_provider.dart';
 import 'package:xfin/screens/accounts_screen.dart';
 import 'package:xfin/screens/analysis_screen.dart';
 import 'package:xfin/screens/bookings_screen.dart';
-import 'package:xfin/screens/currency_selection_screen.dart'; // Import the new screen
+import 'package:xfin/screens/currency_selection_screen.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:xfin/utils/global_constants.dart';
@@ -25,22 +26,25 @@ import 'package:xfin/widgets/nav_bar_controller.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize date formatting for the German locale.
-  await initializeDateFormatting('de_DE', null);
+  // Single SharedPreferences instance for all startup reads.
+  final prefs = await SharedPreferences.getInstance();
 
-  await ThemeProvider.instance.loadTheme();
+  // All four operations are independent -- run in parallel.
+  final languageProvider = LanguageProvider.eager();
+  await Future.wait([
+    initializeDateFormatting('de_DE', null),
+    ThemeProvider.instance.loadTheme(prefs),
+    languageProvider.loadLocale(prefs),
+    loadPrefs(prefs),
+  ]);
 
-  final languageProvider = LanguageProvider();
-  await languageProvider.loadLocale();
-
+  // Database init is synchronous (LazyDatabase defers actual file I/O).
   final initialDb = AppDatabase(connection.connect());
   DatabaseProvider.instance.initialize(initialDb);
 
-  // Initialize CurrencyProvider and load the symbol
+  // BaseCurrencyProvider depends on loadPrefs() having set baseCurrencyTickerSymbol.
   final currencyProvider = BaseCurrencyProvider();
   await currencyProvider.initialize(languageProvider.appLocale);
-
-  await loadPrefs();
 
   runApp(
     MultiProvider(
@@ -107,46 +111,55 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
   bool _standingOrdersExecuted = false;
+  bool _allTabsReady = false;
   final GlobalKey _navBarKey = GlobalKey();
   final GlobalKey<BookingsScreenState> _bookingsKey = GlobalKey<BookingsScreenState>();
   late AppLocalizations l10n;
   final ValueNotifier<bool> _navBarVisible = ValueNotifier<bool>(true);
 
-  late final List<Widget> _widgetOptions = <Widget>[
-    const AnalysisScreen(),
-    const AccountsScreen(),
-    BookingsScreen(key: _bookingsKey),
-  ];
-
   @override
-  Future<void> didChangeDependencies() async {
+  void didChangeDependencies() {
     super.didChangeDependencies();
     l10n = AppLocalizations.of(context)!;
 
     if (!_standingOrdersExecuted) {
-      final (pbExecuted, pbFailed) = await DatabaseProvider.instance.db
-          .periodicBookingsDao
-          .executePending(l10n);
-      final (ptExecuted, ptFailed) = await DatabaseProvider.instance.db
-          .periodicTransfersDao
-          .executePending(l10n);
-
-      final executedCount = pbExecuted + ptExecuted;
-      final failedCount = pbFailed + ptFailed;
-
-      if (mounted && (executedCount > 0 || failedCount > 0)) {
-        String message = '';
-        if (executedCount > 0) {
-          message = l10n.nStandingOrdersExecuted(executedCount);
-        }
-        if (failedCount > 0) {
-          if (message.isNotEmpty) message += '\n\n';
-          message += l10n.nStandingOrdersFailed(failedCount);
-        }
-        showInfoDialog(
-            context, l10n.standingOrdersExecuted, message);
-      }
       _standingOrdersExecuted = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        // Build remaining tabs after the first frame renders.
+        if (!_allTabsReady) {
+          setState(() => _allTabsReady = true);
+        }
+        _executeStandingOrders();
+      });
+    }
+  }
+
+  Future<void> _executeStandingOrders() async {
+    final db = DatabaseProvider.instance.db;
+
+    // Run both in parallel -- they operate on independent tables.
+    final results = await Future.wait([
+      db.periodicBookingsDao.executePending(l10n),
+      db.periodicTransfersDao.executePending(l10n),
+    ]);
+
+    final (pbExecuted, pbFailed) = results[0];
+    final (ptExecuted, ptFailed) = results[1];
+
+    final executedCount = pbExecuted + ptExecuted;
+    final failedCount = pbFailed + ptFailed;
+
+    if (mounted && (executedCount > 0 || failedCount > 0)) {
+      String message = '';
+      if (executedCount > 0) {
+        message = l10n.nStandingOrdersExecuted(executedCount);
+      }
+      if (failedCount > 0) {
+        if (message.isNotEmpty) message += '\n\n';
+        message += l10n.nStandingOrdersFailed(failedCount);
+      }
+      showInfoDialog(
+          context, l10n.standingOrdersExecuted, message);
     }
   }
 
@@ -160,7 +173,18 @@ class _MainScreenState extends State<MainScreen> {
           buildAuroraLayer(context),
           Center(child: RepaintBoundary(child: NavBarController(
             visible: _navBarVisible,
-            child: _widgetOptions.elementAt(_selectedIndex),
+            child: IndexedStack(
+              index: _selectedIndex,
+              children: [
+                const AnalysisScreen(),
+                _allTabsReady
+                    ? const AccountsScreen()
+                    : const SizedBox.shrink(),
+                _allTabsReady
+                    ? BookingsScreen(key: _bookingsKey)
+                    : const SizedBox.shrink(),
+              ],
+            ),
           ))),
           Positioned(
             bottom: 16,

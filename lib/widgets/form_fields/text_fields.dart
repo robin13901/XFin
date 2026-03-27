@@ -79,8 +79,10 @@ mixin TextFieldsMixin {
   }
 
   Widget categoryField(
-      TextEditingController controller, List<String> categories) {
-    final helper = CategoryAutocompleteHelper(categories, maxResults: 6);
+      TextEditingController controller, List<String> categories,
+      {CategoryAutocompleteHelper? cachedHelper}) {
+    final helper =
+        cachedHelper ?? CategoryAutocompleteHelper(categories, maxResults: 6);
 
     return Autocomplete<String>(
       key: const Key('category_field'),

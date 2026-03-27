@@ -30,6 +30,7 @@ class _TransferFormState extends State<TransferForm> {
   late AppLocalizations _l10n;
   late Validator _validator;
   late FormFields _formFields;
+  bool _formFieldsInitialized = false;
 
   // Form state
   late DateTime _date;
@@ -49,12 +50,18 @@ class _TransferFormState extends State<TransferForm> {
   List<Asset> _allAssets = [];
   Map<int, Asset> _assetMap = {};
 
+  // Cached dropdown items
+  List<DropdownMenuItem<int>> _assetItems = const [];
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _l10n = AppLocalizations.of(context)!;
-    _validator = Validator(_l10n);
-    _formFields = FormFields(_l10n, _validator, context);
+    if (!_formFieldsInitialized) {
+      _formFieldsInitialized = true;
+      _l10n = AppLocalizations.of(context)!;
+      _validator = Validator(_l10n);
+      _formFields = FormFields(_l10n, _validator, context);
+    }
   }
 
   @override
@@ -88,6 +95,9 @@ class _TransferFormState extends State<TransferForm> {
     if (widget.preloadedAssets != null) {
       _allAssets = widget.preloadedAssets!;
       _assetMap = {for (var a in _allAssets) a.id: a};
+      _assetItems = _allAssets
+          .map((a) => DropdownMenuItem(value: a.id, child: Text(a.name)))
+          .toList();
     } else {
       // fallback: async load assets as before (non-blocking UI)
       _db.assetsDao.getAllAssets().then((assets) {
@@ -95,6 +105,9 @@ class _TransferFormState extends State<TransferForm> {
         setState(() {
           _allAssets = assets;
           _assetMap = {for (var a in assets) a.id: a};
+          _assetItems = assets
+              .map((a) => DropdownMenuItem(value: a.id, child: Text(a.name)))
+              .toList();
         });
       });
     }
@@ -218,7 +231,8 @@ class _TransferFormState extends State<TransferForm> {
                     onDateChanged: (v) => setState(() => _date = v),
                     assets: _allAssets,
                     assetId: _assetId,
-                    onAssetChanged: (v) => setState(() => _assetId = v)),
+                    onAssetChanged: (v) => setState(() => _assetId = v),
+                    cachedAssetItems: _assetItems),
                 const SizedBox(height: 16),
                 _formFields.sharesAndCostBasisRow(
                   _sharesCtrl,

@@ -28,16 +28,51 @@ class AssetsScreen extends StatefulWidget {
 }
 
 class _AssetsScreenState extends State<AssetsScreen>
-    with NavBarVisibilityMixin<AssetsScreen>, SearchFilterMixin<AssetsScreen> {
+    with SingleTickerProviderStateMixin, NavBarVisibilityMixin<AssetsScreen>, SearchFilterMixin<AssetsScreen> {
+  late final AnimationController _sheetAnimController;
   int _selectedTab = 1;
   AssetTypes? _selectedType;
   final ValueNotifier<bool> _navBarVisible = ValueNotifier<bool>(true);
+
+  // Cached data sources — avoids recreating Future/Stream on every build,
+  // so tab switches don't trigger loading spinners.
+  late AppDatabase _db;
+  Future<List<AllocationItem>>? _allocationFuture;
+  Stream<List<Asset>>? _assetsStream;
 
   @override
   ValueNotifier<bool>? get localNavBarVisible => _navBarVisible;
 
   @override
+  void initState() {
+    super.initState();
+    _sheetAnimController =
+        AnimationController(vsync: this, duration: Duration.zero)..value = 1.0;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _db = context.read<DatabaseProvider>().db;
+    _allocationFuture ??= _loadAllocationItems(_db);
+    _assetsStream ??= _createAssetsStream();
+  }
+
+  Stream<List<Asset>> _createAssetsStream() {
+    return _db.assetsDao.watchAllAssets(
+      searchQuery: searchQuery.isNotEmpty ? searchQuery : null,
+      filterRules: filterRules.isNotEmpty ? filterRules : null,
+    );
+  }
+
+  @override
+  void onSearchFilterChanged() {
+    _assetsStream = _createAssetsStream();
+  }
+
+  @override
   void dispose() {
+    _sheetAnimController.dispose();
     _navBarVisible.dispose();
     super.dispose();
   }
@@ -46,6 +81,7 @@ class _AssetsScreenState extends State<AssetsScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      transitionAnimationController: _sheetAnimController,
       builder: (_) => AssetForm(asset: asset),
     );
   }
@@ -156,10 +192,9 @@ class _AssetsScreenState extends State<AssetsScreen>
       ..sort((a, b) => b.value.compareTo(a.value));
   }
 
-  Widget _buildAnalysisTab(
-      BuildContext context, AppDatabase db, AppLocalizations l10n) {
+  Widget _buildAnalysisTab(BuildContext context, AppLocalizations l10n) {
     return FutureBuilder<List<AllocationItem>>(
-      future: _loadAllocationItems(db),
+      future: _allocationFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -193,6 +228,7 @@ class _AssetsScreenState extends State<AssetsScreen>
                         selected: selected,
                         onSelected: (_) => setState(() {
                           _selectedType = selected ? null : type;
+                          _allocationFuture = _loadAllocationItems(_db);
                         }),
                       ),
                     );
@@ -243,15 +279,11 @@ class _AssetsScreenState extends State<AssetsScreen>
     );
   }
 
-  Widget _buildAssetsList(
-      BuildContext context, AppDatabase db, AppLocalizations l10n) {
+  Widget _buildAssetsList(BuildContext context, AppLocalizations l10n) {
     final statusBarHeight = MediaQuery.of(context).padding.top;
 
     return StreamBuilder<List<Asset>>(
-      stream: db.assetsDao.watchAllAssets(
-        searchQuery: searchQuery.isNotEmpty ? searchQuery : null,
-        filterRules: filterRules.isNotEmpty ? filterRules : null,
-      ),
+      stream: _assetsStream,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -294,10 +326,10 @@ class _AssetsScreenState extends State<AssetsScreen>
                     ],
                   ),
                   trailing: Text(getAssetTypeName(l10n, asset.type)),
-                  onLongPress: () => _handleLongPress(context, db, asset, l10n),
+                  onLongPress: () => _handleLongPress(context, _db, asset, l10n),
                 )),
             StreamBuilder<List<Asset>>(
-              stream: db.assetsDao.watchArchivedAssets(),
+              stream: _db.assetsDao.watchArchivedAssets(),
               builder: (context, archivedSnapshot) {
                 final archivedAssets = archivedSnapshot.data ?? const <Asset>[];
                 if (archivedAssets.isEmpty) {
@@ -312,7 +344,7 @@ class _AssetsScreenState extends State<AssetsScreen>
                             color: asset.value < 0 ? Colors.red : Colors.green,
                             fontWeight: FontWeight.bold,
                           )),
-                          onTap: () => _handleArchivedAssetTap(context, db, asset),
+                          onTap: () => _handleArchivedAssetTap(context, _db, asset),
                         )),
                   ],
                 );
@@ -326,7 +358,6 @@ class _AssetsScreenState extends State<AssetsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final db = context.read<DatabaseProvider>().db;
     final l10n = AppLocalizations.of(context)!;
     final statusBarHeight = MediaQuery.of(context).padding.top;
     updateKeyboardVisibility(context);
@@ -360,8 +391,8 @@ class _AssetsScreenState extends State<AssetsScreen>
           IndexedStack(
             index: _selectedTab,
             children: [
-              _buildAnalysisTab(context, db, l10n),
-              _buildAssetsList(context, db, l10n),
+              _buildAnalysisTab(context, l10n),
+              _buildAssetsList(context, l10n),
             ],
           ),
 

@@ -17,27 +17,13 @@ import '../widgets/liquid_glass_widgets.dart';
 class StandingOrdersScreen extends StatefulWidget {
   const StandingOrdersScreen({super.key});
 
-  static void showPeriodicBookingForm(BuildContext context, PeriodicBooking? periodicBooking, {List<Asset>? preloadedAssets, List<Account>? preloadedAccounts}) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => PeriodicBookingForm(periodicBooking: periodicBooking, preloadedAssets: preloadedAssets, preloadedAccounts: preloadedAccounts),
-    );
-  }
-
-  static void showPeriodicTransferForm(BuildContext context, PeriodicTransfer? periodicTransfer, {List<Asset>? preloadedAssets, List<Account>? preloadedAccounts}) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => PeriodicTransferForm(periodicTransfer: periodicTransfer, preloadedAssets: preloadedAssets, preloadedAccounts: preloadedAccounts),
-    );
-  }
-
   @override
   State<StandingOrdersScreen> createState() => _StandingOrdersScreenState();
 }
 
-class _StandingOrdersScreenState extends State<StandingOrdersScreen> {
+class _StandingOrdersScreenState extends State<StandingOrdersScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _sheetAnimController;
   List<Asset> assets = [];
   List<Account> accounts = [];
   int _selectedIndex = 0;
@@ -50,6 +36,8 @@ class _StandingOrdersScreenState extends State<StandingOrdersScreen> {
   @override
   void initState() {
     super.initState();
+    _sheetAnimController =
+        AnimationController(vsync: this, duration: Duration.zero)..value = 1.0;
     final db = context.read<DatabaseProvider>().db;
     loadAssetsAndAccounts(db);
 
@@ -72,6 +60,30 @@ class _StandingOrdersScreenState extends State<StandingOrdersScreen> {
       assets = allAssets;
       accounts = allAccounts;
     });
+  }
+
+  void _showPeriodicBookingForm(BuildContext context, PeriodicBooking? periodicBooking) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      transitionAnimationController: _sheetAnimController,
+      builder: (_) => PeriodicBookingForm(periodicBooking: periodicBooking, preloadedAssets: assets, preloadedAccounts: accounts),
+    );
+  }
+
+  void _showPeriodicTransferForm(BuildContext context, PeriodicTransfer? periodicTransfer) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      transitionAnimationController: _sheetAnimController,
+      builder: (_) => PeriodicTransferForm(periodicTransfer: periodicTransfer, preloadedAssets: assets, preloadedAccounts: accounts),
+    );
+  }
+
+  @override
+  void dispose() {
+    _sheetAnimController.dispose();
+    super.dispose();
   }
 
   Widget _buildPeriodicBookingList(AppDatabase db) {
@@ -127,7 +139,7 @@ class _StandingOrdersScreenState extends State<StandingOrdersScreen> {
                   Text(dateText, style: Theme.of(context).textTheme.bodySmall),
                 ],
               ),
-              onTap: () => StandingOrdersScreen.showPeriodicBookingForm(context, periodicBooking, preloadedAssets: assets, preloadedAccounts: accounts),
+              onTap: () => _showPeriodicBookingForm(context, periodicBooking),
               onLongPress: () => showDeleteDialog(context, periodicBooking: periodicBooking),
             );
           },
@@ -179,7 +191,7 @@ class _StandingOrdersScreenState extends State<StandingOrdersScreen> {
                   Text(dateText, style: Theme.of(context).textTheme.bodySmall),
                 ],
               ),
-              onTap: () => StandingOrdersScreen.showPeriodicTransferForm(context, periodicTransfer, preloadedAssets: assets, preloadedAccounts: accounts),
+              onTap: () => _showPeriodicTransferForm(context, periodicTransfer),
               onLongPress: () => showDeleteDialog(context, periodicTransfer: periodicTransfer),
             );
           },
@@ -243,9 +255,9 @@ class _StandingOrdersScreenState extends State<StandingOrdersScreen> {
                 rightIcon: Icons.add,
                 onRightTap: () {
                   if (_selectedIndex == 0) {
-                    StandingOrdersScreen.showPeriodicBookingForm(context, null, preloadedAssets: assets, preloadedAccounts: accounts);
+                    _showPeriodicBookingForm(context, null);
                   } else {
-                    StandingOrdersScreen.showPeriodicTransferForm(context, null, preloadedAssets: assets, preloadedAccounts: accounts);
+                    _showPeriodicTransferForm(context, null);
                   }
                 },
               ),

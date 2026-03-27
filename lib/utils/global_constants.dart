@@ -36,8 +36,8 @@ class PrefKeys {
   static const String baseCurrencyTickerSymbol = 'baseCurrencyTickerSymbol';
 }
 
-Future<void> loadPrefs() async {
-  final prefs = await SharedPreferences.getInstance();
+Future<void> loadPrefs([SharedPreferences? prefsOverride]) async {
+  final prefs = prefsOverride ?? await SharedPreferences.getInstance();
   filterStartDate = prefs.getInt(PrefKeys.filterStartDate) ?? 0;
   filterEndDate = prefs.getInt(PrefKeys.filterEndDate) ?? 99999999;
   isBaseCurrencySelected =

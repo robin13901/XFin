@@ -43,17 +43,24 @@ class _AccountFormState extends State<AccountForm> {
   late FormFields _formFields;
   late Validator _validator;
   late AppLocalizations _l10n;
+  bool _formFieldsInitialized = false;
 
   // Progressive rendering: show cheap UI immediately, heavy UI after first frame + data load
   bool _renderHeavy = false;
+
+  // Cached dropdown items
+  List<DropdownMenuItem<int>> _filteredAssetItems = const [];
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _db = context.read<DatabaseProvider>().db;
-    _l10n = AppLocalizations.of(context)!;
-    _validator = Validator(_l10n);
-    _formFields = FormFields(_l10n, _validator, context);
+    if (!_formFieldsInitialized) {
+      _formFieldsInitialized = true;
+      _l10n = AppLocalizations.of(context)!;
+      _validator = Validator(_l10n);
+      _formFields = FormFields(_l10n, _validator, context);
+    }
   }
 
   @override
@@ -83,8 +90,16 @@ class _AccountFormState extends State<AccountForm> {
     setState(() {
       _allAssets = assets;
       _assetMap = { for (final a in assets) a.id: a };
+      _rebuildFilteredAssetItems();
       _renderHeavy = true;
     });
+  }
+
+  void _rebuildFilteredAssetItems() {
+    final filtered = _filterAssetsForType(_allAssets);
+    _filteredAssetItems = filtered
+        .map((a) => DropdownMenuItem(value: a.id, child: Text(a.name)))
+        .toList();
   }
 
   @override
@@ -251,6 +266,7 @@ class _AccountFormState extends State<AccountForm> {
                 setState(() {
                   _type = value;
                   _selectedAssetId = null;
+                  _rebuildFilteredAssetItems();
                 });
               }
             },
@@ -402,12 +418,7 @@ class _AccountFormState extends State<AccountForm> {
                   border: const OutlineInputBorder(),
                   errorMaxLines: 2,
                 ),
-                items: filteredAssets.map((asset) {
-                  return DropdownMenuItem(
-                    value: asset.id,
-                    child: Text(asset.name),
-                  );
-                }).toList(),
+                items: _filteredAssetItems,
                 onChanged: (value) {
                   if (value != _selectedAssetId) {
                     setState(() {
