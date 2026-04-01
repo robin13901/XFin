@@ -110,6 +110,28 @@ void main() {
       }));
 
 
+  testWidgets('tapping list item drills down same as chip selection', (tester) => tester.runAsync(() async {
+        await pumpWidget(tester);
+        await tester.pumpAndSettle();
+
+        // Switch to analysis tab
+        await tester.tap(find.byKey(const Key('assets_nav_analysis')));
+        await tester.pumpAndSettle();
+
+        // The chip "Crypto" appears first, the list-item "Crypto" appears second.
+        // Tap the list-item (last occurrence) to trigger onItemTap drilldown.
+        final cryptoFinder = find.text('Crypto');
+        expect(cryptoFinder, findsAtLeastNWidgets(2));
+        await tester.tap(cryptoFinder.last);
+        await tester.pumpAndSettle();
+
+        // Should drill down to individual assets, showing "BTC"
+        expect(find.text('BTC'), findsOneWidget);
+
+        await tester.pumpWidget(Container());
+        await tester.pumpAndSettle();
+      }));
+
   testWidgets('long press referenced zero-value asset offers archive and can unarchive', (tester) => tester.runAsync(() async {
         final l10n = await pumpWidget(tester);
         await db.into(db.assets).insert(AssetsCompanion.insert(

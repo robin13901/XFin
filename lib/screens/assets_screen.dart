@@ -259,7 +259,10 @@ class _AssetsScreenState extends State<AssetsScreen>
                   title: l10n.investments,
                   onItemTap: (item) {
                     if (_selectedType == null && item.type != null) {
-                      setState(() => _selectedType = item.type);
+                      setState(() {
+                        _selectedType = item.type;
+                        _allocationFuture = _loadAllocationItems(_db);
+                      });
                       return;
                     }
                     if (item.asset == null) return;
