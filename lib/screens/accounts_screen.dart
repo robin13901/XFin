@@ -157,7 +157,7 @@ class _AccountsScreenState extends State<AccountsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final db = context.read<DatabaseProvider>().db;
+    final db = context.watch<DatabaseProvider>().db;
     final l10n = AppLocalizations.of(context)!;
     Provider.of<BaseCurrencyProvider>(context);
     final statusBarHeight = MediaQuery.of(context).padding.top;

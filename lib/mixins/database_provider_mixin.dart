@@ -5,35 +5,48 @@ import '../providers/database_provider.dart';
 
 /// Mixin that handles common database provider setup for stateful widgets.
 ///
-/// This eliminates duplicated database provider access code across multiple screens.
+/// Keeps [db] in sync with [DatabaseProvider] and calls [onDatabaseChanged]
+/// when the database instance is replaced (e.g. after a backup import).
 ///
 /// Usage:
 /// ```dart
 /// class MyScreenState extends State<MyScreen> with DatabaseProviderMixin<MyScreen> {
 ///   @override
-///   void _onDbChanged() {
-///     // Handle database changes
+///   void onDatabaseChanged() {
+///     // re-subscribe streams, refresh futures, etc.
 ///   }
 /// }
 /// ```
 mixin DatabaseProviderMixin<T extends StatefulWidget> on State<T> {
   late AppDatabase db;
-  late DatabaseProvider _dbProvider;
+  DatabaseProvider? _dbProvider;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _dbProvider = context.read<DatabaseProvider>();
-    db = _dbProvider.db;
-    _dbProvider.addListener(_onDbChanged);
+    final provider = context.read<DatabaseProvider>();
+    if (_dbProvider != provider) {
+      _dbProvider?.removeListener(_handleDbChanged);
+      _dbProvider = provider;
+      _dbProvider!.addListener(_handleDbChanged);
+    }
+    db = provider.db;
   }
 
-  /// Override this method to handle database changes.
-  void _onDbChanged();
+  void _handleDbChanged() {
+    final newDb = _dbProvider!.db;
+    if (identical(newDb, db)) return;
+    db = newDb;
+    onDatabaseChanged();
+  }
+
+  /// Called when the database instance is replaced (e.g. after a backup import).
+  /// Override to refresh streams, futures, or other state tied to [db].
+  void onDatabaseChanged() {}
 
   @override
   void dispose() {
-    _dbProvider.removeListener(_onDbChanged);
+    _dbProvider?.removeListener(_handleDbChanged);
     super.dispose();
   }
 }

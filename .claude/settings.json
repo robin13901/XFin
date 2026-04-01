@@ -54,7 +54,25 @@
       "Skill(gsd:plan-phase:*)",
       "mcp__filesystem__directory_tree",
       "mcp__filesystem__list_directory",
-      "Bash(grep -E \"\\\\.\\(dart\\)$\")"
+      "Bash(grep -E \"\\\\.\\(dart\\)$\")",
+      "Read(//c/SAPDevelop//**)",
+      "Bash(curl -sL -o /c/SAPDevelop/builder.exe \"https://github.com/MobAI-App/ios-builder/releases/download/v0.3.0/builder-windows-amd64.exe\")",
+      "Bash(/c/SAPDevelop/builder.exe --help)",
+      "Bash(/c/SAPDevelop/builder.exe init:*)",
+      "Bash(/c/SAPDevelop/builder.exe auth:*)",
+      "Bash(/c/SAPDevelop/builder.exe ios:*)",
+      "Bash(/c/SAPDevelop/builder.exe dev:*)",
+      "Bash(curl -s http://127.0.0.1:8686/api/v1/devices)",
+      "Bash(sc query:*)",
+      "Bash(net start:*)",
+      "Bash(where idevice_id)",
+      "Bash(where ideviceinfo:*)",
+      "Read(//c/Program Files/Common Files/**)",
+      "Read(//c/Program Files \\(x86\\)/Common Files/**)",
+      "Bash(where iTunes)",
+      "Bash(powershell.exe -Command \"Get-AppxPackage *apple* | Select-Object Name,InstallLocation\")",
+      "Bash(powershell.exe -Command \"Get-Service *apple* | Format-Table Name,Status,DisplayName -AutoSize\")",
+      "Bash(powershell.exe -Command \"Get-Service *mobile* | Format-Table Name,Status,DisplayName -AutoSize\")"
     ]
   }
 }

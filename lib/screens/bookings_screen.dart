@@ -72,6 +72,7 @@ class BookingsScreenState extends State<BookingsScreen>
   late Future<List<Asset>> _assetsFuture;
   late Future<List<Account>> _accountsFuture;
   late Future<List<String>> _categoriesFuture;
+  StreamSubscription<dynamic>? _tableWatcher;
 
   @override
   void initState() {
@@ -84,9 +85,27 @@ class BookingsScreenState extends State<BookingsScreen>
 
     // Start preloading form data immediately (background).
     final appDb = context.read<DatabaseProvider>().db;
-    _assetsFuture = appDb.assetsDao.getAllAssets();
-    _accountsFuture = appDb.accountsDao.getAllAccounts();
-    _categoriesFuture = appDb.bookingsDao.getDistinctCategories();
+    _refreshPreloadedData(appDb);
+  }
+
+  void _refreshPreloadedData(AppDatabase target) {
+    _assetsFuture = target.assetsDao.getAllAssets();
+    _accountsFuture = target.accountsDao.getAllAccounts();
+    _categoriesFuture = target.bookingsDao.getDistinctCategories();
+  }
+
+  void _startTableWatch() {
+    _tableWatcher?.cancel();
+    _tableWatcher = db.tableUpdates().listen((_) {
+      if (mounted) _refreshPreloadedData(db);
+    });
+  }
+
+  @override
+  void onDatabaseChanged() {
+    _refreshPreloadedData(db);
+    _startTableWatch();
+    _loadInitial();
   }
 
   @override
@@ -94,12 +113,14 @@ class BookingsScreenState extends State<BookingsScreen>
     super.didChangeDependencies();
     if (!_initialized) {
       _initialized = true;
+      _startTableWatch();
       _loadInitial();
     }
   }
 
   @override
   void dispose() {
+    _tableWatcher?.cancel();
     _pageSub?.cancel();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
@@ -154,10 +175,7 @@ class BookingsScreenState extends State<BookingsScreen>
       },
     );
 
-    // Refresh preload cache after form closes (data may have changed).
-    _assetsFuture = db.assetsDao.getAllAssets();
-    _accountsFuture = db.accountsDao.getAllAccounts();
-    _categoriesFuture = db.bookingsDao.getDistinctCategories();
+    // Table watcher already refreshes preloaded data on changes.
   }
 
   @override
