@@ -1,0 +1,17 @@
+{
+  "project": "XFin",
+  "platform": "ios",
+  "github": {
+    "owner": "robin13901",
+    "repo": "XFin"
+  },
+  "ios": {
+    "path": "ios"
+  },
+  "flutter": {
+    "version": "3.38.1",
+    "watch": {}
+  },
+  "reactNative": {},
+  "mobai": {}
+}
