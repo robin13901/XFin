@@ -417,6 +417,39 @@ void main() {
       expect(lineChart.data.lineBarsData.length, 4);
     });
 
+    testWidgets('BB bands have translucent fill between upper and lower', (tester) async {
+      final data = generateTestData(50);
+      await tester.pumpWidget(buildChart(data: data, showBb: true));
+
+      final lineChart = tester.widget<LineChart>(find.byType(LineChart));
+      expect(lineChart.data.betweenBarsData.length, 1);
+
+      final fill = lineChart.data.betweenBarsData[0];
+      // Upper band is at index 1 (after main line), lower is at index 3
+      expect(fill.fromIndex, 1);
+      expect(fill.toIndex, 3);
+      expect(fill.color, Colors.lightBlue.withValues(alpha: 0.15));
+    });
+
+    testWidgets('no betweenBarsData when BB is disabled', (tester) async {
+      final data = generateTestData(50);
+      await tester.pumpWidget(buildChart(data: data, showBb: false));
+
+      final lineChart = tester.widget<LineChart>(find.byType(LineChart));
+      expect(lineChart.data.betweenBarsData, isEmpty);
+    });
+
+    testWidgets('BB middle band has dashed style', (tester) async {
+      final data = generateTestData(50);
+      await tester.pumpWidget(buildChart(data: data, showBb: true));
+
+      final lineChart = tester.widget<LineChart>(find.byType(LineChart));
+      // Middle band is index 2 (main=0, upper=1, middle=2, lower=3)
+      final middleBand = lineChart.data.lineBarsData[2];
+      expect(middleBand.dashArray, [5, 5]);
+      expect(middleBand.color, Colors.indigo);
+    });
+
     testWidgets('handles data fewer than 7 points for 1W', (tester) async {
       // With only 3 points, 1W should use all data
       final data = generateTestData(3);

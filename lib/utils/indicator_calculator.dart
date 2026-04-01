@@ -66,6 +66,7 @@ class IndicatorCalculator {
         isCurved: true,
         barWidth: 2,
         color: Colors.indigo,
+        dashArray: [5, 5],
         dotData: const FlDotData(show: false),
       ),
       LineChartBarData(

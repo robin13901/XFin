@@ -151,5 +151,11 @@ void main() {
         expect(u - m, closeTo(m - l, 1e-12));
       }
     });
+
+    test('middle band has dashed line style', () {
+      final data = buildSpots([1.0, 3.0]);
+      final bands = IndicatorCalculator.calculateBb(data, 2);
+      expect(bands[1].dashArray, [5, 5]);
+    });
   });
 }

@@ -154,8 +154,11 @@ class AnalysisLineChartSection extends StatelessWidget {
       ));
     }
 
+    int? bbUpperIndex;
+    int? bbLowerIndex;
     if (showBb) {
       final bbData = IndicatorCalculator.calculateBb(allData, 20);
+      bbUpperIndex = lineBarsData.length;
       lineBarsData.addAll(
         bbData.map(
           (data) => data.copyWith(
@@ -163,6 +166,7 @@ class AnalysisLineChartSection extends StatelessWidget {
           ),
         ),
       );
+      bbLowerIndex = bbUpperIndex + 2;
     }
 
     double overallMinY = currentData.map((e) => e.y).reduce(min);
@@ -270,6 +274,15 @@ class AnalysisLineChartSection extends StatelessWidget {
                 minY: minY,
                 maxY: maxY,
                 lineBarsData: lineBarsData,
+                betweenBarsData: bbUpperIndex != null && bbLowerIndex != null
+                    ? [
+                        BetweenBarsData(
+                          fromIndex: bbUpperIndex,
+                          toIndex: bbLowerIndex,
+                          color: Colors.lightBlue.withValues(alpha: 0.15),
+                        ),
+                      ]
+                    : [],
                 titlesData: FlTitlesData(
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
