@@ -489,54 +489,41 @@ class AccountsDao extends DatabaseAccessor<AppDatabase>
       Account account, List<(int date, double delta)> deltas) {
     final history = <FlSpot>[];
 
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
     if (deltas.isEmpty) {
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
       history.add(
           FlSpot(today.millisecondsSinceEpoch.toDouble(), account.balance));
       return history;
     }
 
-    // Work backwards from current balance to reconstruct history
-    double runningBalance = account.balance;
-    final Map<DateTime, double> balanceByDate = {};
-
-    // Process deltas in reverse chronological order
-    final sortedDeltas = deltas.toList()..sort((a, b) => b.$1.compareTo(a.$1));
-
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    balanceByDate[today] = runningBalance;
-
-    for (final (dateInt, delta) in sortedDeltas) {
-      final date = intToDateTime(dateInt)!;
-      final dateOnly = DateTime(date.year, date.month, date.day);
-      runningBalance -= delta;
-      balanceByDate[dateOnly] = runningBalance;
+    // Build a map keyed by millisecondsSinceEpoch (avoids DateTime
+    // equality pitfalls with DST) from each delta's date.
+    final Map<int, double> deltaByMs = {};
+    for (final (dateInt, delta) in deltas) {
+      final d = intToDateTime(dateInt)!;
+      final ms = DateTime(d.year, d.month, d.day).millisecondsSinceEpoch;
+      deltaByMs[ms] = (deltaByMs[ms] ?? 0) + delta;
     }
 
-    // Fill in gaps between dates
-    final sortedDates = balanceByDate.keys.toList()..sort();
-    final firstDate = sortedDates.first;
-    double lastBalance = balanceByDate[firstDate]!;
+    // Determine the first date with a delta.
+    final firstDelta = deltas.first; // deltas are ORDER BY date ASC from SQL
+    final fd = intToDateTime(firstDelta.$1)!;
+    final firstDate = DateTime(fd.year, fd.month, fd.day);
+
+    // Walk forward from initialBalance, applying deltas on their date.
+    double runningBalance = account.initialBalance;
 
     for (var date = firstDate;
         !date.isAfter(today);
-        date = date.add(const Duration(days: 1))) {
-      final dateOnly = DateTime(date.year, date.month, date.day);
-      if (balanceByDate.containsKey(dateOnly)) {
-        lastBalance = balanceByDate[dateOnly]!;
+        date = DateTime(date.year, date.month, date.day + 1)) {
+      final ms = date.millisecondsSinceEpoch;
+      final delta = deltaByMs[ms];
+      if (delta != null) {
+        runningBalance += delta;
       }
-      history.add(FlSpot(
-          dateOnly.millisecondsSinceEpoch.toDouble(), normalize(lastBalance)));
-      if (balanceByDate.containsKey(dateOnly)) {
-        // Add the delta for subsequent days
-        final deltaIndex =
-            sortedDeltas.indexWhere((d) => intToDateTime(d.$1) == dateOnly);
-        if (deltaIndex != -1) {
-          lastBalance += sortedDeltas[deltaIndex].$2;
-        }
-      }
+      history.add(FlSpot(ms.toDouble(), normalize(runningBalance)));
     }
 
     return history;

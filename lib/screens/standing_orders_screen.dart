@@ -206,7 +206,7 @@ class _StandingOrdersScreenState extends State<StandingOrdersScreen>
 
     return Scaffold(
       backgroundColor:
-          ThemeProvider.instance.isAurora ? Colors.transparent : null,
+          context.watch<ThemeProvider>().isAurora ? Colors.transparent : null,
       body: Stack(
         children: [
           buildAuroraLayer(context),

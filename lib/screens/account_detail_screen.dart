@@ -53,7 +53,7 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
     AppLocalizations l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor:
-          ThemeProvider.instance.isAurora ? Colors.transparent : null,
+          context.watch<ThemeProvider>().isAurora ? Colors.transparent : null,
       body: FutureBuilder<AccountDetailsData>(
         future: _future,
         builder: (context, snapshot) {

@@ -165,9 +165,10 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isAurora = context.watch<ThemeProvider>().isAurora;
+
     return Scaffold(
-      backgroundColor:
-          ThemeProvider.instance.isAurora ? Colors.transparent : null,
+      backgroundColor: isAurora ? Colors.transparent : null,
       body: Stack(
         children: [
           buildAuroraLayer(context),

@@ -1,6 +1,13 @@
 # State
 
 ## Current
-No active milestone. Last shipped: v1.1.0 (Code Quality & Architecture).
+**Milestone v1.3.0**: Google Play Store Release
+**Phase**: 01 — Release Build Configuration (planning)
+**Status**: Planning phase
 
-Use `/gsd:new-milestone` to start the next milestone.
+### Decisions Made
+- App will be published as free app on Google Play Store
+- iOS App Store release planned for later (no Apple Developer License yet)
+- App is fully offline — no network permissions needed in production
+- Privacy policy needed despite no data collection (Play Store requirement)
+- Upload keystore needed (Google Play App Signing handles final signing)

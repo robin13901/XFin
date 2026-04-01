@@ -137,18 +137,13 @@ class _FilterRuleEditorState extends State<FilterRuleEditor> {
               child: Text(l10n.cancel),
             ),
             const SizedBox(width: 8),
-            FilledButton(
+            ElevatedButton(
               onPressed: _canSave ? _save : null,
-              style: FilledButton.styleFrom(
-                backgroundColor:
-                    isDark ? const Color(0xFFFFFFFF) : const Color(0xFF000000),
-                foregroundColor: isDark ? Colors.black : Colors.white,
-                disabledBackgroundColor: isDark
-                    ? Colors.white.withValues(alpha: 0.38)
-                    : Colors.black.withValues(alpha: 0.38),
-                disabledForegroundColor: isDark
-                    ? Colors.black.withValues(alpha: 0.54)
-                    : Colors.white.withValues(alpha: 0.54),
+              style: ElevatedButton.styleFrom(
+                disabledBackgroundColor:
+                    isDark ? const Color(0xFF3A3D42) : const Color(0xFFB0B0B0),
+                disabledForegroundColor:
+                    isDark ? const Color(0xFF8A8D92) : const Color(0xFF707070),
               ),
               child: Text(l10n.save),
             ),

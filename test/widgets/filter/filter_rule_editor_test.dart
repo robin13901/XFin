@@ -137,8 +137,8 @@ void main() {
       await tester.pumpAndSettle();
 
       // Save button should be disabled (no selections)
-      final saveButton = tester.widget<FilledButton>(
-        find.widgetWithText(FilledButton, l10n.save),
+      final saveButton = tester.widget<ElevatedButton>(
+        find.widgetWithText(ElevatedButton, l10n.save),
       );
       expect(saveButton.onPressed, isNull);
     });
@@ -165,7 +165,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Tap save
-      await tester.tap(find.widgetWithText(FilledButton, l10n.save));
+      await tester.tap(find.widgetWithText(ElevatedButton, l10n.save));
       await tester.pumpAndSettle();
 
       expect(savedRule, isNotNull);
@@ -303,6 +303,24 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(DateRangeInput), findsOneWidget);
+    });
+
+    testWidgets('disabled save button has opaque background', (tester) async {
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      // Save button is disabled — verify it's still an ElevatedButton
+      final saveButton = tester.widget<ElevatedButton>(
+        find.widgetWithText(ElevatedButton, l10n.save),
+      );
+      expect(saveButton.onPressed, isNull);
+
+      // The style should have opaque disabled colors (set in the widget)
+      final style = saveButton.style!;
+      final disabledBg = style.backgroundColor
+          ?.resolve({WidgetState.disabled});
+      expect(disabledBg, isNotNull);
+      expect(disabledBg!.a, 1.0, reason: 'disabled background must be fully opaque');
     });
   });
 }

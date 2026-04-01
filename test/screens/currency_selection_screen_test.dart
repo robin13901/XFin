@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:xfin/database/daos/assets_dao.dart';
 import 'package:xfin/database/tables.dart';
 import 'package:xfin/providers/database_provider.dart';
+import 'package:xfin/providers/theme_provider.dart';
 import 'package:xfin/screens/currency_selection_screen.dart';
 
 // Imports for types referenced by the screen
@@ -115,6 +116,7 @@ void main() {
               ChangeNotifierProvider<DatabaseProvider>.value(value: DatabaseProvider.instance),
               ChangeNotifierProvider<BaseCurrencyProvider>.value(value: mockBaseProvider),
               ChangeNotifierProvider<LanguageProvider>.value(value: mockLanguageProvider),
+              ChangeNotifierProvider<ThemeProvider>.value(value: ThemeProvider.instance),
             ],
             child: const CurrencySelectionScreen(),
           ),

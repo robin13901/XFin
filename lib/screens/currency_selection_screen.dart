@@ -79,7 +79,7 @@ class _CurrencySelectionScreenState extends State<CurrencySelectionScreen> {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor:
-          ThemeProvider.instance.isAurora ? Colors.transparent : null,
+          context.watch<ThemeProvider>().isAurora ? Colors.transparent : null,
       body: Stack(
         children: [
           buildAuroraLayer(context),

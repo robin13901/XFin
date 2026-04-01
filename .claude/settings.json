@@ -43,7 +43,18 @@
       "Bash(grep -r \"FutureBuilder\\\\|StreamBuilder\\\\|Future<\" /c/SAPDevelop/Privat/XFin/lib/screens/*.dart)",
       "mcp__filesystem__write_file",
       "Bash(git stash:*)",
-      "Bash(find /c/SAPDevelop/Privat/XFin/lib/widgets -name *nav* -o -name *bottom*)"
+      "Bash(find /c/SAPDevelop/Privat/XFin/lib/widgets -name *nav* -o -name *bottom*)",
+      "Bash(ls -la /c/SAPDevelop/Privat/XFin/android/app/src/main/res/mipmap-*/)",
+      "Bash(grep -E \"\\\\.dart$\")",
+      "Bash(grep -r \"debugPrint\\\\|kDebugMode\\\\|print\\(\" /c/SAPDevelop/Privat/XFin/lib --include=*.dart -n)",
+      "Bash(xargs wc:*)",
+      "Bash(ls -la /c/SAPDevelop/Privat/XFin/android/app/src/main/res/drawable*)",
+      "Bash(find /c/SAPDevelop/Privat/XFin/.planning -type f -name *.md)",
+      "Skill(gsd:plan-phase)",
+      "Skill(gsd:plan-phase:*)",
+      "mcp__filesystem__directory_tree",
+      "mcp__filesystem__list_directory",
+      "Bash(grep -E \"\\\\.\\(dart\\)$\")"
     ]
   }
 }

@@ -1,7 +1,9 @@
+import 'dart:async';
+import 'dart:math';
+
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:math';
 
 import '../app_theme.dart';
 import '../database/app_database.dart';
@@ -64,6 +66,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
 
   LineBarSpot? _touchedSpot;
   late Future<AnalysisData> _analysisDataFuture;
+  StreamSubscription<dynamic>? _tableWatcher;
 
   @override
   void initState() {
@@ -72,6 +75,14 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     db = dbProvider.db;
     dbProvider.addListener(_onDbChanged);
     _fetchAnalysisData();
+    _startTableWatch();
+  }
+
+  void _startTableWatch() {
+    _tableWatcher?.cancel();
+    _tableWatcher = db.tableUpdates().listen((_) {
+      if (mounted) _fetchAnalysisData();
+    });
   }
 
   void _onDbChanged() {
@@ -80,11 +91,13 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     setState(() {
       db = newDb;
       _fetchAnalysisData();
+      _startTableWatch();
     });
   }
 
   @override
   void dispose() {
+    _tableWatcher?.cancel();
     try {
       context.read<DatabaseProvider>().removeListener(_onDbChanged);
     } catch (_) {}
@@ -155,7 +168,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final showAurora = ThemeProvider.instance.isAurora;
+    final showAurora = context.watch<ThemeProvider>().isAurora;
 
     return Scaffold(
       backgroundColor: showAurora ? Colors.transparent : null,
@@ -330,9 +343,6 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
         setState(() {
           _showInflows = showInflows;
           _showAllCategories = false;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            scrollToBottom();
-          });
         });
       },
     );

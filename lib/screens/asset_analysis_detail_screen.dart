@@ -51,7 +51,7 @@ class _AssetAnalysisDetailScreenState extends State<AssetAnalysisDetailScreen> {
     AppLocalizations l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor:
-          ThemeProvider.instance.isAurora ? Colors.transparent : null,
+          context.watch<ThemeProvider>().isAurora ? Colors.transparent : null,
       body: FutureBuilder<AssetAnalysisDetailsData>(
         future: _future,
         builder: (context, snapshot) {

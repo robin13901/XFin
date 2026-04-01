@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:drift/drift.dart' show TableUpdate;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -26,6 +29,7 @@ void main() {
   late _MockAppDatabase mockDb;
   late _MockAnalysisDao mockAnalysisDao;
   late _MockAccountsDao mockAccountsDao;
+  late StreamController<Set<TableUpdate>> tableUpdateController;
 
   // Common test data
   late List<FlSpot> balanceHistory;
@@ -51,10 +55,14 @@ void main() {
     DatabaseProvider.instance.initialize(mockDb);
     mockAnalysisDao = _MockAnalysisDao();
     mockAccountsDao = _MockAccountsDao();
+    tableUpdateController = StreamController<Set<TableUpdate>>.broadcast();
 
     // Wire the mock DB to return the mocked DAOs.
     when(() => mockDb.analysisDao).thenReturn(mockAnalysisDao);
     when(() => mockDb.accountsDao).thenReturn(mockAccountsDao);
+    when(() => mockDb.tableUpdates()).thenAnswer(
+      (_) => tableUpdateController.stream,
+    );
 
     // Build deterministic test data: 10 days of increasing balances
     final now = DateTime.now();
@@ -114,8 +122,13 @@ void main() {
     // Helper to pump the screen; always await this.
     Future<void> pumpWidget(WidgetTester tester) async {
       await tester.pumpWidget(
-        ChangeNotifierProvider<DatabaseProvider>.value(
-          value: DatabaseProvider.instance,
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<DatabaseProvider>.value(
+              value: DatabaseProvider.instance,
+            ),
+            ChangeNotifierProvider<ThemeProvider>.value(value: ThemeProvider.instance),
+          ],
           child: const MaterialApp(
             localizationsDelegates: [
               AppLocalizations.delegate,
@@ -361,7 +374,7 @@ void main() {
     });
 
     testWidgets(
-        'inflow/outflow switch toggles displayed categories and scrollToBottom is invoked',
+        'inflow/outflow switch toggles displayed categories',
         (tester) async {
       await tester.runAsync(() async {
         await pumpWidget(tester);
@@ -377,12 +390,8 @@ void main() {
         await tester.ensureVisible(inflowFinder);
         await tester.ensureVisible(outflowFinder);
 
-        // Tap Ausgaben to switch to outflows; this triggers a postFrame callback that calls scrollToBottom
+        // Tap Ausgaben to switch to outflows
         await tester.tap(outflowFinder);
-        // pump frames to let the post frame callback fire and the animateTo start
-        await tester.pump();
-        // Let the animation settle (it uses 300ms duration in code)
-        await tester.pump(const Duration(milliseconds: 350));
         await tester.pumpAndSettle();
 
         // Now category list should show outflow categories (we provided 'Rent', 'Groceries', 'Small')
@@ -391,13 +400,37 @@ void main() {
 
         // Switch back to inflows
         await tester.tap(inflowFinder);
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 350));
         await tester.pumpAndSettle();
 
         // Now inflow categories should be visible (Salary and Bonus)
         expect(find.text('Salary'), findsOneWidget);
         expect(find.text('Bonus'), findsOneWidget);
+
+        await tester.pumpWidget(Container());
+      });
+    });
+
+    testWidgets(
+        'refetches analysis data when table update stream fires',
+        (tester) async {
+      await tester.runAsync(() async {
+        await pumpWidget(tester);
+        await tester.pumpAndSettle();
+
+        // Verify initial values rendered
+        expect(find.text(formatCurrency(currentMonthInflows)), findsOneWidget);
+
+        // Update the mock to return different inflow value
+        const updatedInflows = 999.0;
+        when(() => mockAnalysisDao.getTotalInflowsForMonth(any()))
+            .thenAnswer((_) async => updatedInflows);
+
+        // Emit a table update event to trigger re-fetch
+        tableUpdateController.add({const TableUpdate('bookings')});
+        await tester.pumpAndSettle();
+
+        // The updated value should now be displayed
+        expect(find.text(formatCurrency(updatedInflows)), findsOneWidget);
 
         await tester.pumpWidget(Container());
       });

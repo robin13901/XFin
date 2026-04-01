@@ -17,32 +17,6 @@ import 'calendar/day_details.dart';
 import 'calendar/month_grid.dart';
 import 'calendar/month_summary.dart';
 
-/// Slightly more sensitive [PageScrollPhysics]: boosts weak fling velocities
-/// so that light swipes reliably snap to the next month instead of bouncing
-/// back. All other behaviour (spring, snap, overscroll) stays stock.
-class _CalendarPagePhysics extends PageScrollPhysics {
-  const _CalendarPagePhysics({super.parent});
-
-  @override
-  _CalendarPagePhysics applyTo(ScrollPhysics? ancestor) {
-    return _CalendarPagePhysics(parent: buildParent(ancestor));
-  }
-
-  @override
-  Simulation? createBallisticSimulation(
-      ScrollMetrics position, double velocity) {
-    // Default PageScrollPhysics only adjusts the target page by ±0.5 when
-    // |velocity| > tolerance (~7 px/s).  A slow, short swipe can end below
-    // that threshold and snap back.  Boosting weak-but-intentional velocities
-    // ensures the ±0.5 kicks in and the page commits to moving forward.
-    const double minBoost = 300.0;
-    if (velocity.abs() > 1.0 && velocity.abs() < minBoost) {
-      velocity = velocity.sign * minBoost;
-    }
-    return super.createBallisticSimulation(position, velocity);
-  }
-}
-
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
 
@@ -134,6 +108,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
       if (!mounted) return;
       _prefetchAround(month);
     });
+  }
+
+  bool _isAnimating = false;
+
+  void _goToMonth(int delta) {
+    if (_isAnimating) return;
+    final target = _pageNotifier.value + delta;
+    _isAnimating = true;
+    _pageController
+        .animateToPage(
+          target,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOutCubic,
+        )
+        .whenComplete(() => _isAnimating = false);
   }
 
   void _onMonthChanged(int pageIndex) {
@@ -327,7 +316,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     return Scaffold(
       backgroundColor:
-          ThemeProvider.instance.isAurora ? Colors.transparent : null,
+          context.watch<ThemeProvider>().isAurora ? Colors.transparent : null,
       body: Stack(
         children: [
           buildAuroraLayer(context),
@@ -356,32 +345,42 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  /// Month label with a smooth crossfade when the page changes.
+  /// Month label with navigation buttons and a smooth crossfade on change.
   Widget _buildAnimatedMonthHeader() {
     return ValueListenableBuilder<int>(
       valueListenable: _pageNotifier,
       builder: (context, pageIndex, _) {
         final month = _monthAtPage(pageIndex);
-        return AnimatedSwitcher(
-          duration: const Duration(milliseconds: 250),
-          switchInCurve: Curves.easeOut,
-          switchOutCurve: Curves.easeIn,
-          transitionBuilder: (child, animation) {
-            return FadeTransition(
-              opacity: animation,
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0, 0.25),
-                  end: Offset.zero,
-                ).animate(animation),
-                child: child,
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            IconButton(
+              onPressed: () => _goToMonth(-1),
+              icon: const Icon(Icons.chevron_left),
+              visualDensity: VisualDensity.compact,
+              tooltip: MaterialLocalizations.of(context).previousMonthTooltip,
+            ),
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                transitionBuilder: (child, animation) {
+                  return FadeTransition(opacity: animation, child: child);
+                },
+                child: MonthHeader(
+                  key: ValueKey(_monthCacheKey(month)),
+                  month: month,
+                ),
               ),
-            );
-          },
-          child: MonthHeader(
-            key: ValueKey(_monthCacheKey(month)),
-            month: month,
-          ),
+            ),
+            IconButton(
+              onPressed: () => _goToMonth(1),
+              icon: const Icon(Icons.chevron_right),
+              visualDensity: VisualDensity.compact,
+              tooltip: MaterialLocalizations.of(context).nextMonthTooltip,
+            ),
+          ],
         );
       },
     );
@@ -432,7 +431,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       height: _calendarPagerViewportHeight(),
       child: PageView.builder(
         controller: _pageController,
-        physics: const _CalendarPagePhysics(),
+        physics: const NeverScrollableScrollPhysics(),
         allowImplicitScrolling: true,
         onPageChanged: _onMonthChanged,
         itemBuilder: (context, index) {

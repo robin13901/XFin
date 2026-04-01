@@ -90,7 +90,7 @@ class _TradesScreenState extends State<TradesScreen>
 
     return Scaffold(
       backgroundColor:
-          ThemeProvider.instance.isAurora ? Colors.transparent : null,
+          context.watch<ThemeProvider>().isAurora ? Colors.transparent : null,
       body: Stack(
         children: [
           buildAuroraLayer(context),

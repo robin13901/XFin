@@ -10,6 +10,7 @@ import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/providers/database_provider.dart';
+import 'package:xfin/providers/theme_provider.dart';
 import 'package:xfin/screens/standing_orders_screen.dart';
 import 'package:xfin/utils/format.dart';
 import 'package:xfin/widgets/forms/periodic_booking_form.dart';
@@ -88,8 +89,13 @@ void main() {
 
   Future<AppLocalizations> pumpScreen(WidgetTester tester) async {
     await tester.pumpWidget(
-      ChangeNotifierProvider<DatabaseProvider>.value(
-        value: DatabaseProvider.instance,
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<DatabaseProvider>.value(
+            value: DatabaseProvider.instance,
+          ),
+          ChangeNotifierProvider<ThemeProvider>.value(value: ThemeProvider.instance),
+        ],
         child: const MaterialApp(
           localizationsDelegates: [
             AppLocalizations.delegate,

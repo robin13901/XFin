@@ -1,11 +1,12 @@
 {
   "project_name": "XFin",
-  "milestone": "1.1.0",
-  "milestone_title": "Code Quality & Architecture",
-  "created": "2026-03-08",
+  "milestone": "1.3.0",
+  "milestone_title": "Google Play Store Release",
+  "created": "2026-03-27",
   "workflow": {
     "research": false,
     "planning": true,
+    "plan_check": true,
     "verification": true,
     "testing": true,
     "commits": true

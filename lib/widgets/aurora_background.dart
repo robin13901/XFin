@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:provider/provider.dart';
 
 import '../providers/theme_provider.dart';
 
@@ -15,7 +16,7 @@ const auroraColors = [
 /// Builds the aurora background layer for use as the first child
 /// inside a [Stack].  Returns [SizedBox.shrink] when aurora is off.
 Widget buildAuroraLayer(BuildContext context) {
-  if (!ThemeProvider.instance.isAurora) return const SizedBox.shrink();
+  if (!context.watch<ThemeProvider>().isAurora) return const SizedBox.shrink();
   return Positioned.fill(
     child: ColoredBox(
       color: Theme.of(context).scaffoldBackgroundColor,

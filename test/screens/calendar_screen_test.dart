@@ -10,6 +10,7 @@ import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/providers/database_provider.dart';
+import 'package:xfin/providers/theme_provider.dart';
 import 'package:xfin/screens/calendar_screen.dart';
 
 void main() {
@@ -20,8 +21,13 @@ void main() {
 
   Future<void> pumpCalendar(WidgetTester tester) async {
     await tester.pumpWidget(
-      ChangeNotifierProvider<DatabaseProvider>.value(
-        value: DatabaseProvider.instance,
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<DatabaseProvider>.value(
+            value: DatabaseProvider.instance,
+          ),
+          ChangeNotifierProvider<ThemeProvider>.value(value: ThemeProvider.instance),
+        ],
         child: const MaterialApp(
           localizationsDelegates: [
             AppLocalizations.delegate,
@@ -112,23 +118,35 @@ void main() {
     expect(find.byType(PieChart), findsOneWidget);
     expect(find.text('Inflows'), findsAtLeastNWidgets(1));
     expect(find.text('Outflows'), findsAtLeastNWidgets(1));
+
+    // Navigation buttons are present
+    expect(find.byIcon(Icons.chevron_left), findsOneWidget);
+    expect(find.byIcon(Icons.chevron_right), findsOneWidget);
   });
 
-  testWidgets('swiping month updates month dataset and keeps chart/list in sync',
+  testWidgets('tapping next/previous buttons updates month dataset and keeps chart/list in sync',
       (tester) async {
     await pumpCalendar(tester);
 
     expect(find.text('Salary'), findsOneWidget);
     expect(find.text('Bonus'), findsNothing);
 
-    await tester.fling(find.byType(PageView).first, const Offset(-320, 0), 700);
+    // Tap next-month button
+    await tester.tap(find.byIcon(Icons.chevron_right));
     await tester.pumpAndSettle();
 
     expect(find.text('Bonus'), findsOneWidget);
     expect(find.text('Salary'), findsNothing);
 
+    // Tap previous-month button to go back
+    await tester.tap(find.byIcon(Icons.chevron_left));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Salary'), findsOneWidget);
+    expect(find.text('Bonus'), findsNothing);
+
     final pageView = tester.widget<PageView>(find.byType(PageView).first);
-    expect(pageView.allowImplicitScrolling, isTrue);
+    expect(pageView.physics, isA<NeverScrollableScrollPhysics>());
   });
 
   testWidgets('tap day opens animated details dialog with paged sections',
@@ -160,8 +178,8 @@ void main() {
     const expectedHeight = 32.0 + 1.0 + 78.0 * 6 + 32.0;
     expect(initialSize.height, expectedHeight);
 
-    // Swipe to another month
-    await tester.fling(pageViewFinder, const Offset(-320, 0), 700);
+    // Navigate to next month via button
+    await tester.tap(find.byIcon(Icons.chevron_right));
     await tester.pumpAndSettle();
 
     final newSize = tester.getSize(pageViewFinder);
@@ -174,8 +192,13 @@ void main() {
   testWidgets('today marker uses onPrimary text color in dark theme for readability',
       (tester) async {
     await tester.pumpWidget(
-      ChangeNotifierProvider<DatabaseProvider>.value(
-        value: DatabaseProvider.instance,
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<DatabaseProvider>.value(
+            value: DatabaseProvider.instance,
+          ),
+          ChangeNotifierProvider<ThemeProvider>.value(value: ThemeProvider.instance),
+        ],
         child: MaterialApp(
           theme: ThemeData.dark(),
           localizationsDelegates: const [
@@ -227,16 +250,13 @@ void main() {
       (tester) async {
     await pumpCalendar(tester);
 
-    // Start swiping
-    final pageViewFinder = find.byType(PageView).first;
-    final gesture = await tester.startGesture(tester.getCenter(pageViewFinder));
-    await gesture.moveBy(const Offset(-200, 0));
-    await tester.pump();
+    // Tap next-month button
+    await tester.tap(find.byIcon(Icons.chevron_right));
+    await tester.pump(const Duration(milliseconds: 125)); // mid-animation
 
-    // During the swipe, there should be no CircularProgressIndicator
+    // During the animation, there should be no CircularProgressIndicator
     expect(find.byType(CircularProgressIndicator), findsNothing);
 
-    await gesture.up();
     await tester.pumpAndSettle();
 
     // After settling, still no loading indicators
@@ -250,23 +270,21 @@ void main() {
     // Allow time for prefetching
     await tester.pumpAndSettle();
 
-    // Navigate forward and backward multiple times
-    final pageViewFinder = find.byType(PageView).first;
-
+    // Navigate forward and backward multiple times via buttons
     for (var i = 0; i < 3; i++) {
-      await tester.fling(pageViewFinder, const Offset(-320, 0), 700);
+      await tester.tap(find.byIcon(Icons.chevron_right));
       await tester.pumpAndSettle();
       expect(find.byType(CircularProgressIndicator), findsNothing);
     }
 
     for (var i = 0; i < 3; i++) {
-      await tester.fling(pageViewFinder, const Offset(320, 0), 700);
+      await tester.tap(find.byIcon(Icons.chevron_left));
       await tester.pumpAndSettle();
       expect(find.byType(CircularProgressIndicator), findsNothing);
     }
   });
 
-  testWidgets('month header animates smoothly when swiping between months',
+  testWidgets('month header animates smoothly when navigating between months',
       (tester) async {
     await pumpCalendar(tester);
 
@@ -279,8 +297,8 @@ void main() {
     final capitalizedCurrent = currentLabel[0].toUpperCase() + currentLabel.substring(1);
     expect(find.text(capitalizedCurrent), findsOneWidget);
 
-    // Swipe to next month
-    await tester.fling(find.byType(PageView).first, const Offset(-320, 0), 700);
+    // Navigate to next month via button
+    await tester.tap(find.byIcon(Icons.chevron_right));
     await tester.pumpAndSettle();
 
     // Verify new month label appears

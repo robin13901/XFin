@@ -163,9 +163,10 @@ class _AccountsScreenState extends State<AccountsScreen>
     final statusBarHeight = MediaQuery.of(context).padding.top;
     updateKeyboardVisibility(context);
 
+    final isAurora = context.watch<ThemeProvider>().isAurora;
+
     return Scaffold(
-      backgroundColor:
-          ThemeProvider.instance.isAurora ? Colors.transparent : null,
+      backgroundColor: isAurora ? Colors.transparent : null,
       body: Stack(
         children: [
           StreamBuilder<List<Account>>(

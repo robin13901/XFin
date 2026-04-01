@@ -10,6 +10,7 @@ import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/providers/base_currency_provider.dart';
 import 'package:xfin/providers/database_provider.dart';
+import 'package:xfin/providers/theme_provider.dart';
 import 'package:xfin/screens/asset_analysis_detail_screen.dart';
 
 void main() {
@@ -28,6 +29,7 @@ void main() {
         providers: [
           ChangeNotifierProvider<DatabaseProvider>.value(value: DatabaseProvider.instance),
           ChangeNotifierProvider<BaseCurrencyProvider>.value(value: currencyProvider),
+          ChangeNotifierProvider<ThemeProvider>.value(value: ThemeProvider.instance),
         ],
         child: const MaterialApp(
           localizationsDelegates: [
