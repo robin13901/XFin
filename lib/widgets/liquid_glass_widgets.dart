@@ -61,9 +61,7 @@ class LiquidGlassBottomNav extends StatelessWidget {
         rightVisibleForIndices == null || rightVisibleForIndices!.contains(currentIndex);
     const double itemHorizontalPadding = 12.0;
 
-    return SafeArea(
-      bottom: true,
-      child: Padding(
+    return Padding(
         padding:
             EdgeInsets.fromLTRB(horizontalPadding, 8, horizontalPadding, 8),
         child: SizedBox(
@@ -191,7 +189,6 @@ class LiquidGlassBottomNav extends StatelessWidget {
             ],
           ),
         ),
-      ),
     );
   }
 

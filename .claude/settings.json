@@ -72,7 +72,8 @@
       "Bash(where iTunes)",
       "Bash(powershell.exe -Command \"Get-AppxPackage *apple* | Select-Object Name,InstallLocation\")",
       "Bash(powershell.exe -Command \"Get-Service *apple* | Format-Table Name,Status,DisplayName -AutoSize\")",
-      "Bash(powershell.exe -Command \"Get-Service *mobile* | Format-Table Name,Status,DisplayName -AutoSize\")"
+      "Bash(powershell.exe -Command \"Get-Service *mobile* | Format-Table Name,Status,DisplayName -AutoSize\")",
+      "Bash(find /c/SAPDevelop/Privat/XFin/lib -name \"*.dart\" -exec grep -l \"textScaleFactor\\\\|scaleFactor\\\\|Theme.of\\\\|typography\\\\|TextTheme\" {} \\\\;)"
     ]
   }
 }

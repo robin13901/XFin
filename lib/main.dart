@@ -94,7 +94,11 @@ class MyApp extends StatelessWidget {
             '/currencySelection': (context) => const CurrencySelectionScreen(),
             '/main': (context) => const MainScreen(),
           },
-          builder: (context, child) => OKToast(child: child!),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context)
+                .copyWith(textScaler: TextScaler.noScaling),
+            child: OKToast(child: child!),
+          ),
         );
       },
     );
@@ -188,7 +192,7 @@ class _MainScreenState extends State<MainScreen> {
             ),
           ))),
           Positioned(
-            bottom: 16,
+            bottom: 16 + MediaQuery.of(context).padding.bottom,
             left: 8,
             right: 8,
             child: ValueListenableBuilder<bool>(
