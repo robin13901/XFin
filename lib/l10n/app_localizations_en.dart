@@ -829,6 +829,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sharesRequired => 'Shares must not be zero';
 
   @override
+  String get annualReport => 'Annual Report';
+
+  @override
+  String get totalProfitAndLoss => 'Total P&L';
+
+  @override
+  String get totalFees => 'Total Fees';
+
+  @override
+  String get totalBuys => 'Total Buys';
+
+  @override
+  String get totalSells => 'Total Sells';
+
+  @override
+  String get totalTradesVolume => 'Total Volume';
+
+  @override
+  String get tradeCount => 'Trade Count';
+
+  @override
+  String get profitAndLossAbbrev => 'P&L';
+
+  @override
   String get fifoLots => 'Consumed Buys';
 
   @override

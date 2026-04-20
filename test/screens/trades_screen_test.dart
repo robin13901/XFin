@@ -210,12 +210,13 @@ void main() {
     });
 
     testWidgets(
-        'tapping FAB opens TradeForm for new trade',
+        'tapping add button opens TradeForm for new trade',
             (tester) => tester.runAsync(() async {
           await pumpWidget(tester);
           await tester.pumpAndSettle();
 
-          await tester.tap(find.byIcon(Icons.add));
+          // The add button is the right circular button in the bottom nav
+          await tester.tap(find.byKey(const Key('fab')));
           await tester.pumpAndSettle();
 
           expect(find.byType(TradeForm), findsOneWidget);

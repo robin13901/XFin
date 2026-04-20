@@ -192,7 +192,7 @@ class _MainScreenState extends State<MainScreen> {
             ),
           ))),
           Positioned(
-            bottom: 16 + MediaQuery.of(context).padding.bottom,
+            bottom: 16,
             left: 8,
             right: 8,
             child: ValueListenableBuilder<bool>(

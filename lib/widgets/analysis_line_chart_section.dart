@@ -158,15 +158,17 @@ class AnalysisLineChartSection extends StatelessWidget {
     int? bbLowerIndex;
     if (showBb) {
       final bbData = IndicatorCalculator.calculateBb(allData, 20);
-      bbUpperIndex = lineBarsData.length;
-      lineBarsData.addAll(
-        bbData.map(
-          (data) => data.copyWith(
-            spots: data.spots.where((spot) => spot.x >= firstDateInRange).toList(),
+      if (bbData.length == 3) {
+        bbUpperIndex = lineBarsData.length;
+        lineBarsData.addAll(
+          bbData.map(
+            (data) => data.copyWith(
+              spots: data.spots.where((spot) => spot.x >= firstDateInRange).toList(),
+            ),
           ),
-        ),
-      );
-      bbLowerIndex = bbUpperIndex + 2;
+        );
+        bbLowerIndex = bbUpperIndex + 2;
+      }
     }
 
     double overallMinY = currentData.map((e) => e.y).reduce(min);
@@ -393,22 +395,23 @@ class AnalysisLineChartSection extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _buildCompactIndicatorToggle(isDark, showSma, Colors.orange, 'SMA', (v) => onShowSmaChanged(v)),
+            _buildCompactIndicatorToggle(isDark, showSma, Colors.orange, 'SMA', '₃₀', (v) => onShowSmaChanged(v)),
             const SizedBox(width: 8),
             if (showSma200Toggle)
-              _buildCompactIndicatorToggle(isDark, showSma200, Colors.green, 'SMA₂₀₀', (v) => onShowSma200Changed?.call(v)),
+              _buildCompactIndicatorToggle(isDark, showSma200, Colors.green, 'SMA', '₂₀₀', (v) => onShowSma200Changed?.call(v)),
             if (showSma200Toggle)
               const SizedBox(width: 8),
-            _buildCompactIndicatorToggle(isDark, showEma, Colors.purple, 'EMA', (v) => onShowEmaChanged(v)),
+            _buildCompactIndicatorToggle(isDark, showEma, Colors.purple, 'EMA', '₃₀', (v) => onShowEmaChanged(v)),
             const SizedBox(width: 8),
-            _buildCompactIndicatorToggle(isDark, showBb, Colors.blue, 'BB', (v) => onShowBbChanged(v)),
+            _buildCompactIndicatorToggle(isDark, showBb, Colors.blue, 'BB', '₂₀', (v) => onShowBbChanged(v)),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildCompactIndicatorToggle(bool isDark, bool selected, Color color, String label, ValueChanged<bool> onChanged) {
+  Widget _buildCompactIndicatorToggle(bool isDark, bool selected, Color color, String label, String subscript, ValueChanged<bool> onChanged) {
+    final textColor = selected ? color : (isDark ? Colors.white70 : Colors.black54);
     return GestureDetector(
       onTap: () => onChanged(!selected),
       child: Container(
@@ -421,12 +424,26 @@ class AnalysisLineChartSection extends StatelessWidget {
             width: 1.5,
           ),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: selected ? color : (isDark ? Colors.white70 : Colors.black54),
+        child: Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: textColor,
+                ),
+              ),
+              TextSpan(
+                text: subscript,
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w600,
+                  color: textColor,
+                ),
+              ),
+            ],
           ),
         ),
       ),

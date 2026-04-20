@@ -2102,4 +2102,134 @@ void main() {
       );
     });
   });
+
+  group('getAnnualReportData', () {
+    test('returns empty data for year with no trades', () async {
+      final data = await tradesDao.getAnnualReportData(2025);
+      expect(data.totalPnL, 0);
+      expect(data.totalFees, 0);
+      expect(data.totalBuyValue, 0);
+      expect(data.totalSellValue, 0);
+      expect(data.totalBuyCount, 0);
+      expect(data.totalSellCount, 0);
+      expect(data.monthlyPnL, List.filled(12, 0.0));
+      expect(data.monthlySellCount, List.filled(12, 0));
+      expect(data.monthlyBuyCount, List.filled(12, 0));
+    });
+
+    test('aggregates buy and sell trades correctly', () async {
+      // Jan buy: 2@10, fee=1
+      await db.into(db.trades).insert(TradesCompanion(
+        datetime: const drift.Value(20250115120000),
+        assetId: drift.Value(assetOne.id),
+        type: const drift.Value(TradeTypes.buy),
+        shares: const drift.Value(2),
+        costBasis: const drift.Value(10),
+        fee: const drift.Value(1),
+        tax: const drift.Value(0),
+        sourceAccountId: drift.Value(sourceAccount.id),
+        targetAccountId: drift.Value(targetAccount.id),
+        sourceAccountValueDelta: const drift.Value(-21),
+        targetAccountValueDelta: const drift.Value(20),
+        profitAndLoss: const drift.Value(0),
+        returnOnInvest: const drift.Value(0),
+      ));
+
+      // Mar sell: 1@15, fee=2, pnl=3
+      await db.into(db.trades).insert(TradesCompanion(
+        datetime: const drift.Value(20250310140000),
+        assetId: drift.Value(assetOne.id),
+        type: const drift.Value(TradeTypes.sell),
+        shares: const drift.Value(1),
+        costBasis: const drift.Value(15),
+        fee: const drift.Value(2),
+        tax: const drift.Value(0),
+        sourceAccountId: drift.Value(sourceAccount.id),
+        targetAccountId: drift.Value(targetAccount.id),
+        sourceAccountValueDelta: const drift.Value(13),
+        targetAccountValueDelta: const drift.Value(-10),
+        profitAndLoss: const drift.Value(3),
+        returnOnInvest: const drift.Value(0.3),
+      ));
+
+      // Mar sell: 1@8, fee=1, pnl=-3
+      await db.into(db.trades).insert(TradesCompanion(
+        datetime: const drift.Value(20250320090000),
+        assetId: drift.Value(assetOne.id),
+        type: const drift.Value(TradeTypes.sell),
+        shares: const drift.Value(1),
+        costBasis: const drift.Value(8),
+        fee: const drift.Value(1),
+        tax: const drift.Value(0),
+        sourceAccountId: drift.Value(sourceAccount.id),
+        targetAccountId: drift.Value(targetAccount.id),
+        sourceAccountValueDelta: const drift.Value(7),
+        targetAccountValueDelta: const drift.Value(-10),
+        profitAndLoss: const drift.Value(-3),
+        returnOnInvest: const drift.Value(-0.3),
+      ));
+
+      final data = await tradesDao.getAnnualReportData(2025);
+
+      // Monthly P&L: Jan=0, Feb=0, Mar=3+(-3)=0
+      expect(data.monthlyPnL[0], 0); // Jan
+      expect(data.monthlyPnL[2], 0); // Mar (3 + -3)
+
+      // Monthly counts
+      expect(data.monthlyBuyCount[0], 1); // Jan buy
+      expect(data.monthlySellCount[2], 2); // Mar sells
+
+      // Totals
+      expect(data.totalPnL, closeTo(0, 1e-9));
+      expect(data.totalFees, closeTo(4, 1e-9)); // 1+2+1
+      expect(data.totalBuyValue, closeTo(20, 1e-9));
+      expect(data.totalSellValue, closeTo(20, 1e-9)); // |−10|+|−10|
+      expect(data.totalBuyCount, 1);
+      expect(data.totalSellCount, 2);
+    });
+
+    test('only includes trades from the specified year', () async {
+      // 2024 trade - should NOT appear in 2025 report
+      await db.into(db.trades).insert(TradesCompanion(
+        datetime: const drift.Value(20241215120000),
+        assetId: drift.Value(assetOne.id),
+        type: const drift.Value(TradeTypes.sell),
+        shares: const drift.Value(1),
+        costBasis: const drift.Value(10),
+        fee: const drift.Value(1),
+        tax: const drift.Value(0),
+        sourceAccountId: drift.Value(sourceAccount.id),
+        targetAccountId: drift.Value(targetAccount.id),
+        sourceAccountValueDelta: const drift.Value(9),
+        targetAccountValueDelta: const drift.Value(-5),
+        profitAndLoss: const drift.Value(4),
+        returnOnInvest: const drift.Value(0.8),
+      ));
+
+      // 2025 trade
+      await db.into(db.trades).insert(TradesCompanion(
+        datetime: const drift.Value(20250601120000),
+        assetId: drift.Value(assetOne.id),
+        type: const drift.Value(TradeTypes.sell),
+        shares: const drift.Value(1),
+        costBasis: const drift.Value(20),
+        fee: const drift.Value(2),
+        tax: const drift.Value(0),
+        sourceAccountId: drift.Value(sourceAccount.id),
+        targetAccountId: drift.Value(targetAccount.id),
+        sourceAccountValueDelta: const drift.Value(18),
+        targetAccountValueDelta: const drift.Value(-10),
+        profitAndLoss: const drift.Value(8),
+        returnOnInvest: const drift.Value(0.8),
+      ));
+
+      final data2025 = await tradesDao.getAnnualReportData(2025);
+      expect(data2025.totalSellCount, 1);
+      expect(data2025.totalPnL, closeTo(8, 1e-9));
+
+      final data2024 = await tradesDao.getAnnualReportData(2024);
+      expect(data2024.totalSellCount, 1);
+      expect(data2024.totalPnL, closeTo(4, 1e-9));
+    });
+  });
 }

@@ -286,6 +286,15 @@
   "noAssetHoldings": "Keine Vermögenswerte",
   "transferSameAccount": "Sende- und Empfangskonto dürfen nicht identisch sein",
   "sharesRequired": "Die Anteile dürfen nicht null sein",
+  "annualReport": "Jahresbericht",
+  "totalProfitAndLoss": "Gesamt G&V",
+  "totalFees": "Gesamtgebühren",
+  "totalBuys": "Gesamte Käufe",
+  "totalSells": "Gesamte Verkäufe",
+  "totalTradesVolume": "Gesamtvolumen",
+  "tradeCount": "Anzahl Trades",
+  "profitAndLossAbbrev": "G&V",
+
   "fifoLots": "Konsumierte K\u00e4ufe",
   "lotShares": "{shares} @ {costBasis} \u2248 {value}",
   "@lotShares": {

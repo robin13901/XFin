@@ -263,9 +263,10 @@ void main() {
         await tester.pumpAndSettle();
 
         // The indicator toggles may be off-screen; ensure they are visible before tapping
-        final smaFinder = find.text('SMA');
-        final emaFinder = find.text('EMA');
-        final bbFinder = find.text('BB');
+        // Labels now use Text.rich with subscript periods, so use textContaining
+        final smaFinder = find.textContaining('SMA').first;
+        final emaFinder = find.textContaining('EMA');
+        final bbFinder = find.textContaining('BB');
 
         // Scroll until visible if necessary
         if (smaFinder.evaluate().isEmpty) {

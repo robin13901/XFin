@@ -286,6 +286,15 @@
   "noAssetHoldings": "No asset holdings",
   "transferSameAccount": "Sending and receiving accounts cannot be the same",
   "sharesRequired": "Shares must not be zero",
+  "annualReport": "Annual Report",
+  "totalProfitAndLoss": "Total P&L",
+  "totalFees": "Total Fees",
+  "totalBuys": "Total Buys",
+  "totalSells": "Total Sells",
+  "totalTradesVolume": "Total Volume",
+  "tradeCount": "Trade Count",
+  "profitAndLossAbbrev": "P&L",
+
   "fifoLots": "Consumed Buys",
   "lotShares": "{shares} @ {costBasis} \u2248 {value}",
   "@lotShares": {

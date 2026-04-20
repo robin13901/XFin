@@ -262,28 +262,30 @@ void main() {
   // ============================================================
 
   group('Indicator toggles', () {
-    testWidgets('renders SMA, EMA, BB toggle buttons', (tester) async {
+    testWidgets('renders SMA, EMA, BB toggle buttons with subscript periods', (tester) async {
       final data = generateTestData(10);
       await tester.pumpWidget(buildChart(data: data));
 
-      expect(find.text('SMA'), findsOneWidget);
-      expect(find.text('EMA'), findsOneWidget);
-      expect(find.text('BB'), findsOneWidget);
+      // Labels now use Text.rich with subscript periods (e.g., SMA₃₀)
+      expect(find.textContaining('SMA'), findsWidgets);
+      expect(find.textContaining('EMA'), findsOneWidget);
+      expect(find.textContaining('BB'), findsOneWidget);
     });
 
     testWidgets('renders SMA200 when showSma200Toggle is true', (tester) async {
       final data = generateTestData(10);
       await tester.pumpWidget(buildChart(data: data, showSma200Toggle: true));
 
-      // SMA200 is rendered with subscript: 'SMA\u2082\u2080\u2080'
-      expect(find.text('SMA\u2082\u2080\u2080'), findsOneWidget);
+      // SMA₃₀ and SMA₂₀₀ both contain 'SMA'
+      expect(find.textContaining('SMA'), findsNWidgets(2));
+      expect(find.textContaining('\u2082\u2080\u2080'), findsOneWidget);
     });
 
     testWidgets('hides SMA200 when showSma200Toggle is false', (tester) async {
       final data = generateTestData(10);
       await tester.pumpWidget(buildChart(data: data, showSma200Toggle: false));
 
-      expect(find.text('SMA\u2082\u2080\u2080'), findsNothing);
+      expect(find.textContaining('\u2082\u2080\u2080'), findsNothing);
     });
 
     testWidgets('tapping SMA calls onShowSmaChanged', (tester) async {
@@ -295,7 +297,8 @@ void main() {
         onShowSmaChanged: (v) => value = v,
       ));
 
-      await tester.tap(find.text('SMA'));
+      // Find SMA₃₀ toggle (contains subscript ₃₀)
+      await tester.tap(find.textContaining('\u2083\u2080').first);
       // GestureDetector calls onChanged(!selected) => !false => true
       expect(value, true);
     });
@@ -309,7 +312,7 @@ void main() {
         onShowEmaChanged: (v) => value = v,
       ));
 
-      await tester.tap(find.text('EMA'));
+      await tester.tap(find.textContaining('EMA'));
       expect(value, true);
     });
 
@@ -322,7 +325,7 @@ void main() {
         onShowBbChanged: (v) => value = v,
       ));
 
-      await tester.tap(find.text('BB'));
+      await tester.tap(find.textContaining('BB'));
       expect(value, true);
     });
 
@@ -336,7 +339,7 @@ void main() {
         onShowSma200Changed: (v) => value = v,
       ));
 
-      await tester.tap(find.text('SMA\u2082\u2080\u2080'));
+      await tester.tap(find.textContaining('\u2082\u2080\u2080'));
       expect(value, true);
     });
 
@@ -345,7 +348,7 @@ void main() {
       await tester.pumpWidget(buildChart(data: data, showSma: true));
 
       // Find the Container for SMA toggle (which is selected)
-      final smaText = find.text('SMA');
+      final smaText = find.textContaining('\u2083\u2080').first;
       final containerFinder = find.ancestor(
         of: smaText,
         matching: find.byType(Container),
@@ -363,7 +366,7 @@ void main() {
       final data = generateTestData(10);
       await tester.pumpWidget(buildChart(data: data, showSma: false));
 
-      final smaText = find.text('SMA');
+      final smaText = find.textContaining('\u2083\u2080').first;
       final containerFinder = find.ancestor(
         of: smaText,
         matching: find.byType(Container),

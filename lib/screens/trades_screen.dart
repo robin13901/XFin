@@ -14,6 +14,7 @@ import '../mixins/nav_bar_visibility_mixin.dart';
 import '../mixins/search_filter_mixin.dart';
 import '../providers/database_provider.dart';
 import '../providers/theme_provider.dart';
+import '../widgets/annual_report_tab.dart';
 import '../widgets/aurora_background.dart';
 import '../widgets/filter/filter_badge.dart';
 import '../widgets/filter/filter_panel.dart';
@@ -33,23 +34,20 @@ class _TradesScreenState extends State<TradesScreen>
   late final AnimationController _sheetAnimController;
   late final AppDatabase db;
   final ValueNotifier<bool> _navBarVisible = ValueNotifier<bool>(true);
+  int _selectedTab = 1;
 
   @override
   ValueNotifier<bool>? get localNavBarVisible => _navBarVisible;
 
-  // Preload futures
   late final Future<List<Asset>> _assetsFuture;
   late final Future<List<Account>> _accountsFuture;
 
   @override
   void initState() {
     super.initState();
-
-    // Zero-duration controller => sheet appears instantly (no open animation).
     _sheetAnimController =
     AnimationController(vsync: this, duration: Duration.zero)..value = 1.0;
 
-    // Start preloading DB data immediately (background).
     db = context.read<DatabaseProvider>().db;
     _assetsFuture = db.assetsDao.getAllAssets();
     _accountsFuture = db.accountsDao.getAllAccounts();
@@ -79,14 +77,148 @@ class _TradesScreenState extends State<TradesScreen>
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
+  Widget _buildTradesList(BuildContext context, AppLocalizations l10n) {
     final formatter = NumberFormat.decimalPattern('de_DE');
     formatter.minimumFractionDigits = 2;
     formatter.maximumFractionDigits = 2;
     final statusBarHeight = MediaQuery.of(context).padding.top;
+
+    return StreamBuilder<List<TradeWithAsset>>(
+      stream: db.tradesDao.watchAllTrades(
+        searchQuery: searchQuery.isNotEmpty ? searchQuery : null,
+        filterRules: filterRules.isNotEmpty ? filterRules : null,
+      ),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          showErrorDialog(context, l10n.errorLoadingData);
+        }
+        final tradesWithAssets = snapshot.data ?? [];
+        if (tradesWithAssets.isEmpty) {
+          return Center(
+            child: Text(
+              searchQuery.isNotEmpty || filterRules.isNotEmpty
+                  ? l10n.noMatchingBookings
+                  : l10n.noTrades,
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: EdgeInsets.only(
+            top: statusBarHeight + kToolbarHeight + searchBarSpace,
+            bottom: 92,
+          ),
+          itemCount: tradesWithAssets.length,
+          itemBuilder: (context, index) {
+            final tradeWithAsset = tradesWithAssets[index];
+            final trade = tradeWithAsset.trade;
+            final asset = tradeWithAsset.asset;
+
+            String rawDatetime = trade.datetime.toString();
+            final datetime = DateTime.parse(
+                '${rawDatetime.substring(0, 8)} ${rawDatetime.substring(8, 14)}');
+
+            List<Text> subtitleWidgets = [
+              Text(
+                  '${l10n.datetime}: ${dateTimeFormat.format(datetime)} Uhr'),
+              Text(
+                  '${l10n.value}: ${formatCurrency(trade.targetAccountValueDelta.abs())}'),
+              Text('${l10n.fee}: ${formatCurrency(trade.fee)}'),
+              if (trade.type == TradeTypes.sell)
+                Text('${l10n.tax}: ${formatCurrency(trade.tax)}'),
+            ];
+
+            if (trade.type == TradeTypes.sell) {
+              final pnlColor =
+              trade.profitAndLoss >= 0 ? Colors.green : Colors.red;
+
+              subtitleWidgets.add(
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(text: '${l10n.profitAndLoss}: '),
+                      TextSpan(
+                        text: formatCurrency(trade.profitAndLoss),
+                        style: TextStyle(color: pnlColor),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+              subtitleWidgets.add(
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(text: '${l10n.returnOnInvestment}: '),
+                      TextSpan(
+                        text:
+                        '${formatter.format(trade.returnOnInvest * 100)} %',
+                        style: TextStyle(color: pnlColor),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            final titleText =
+                '${trade.type.name.toUpperCase()} ${preciseDecimal(trade.shares)} ${asset.tickerSymbol} @ ${formatCurrency(trade.costBasis)}';
+
+            if (trade.type == TradeTypes.sell) {
+              return _SellTradeListItem(
+                trade: trade,
+                asset: asset,
+                titleText: titleText,
+                subtitleWidgets: subtitleWidgets,
+                onTap: () => _showTradeForm(context, trade: trade),
+                onLongPress: () =>
+                    showDeleteDialog(context, trade: trade),
+                tradesDao: db.tradesDao,
+              );
+            }
+
+            return ListTile(
+              title: Text(titleText),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: subtitleWidgets,
+              ),
+              onTap: () => _showTradeForm(context, trade: trade),
+              onLongPress: () => showDeleteDialog(context, trade: trade),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final statusBarHeight = MediaQuery.of(context).padding.top;
     updateKeyboardVisibility(context);
+
+    final List<Widget> appBarActions = _selectedTab == 1
+        ? [
+            IconButton(
+              icon: Icon(
+                showSearchBar ? Icons.search_off : Icons.search,
+                size: 22,
+              ),
+              onPressed: toggleSearch,
+            ),
+            FilterBadge(
+              count: activeFilterCount,
+              child: IconButton(
+                icon: const Icon(Icons.filter_list, size: 22),
+                onPressed: openFilterPanel,
+              ),
+            ),
+          ]
+        : [];
 
     return Scaffold(
       backgroundColor:
@@ -94,119 +226,15 @@ class _TradesScreenState extends State<TradesScreen>
       body: Stack(
         children: [
           buildAuroraLayer(context),
-          StreamBuilder<List<TradeWithAsset>>(
-            stream: db.tradesDao.watchAllTrades(
-              searchQuery: searchQuery.isNotEmpty ? searchQuery : null,
-              filterRules: filterRules.isNotEmpty ? filterRules : null,
-            ),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (snapshot.hasError) {
-                showErrorDialog(context, l10n.errorLoadingData);
-              }
-              final tradesWithAssets = snapshot.data ?? [];
-              if (tradesWithAssets.isEmpty) {
-                return Center(
-                  child: Text(
-                    searchQuery.isNotEmpty || filterRules.isNotEmpty
-                        ? l10n.noMatchingBookings
-                        : l10n.noTrades,
-                  ),
-                );
-              }
-
-              return ListView.builder(
-                padding: EdgeInsets.only(
-                  top: statusBarHeight + kToolbarHeight + searchBarSpace,
-                  bottom: 92,
-                ),
-                itemCount: tradesWithAssets.length,
-                itemBuilder: (context, index) {
-                  final tradeWithAsset = tradesWithAssets[index];
-                  final trade = tradeWithAsset.trade;
-                  final asset = tradeWithAsset.asset;
-
-                  String rawDatetime = trade.datetime.toString();
-                  final datetime = DateTime.parse(
-                      '${rawDatetime.substring(0, 8)} ${rawDatetime.substring(8, 14)}');
-
-                  List<Text> subtitleWidgets = [
-                    Text(
-                        '${l10n.datetime}: ${dateTimeFormat.format(datetime)} Uhr'),
-                    Text(
-                        '${l10n.value}: ${formatCurrency(trade.targetAccountValueDelta.abs())}'),
-                    Text('${l10n.fee}: ${formatCurrency(trade.fee)}'),
-                    if (trade.type == TradeTypes.sell)
-                      Text('${l10n.tax}: ${formatCurrency(trade.tax)}'),
-                  ];
-
-                  if (trade.type == TradeTypes.sell) {
-                    final pnlColor =
-                    trade.profitAndLoss >= 0 ? Colors.green : Colors.red;
-
-                    subtitleWidgets.add(
-                      Text.rich(
-                        TextSpan(
-                          children: [
-                            TextSpan(text: '${l10n.profitAndLoss}: '),
-                            TextSpan(
-                              text: formatCurrency(trade.profitAndLoss),
-                              style: TextStyle(color: pnlColor),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                    subtitleWidgets.add(
-                      Text.rich(
-                        TextSpan(
-                          children: [
-                            TextSpan(text: '${l10n.returnOnInvestment}: '),
-                            TextSpan(
-                              text:
-                              '${formatter.format(trade.returnOnInvest * 100)} %',
-                              style: TextStyle(color: pnlColor),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }
-
-                  final titleText =
-                      '${trade.type.name.toUpperCase()} ${preciseDecimal(trade.shares)} ${asset.tickerSymbol} @ ${formatCurrency(trade.costBasis)}';
-
-                  if (trade.type == TradeTypes.sell) {
-                    return _SellTradeListItem(
-                      trade: trade,
-                      asset: asset,
-                      titleText: titleText,
-                      subtitleWidgets: subtitleWidgets,
-                      onTap: () => _showTradeForm(context, trade: trade),
-                      onLongPress: () =>
-                          showDeleteDialog(context, trade: trade),
-                      tradesDao: db.tradesDao,
-                    );
-                  }
-
-                  return ListTile(
-                    title: Text(titleText),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: subtitleWidgets,
-                    ),
-                    onTap: () => _showTradeForm(context, trade: trade),
-                    onLongPress: () => showDeleteDialog(context, trade: trade),
-                  );
-                },
-              );
-            },
+          IndexedStack(
+            index: _selectedTab,
+            children: [
+              const AnnualReportTab(),
+              _buildTradesList(context, l10n),
+            ],
           ),
 
-          // Search bar - overlay mode
-          if (showSearchBar)
+          if (showSearchBar && _selectedTab == 1)
             Positioned(
               top: statusBarHeight + kToolbarHeight + 8,
               left: 16,
@@ -219,7 +247,6 @@ class _TradesScreenState extends State<TradesScreen>
               ),
             ),
 
-          // Filter panel
           if (showFilterPanel)
             FilterPanel(
               config: buildTradeFilterConfig(l10n, db),
@@ -230,30 +257,37 @@ class _TradesScreenState extends State<TradesScreen>
 
           buildLiquidGlassAppBar(
             context,
-            title: Text(l10n.trades),
-            actions: [
-              IconButton(
-                icon: Icon(
-                  showSearchBar ? Icons.search_off : Icons.search,
-                  size: 22,
-                ),
-                onPressed: toggleSearch,
-              ),
-              FilterBadge(
-                count: activeFilterCount,
-                child: IconButton(
-                  icon: const Icon(Icons.filter_list, size: 22),
-                  onPressed: openFilterPanel,
-                ),
-              ),
-            ],
+            title: Text(_selectedTab == 0 ? l10n.annualReport : l10n.trades),
+            actions: appBarActions,
           ),
-          ValueListenableBuilder<bool>(
-            valueListenable: _navBarVisible,
-            builder: (context, visible, child) {
-              return visible ? child! : const SizedBox.shrink();
-            },
-            child: buildFAB(context: context, onTap: () => _showTradeForm(context)),
+          Positioned(
+            bottom: 16,
+            left: 8,
+            right: 8,
+            child: ValueListenableBuilder<bool>(
+              valueListenable: _navBarVisible,
+              builder: (context, visible, child) {
+                return visible
+                    ? RepaintBoundary(child: child!)
+                    : const SizedBox.shrink();
+              },
+              child: LiquidGlassBottomNav(
+                icons: const [
+                  Icons.bar_chart_outlined,
+                  Icons.swap_vert_outlined,
+                ],
+                labels: [l10n.annualReport, l10n.trades],
+                keys: const [Key('trades_nav_report'), Key('trades_nav_list')],
+                currentIndex: _selectedTab,
+                onTap: (i) => setState(() => _selectedTab = i),
+                onLeftTap: null,
+                leftVisibleForIndices: const {},
+                keepLeftPlaceholder: true,
+                rightIcon: Icons.add,
+                rightVisibleForIndices: const {1},
+                onRightTap: () => _showTradeForm(context),
+              ),
+            ),
           ),
         ],
       ),

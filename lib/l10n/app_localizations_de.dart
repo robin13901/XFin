@@ -837,6 +837,30 @@ class AppLocalizationsDe extends AppLocalizations {
   String get sharesRequired => 'Die Anteile dürfen nicht null sein';
 
   @override
+  String get annualReport => 'Jahresbericht';
+
+  @override
+  String get totalProfitAndLoss => 'Gesamt G&V';
+
+  @override
+  String get totalFees => 'Gesamtgebühren';
+
+  @override
+  String get totalBuys => 'Gesamte Käufe';
+
+  @override
+  String get totalSells => 'Gesamte Verkäufe';
+
+  @override
+  String get totalTradesVolume => 'Gesamtvolumen';
+
+  @override
+  String get tradeCount => 'Anzahl Trades';
+
+  @override
+  String get profitAndLossAbbrev => 'G&V';
+
+  @override
   String get fifoLots => 'Konsumierte Käufe';
 
   @override

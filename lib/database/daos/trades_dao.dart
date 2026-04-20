@@ -18,6 +18,42 @@ class TradeWithAsset {
   TradeWithAsset({required this.trade, required this.asset});
 }
 
+class AnnualReportData {
+  final List<double> monthlyPnL;
+  final List<int> monthlySellCount;
+  final List<int> monthlyBuyCount;
+  final double totalPnL;
+  final double totalFees;
+  final double totalBuyValue;
+  final double totalSellValue;
+  final int totalBuyCount;
+  final int totalSellCount;
+
+  const AnnualReportData({
+    required this.monthlyPnL,
+    required this.monthlySellCount,
+    required this.monthlyBuyCount,
+    required this.totalPnL,
+    required this.totalFees,
+    required this.totalBuyValue,
+    required this.totalSellValue,
+    required this.totalBuyCount,
+    required this.totalSellCount,
+  });
+
+  static const empty = AnnualReportData(
+    monthlyPnL: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    monthlySellCount: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    monthlyBuyCount: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    totalPnL: 0,
+    totalFees: 0,
+    totalBuyValue: 0,
+    totalSellValue: 0,
+    totalBuyCount: 0,
+    totalSellCount: 0,
+  );
+}
+
 @DriftAccessor(tables: [Trades, Assets])
 class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
   TradesDao(super.db);
@@ -308,5 +344,54 @@ class TradesDao extends DatabaseAccessor<AppDatabase> with _$TradesDaoMixin {
             (t) => OrderingTerm(expression: t.id),
           ]))
         .get();
+  }
+
+  Future<AnnualReportData> getAnnualReportData(int year) async {
+    final yearStart = year * 10000000000 + 101000000; // YYYYMMDDHHmmss
+    final yearEnd = year * 10000000000 + 1231235959;
+
+    final allTrades = await (select(trades)
+          ..where((t) =>
+              t.datetime.isBiggerOrEqualValue(yearStart) &
+              t.datetime.isSmallerOrEqualValue(yearEnd))
+          ..orderBy([(t) => OrderingTerm(expression: t.datetime)]))
+        .get();
+
+    final monthlyPnL = List<double>.filled(12, 0);
+    final monthlySellCount = List<int>.filled(12, 0);
+    final monthlyBuyCount = List<int>.filled(12, 0);
+    double totalPnL = 0, totalFees = 0, totalBuyValue = 0, totalSellValue = 0;
+    int totalBuyCount = 0, totalSellCount = 0;
+
+    for (final t in allTrades) {
+      final monthIndex = (t.datetime ~/ 100000000) % 100 - 1;
+      if (monthIndex < 0 || monthIndex > 11) continue;
+
+      totalFees += t.fee;
+
+      if (t.type == TradeTypes.sell) {
+        monthlyPnL[monthIndex] += t.profitAndLoss;
+        monthlySellCount[monthIndex]++;
+        totalPnL += t.profitAndLoss;
+        totalSellValue += t.targetAccountValueDelta.abs();
+        totalSellCount++;
+      } else {
+        monthlyBuyCount[monthIndex]++;
+        totalBuyValue += t.targetAccountValueDelta;
+        totalBuyCount++;
+      }
+    }
+
+    return AnnualReportData(
+      monthlyPnL: monthlyPnL,
+      monthlySellCount: monthlySellCount,
+      monthlyBuyCount: monthlyBuyCount,
+      totalPnL: totalPnL,
+      totalFees: totalFees,
+      totalBuyValue: totalBuyValue,
+      totalSellValue: totalSellValue,
+      totalBuyCount: totalBuyCount,
+      totalSellCount: totalSellCount,
+    );
   }
 }

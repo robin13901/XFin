@@ -1634,6 +1634,54 @@ abstract class AppLocalizations {
   /// **'Shares must not be zero'**
   String get sharesRequired;
 
+  /// No description provided for @annualReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Annual Report'**
+  String get annualReport;
+
+  /// No description provided for @totalProfitAndLoss.
+  ///
+  /// In en, this message translates to:
+  /// **'Total P&L'**
+  String get totalProfitAndLoss;
+
+  /// No description provided for @totalFees.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Fees'**
+  String get totalFees;
+
+  /// No description provided for @totalBuys.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Buys'**
+  String get totalBuys;
+
+  /// No description provided for @totalSells.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Sells'**
+  String get totalSells;
+
+  /// No description provided for @totalTradesVolume.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Volume'**
+  String get totalTradesVolume;
+
+  /// No description provided for @tradeCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Trade Count'**
+  String get tradeCount;
+
+  /// No description provided for @profitAndLossAbbrev.
+  ///
+  /// In en, this message translates to:
+  /// **'P&L'**
+  String get profitAndLossAbbrev;
+
   /// No description provided for @fifoLots.
   ///
   /// In en, this message translates to:
