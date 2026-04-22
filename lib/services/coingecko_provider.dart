@@ -74,7 +74,7 @@ class CoinGeckoProvider implements RestPriceProvider, SymbolSearchProvider {
     if (coins == null) return [];
 
     return coins.take(10).map((c) {
-      final item = c['item'] as Map<String, dynamic>;
+      final item = c as Map<String, dynamic>;
       return SymbolSearchResult(
         symbol: item['id'] as String? ?? '',
         name: item['name'] as String? ?? '',

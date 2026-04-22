@@ -83,11 +83,9 @@ void main() {
           jsonEncode({
             'coins': [
               {
-                'item': {
-                  'id': 'bitcoin',
-                  'name': 'Bitcoin',
-                  'symbol': 'BTC',
-                }
+                'id': 'bitcoin',
+                'name': 'Bitcoin',
+                'symbol': 'BTC',
               }
             ],
           }),

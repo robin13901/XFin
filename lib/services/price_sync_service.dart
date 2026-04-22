@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
 
 import '../database/app_database.dart';
 import '../database/daos/asset_prices_dao.dart';
@@ -38,7 +39,8 @@ class PriceSyncService {
       try {
         await _syncAsset(asset, yesterday);
         synced++;
-      } catch (_) {
+      } catch (e) {
+        debugPrint('Sync failed for ${asset.name}: $e');
         failed++;
       }
     }

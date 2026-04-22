@@ -11,6 +11,7 @@ import '../providers/theme_provider.dart';
 import '../utils/format.dart';
 import '../utils/global_constants.dart';
 import '../widgets/aurora_background.dart';
+import '../widgets/live_toggle_button.dart';
 import '../widgets/liquid_glass_widgets.dart';
 import 'calendar/calendar_data.dart';
 import 'calendar/day_details.dart';
@@ -339,7 +340,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               ],
             ),
           ),
-          buildLiquidGlassAppBar(context, title: Text(l10n.calendar)),
+          buildLiquidGlassAppBar(context, title: Text(l10n.calendar), actions: const [LiveToggleButton()]),
         ],
       ),
     );

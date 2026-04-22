@@ -39,7 +39,17 @@ class LiveToggleButton extends StatelessWidget {
                 ),
             ],
           ),
-          onPressed: () => provider.toggle(),
+          onPressed: () async {
+            await provider.toggle();
+            if (context.mounted && provider.lastError != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(provider.lastError!),
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+            }
+          },
           tooltip: isLive ? 'Live off' : 'Live on',
         );
       },

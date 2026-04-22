@@ -15,6 +15,7 @@ import '../widgets/analysis_line_chart_section.dart';
 import '../widgets/aurora_background.dart';
 import '../widgets/charts.dart';
 import '../widgets/common_widgets.dart';
+import '../widgets/live_toggle_button.dart';
 import '../widgets/liquid_glass_widgets.dart';
 import 'asset_analysis_detail_screen.dart';
 
@@ -245,7 +246,7 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
                   ],
                 ),
               ),
-              buildLiquidGlassAppBar(context, title: Text(data.account.name)),
+              buildLiquidGlassAppBar(context, title: Text(data.account.name), actions: const [LiveToggleButton()]),
             ],
           );
         },

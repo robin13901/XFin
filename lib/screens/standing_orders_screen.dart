@@ -12,6 +12,7 @@ import '../widgets/aurora_background.dart';
 import '../widgets/dialogs.dart';
 import '../widgets/forms/periodic_booking_form.dart';
 import '../widgets/forms/periodic_transfer_form.dart';
+import '../widgets/live_toggle_button.dart';
 import '../widgets/liquid_glass_widgets.dart';
 
 class StandingOrdersScreen extends StatefulWidget {
@@ -220,7 +221,7 @@ class _StandingOrdersScreenState extends State<StandingOrdersScreen>
               ),
             ],
           ),
-          buildLiquidGlassAppBar(context, title: Text(l10n.standingOrders)),
+          buildLiquidGlassAppBar(context, title: Text(l10n.standingOrders), actions: const [LiveToggleButton()]),
           Positioned(
             bottom: 16,
             left: 8,

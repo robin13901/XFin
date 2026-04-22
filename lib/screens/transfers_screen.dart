@@ -16,6 +16,7 @@ import '../widgets/filter/filter_badge.dart';
 import '../widgets/filter/filter_panel.dart';
 import '../widgets/filter/liquid_glass_search_bar.dart';
 import '../widgets/forms/transfer_form.dart';
+import '../widgets/live_toggle_button.dart';
 import '../widgets/liquid_glass_widgets.dart';
 
 class TransfersScreen extends StatefulWidget {
@@ -190,6 +191,7 @@ class _TransfersScreenState extends State<TransfersScreen>
             context,
             title: Text(l10n.transfers),
             actions: [
+              const LiveToggleButton(),
               IconButton(
                 icon: Icon(
                   showSearchBar ? Icons.search_off : Icons.search,

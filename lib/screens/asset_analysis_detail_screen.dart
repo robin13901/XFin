@@ -13,6 +13,7 @@ import '../widgets/analysis_line_chart_section.dart';
 import '../widgets/aurora_background.dart';
 import '../widgets/charts.dart';
 import '../widgets/common_widgets.dart';
+import '../widgets/live_toggle_button.dart';
 import '../widgets/liquid_glass_widgets.dart';
 
 class AssetAnalysisDetailScreen extends StatefulWidget {
@@ -158,7 +159,7 @@ class _AssetAnalysisDetailScreenState extends State<AssetAnalysisDetailScreen> {
                   ],
                 ),
               ),
-              buildLiquidGlassAppBar(context, title: Text(data.asset.name)),
+              buildLiquidGlassAppBar(context, title: Text(data.asset.name), actions: const [LiveToggleButton()]),
             ],
           );
         },

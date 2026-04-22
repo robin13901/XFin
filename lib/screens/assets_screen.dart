@@ -12,11 +12,13 @@ import '../models/filter/asset_filter_config.dart';
 import '../mixins/nav_bar_visibility_mixin.dart';
 import '../mixins/search_filter_mixin.dart';
 import '../providers/database_provider.dart';
+import '../providers/live_price_provider.dart';
 import '../providers/theme_provider.dart';
 import '../widgets/aurora_background.dart';
 import '../widgets/filter/filter_badge.dart';
 import '../widgets/filter/filter_panel.dart';
 import '../widgets/filter/liquid_glass_search_bar.dart';
+import '../widgets/live_toggle_button.dart';
 import '../widgets/liquid_glass_widgets.dart';
 import 'asset_analysis_detail_screen.dart';
 
@@ -311,7 +313,15 @@ class _AssetsScreenState extends State<AssetsScreen>
             bottom: 96,
           ),
           children: [
-            ...assets.map((asset) => ListTile(
+            ...assets.map((asset) {
+                  final liveProvider = context.watch<LivePriceProvider>();
+                  final livePrice = liveProvider.isLive
+                      ? liveProvider.getLivePrice(asset.id)
+                      : null;
+                  final displayValue = livePrice != null
+                      ? livePrice * asset.shares
+                      : asset.value;
+                  return ListTile(
                   title: Text(asset.name),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -325,12 +335,18 @@ class _AssetsScreenState extends State<AssetsScreen>
                           Text('${l10n.brokerCostBasis}: ${formatCurrency(asset.brokerCostBasis)}'),
                         ],
                       ],
-                      Text('${l10n.value}: ${formatCurrency(asset.value)}'),
+                      Text(
+                        '${l10n.value}: ${formatCurrency(displayValue)}',
+                        style: livePrice != null
+                            ? const TextStyle(color: Colors.green)
+                            : null,
+                      ),
                     ],
                   ),
                   trailing: Text(getAssetTypeName(l10n, asset.type)),
+                  onTap: () => _showAssetForm(context, asset: asset),
                   onLongPress: () => _handleLongPress(context, _db, asset, l10n),
-                )),
+                );}),
             StreamBuilder<List<Asset>>(
               stream: _db.assetsDao.watchArchivedAssets(),
               builder: (context, archivedSnapshot) {
@@ -366,8 +382,9 @@ class _AssetsScreenState extends State<AssetsScreen>
     updateKeyboardVisibility(context);
 
     // Build app bar actions based on selected tab
-    final List<Widget> appBarActions = _selectedTab == 1
-        ? [
+    final List<Widget> appBarActions = [
+      const LiveToggleButton(),
+      if (_selectedTab == 1) ...[
             IconButton(
               icon: Icon(
                 showSearchBar ? Icons.search_off : Icons.search,
@@ -382,8 +399,8 @@ class _AssetsScreenState extends State<AssetsScreen>
                 onPressed: openFilterPanel,
               ),
             ),
-          ]
-        : [];
+          ],
+    ];
 
     return Scaffold(
       backgroundColor:

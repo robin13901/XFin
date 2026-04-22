@@ -47,8 +47,9 @@ void main() async {
   final currencyProvider = BaseCurrencyProvider();
   await currencyProvider.initialize(languageProvider.appLocale);
 
-  // LivePriceProvider initialization (non-blocking, runs in background).
-  LivePriceProvider.instance
+  // LivePriceProvider initialization — must complete before UI needs it.
+  // The internal HTTP call has a 5s timeout so this won't freeze the app.
+  await LivePriceProvider.instance
       .initialize(initialDb, currencyProvider.tickerSymbol ?? 'EUR');
 
   runApp(

@@ -32,6 +32,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Asset? _baseCurrencyAsset;
   final _finnhubController = TextEditingController();
   final _twelveDataController = TextEditingController();
+  int _syncCurrent = 0;
+  int _syncTotal = 0;
+  String _syncAssetName = '';
 
   @override
   void initState() {
@@ -398,26 +401,98 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.sync),
-                      label: const Text('Historische Preise synchronisieren'),
-                      onPressed: () async {
-                        final lp = context.read<LivePriceProvider>();
-                        final messenger = ScaffoldMessenger.of(context);
-                        final result = await lp.syncHistoricalPrices();
-                        if (mounted && result != null) {
-                          messenger.showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                  '${result.synced}/${result.total} Assets synchronisiert'
-                                  '${result.failed > 0 ? ', ${result.failed} fehlgeschlagen' : ''}'),
-                            ),
-                          );
-                        }
-                      },
-                    ),
+                  Consumer<LivePriceProvider>(
+                    builder: (context, lp, _) {
+                      if (lp.isSyncing) {
+                        final progress = _syncTotal > 0
+                            ? _syncCurrent / _syncTotal
+                            : 0.0;
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Synchronisiere $_syncAssetName '
+                                      '($_syncCurrent/$_syncTotal)',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              LinearProgressIndicator(value: progress),
+                            ],
+                          ),
+                        );
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.sync),
+                          label: const Text(
+                              'Historische Preise synchronisieren'),
+                          onPressed: () async {
+                            final messenger =
+                                ScaffoldMessenger.of(context);
+                            final result =
+                                await lp.syncHistoricalPrices(
+                              onProgress: (current, total, name) {
+                                if (mounted) {
+                                  setState(() {
+                                    _syncCurrent = current;
+                                    _syncTotal = total;
+                                    _syncAssetName = name;
+                                  });
+                                }
+                              },
+                            );
+                            if (mounted && result != null) {
+                              if (result.total == 0) {
+                                messenger.showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        'Keine Assets mit API-Identifier gefunden. '
+                                        'Bitte zuerst bei den Assets den API-Identifier pflegen.'),
+                                    duration: Duration(seconds: 5),
+                                  ),
+                                );
+                              } else {
+                                messenger.showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                        '${result.synced}/${result.total} Assets synchronisiert'
+                                        '${result.failed > 0 ? ', ${result.failed} fehlgeschlagen' : ''}'),
+                                  ),
+                                );
+                              }
+                            } else if (mounted && result == null) {
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                      'Fehler: Sync-Service nicht initialisiert. '
+                                      'Bitte App neu starten.'),
+                                  duration: Duration(seconds: 5),
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                      );
+                    },
                   ),
                   const SizedBox(height: 12),
                 ],

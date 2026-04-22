@@ -18,6 +18,8 @@ class AssetForm extends StatefulWidget {
 
   const AssetForm({super.key, this.asset});
 
+  bool get isEditing => asset != null;
+
   @override
   State<AssetForm> createState() => _AssetFormState();
 }
@@ -40,6 +42,7 @@ class _AssetFormState extends State<AssetForm> {
   late List<String> _existingTickerSymbols;
   List<SymbolSearchResult> _searchResults = [];
   Timer? _debounceTimer;
+  bool _isSearching = false;
 
   @override
   void didChangeDependencies() {
@@ -85,8 +88,6 @@ class _AssetFormState extends State<AssetForm> {
     });
   }
 
-
-
   @override
   void dispose() {
     _nameController.dispose();
@@ -100,21 +101,35 @@ class _AssetFormState extends State<AssetForm> {
   void _onApiIdentifierSearch(String query) {
     _debounceTimer?.cancel();
     if (query.length < 2) {
-      setState(() => _searchResults = []);
+      setState(() {
+        _searchResults = [];
+        _isSearching = false;
+      });
       return;
     }
-    _debounceTimer = Timer(const Duration(milliseconds: 300), () async {
-      final priceService =
-          context.read<LivePriceProvider>().priceService;
-      if (priceService == null) return;
-      final results = await priceService.searchSymbols(query, _type);
-      if (mounted) setState(() => _searchResults = results);
+    setState(() => _isSearching = true);
+    _debounceTimer = Timer(const Duration(milliseconds: 400), () async {
+      final priceService = context.read<LivePriceProvider>().priceService;
+      if (priceService == null) {
+        if (mounted) setState(() => _isSearching = false);
+        return;
+      }
+      try {
+        final results = await priceService.searchSymbols(query, _type);
+        if (mounted) {
+          setState(() {
+            _searchResults = results;
+            _isSearching = false;
+          });
+        }
+      } catch (_) {
+        if (mounted) setState(() => _isSearching = false);
+      }
     });
   }
 
   Future<void> _saveForm() async {
     if (_formKey.currentState!.validate()) {
-      // Get input values from form
       final name = _nameController.text.trim();
       final tickerSymbol = _tickerSymbolController.text.trim();
       var currencySymbol =
@@ -123,16 +138,26 @@ class _AssetFormState extends State<AssetForm> {
               : null;
       if (currencySymbol == "") currencySymbol = null;
 
-      var apiIdentifier = _apiIdentifierController.text.trim();
+      final apiId = _apiIdentifierController.text.trim();
+      final apiIdentifier = apiId.isEmpty ? null : apiId;
 
-      // Insert and pop
-      await _db.assetsDao.insert(AssetsCompanion.insert(
+      if (widget.isEditing) {
+        await _db.assetsDao.updateMetadata(
+          widget.asset!.id,
           name: name,
-          type: _type,
           tickerSymbol: tickerSymbol,
-          currencySymbol: drift.Value(currencySymbol),
-          apiIdentifier:
-              drift.Value(apiIdentifier.isEmpty ? null : apiIdentifier)));
+          currencySymbol: currencySymbol,
+          apiIdentifier: apiIdentifier,
+          type: _type,
+        );
+      } else {
+        await _db.assetsDao.insert(AssetsCompanion.insert(
+            name: name,
+            type: _type,
+            tickerSymbol: tickerSymbol,
+            currencySymbol: drift.Value(currencySymbol),
+            apiIdentifier: drift.Value(apiIdentifier)));
+      }
       if (mounted) Navigator.of(context).pop();
     }
   }
@@ -141,6 +166,8 @@ class _AssetFormState extends State<AssetForm> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final validator = Validator(l10n);
+    final isEditing = widget.isEditing;
+
     return BottomInsetPadding(
       child: SingleChildScrollView(
         child: Padding(
@@ -164,8 +191,12 @@ class _AssetFormState extends State<AssetForm> {
                 _formFields.assetTypeDropdown(
                   value: _type,
                   onChanged: (value) {
-                    if (value != null) {
-                      setState(() => _type = value);
+                    if (value != null && !isEditing) {
+                      setState(() {
+                        _type = value;
+                        _searchResults = [];
+                        _apiIdentifierController.clear();
+                      });
                     }
                   },
                 ),
@@ -202,56 +233,7 @@ class _AssetFormState extends State<AssetForm> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                _formFields.basicTextField(
-                  key: const Key('api_identifier_field'),
-                  controller: _apiIdentifierController,
-                  label: 'API-Identifier (Live-Preis)',
-                  onChanged: _onApiIdentifierSearch,
-                ),
-                if (_searchResults.isNotEmpty)
-                  Container(
-                    constraints: const BoxConstraints(maxHeight: 150),
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: _searchResults.length,
-                      itemBuilder: (context, index) {
-                        final result = _searchResults[index];
-                        return ListTile(
-                          dense: true,
-                          title: Text(result.name),
-                          subtitle: Text(
-                            '${result.symbol}'
-                            '${result.exchange != null ? ' (${result.exchange})' : ''}',
-                          ),
-                          onTap: () {
-                            _apiIdentifierController.text = result.symbol;
-                            setState(() => _searchResults = []);
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                if (_apiIdentifierController.text.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Row(
-                      children: [
-                        Icon(Icons.info_outline,
-                            size: 14, color: Theme.of(context).hintColor),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            _type == AssetTypes.crypto
-                                ? 'z.B. "bitcoin", "solana" (CoinGecko-ID)'
-                                : _type == AssetTypes.fiat
-                                    ? 'z.B. "USD", "CHF" (ISO 4217)'
-                                    : 'z.B. "AAPL", "IWDA.AS" (Ticker)',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                _buildApiIdentifierField(),
                 const SizedBox(height: 16),
                 _formFields.footerButtons(context, _saveForm),
               ],
@@ -259,6 +241,88 @@ class _AssetFormState extends State<AssetForm> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildApiIdentifierField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextFormField(
+          key: const Key('api_identifier_field'),
+          controller: _apiIdentifierController,
+          decoration: InputDecoration(
+            labelText: 'API-Identifier (Live-Preis)',
+            border: const OutlineInputBorder(),
+            suffixIcon: _isSearching
+                ? const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                : _apiIdentifierController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _apiIdentifierController.clear();
+                          setState(() => _searchResults = []);
+                        },
+                      )
+                    : null,
+            helperText: _type == AssetTypes.crypto
+                ? 'Suche nach Crypto-Name (z.B. "Bitcoin")'
+                : _type == AssetTypes.fiat
+                    ? 'ISO-Code eingeben (z.B. "USD", "CHF")'
+                    : 'Suche nach Aktie/ETF (z.B. "Apple", "MSCI")',
+            helperMaxLines: 2,
+          ),
+          onChanged: _onApiIdentifierSearch,
+        ),
+        if (_searchResults.isNotEmpty)
+          Container(
+            margin: const EdgeInsets.only(top: 4),
+            constraints: const BoxConstraints(maxHeight: 180),
+            decoration: BoxDecoration(
+              border: Border.all(color: Theme.of(context).dividerColor),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: ListView.separated(
+              shrinkWrap: true,
+              padding: EdgeInsets.zero,
+              itemCount: _searchResults.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                final result = _searchResults[index];
+                return ListTile(
+                  dense: true,
+                  leading: Icon(
+                    _type == AssetTypes.crypto
+                        ? Icons.currency_bitcoin
+                        : Icons.show_chart,
+                    size: 20,
+                  ),
+                  title: Text(result.name, overflow: TextOverflow.ellipsis),
+                  subtitle: Text(
+                    result.symbol +
+                        (result.exchange != null
+                            ? ' · ${result.exchange}'
+                            : '') +
+                        (result.type != null ? ' · ${result.type}' : ''),
+                    style: Theme.of(context).textTheme.bodySmall,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onTap: () {
+                    _apiIdentifierController.text = result.symbol;
+                    setState(() => _searchResults = []);
+                  },
+                );
+              },
+            ),
+          ),
+      ],
     );
   }
 }

@@ -151,6 +151,24 @@ class AssetsDao extends DatabaseAccessor<AppDatabase> with _$AssetsDaoMixin {
 
   Future<int> insert(AssetsCompanion entry) => into(assets).insert(entry);
 
+  Future<int> updateMetadata(int assetId, {
+    String? name,
+    String? tickerSymbol,
+    String? currencySymbol,
+    String? apiIdentifier,
+    AssetTypes? type,
+  }) {
+    return (update(assets)..where((t) => t.id.equals(assetId))).write(
+      AssetsCompanion(
+        name: name != null ? Value(name) : const Value.absent(),
+        tickerSymbol: tickerSymbol != null ? Value(tickerSymbol) : const Value.absent(),
+        currencySymbol: Value(currencySymbol),
+        apiIdentifier: Value(apiIdentifier),
+        type: type != null ? Value(type) : const Value.absent(),
+      ),
+    );
+  }
+
   Future<void> deleteAsset(int assetId) {
     return transaction(() async {
       await (delete(assetsOnAccounts)

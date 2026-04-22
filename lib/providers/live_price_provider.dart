@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../database/app_database.dart';
@@ -19,12 +20,14 @@ class LivePriceProvider with ChangeNotifier {
   bool _isLive = false;
   bool _isConnected = false;
   bool _isSyncing = false;
+  String? _lastError;
   final Map<int, double> _livePrices = {};
   StreamSubscription? _priceSubscription;
 
   bool get isLive => _isLive;
   bool get isConnected => _isConnected;
   bool get isSyncing => _isSyncing;
+  String? get lastError => _lastError;
   Map<int, double> get livePrices => Map.unmodifiable(_livePrices);
 
   PriceService? get priceService => _priceService;
@@ -39,6 +42,7 @@ class LivePriceProvider with ChangeNotifier {
       priceService: _priceService!,
       baseCurrency: baseCurrency,
     );
+    debugPrint('LivePriceProvider initialized (baseCurrency=$baseCurrency)');
   }
 
   double? getLivePrice(int assetId) => _livePrices[assetId];
@@ -58,14 +62,21 @@ class LivePriceProvider with ChangeNotifier {
   }
 
   Future<void> _startLive() async {
-    if (_db == null || _priceService == null) return;
+    if (_db == null || _priceService == null) {
+      _lastError = 'Service nicht initialisiert';
+      notifyListeners();
+      return;
+    }
 
     _isLive = true;
+    _lastError = null;
     notifyListeners();
 
     final assets = await _db!.assetPricesDao.getAssetsWithApiIdentifier();
+    debugPrint('Live: found ${assets.length} assets with apiIdentifier');
     if (assets.isEmpty) {
       _isLive = false;
+      _lastError = 'Keine Assets mit API-Identifier gefunden';
       notifyListeners();
       return;
     }
@@ -81,15 +92,23 @@ class LivePriceProvider with ChangeNotifier {
     _priceSubscription = _priceService!.livePriceUpdates.listen((prices) {
       _livePrices.addAll(prices);
       _isConnected = true;
+      debugPrint('Live prices updated: ${prices.length} assets');
       notifyListeners();
     });
 
-    await _priceService!.startLiveStreams(requests, _baseCurrency);
+    try {
+      await _priceService!.startLiveStreams(requests, _baseCurrency);
+    } catch (e) {
+      debugPrint('Live stream error: $e');
+      _lastError = e.toString();
+      notifyListeners();
+    }
   }
 
   Future<void> _stopLive() async {
     _isLive = false;
     _isConnected = false;
+    _lastError = null;
     _livePrices.clear();
     await _priceSubscription?.cancel();
     _priceSubscription = null;
@@ -100,15 +119,23 @@ class LivePriceProvider with ChangeNotifier {
   Future<SyncProgress?> syncHistoricalPrices({
     void Function(int current, int total, String assetName)? onProgress,
   }) async {
-    if (_priceSyncService == null) return null;
+    if (_priceSyncService == null) {
+      debugPrint('syncHistoricalPrices: _priceSyncService is null');
+      return null;
+    }
 
     _isSyncing = true;
     notifyListeners();
 
     try {
+      debugPrint('Starting historical price sync...');
       final result =
           await _priceSyncService!.syncAllAssets(onProgress: onProgress);
+      debugPrint('Sync done: ${result.synced}/${result.total} synced, ${result.failed} failed');
       return result;
+    } catch (e) {
+      debugPrint('Sync error: $e');
+      return null;
     } finally {
       _isSyncing = false;
       notifyListeners();

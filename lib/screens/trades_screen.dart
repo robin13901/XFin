@@ -20,6 +20,7 @@ import '../widgets/filter/filter_badge.dart';
 import '../widgets/filter/filter_panel.dart';
 import '../widgets/filter/liquid_glass_search_bar.dart';
 import '../widgets/forms/trade_form.dart';
+import '../widgets/live_toggle_button.dart';
 import '../widgets/liquid_glass_widgets.dart';
 
 class TradesScreen extends StatefulWidget {
@@ -201,8 +202,9 @@ class _TradesScreenState extends State<TradesScreen>
     final statusBarHeight = MediaQuery.of(context).padding.top;
     updateKeyboardVisibility(context);
 
-    final List<Widget> appBarActions = _selectedTab == 1
-        ? [
+    final List<Widget> appBarActions = [
+      const LiveToggleButton(),
+      if (_selectedTab == 1) ...[
             IconButton(
               icon: Icon(
                 showSearchBar ? Icons.search_off : Icons.search,
@@ -217,8 +219,8 @@ class _TradesScreenState extends State<TradesScreen>
                 onPressed: openFilterPanel,
               ),
             ),
-          ]
-        : [];
+          ],
+    ];
 
     return Scaffold(
       backgroundColor:
