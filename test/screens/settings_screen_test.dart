@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:xfin/providers/live_price_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:xfin/database/app_database.dart';
@@ -79,6 +80,7 @@ void main() {
             ChangeNotifierProvider.value(value: languageProvider),
             ChangeNotifierProvider.value(value: DatabaseProvider.instance),
             ChangeNotifierProvider.value(value: baseCurrencyProvider),
+            ChangeNotifierProvider.value(value: LivePriceProvider.instance),
           ],
           child: Consumer<LanguageProvider>(
             builder: (context, languageProvider, child) {
@@ -335,6 +337,13 @@ void main() {
 
     testWidgets('displays base currency information', (WidgetTester tester) async {
       await pumpSettingsScreen(tester);
+
+      // Scroll down to make the base currency section visible
+      await tester.scrollUntilVisible(
+        find.text(l10n.baseCurrency),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
 
       // Check that the base currency label is displayed
       expect(find.text(l10n.baseCurrency), findsOneWidget);

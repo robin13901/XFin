@@ -138,6 +138,7 @@ mixin TextFieldsMixin {
     int maxLines = 1,
     TextInputType? keyboardType,
     String? suffixText,
+    ValueChanged<String>? onChanged,
   }) {
     return TextFormField(
       key: key,
@@ -151,6 +152,7 @@ mixin TextFieldsMixin {
       maxLines: maxLines,
       keyboardType: keyboardType,
       validator: validator,
+      onChanged: onChanged,
     );
   }
 

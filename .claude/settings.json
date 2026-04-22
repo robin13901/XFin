@@ -73,7 +73,18 @@
       "Bash(powershell.exe -Command \"Get-AppxPackage *apple* | Select-Object Name,InstallLocation\")",
       "Bash(powershell.exe -Command \"Get-Service *apple* | Format-Table Name,Status,DisplayName -AutoSize\")",
       "Bash(powershell.exe -Command \"Get-Service *mobile* | Format-Table Name,Status,DisplayName -AutoSize\")",
-      "Bash(find /c/SAPDevelop/Privat/XFin/lib -name \"*.dart\" -exec grep -l \"textScaleFactor\\\\|scaleFactor\\\\|Theme.of\\\\|typography\\\\|TextTheme\" {} \\\\;)"
+      "Bash(find /c/SAPDevelop/Privat/XFin/lib -name \"*.dart\" -exec grep -l \"textScaleFactor\\\\|scaleFactor\\\\|Theme.of\\\\|typography\\\\|TextTheme\" {} \\\\;)",
+      "Bash(grep \"\\\\.dart$\")",
+      "WebFetch(domain:query1.finance.yahoo.com)",
+      "WebFetch(domain:pub.dev)",
+      "Bash(xargs -I {} bash -c 'echo \"=== {} ===\" && grep -A 10 \"AppBar\" {}')",
+      "WebFetch(domain:site.financialmodelingprep.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:www.alphavantage.co)",
+      "WebFetch(domain:en.wikipedia.org)",
+      "WebFetch(domain:finnhub.io)",
+      "WebFetch(domain:twelvedata.com)",
+      "Bash(dart run *)"
     ]
   }
 }

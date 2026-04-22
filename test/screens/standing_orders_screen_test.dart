@@ -1,3 +1,4 @@
+import 'package:xfin/providers/live_price_provider.dart';
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -95,6 +96,7 @@ void main() {
             value: DatabaseProvider.instance,
           ),
           ChangeNotifierProvider<ThemeProvider>.value(value: ThemeProvider.instance),
+          ChangeNotifierProvider<LivePriceProvider>.value(value: LivePriceProvider.instance),
         ],
         child: const MaterialApp(
           localizationsDelegates: [

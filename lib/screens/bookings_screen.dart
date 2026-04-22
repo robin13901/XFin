@@ -21,6 +21,7 @@ import '../widgets/filter/filter_panel.dart';
 import '../widgets/filter/liquid_glass_search_bar.dart';
 import '../widgets/forms/booking_form.dart';
 import '../widgets/liquid_glass_widgets.dart';
+import '../widgets/live_toggle_button.dart';
 
 class BookingsScreen extends StatefulWidget {
   const BookingsScreen({super.key});
@@ -347,6 +348,7 @@ class BookingsScreenState extends State<BookingsScreen>
             title: Text(l10n.bookings),
             showBackButton: false,
             actions: [
+              const LiveToggleButton(),
               IconButton(
                 icon: Icon(
                   showSearchBar ? Icons.search_off : Icons.search,

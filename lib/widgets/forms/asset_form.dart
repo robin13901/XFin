@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
+import 'package:xfin/providers/live_price_provider.dart';
+import 'package:xfin/services/price_provider.dart';
 
 import '../../providers/database_provider.dart';
 import '../../utils/validators.dart';
@@ -30,9 +34,12 @@ class _AssetFormState extends State<AssetForm> {
   late TextEditingController _nameController;
   late TextEditingController _tickerSymbolController;
   late TextEditingController _currencySymbolController;
+  late TextEditingController _apiIdentifierController;
   late AssetTypes _type;
   late List<String> _existingAssetNames;
   late List<String> _existingTickerSymbols;
+  List<SymbolSearchResult> _searchResults = [];
+  Timer? _debounceTimer;
 
   @override
   void didChangeDependencies() {
@@ -56,6 +63,8 @@ class _AssetFormState extends State<AssetForm> {
         TextEditingController(text: widget.asset?.tickerSymbol);
     _currencySymbolController =
         TextEditingController(text: widget.asset?.currencySymbol);
+    _apiIdentifierController =
+        TextEditingController(text: widget.asset?.apiIdentifier);
 
     _type = widget.asset?.type ?? AssetTypes.stock;
     _existingAssetNames = [];
@@ -83,7 +92,24 @@ class _AssetFormState extends State<AssetForm> {
     _nameController.dispose();
     _tickerSymbolController.dispose();
     _currencySymbolController.dispose();
+    _apiIdentifierController.dispose();
+    _debounceTimer?.cancel();
     super.dispose();
+  }
+
+  void _onApiIdentifierSearch(String query) {
+    _debounceTimer?.cancel();
+    if (query.length < 2) {
+      setState(() => _searchResults = []);
+      return;
+    }
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () async {
+      final priceService =
+          context.read<LivePriceProvider>().priceService;
+      if (priceService == null) return;
+      final results = await priceService.searchSymbols(query, _type);
+      if (mounted) setState(() => _searchResults = results);
+    });
   }
 
   Future<void> _saveForm() async {
@@ -97,12 +123,16 @@ class _AssetFormState extends State<AssetForm> {
               : null;
       if (currencySymbol == "") currencySymbol = null;
 
+      var apiIdentifier = _apiIdentifierController.text.trim();
+
       // Insert and pop
       await _db.assetsDao.insert(AssetsCompanion.insert(
           name: name,
           type: _type,
           tickerSymbol: tickerSymbol,
-          currencySymbol: drift.Value(currencySymbol)));
+          currencySymbol: drift.Value(currencySymbol),
+          apiIdentifier:
+              drift.Value(apiIdentifier.isEmpty ? null : apiIdentifier)));
       if (mounted) Navigator.of(context).pop();
     }
   }
@@ -171,6 +201,57 @@ class _AssetFormState extends State<AssetForm> {
                     ],
                   ],
                 ),
+                const SizedBox(height: 16),
+                _formFields.basicTextField(
+                  key: const Key('api_identifier_field'),
+                  controller: _apiIdentifierController,
+                  label: 'API-Identifier (Live-Preis)',
+                  onChanged: _onApiIdentifierSearch,
+                ),
+                if (_searchResults.isNotEmpty)
+                  Container(
+                    constraints: const BoxConstraints(maxHeight: 150),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: _searchResults.length,
+                      itemBuilder: (context, index) {
+                        final result = _searchResults[index];
+                        return ListTile(
+                          dense: true,
+                          title: Text(result.name),
+                          subtitle: Text(
+                            '${result.symbol}'
+                            '${result.exchange != null ? ' (${result.exchange})' : ''}',
+                          ),
+                          onTap: () {
+                            _apiIdentifierController.text = result.symbol;
+                            setState(() => _searchResults = []);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                if (_apiIdentifierController.text.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline,
+                            size: 14, color: Theme.of(context).hintColor),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            _type == AssetTypes.crypto
+                                ? 'z.B. "bitcoin", "solana" (CoinGecko-ID)'
+                                : _type == AssetTypes.fiat
+                                    ? 'z.B. "USD", "CHF" (ISO 4217)'
+                                    : 'z.B. "AAPL", "IWDA.AS" (Ticker)',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 const SizedBox(height: 16),
                 _formFields.footerButtons(context, _saveForm),
               ],

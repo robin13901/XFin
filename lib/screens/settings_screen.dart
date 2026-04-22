@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:xfin/providers/language_provider.dart';
+import 'package:xfin/providers/live_price_provider.dart';
 import 'package:xfin/providers/theme_provider.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 
@@ -29,6 +30,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late DateTime? _startDate, _endDate;
   late bool _isSinceStartSelected, _isTodaySelected;
   Asset? _baseCurrencyAsset;
+  final _finnhubController = TextEditingController();
+  final _twelveDataController = TextEditingController();
 
   @override
   void initState() {
@@ -40,6 +43,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _isTodaySelected = _endDate == null;
 
     _loadBaseCurrency();
+    _loadApiKeys();
+  }
+
+  Future<void> _loadApiKeys() async {
+    final prefs = await SharedPreferences.getInstance();
+    _finnhubController.text = prefs.getString('finnhub_api_key') ?? '';
+    _twelveDataController.text = prefs.getString('twelve_data_api_key') ?? '';
+  }
+
+  Future<void> _saveApiKey(String key, String value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(key, value);
   }
 
   Future<void> _loadBaseCurrency() async {
@@ -317,6 +332,94 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: Text(l10n.importDatabase),
                     onTap: () => _importDb(context, l10n),
                   ),
+                ],
+              ),
+
+              SizedBox(height: showAurora ? 14 : 0),
+              if (!showAurora) const Divider(),
+
+              // ── Live Prices ──
+              _wrapCard(
+                showAurora: showAurora,
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.cell_tower),
+                    title: const Text('Live-Preise'),
+                    subtitle: Consumer<LivePriceProvider>(
+                      builder: (context, lp, _) => Text(
+                        lp.isSyncing
+                            ? 'Synchronisiere...'
+                            : 'API-Keys für Echtzeit-Kurse',
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: TextField(
+                      controller: _finnhubController,
+                      decoration: const InputDecoration(
+                        labelText: 'Finnhub API-Key',
+                        helperText: 'Kostenlos auf finnhub.io registrieren',
+                        helperMaxLines: 2,
+                        prefixIcon: Icon(Icons.key),
+                      ),
+                      onChanged: (v) => _saveApiKey('finnhub_api_key', v),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: TextField(
+                      controller: _twelveDataController,
+                      decoration: const InputDecoration(
+                        labelText: 'Twelve Data API-Key',
+                        helperText:
+                            'Kostenlos auf twelvedata.com registrieren',
+                        helperMaxLines: 2,
+                        prefixIcon: Icon(Icons.key),
+                      ),
+                      onChanged: (v) =>
+                          _saveApiKey('twelve_data_api_key', v),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        Icon(Icons.check_circle, color: Colors.green, size: 16),
+                        SizedBox(width: 4),
+                        Text('CoinGecko (Crypto)'),
+                        SizedBox(width: 12),
+                        Icon(Icons.check_circle, color: Colors.green, size: 16),
+                        SizedBox(width: 4),
+                        Text('Frankfurter (Forex)'),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.sync),
+                      label: const Text('Historische Preise synchronisieren'),
+                      onPressed: () async {
+                        final lp = context.read<LivePriceProvider>();
+                        final messenger = ScaffoldMessenger.of(context);
+                        final result = await lp.syncHistoricalPrices();
+                        if (mounted && result != null) {
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                  '${result.synced}/${result.total} Assets synchronisiert'
+                                  '${result.failed > 0 ? ', ${result.failed} fehlgeschlagen' : ''}'),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                 ],
               ),
 

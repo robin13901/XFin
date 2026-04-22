@@ -17,6 +17,7 @@ import '../widgets/filter/filter_badge.dart';
 import '../widgets/filter/filter_panel.dart';
 import '../widgets/filter/liquid_glass_search_bar.dart';
 import '../widgets/liquid_glass_widgets.dart';
+import '../widgets/live_toggle_button.dart';
 import 'account_detail_screen.dart';
 
 class AccountsScreen extends StatefulWidget {
@@ -287,6 +288,7 @@ class _AccountsScreenState extends State<AccountsScreen>
             title: Text(l10n.accounts),
             showBackButton: false,
             actions: [
+              const LiveToggleButton(),
               IconButton(
                 icon: Icon(
                   showSearchBar ? Icons.search_off : Icons.search,

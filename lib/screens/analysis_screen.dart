@@ -15,6 +15,8 @@ import '../widgets/aurora_background.dart';
 import '../widgets/category_widgets.dart';
 import '../widgets/common_widgets.dart';
 import '../widgets/inflow_outflow_toggle.dart';
+import '../widgets/liquid_glass_widgets.dart';
+import '../widgets/live_toggle_button.dart';
 import '../widgets/summary_row.dart';
 
 // A data class to hold all asynchronous results needed by AnalysisScreen
@@ -197,7 +199,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             child: Padding(
               padding: EdgeInsets.fromLTRB(
                 showAurora ? 10 : 8,
-                56,
+                MediaQuery.of(context).padding.top + kToolbarHeight + 12,
                 showAurora ? 10 : 8,
                 16,
               ),
@@ -274,6 +276,12 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           );
         },
       ),
+          buildLiquidGlassAppBar(
+            context,
+            title: const Text('Analyse'),
+            showBackButton: false,
+            actions: const [LiveToggleButton()],
+          ),
         ],
       ),
     );

@@ -108,7 +108,28 @@ class Assets extends Table {
 
   RealColumn get buyFeeTotal => real().withDefault(const Constant(0))();
 
+  TextColumn get apiIdentifier =>
+      text().nullable().withDefault(const Constant(null))();
+
   BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
+}
+
+@TableIndex(
+  name: 'asset_prices_asset_id_date',
+  columns: {#assetId, #date},
+)
+@DataClassName('AssetPrice')
+class AssetPrices extends Table {
+  IntColumn get id => integer().autoIncrement()();
+
+  IntColumn get assetId => integer().references(Assets, #id)();
+
+  IntColumn get date => integer()();
+
+  RealColumn get price => real()();
+
+  @override
+  List<Set<Column>> get uniqueKeys => [{assetId, date}];
 }
 
 @DataClassName('AssetOnAccount')

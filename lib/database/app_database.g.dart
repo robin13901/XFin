@@ -425,6 +425,14 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, Asset> {
       type: DriftSqlType.double,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
+  static const VerificationMeta _apiIdentifierMeta =
+      const VerificationMeta('apiIdentifier');
+  @override
+  late final GeneratedColumn<String> apiIdentifier = GeneratedColumn<String>(
+      'api_identifier', aliasedName, true,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(null));
   static const VerificationMeta _isArchivedMeta =
       const VerificationMeta('isArchived');
   @override
@@ -447,6 +455,7 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, Asset> {
         netCostBasis,
         brokerCostBasis,
         buyFeeTotal,
+        apiIdentifier,
         isArchived
       ];
   @override
@@ -508,6 +517,12 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, Asset> {
           buyFeeTotal.isAcceptableOrUnknown(
               data['buy_fee_total']!, _buyFeeTotalMeta));
     }
+    if (data.containsKey('api_identifier')) {
+      context.handle(
+          _apiIdentifierMeta,
+          apiIdentifier.isAcceptableOrUnknown(
+              data['api_identifier']!, _apiIdentifierMeta));
+    }
     if (data.containsKey('is_archived')) {
       context.handle(
           _isArchivedMeta,
@@ -543,6 +558,8 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, Asset> {
           DriftSqlType.double, data['${effectivePrefix}broker_cost_basis'])!,
       buyFeeTotal: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}buy_fee_total'])!,
+      apiIdentifier: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}api_identifier']),
       isArchived: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}is_archived'])!,
     );
@@ -568,6 +585,7 @@ class Asset extends DataClass implements Insertable<Asset> {
   final double netCostBasis;
   final double brokerCostBasis;
   final double buyFeeTotal;
+  final String? apiIdentifier;
   final bool isArchived;
   const Asset(
       {required this.id,
@@ -580,6 +598,7 @@ class Asset extends DataClass implements Insertable<Asset> {
       required this.netCostBasis,
       required this.brokerCostBasis,
       required this.buyFeeTotal,
+      this.apiIdentifier,
       required this.isArchived});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -598,6 +617,9 @@ class Asset extends DataClass implements Insertable<Asset> {
     map['net_cost_basis'] = Variable<double>(netCostBasis);
     map['broker_cost_basis'] = Variable<double>(brokerCostBasis);
     map['buy_fee_total'] = Variable<double>(buyFeeTotal);
+    if (!nullToAbsent || apiIdentifier != null) {
+      map['api_identifier'] = Variable<String>(apiIdentifier);
+    }
     map['is_archived'] = Variable<bool>(isArchived);
     return map;
   }
@@ -616,6 +638,9 @@ class Asset extends DataClass implements Insertable<Asset> {
       netCostBasis: Value(netCostBasis),
       brokerCostBasis: Value(brokerCostBasis),
       buyFeeTotal: Value(buyFeeTotal),
+      apiIdentifier: apiIdentifier == null && nullToAbsent
+          ? const Value.absent()
+          : Value(apiIdentifier),
       isArchived: Value(isArchived),
     );
   }
@@ -634,6 +659,7 @@ class Asset extends DataClass implements Insertable<Asset> {
       netCostBasis: serializer.fromJson<double>(json['netCostBasis']),
       brokerCostBasis: serializer.fromJson<double>(json['brokerCostBasis']),
       buyFeeTotal: serializer.fromJson<double>(json['buyFeeTotal']),
+      apiIdentifier: serializer.fromJson<String?>(json['apiIdentifier']),
       isArchived: serializer.fromJson<bool>(json['isArchived']),
     );
   }
@@ -651,6 +677,7 @@ class Asset extends DataClass implements Insertable<Asset> {
       'netCostBasis': serializer.toJson<double>(netCostBasis),
       'brokerCostBasis': serializer.toJson<double>(brokerCostBasis),
       'buyFeeTotal': serializer.toJson<double>(buyFeeTotal),
+      'apiIdentifier': serializer.toJson<String?>(apiIdentifier),
       'isArchived': serializer.toJson<bool>(isArchived),
     };
   }
@@ -666,6 +693,7 @@ class Asset extends DataClass implements Insertable<Asset> {
           double? netCostBasis,
           double? brokerCostBasis,
           double? buyFeeTotal,
+          Value<String?> apiIdentifier = const Value.absent(),
           bool? isArchived}) =>
       Asset(
         id: id ?? this.id,
@@ -679,6 +707,8 @@ class Asset extends DataClass implements Insertable<Asset> {
         netCostBasis: netCostBasis ?? this.netCostBasis,
         brokerCostBasis: brokerCostBasis ?? this.brokerCostBasis,
         buyFeeTotal: buyFeeTotal ?? this.buyFeeTotal,
+        apiIdentifier:
+            apiIdentifier.present ? apiIdentifier.value : this.apiIdentifier,
         isArchived: isArchived ?? this.isArchived,
       );
   Asset copyWithCompanion(AssetsCompanion data) {
@@ -702,6 +732,9 @@ class Asset extends DataClass implements Insertable<Asset> {
           : this.brokerCostBasis,
       buyFeeTotal:
           data.buyFeeTotal.present ? data.buyFeeTotal.value : this.buyFeeTotal,
+      apiIdentifier: data.apiIdentifier.present
+          ? data.apiIdentifier.value
+          : this.apiIdentifier,
       isArchived:
           data.isArchived.present ? data.isArchived.value : this.isArchived,
     );
@@ -720,14 +753,26 @@ class Asset extends DataClass implements Insertable<Asset> {
           ..write('netCostBasis: $netCostBasis, ')
           ..write('brokerCostBasis: $brokerCostBasis, ')
           ..write('buyFeeTotal: $buyFeeTotal, ')
+          ..write('apiIdentifier: $apiIdentifier, ')
           ..write('isArchived: $isArchived')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, type, tickerSymbol, currencySymbol,
-      value, shares, netCostBasis, brokerCostBasis, buyFeeTotal, isArchived);
+  int get hashCode => Object.hash(
+      id,
+      name,
+      type,
+      tickerSymbol,
+      currencySymbol,
+      value,
+      shares,
+      netCostBasis,
+      brokerCostBasis,
+      buyFeeTotal,
+      apiIdentifier,
+      isArchived);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -742,6 +787,7 @@ class Asset extends DataClass implements Insertable<Asset> {
           other.netCostBasis == this.netCostBasis &&
           other.brokerCostBasis == this.brokerCostBasis &&
           other.buyFeeTotal == this.buyFeeTotal &&
+          other.apiIdentifier == this.apiIdentifier &&
           other.isArchived == this.isArchived);
 }
 
@@ -756,6 +802,7 @@ class AssetsCompanion extends UpdateCompanion<Asset> {
   final Value<double> netCostBasis;
   final Value<double> brokerCostBasis;
   final Value<double> buyFeeTotal;
+  final Value<String?> apiIdentifier;
   final Value<bool> isArchived;
   const AssetsCompanion({
     this.id = const Value.absent(),
@@ -768,6 +815,7 @@ class AssetsCompanion extends UpdateCompanion<Asset> {
     this.netCostBasis = const Value.absent(),
     this.brokerCostBasis = const Value.absent(),
     this.buyFeeTotal = const Value.absent(),
+    this.apiIdentifier = const Value.absent(),
     this.isArchived = const Value.absent(),
   });
   AssetsCompanion.insert({
@@ -781,6 +829,7 @@ class AssetsCompanion extends UpdateCompanion<Asset> {
     this.netCostBasis = const Value.absent(),
     this.brokerCostBasis = const Value.absent(),
     this.buyFeeTotal = const Value.absent(),
+    this.apiIdentifier = const Value.absent(),
     this.isArchived = const Value.absent(),
   })  : name = Value(name),
         type = Value(type),
@@ -796,6 +845,7 @@ class AssetsCompanion extends UpdateCompanion<Asset> {
     Expression<double>? netCostBasis,
     Expression<double>? brokerCostBasis,
     Expression<double>? buyFeeTotal,
+    Expression<String>? apiIdentifier,
     Expression<bool>? isArchived,
   }) {
     return RawValuesInsertable({
@@ -809,6 +859,7 @@ class AssetsCompanion extends UpdateCompanion<Asset> {
       if (netCostBasis != null) 'net_cost_basis': netCostBasis,
       if (brokerCostBasis != null) 'broker_cost_basis': brokerCostBasis,
       if (buyFeeTotal != null) 'buy_fee_total': buyFeeTotal,
+      if (apiIdentifier != null) 'api_identifier': apiIdentifier,
       if (isArchived != null) 'is_archived': isArchived,
     });
   }
@@ -824,6 +875,7 @@ class AssetsCompanion extends UpdateCompanion<Asset> {
       Value<double>? netCostBasis,
       Value<double>? brokerCostBasis,
       Value<double>? buyFeeTotal,
+      Value<String?>? apiIdentifier,
       Value<bool>? isArchived}) {
     return AssetsCompanion(
       id: id ?? this.id,
@@ -836,6 +888,7 @@ class AssetsCompanion extends UpdateCompanion<Asset> {
       netCostBasis: netCostBasis ?? this.netCostBasis,
       brokerCostBasis: brokerCostBasis ?? this.brokerCostBasis,
       buyFeeTotal: buyFeeTotal ?? this.buyFeeTotal,
+      apiIdentifier: apiIdentifier ?? this.apiIdentifier,
       isArchived: isArchived ?? this.isArchived,
     );
   }
@@ -874,6 +927,9 @@ class AssetsCompanion extends UpdateCompanion<Asset> {
     if (buyFeeTotal.present) {
       map['buy_fee_total'] = Variable<double>(buyFeeTotal.value);
     }
+    if (apiIdentifier.present) {
+      map['api_identifier'] = Variable<String>(apiIdentifier.value);
+    }
     if (isArchived.present) {
       map['is_archived'] = Variable<bool>(isArchived.value);
     }
@@ -893,7 +949,270 @@ class AssetsCompanion extends UpdateCompanion<Asset> {
           ..write('netCostBasis: $netCostBasis, ')
           ..write('brokerCostBasis: $brokerCostBasis, ')
           ..write('buyFeeTotal: $buyFeeTotal, ')
+          ..write('apiIdentifier: $apiIdentifier, ')
           ..write('isArchived: $isArchived')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $AssetPricesTable extends AssetPrices
+    with TableInfo<$AssetPricesTable, AssetPrice> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AssetPricesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _assetIdMeta =
+      const VerificationMeta('assetId');
+  @override
+  late final GeneratedColumn<int> assetId = GeneratedColumn<int>(
+      'asset_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES assets (id)'));
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<int> date = GeneratedColumn<int>(
+      'date', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _priceMeta = const VerificationMeta('price');
+  @override
+  late final GeneratedColumn<double> price = GeneratedColumn<double>(
+      'price', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [id, assetId, date, price];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'asset_prices';
+  @override
+  VerificationContext validateIntegrity(Insertable<AssetPrice> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('asset_id')) {
+      context.handle(_assetIdMeta,
+          assetId.isAcceptableOrUnknown(data['asset_id']!, _assetIdMeta));
+    } else if (isInserting) {
+      context.missing(_assetIdMeta);
+    }
+    if (data.containsKey('date')) {
+      context.handle(
+          _dateMeta, date.isAcceptableOrUnknown(data['date']!, _dateMeta));
+    } else if (isInserting) {
+      context.missing(_dateMeta);
+    }
+    if (data.containsKey('price')) {
+      context.handle(
+          _priceMeta, price.isAcceptableOrUnknown(data['price']!, _priceMeta));
+    } else if (isInserting) {
+      context.missing(_priceMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+        {assetId, date},
+      ];
+  @override
+  AssetPrice map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AssetPrice(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      assetId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}asset_id'])!,
+      date: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}date'])!,
+      price: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}price'])!,
+    );
+  }
+
+  @override
+  $AssetPricesTable createAlias(String alias) {
+    return $AssetPricesTable(attachedDatabase, alias);
+  }
+}
+
+class AssetPrice extends DataClass implements Insertable<AssetPrice> {
+  final int id;
+  final int assetId;
+  final int date;
+  final double price;
+  const AssetPrice(
+      {required this.id,
+      required this.assetId,
+      required this.date,
+      required this.price});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['asset_id'] = Variable<int>(assetId);
+    map['date'] = Variable<int>(date);
+    map['price'] = Variable<double>(price);
+    return map;
+  }
+
+  AssetPricesCompanion toCompanion(bool nullToAbsent) {
+    return AssetPricesCompanion(
+      id: Value(id),
+      assetId: Value(assetId),
+      date: Value(date),
+      price: Value(price),
+    );
+  }
+
+  factory AssetPrice.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AssetPrice(
+      id: serializer.fromJson<int>(json['id']),
+      assetId: serializer.fromJson<int>(json['assetId']),
+      date: serializer.fromJson<int>(json['date']),
+      price: serializer.fromJson<double>(json['price']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'assetId': serializer.toJson<int>(assetId),
+      'date': serializer.toJson<int>(date),
+      'price': serializer.toJson<double>(price),
+    };
+  }
+
+  AssetPrice copyWith({int? id, int? assetId, int? date, double? price}) =>
+      AssetPrice(
+        id: id ?? this.id,
+        assetId: assetId ?? this.assetId,
+        date: date ?? this.date,
+        price: price ?? this.price,
+      );
+  AssetPrice copyWithCompanion(AssetPricesCompanion data) {
+    return AssetPrice(
+      id: data.id.present ? data.id.value : this.id,
+      assetId: data.assetId.present ? data.assetId.value : this.assetId,
+      date: data.date.present ? data.date.value : this.date,
+      price: data.price.present ? data.price.value : this.price,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AssetPrice(')
+          ..write('id: $id, ')
+          ..write('assetId: $assetId, ')
+          ..write('date: $date, ')
+          ..write('price: $price')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, assetId, date, price);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AssetPrice &&
+          other.id == this.id &&
+          other.assetId == this.assetId &&
+          other.date == this.date &&
+          other.price == this.price);
+}
+
+class AssetPricesCompanion extends UpdateCompanion<AssetPrice> {
+  final Value<int> id;
+  final Value<int> assetId;
+  final Value<int> date;
+  final Value<double> price;
+  const AssetPricesCompanion({
+    this.id = const Value.absent(),
+    this.assetId = const Value.absent(),
+    this.date = const Value.absent(),
+    this.price = const Value.absent(),
+  });
+  AssetPricesCompanion.insert({
+    this.id = const Value.absent(),
+    required int assetId,
+    required int date,
+    required double price,
+  })  : assetId = Value(assetId),
+        date = Value(date),
+        price = Value(price);
+  static Insertable<AssetPrice> custom({
+    Expression<int>? id,
+    Expression<int>? assetId,
+    Expression<int>? date,
+    Expression<double>? price,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (assetId != null) 'asset_id': assetId,
+      if (date != null) 'date': date,
+      if (price != null) 'price': price,
+    });
+  }
+
+  AssetPricesCompanion copyWith(
+      {Value<int>? id,
+      Value<int>? assetId,
+      Value<int>? date,
+      Value<double>? price}) {
+    return AssetPricesCompanion(
+      id: id ?? this.id,
+      assetId: assetId ?? this.assetId,
+      date: date ?? this.date,
+      price: price ?? this.price,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (assetId.present) {
+      map['asset_id'] = Variable<int>(assetId.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<int>(date.value);
+    }
+    if (price.present) {
+      map['price'] = Variable<double>(price.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AssetPricesCompanion(')
+          ..write('id: $id, ')
+          ..write('assetId: $assetId, ')
+          ..write('date: $date, ')
+          ..write('price: $price')
           ..write(')'))
         .toString();
   }
@@ -4583,6 +4902,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $AccountsTable accounts = $AccountsTable(this);
   late final $AssetsTable assets = $AssetsTable(this);
+  late final $AssetPricesTable assetPrices = $AssetPricesTable(this);
   late final $BookingsTable bookings = $BookingsTable(this);
   late final $TransfersTable transfers = $TransfersTable(this);
   late final $TradesTable trades = $TradesTable(this);
@@ -4595,6 +4915,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $GoalsTable goals = $GoalsTable(this);
   late final Index accountsIsArchived = Index('accounts_is_archived',
       'CREATE INDEX accounts_is_archived ON accounts (is_archived)');
+  late final Index assetPricesAssetIdDate = Index('asset_prices_asset_id_date',
+      'CREATE INDEX asset_prices_asset_id_date ON asset_prices (asset_id, date)');
   late final Index bookingsAccountIdDate = Index('bookings_account_id_date',
       'CREATE INDEX bookings_account_id_date ON bookings (account_id, date)');
   late final Index bookingsAssetId = Index('bookings_asset_id',
@@ -4625,6 +4947,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       'CREATE INDEX goals_target_date ON goals (target_date)');
   late final AccountsDao accountsDao = AccountsDao(this as AppDatabase);
   late final AnalysisDao analysisDao = AnalysisDao(this as AppDatabase);
+  late final AssetPricesDao assetPricesDao =
+      AssetPricesDao(this as AppDatabase);
   late final AssetsDao assetsDao = AssetsDao(this as AppDatabase);
   late final AssetsOnAccountsDao assetsOnAccountsDao =
       AssetsOnAccountsDao(this as AppDatabase);
@@ -4643,6 +4967,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   List<DatabaseSchemaEntity> get allSchemaEntities => [
         accounts,
         assets,
+        assetPrices,
         bookings,
         transfers,
         trades,
@@ -4651,6 +4976,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         assetsOnAccounts,
         goals,
         accountsIsArchived,
+        assetPricesAssetIdDate,
         bookingsAccountIdDate,
         bookingsAssetId,
         bookingsDateShares,
@@ -5619,6 +5945,7 @@ typedef $$AssetsTableCreateCompanionBuilder = AssetsCompanion Function({
   Value<double> netCostBasis,
   Value<double> brokerCostBasis,
   Value<double> buyFeeTotal,
+  Value<String?> apiIdentifier,
   Value<bool> isArchived,
 });
 typedef $$AssetsTableUpdateCompanionBuilder = AssetsCompanion Function({
@@ -5632,12 +5959,28 @@ typedef $$AssetsTableUpdateCompanionBuilder = AssetsCompanion Function({
   Value<double> netCostBasis,
   Value<double> brokerCostBasis,
   Value<double> buyFeeTotal,
+  Value<String?> apiIdentifier,
   Value<bool> isArchived,
 });
 
 final class $$AssetsTableReferences
     extends BaseReferences<_$AppDatabase, $AssetsTable, Asset> {
   $$AssetsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$AssetPricesTable, List<AssetPrice>>
+      _assetPricesRefsTable(_$AppDatabase db) =>
+          MultiTypedResultKey.fromTable(db.assetPrices,
+              aliasName:
+                  $_aliasNameGenerator(db.assets.id, db.assetPrices.assetId));
+
+  $$AssetPricesTableProcessedTableManager get assetPricesRefs {
+    final manager = $$AssetPricesTableTableManager($_db, $_db.assetPrices)
+        .filter((f) => f.assetId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_assetPricesRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
 
   static MultiTypedResultKey<$BookingsTable, List<Booking>> _bookingsRefsTable(
           _$AppDatabase db) =>
@@ -5790,8 +6133,32 @@ class $$AssetsTableFilterComposer
   ColumnFilters<double> get buyFeeTotal => $composableBuilder(
       column: $table.buyFeeTotal, builder: (column) => ColumnFilters(column));
 
+  ColumnFilters<String> get apiIdentifier => $composableBuilder(
+      column: $table.apiIdentifier, builder: (column) => ColumnFilters(column));
+
   ColumnFilters<bool> get isArchived => $composableBuilder(
       column: $table.isArchived, builder: (column) => ColumnFilters(column));
+
+  Expression<bool> assetPricesRefs(
+      Expression<bool> Function($$AssetPricesTableFilterComposer f) f) {
+    final $$AssetPricesTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.assetPrices,
+        getReferencedColumn: (t) => t.assetId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AssetPricesTableFilterComposer(
+              $db: $db,
+              $table: $db.assetPrices,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
 
   Expression<bool> bookingsRefs(
       Expression<bool> Function($$BookingsTableFilterComposer f) f) {
@@ -5984,6 +6351,10 @@ class $$AssetsTableOrderingComposer
   ColumnOrderings<double> get buyFeeTotal => $composableBuilder(
       column: $table.buyFeeTotal, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get apiIdentifier => $composableBuilder(
+      column: $table.apiIdentifier,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<bool> get isArchived => $composableBuilder(
       column: $table.isArchived, builder: (column) => ColumnOrderings(column));
 }
@@ -6027,8 +6398,32 @@ class $$AssetsTableAnnotationComposer
   GeneratedColumn<double> get buyFeeTotal => $composableBuilder(
       column: $table.buyFeeTotal, builder: (column) => column);
 
+  GeneratedColumn<String> get apiIdentifier => $composableBuilder(
+      column: $table.apiIdentifier, builder: (column) => column);
+
   GeneratedColumn<bool> get isArchived => $composableBuilder(
       column: $table.isArchived, builder: (column) => column);
+
+  Expression<T> assetPricesRefs<T extends Object>(
+      Expression<T> Function($$AssetPricesTableAnnotationComposer a) f) {
+    final $$AssetPricesTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.assetPrices,
+        getReferencedColumn: (t) => t.assetId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AssetPricesTableAnnotationComposer(
+              $db: $db,
+              $table: $db.assetPrices,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
 
   Expression<T> bookingsRefs<T extends Object>(
       Expression<T> Function($$BookingsTableAnnotationComposer a) f) {
@@ -6191,7 +6586,8 @@ class $$AssetsTableTableManager extends RootTableManager<
     (Asset, $$AssetsTableReferences),
     Asset,
     PrefetchHooks Function(
-        {bool bookingsRefs,
+        {bool assetPricesRefs,
+        bool bookingsRefs,
         bool transfersRefs,
         bool tradesRefs,
         bool periodicBookingsRefs,
@@ -6219,6 +6615,7 @@ class $$AssetsTableTableManager extends RootTableManager<
             Value<double> netCostBasis = const Value.absent(),
             Value<double> brokerCostBasis = const Value.absent(),
             Value<double> buyFeeTotal = const Value.absent(),
+            Value<String?> apiIdentifier = const Value.absent(),
             Value<bool> isArchived = const Value.absent(),
           }) =>
               AssetsCompanion(
@@ -6232,6 +6629,7 @@ class $$AssetsTableTableManager extends RootTableManager<
             netCostBasis: netCostBasis,
             brokerCostBasis: brokerCostBasis,
             buyFeeTotal: buyFeeTotal,
+            apiIdentifier: apiIdentifier,
             isArchived: isArchived,
           ),
           createCompanionCallback: ({
@@ -6245,6 +6643,7 @@ class $$AssetsTableTableManager extends RootTableManager<
             Value<double> netCostBasis = const Value.absent(),
             Value<double> brokerCostBasis = const Value.absent(),
             Value<double> buyFeeTotal = const Value.absent(),
+            Value<String?> apiIdentifier = const Value.absent(),
             Value<bool> isArchived = const Value.absent(),
           }) =>
               AssetsCompanion.insert(
@@ -6258,6 +6657,7 @@ class $$AssetsTableTableManager extends RootTableManager<
             netCostBasis: netCostBasis,
             brokerCostBasis: brokerCostBasis,
             buyFeeTotal: buyFeeTotal,
+            apiIdentifier: apiIdentifier,
             isArchived: isArchived,
           ),
           withReferenceMapper: (p0) => p0
@@ -6265,7 +6665,8 @@ class $$AssetsTableTableManager extends RootTableManager<
                   (e.readTable(table), $$AssetsTableReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: (
-              {bookingsRefs = false,
+              {assetPricesRefs = false,
+              bookingsRefs = false,
               transfersRefs = false,
               tradesRefs = false,
               periodicBookingsRefs = false,
@@ -6275,6 +6676,7 @@ class $$AssetsTableTableManager extends RootTableManager<
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [
+                if (assetPricesRefs) db.assetPrices,
                 if (bookingsRefs) db.bookings,
                 if (transfersRefs) db.transfers,
                 if (tradesRefs) db.trades,
@@ -6286,6 +6688,18 @@ class $$AssetsTableTableManager extends RootTableManager<
               addJoins: null,
               getPrefetchedDataCallback: (items) async {
                 return [
+                  if (assetPricesRefs)
+                    await $_getPrefetchedData<Asset, $AssetsTable, AssetPrice>(
+                        currentTable: table,
+                        referencedTable:
+                            $$AssetsTableReferences._assetPricesRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$AssetsTableReferences(db, table, p0)
+                                .assetPricesRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.assetId == item.id),
+                        typedResults: items),
                   if (bookingsRefs)
                     await $_getPrefetchedData<Asset, $AssetsTable, Booking>(
                         currentTable: table,
@@ -6389,13 +6803,267 @@ typedef $$AssetsTableProcessedTableManager = ProcessedTableManager<
     (Asset, $$AssetsTableReferences),
     Asset,
     PrefetchHooks Function(
-        {bool bookingsRefs,
+        {bool assetPricesRefs,
+        bool bookingsRefs,
         bool transfersRefs,
         bool tradesRefs,
         bool periodicBookingsRefs,
         bool periodicTransfersRefs,
         bool assetsOnAccountsRefs,
         bool goalsRefs})>;
+typedef $$AssetPricesTableCreateCompanionBuilder = AssetPricesCompanion
+    Function({
+  Value<int> id,
+  required int assetId,
+  required int date,
+  required double price,
+});
+typedef $$AssetPricesTableUpdateCompanionBuilder = AssetPricesCompanion
+    Function({
+  Value<int> id,
+  Value<int> assetId,
+  Value<int> date,
+  Value<double> price,
+});
+
+final class $$AssetPricesTableReferences
+    extends BaseReferences<_$AppDatabase, $AssetPricesTable, AssetPrice> {
+  $$AssetPricesTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $AssetsTable _assetIdTable(_$AppDatabase db) => db.assets
+      .createAlias($_aliasNameGenerator(db.assetPrices.assetId, db.assets.id));
+
+  $$AssetsTableProcessedTableManager get assetId {
+    final $_column = $_itemColumn<int>('asset_id')!;
+
+    final manager = $$AssetsTableTableManager($_db, $_db.assets)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_assetIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
+class $$AssetPricesTableFilterComposer
+    extends Composer<_$AppDatabase, $AssetPricesTable> {
+  $$AssetPricesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get date => $composableBuilder(
+      column: $table.date, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get price => $composableBuilder(
+      column: $table.price, builder: (column) => ColumnFilters(column));
+
+  $$AssetsTableFilterComposer get assetId {
+    final $$AssetsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.assetId,
+        referencedTable: $db.assets,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AssetsTableFilterComposer(
+              $db: $db,
+              $table: $db.assets,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$AssetPricesTableOrderingComposer
+    extends Composer<_$AppDatabase, $AssetPricesTable> {
+  $$AssetPricesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get date => $composableBuilder(
+      column: $table.date, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get price => $composableBuilder(
+      column: $table.price, builder: (column) => ColumnOrderings(column));
+
+  $$AssetsTableOrderingComposer get assetId {
+    final $$AssetsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.assetId,
+        referencedTable: $db.assets,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AssetsTableOrderingComposer(
+              $db: $db,
+              $table: $db.assets,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$AssetPricesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AssetPricesTable> {
+  $$AssetPricesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<double> get price =>
+      $composableBuilder(column: $table.price, builder: (column) => column);
+
+  $$AssetsTableAnnotationComposer get assetId {
+    final $$AssetsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.assetId,
+        referencedTable: $db.assets,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AssetsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.assets,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$AssetPricesTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $AssetPricesTable,
+    AssetPrice,
+    $$AssetPricesTableFilterComposer,
+    $$AssetPricesTableOrderingComposer,
+    $$AssetPricesTableAnnotationComposer,
+    $$AssetPricesTableCreateCompanionBuilder,
+    $$AssetPricesTableUpdateCompanionBuilder,
+    (AssetPrice, $$AssetPricesTableReferences),
+    AssetPrice,
+    PrefetchHooks Function({bool assetId})> {
+  $$AssetPricesTableTableManager(_$AppDatabase db, $AssetPricesTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AssetPricesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AssetPricesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AssetPricesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<int> assetId = const Value.absent(),
+            Value<int> date = const Value.absent(),
+            Value<double> price = const Value.absent(),
+          }) =>
+              AssetPricesCompanion(
+            id: id,
+            assetId: assetId,
+            date: date,
+            price: price,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required int assetId,
+            required int date,
+            required double price,
+          }) =>
+              AssetPricesCompanion.insert(
+            id: id,
+            assetId: assetId,
+            date: date,
+            price: price,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$AssetPricesTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({assetId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (assetId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.assetId,
+                    referencedTable:
+                        $$AssetPricesTableReferences._assetIdTable(db),
+                    referencedColumn:
+                        $$AssetPricesTableReferences._assetIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$AssetPricesTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $AssetPricesTable,
+    AssetPrice,
+    $$AssetPricesTableFilterComposer,
+    $$AssetPricesTableOrderingComposer,
+    $$AssetPricesTableAnnotationComposer,
+    $$AssetPricesTableCreateCompanionBuilder,
+    $$AssetPricesTableUpdateCompanionBuilder,
+    (AssetPrice, $$AssetPricesTableReferences),
+    AssetPrice,
+    PrefetchHooks Function({bool assetId})>;
 typedef $$BookingsTableCreateCompanionBuilder = BookingsCompanion Function({
   Value<int> id,
   required int date,
@@ -9621,6 +10289,8 @@ class $AppDatabaseManager {
       $$AccountsTableTableManager(_db, _db.accounts);
   $$AssetsTableTableManager get assets =>
       $$AssetsTableTableManager(_db, _db.assets);
+  $$AssetPricesTableTableManager get assetPrices =>
+      $$AssetPricesTableTableManager(_db, _db.assetPrices);
   $$BookingsTableTableManager get bookings =>
       $$BookingsTableTableManager(_db, _db.bookings);
   $$TransfersTableTableManager get transfers =>

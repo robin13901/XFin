@@ -1,3 +1,4 @@
+import 'package:xfin/providers/live_price_provider.dart';
 import 'dart:async';
 
 import 'package:drift/drift.dart' show TableUpdate;
@@ -128,6 +129,7 @@ void main() {
               value: DatabaseProvider.instance,
             ),
             ChangeNotifierProvider<ThemeProvider>.value(value: ThemeProvider.instance),
+          ChangeNotifierProvider<LivePriceProvider>.value(value: LivePriceProvider.instance),
           ],
           child: const MaterialApp(
             localizationsDelegates: [

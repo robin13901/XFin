@@ -1,3 +1,4 @@
+import 'package:xfin/providers/live_price_provider.dart';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -27,6 +28,7 @@ void main() {
             value: DatabaseProvider.instance,
           ),
           ChangeNotifierProvider<ThemeProvider>.value(value: ThemeProvider.instance),
+          ChangeNotifierProvider<LivePriceProvider>.value(value: LivePriceProvider.instance),
         ],
         child: const MaterialApp(
           localizationsDelegates: [
@@ -198,6 +200,7 @@ void main() {
             value: DatabaseProvider.instance,
           ),
           ChangeNotifierProvider<ThemeProvider>.value(value: ThemeProvider.instance),
+          ChangeNotifierProvider<LivePriceProvider>.value(value: LivePriceProvider.instance),
         ],
         child: MaterialApp(
           theme: ThemeData.dark(),

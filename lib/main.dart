@@ -10,6 +10,7 @@ import 'package:xfin/providers/database_provider.dart';
 import 'package:xfin/providers/language_provider.dart';
 import 'package:xfin/providers/theme_provider.dart';
 import 'package:xfin/providers/base_currency_provider.dart';
+import 'package:xfin/providers/live_price_provider.dart';
 import 'package:xfin/screens/accounts_screen.dart';
 import 'package:xfin/screens/analysis_screen.dart';
 import 'package:xfin/screens/bookings_screen.dart';
@@ -46,6 +47,10 @@ void main() async {
   final currencyProvider = BaseCurrencyProvider();
   await currencyProvider.initialize(languageProvider.appLocale);
 
+  // LivePriceProvider initialization (async, non-blocking for app start).
+  await LivePriceProvider.instance
+      .initialize(initialDb, currencyProvider.tickerSymbol ?? 'EUR');
+
   runApp(
     MultiProvider(
       providers: [
@@ -55,6 +60,7 @@ void main() async {
         ChangeNotifierProvider.value(value: ThemeProvider.instance),
         ChangeNotifierProvider.value(value: languageProvider),
         ChangeNotifierProvider.value(value: currencyProvider),
+        ChangeNotifierProvider.value(value: LivePriceProvider.instance),
       ],
       child: MyApp(
           initialRoute:
