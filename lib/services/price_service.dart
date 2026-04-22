@@ -67,10 +67,15 @@ class PriceService {
       _usdToBaseCurrencyRate = 1.0;
       return;
     }
-    final rate =
-        await _frankfurter.getExchangeRate('USD', baseCurrency);
-    if (rate != null) {
-      _usdToBaseCurrencyRate = rate;
+    try {
+      final rate =
+          await _frankfurter.getExchangeRate('USD', baseCurrency)
+              .timeout(const Duration(seconds: 5));
+      if (rate != null) {
+        _usdToBaseCurrencyRate = rate;
+      }
+    } catch (_) {
+      _usdToBaseCurrencyRate ??= 1.0;
     }
   }
 
