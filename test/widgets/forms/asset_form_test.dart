@@ -3,12 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/daos/assets_dao.dart';
 import 'package:xfin/database/tables.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/models/filter/filter_rule.dart';
 import 'package:xfin/providers/database_provider.dart';
+import 'package:xfin/providers/live_price_provider.dart';
 import 'package:xfin/widgets/forms/asset_form.dart';
 
 // Fake classes to avoid using Mockito generated mocks
@@ -70,6 +72,7 @@ void main() {
   late AppLocalizations l10n;
 
   setUp(() async {
+    SharedPreferences.setMockInitialValues({});
     fakeAssetsDao = FakeAssetsDao(); // Initialize without initial assets
     fakeAppDatabase = FakeAppDatabase(assetsDao: fakeAssetsDao);
     DatabaseProvider.instance.initialize(fakeAppDatabase);
@@ -90,8 +93,13 @@ void main() {
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
-            body: ChangeNotifierProvider<DatabaseProvider>.value(
-                value: DatabaseProvider.instance,
+            body: MultiProvider(
+                providers: [
+                  ChangeNotifierProvider<DatabaseProvider>.value(
+                      value: DatabaseProvider.instance),
+                  ChangeNotifierProvider<LivePriceProvider>.value(
+                      value: LivePriceProvider.instance),
+                ],
                 child: AssetForm(asset: asset))),
       ),
     );
@@ -234,6 +242,21 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(AssetForm), findsNothing);
+    });
+
+    testWidgets(
+        'API-Identifier field is present with correct helper text',
+        (tester) async {
+      await setupWidget(tester);
+
+      // Change type to crypto to see crypto-specific helper text
+      await tester.tap(find.byKey(const Key('asset_type_dropdown')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.crypto).last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('API-Identifier (Live-Preis)'), findsOneWidget);
+      expect(find.text('Tippen zum Suchen...'), findsOneWidget);
     });
   });
 }

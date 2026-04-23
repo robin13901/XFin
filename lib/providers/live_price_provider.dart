@@ -32,6 +32,11 @@ class LivePriceProvider with ChangeNotifier {
 
   PriceService? get priceService => _priceService;
 
+  @visibleForTesting
+  void setPriceServiceForTesting(PriceService service) {
+    _priceService = service;
+  }
+
   Future<void> initialize(AppDatabase db, String baseCurrency) async {
     _db = db;
     _baseCurrency = baseCurrency;

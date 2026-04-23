@@ -18,7 +18,6 @@ import '../widgets/common_widgets.dart';
 import '../widgets/inflow_outflow_toggle.dart';
 import '../widgets/liquid_glass_widgets.dart';
 import '../widgets/live_toggle_button.dart';
-import '../widgets/pulsing_value.dart';
 import '../widgets/summary_row.dart';
 
 // A data class to hold all asynchronous results needed by AnalysisScreen
@@ -34,6 +33,7 @@ class AnalysisData {
   final Map<String, double> currentMonthCategoryInflows;
   final Map<String, double> currentMonthCategoryOutflows;
   final Map<int, double> assetShares;
+  final Map<int, double> assetValues;
 
   AnalysisData({
     required this.balanceHistory,
@@ -47,6 +47,7 @@ class AnalysisData {
     required this.currentMonthCategoryInflows,
     required this.currentMonthCategoryOutflows,
     required this.assetShares,
+    required this.assetValues,
   });
 }
 
@@ -142,6 +143,14 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       }
       return map;
     });
+    final Future<Map<int, double>> assetValuesFuture =
+        db.assetsDao.getAllAssets().then((assets) {
+      final map = <int, double>{};
+      for (final a in assets) {
+        map[a.id] = a.value;
+      }
+      return map;
+    });
 
     // Always assign the future inside setState so FutureBuilder reacts.
     setState(() {
@@ -157,6 +166,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
         currentMonthCategoryInflowsFuture,
         currentMonthCategoryOutflowsFuture,
         assetSharesFuture,
+        assetValuesFuture,
       ]).then((results) {
         return AnalysisData(
           balanceHistory: results[0] as List<FlSpot>,
@@ -170,6 +180,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           currentMonthCategoryInflows: results[8] as Map<String, double>,
           currentMonthCategoryOutflows: results[9] as Map<String, double>,
           assetShares: results[10] as Map<int, double>,
+          assetValues: results[11] as Map<int, double>,
         );
       });
     });
@@ -219,69 +230,42 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
               ),
               child: Column(
                 children: [
-                  // ── Live Portfolio Value ──
-                  Consumer<LivePriceProvider>(
-                    builder: (context, liveProvider, _) {
-                      if (!liveProvider.isLive ||
-                          liveProvider.livePrices.isEmpty) {
-                        return const SizedBox.shrink();
-                      }
-                      double liveTotal = 0;
-                      for (final entry
-                          in liveProvider.livePrices.entries) {
-                        final assetId = entry.key;
-                        final price = entry.value;
-                        final dbAssets = analysisData.assetShares;
-                        final shares = dbAssets[assetId] ?? 0;
-                        liveTotal += shares * price;
-                      }
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: PulsingValue(
-                          isPulsing: true,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.green.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                  color: Colors.green.withValues(alpha: 0.3)),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.cell_tower,
-                                    color: Colors.green, size: 20),
-                                const SizedBox(width: 8),
-                                const Text('LIVE',
-                                    style: TextStyle(
-                                        color: Colors.green,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12)),
-                                const Spacer(),
-                                Text(
-                                  formatCurrency(liveTotal),
-                                  style: const TextStyle(
-                                    color: Colors.green,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 18,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
                   // ── Chart ──
                   _wrapCard(
                     showAurora: showAurora,
                     padding: const EdgeInsets.all(16.0),
                     children: [
-                      AnalysisLineChartSection(
+                      Consumer<LivePriceProvider>(
+                        builder: (context, liveProvider, _) {
+                          double? liveTotal;
+                          if (liveProvider.isLive &&
+                              liveProvider.livePrices.isNotEmpty) {
+                            liveTotal = 0;
+                            final storedValues = analysisData.assetValues;
+                            final shares = analysisData.assetShares;
+                            final liveAssetIds =
+                                liveProvider.livePrices.keys.toSet();
+
+                            // Live-priced assets: shares × livePrice
+                            for (final entry
+                                in liveProvider.livePrices.entries) {
+                              final s = shares[entry.key] ?? 0;
+                              liveTotal = liveTotal! + s * entry.value;
+                            }
+                            // Non-live assets: use stored value
+                            for (final entry in storedValues.entries) {
+                              if (!liveAssetIds.contains(entry.key)) {
+                                liveTotal = liveTotal! + entry.value;
+                              }
+                            }
+                            // Add account balances that are not asset-based
+                            liveTotal = liveTotal! +
+                                analysisData.sumOfInitialBalances;
+                          }
+                          return AnalysisLineChartSection(
                         allData: allData,
                         startValue: analysisData.sumOfInitialBalances,
+                        liveOverrideValue: liveTotal,
                         selectedRange: _selectedRange,
                         onRangeSelected: _onRangeSelected,
                         showSma: _showSma,
@@ -308,6 +292,8 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                           });
                         },
                         valueFormatter: formatCurrency,
+                      );
+                        },
                       ),
                     ],
                   ),

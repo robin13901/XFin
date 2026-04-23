@@ -30,8 +30,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late DateTime? _startDate, _endDate;
   late bool _isSinceStartSelected, _isTodaySelected;
   Asset? _baseCurrencyAsset;
-  final _finnhubController = TextEditingController();
-  final _twelveDataController = TextEditingController();
   int _syncCurrent = 0;
   int _syncTotal = 0;
   String _syncAssetName = '';
@@ -46,18 +44,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _isTodaySelected = _endDate == null;
 
     _loadBaseCurrency();
-    _loadApiKeys();
-  }
-
-  Future<void> _loadApiKeys() async {
-    final prefs = await SharedPreferences.getInstance();
-    _finnhubController.text = prefs.getString('finnhub_api_key') ?? '';
-    _twelveDataController.text = prefs.getString('twelve_data_api_key') ?? '';
-  }
-
-  Future<void> _saveApiKey(String key, String value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(key, value);
   }
 
   Future<void> _loadBaseCurrency() async {
@@ -352,52 +338,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       builder: (context, lp, _) => Text(
                         lp.isSyncing
                             ? 'Synchronisiere...'
-                            : 'API-Keys für Echtzeit-Kurse',
+                            : 'Yahoo Finance · CoinGecko · Kein API-Key nötig',
                       ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: TextField(
-                      controller: _finnhubController,
-                      decoration: const InputDecoration(
-                        labelText: 'Finnhub API-Key',
-                        helperText: 'Kostenlos auf finnhub.io registrieren',
-                        helperMaxLines: 2,
-                        prefixIcon: Icon(Icons.key),
-                      ),
-                      onChanged: (v) => _saveApiKey('finnhub_api_key', v),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: TextField(
-                      controller: _twelveDataController,
-                      decoration: const InputDecoration(
-                        labelText: 'Twelve Data API-Key',
-                        helperText:
-                            'Kostenlos auf twelvedata.com registrieren',
-                        helperMaxLines: 2,
-                        prefixIcon: Icon(Icons.key),
-                      ),
-                      onChanged: (v) =>
-                          _saveApiKey('twelve_data_api_key', v),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      children: [
-                        Icon(Icons.check_circle, color: Colors.green, size: 16),
-                        SizedBox(width: 4),
-                        Text('CoinGecko (Crypto)'),
-                        SizedBox(width: 12),
-                        Icon(Icons.check_circle, color: Colors.green, size: 16),
-                        SizedBox(width: 4),
-                        Text('Frankfurter (Forex)'),
-                      ],
                     ),
                   ),
                   const SizedBox(height: 8),

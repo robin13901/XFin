@@ -32,6 +32,7 @@ class AnalysisLineChartSection extends StatelessWidget {
   final bool showSma200Toggle;
   final String valueLabel;
   final Widget? topRight;
+  final double? liveOverrideValue;
 
   const AnalysisLineChartSection({
     super.key,
@@ -55,6 +56,7 @@ class AnalysisLineChartSection extends StatelessWidget {
     this.showSma200Toggle = true,
     this.valueLabel = "",
     this.topRight,
+    this.liveOverrideValue,
   });
 
   @override
@@ -74,7 +76,7 @@ class AnalysisLineChartSection extends StatelessWidget {
     String dateText;
 
     if (touchedSpot == null) {
-      totalToShow = currentData.isNotEmpty ? currentData.last.y : 0;
+      totalToShow = liveOverrideValue ?? (currentData.isNotEmpty ? currentData.last.y : 0);
       if (currentData.length < allData.length) {
         profit = currentData.last.y - currentData.first.y;
         profitPercent = currentData.first.y != 0 ? (profit / currentData.first.y) : 0;
