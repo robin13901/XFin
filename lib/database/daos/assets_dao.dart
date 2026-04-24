@@ -116,6 +116,7 @@ class AssetsDao extends DatabaseAccessor<AppDatabase> with _$AssetsDaoMixin {
         .map((r) => AssetAccountHolding(
               label: accountMap[r.accountId]?.name ?? 'Account ${r.accountId}',
               value: r.value,
+              shares: r.shares,
             ))
         .toList()
       ..sort((a, b) => b.value.compareTo(a.value));
@@ -304,8 +305,13 @@ class AssetAnalysisDetailsData {
 class AssetAccountHolding {
   final String label;
   final double value;
+  final double shares;
 
-  const AssetAccountHolding({required this.label, required this.value});
+  const AssetAccountHolding({
+    required this.label,
+    required this.value,
+    this.shares = 0,
+  });
 }
 
 class _AssetValueDelta {

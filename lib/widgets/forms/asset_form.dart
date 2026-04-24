@@ -154,7 +154,15 @@ class _AssetFormState extends State<AssetForm> {
             currencySymbol: drift.Value(currencySymbol),
             apiIdentifier: drift.Value(apiIdentifier)));
       }
-      if (mounted) Navigator.of(context).pop();
+
+      // Refresh live streams so the new/updated asset is included
+      if (mounted) {
+        final liveProvider = context.read<LivePriceProvider>();
+        if (liveProvider.isLive) {
+          liveProvider.refreshAssets();
+        }
+        Navigator.of(context).pop();
+      }
     }
   }
 

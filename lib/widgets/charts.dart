@@ -20,21 +20,28 @@ class AllocationItem {
   });
 }
 
+typedef AllocationValueFormatter = String Function(double value);
+
 class AllocationBreakdownSection extends StatelessWidget {
   final List<AllocationItem> items;
   final String title;
   final ValueChanged<AllocationItem>? onItemTap;
+  final AllocationValueFormatter? valueFormatter;
+  final Color? valueColor;
 
   const AllocationBreakdownSection({
     super.key,
     required this.items,
     required this.title,
     this.onItemTap,
+    this.valueFormatter,
+    this.valueColor,
   });
 
   @override
   Widget build(BuildContext context) {
     final total = items.fold<double>(0, (sum, e) => sum + e.value);
+    final formatValue = valueFormatter ?? formatCurrency;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -56,8 +63,8 @@ class AllocationBreakdownSection extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
             subtitle: Text(
-              formatCurrency(item.value),
-              style: const TextStyle(color: Colors.grey),
+              formatValue(item.value),
+              style: TextStyle(color: valueColor ?? Colors.grey),
             ),
             trailing: Text(
               formatPercent(ratio),

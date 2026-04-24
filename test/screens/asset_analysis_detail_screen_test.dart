@@ -149,4 +149,39 @@ void main() {
 
         await tester.pumpWidget(Container());
       }));
+
+  testWidgets('shows unrealized P&L when live is active', (tester) => tester.runAsync(() async {
+        await pumpScreen(tester);
+        await tester.pumpAndSettle();
+
+        // Initially no unrealized P&L
+        expect(find.text('Total unrealized P&L'), findsNothing);
+
+        // Simulate live state: set livePrice for asset 2
+        final provider = LivePriceProvider.instance;
+        provider.setLivePriceForTesting(2, 75.0);
+
+        // Use pump (not pumpAndSettle) because live pulse animation runs forever
+        await tester.pump(const Duration(milliseconds: 500));
+
+        // Unrealized P&L = (livePrice - netCostBasis) * shares = (75 - 50) * 3 = 75
+        expect(find.text('Total unrealized P&L'), findsOneWidget);
+
+        // Clean up
+        provider.clearLivePricesForTesting();
+        await tester.pump();
+        await tester.pumpWidget(Container());
+      }));
+
+  testWidgets('shows shares in account holdings when Anteile selected', (tester) => tester.runAsync(() async {
+        await pumpScreen(tester);
+        await tester.pumpAndSettle();
+
+        // Tap "Shares" toggle
+        await tester.tap(find.text('Shares'));
+        await tester.pumpAndSettle();
+
+        // Should show shares with 4 decimal places (chart header + allocation subtitle)
+        expect(find.text('3.0000'), findsNWidgets(2));
+      }));
 }

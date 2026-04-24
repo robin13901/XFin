@@ -1,6 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:xfin/app_theme.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/tables.dart';
 import 'package:xfin/providers/base_currency_provider.dart';
@@ -508,6 +509,67 @@ void main() {
 
       final labelText = tester.widget<Text>(find.text('Bold Label'));
       expect(labelText.style?.fontWeight, FontWeight.w600);
+    });
+
+    testWidgets('uses custom valueFormatter when provided', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: AllocationBreakdownSection(
+                items: const [
+                  AllocationItem(label: 'Shares', value: 3.5),
+                ],
+                title: 'Test',
+                valueFormatter: (v) => v.toStringAsFixed(4),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('3.5000'), findsOneWidget);
+    });
+
+    testWidgets('applies valueColor to subtitle text', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: AllocationBreakdownSection(
+                items: [
+                  AllocationItem(label: 'Live', value: 500),
+                ],
+                title: 'Test',
+                valueColor: AppColors.green,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final valueText = tester.widget<Text>(find.text(formatCurrency(500)));
+      expect(valueText.style?.color, AppColors.green);
+    });
+
+    testWidgets('defaults to grey color when valueColor is null', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: AllocationBreakdownSection(
+                items: [
+                  AllocationItem(label: 'Normal', value: 100),
+                ],
+                title: 'Test',
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final valueText = tester.widget<Text>(find.text(formatCurrency(100)));
+      expect(valueText.style?.color, Colors.grey);
     });
   });
 }

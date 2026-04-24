@@ -100,4 +100,20 @@ class AssetPricesDao extends DatabaseAccessor<AppDatabase>
           ..orderBy([(t) => OrderingTerm.asc(t.date)]))
         .watch();
   }
+
+  Future<Map<int, double>> getPriceMapForAsset(int assetId) async {
+    final rows = await (select(assetPrices)
+          ..where((t) => t.assetId.equals(assetId)))
+        .get();
+    return {for (final r in rows) r.date: r.price};
+  }
+
+  Future<Map<int, Map<int, double>>> getAllPricesByAssetAndDate() async {
+    final all = await select(assetPrices).get();
+    final result = <int, Map<int, double>>{};
+    for (final p in all) {
+      result.putIfAbsent(p.assetId, () => {})[p.date] = p.price;
+    }
+    return result;
+  }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../app_theme.dart';
 import '../providers/live_price_provider.dart';
 
 class LiveToggleButton extends StatefulWidget {
@@ -51,7 +52,7 @@ class _LiveToggleButtonState extends State<LiveToggleButton>
         Widget icon = Icon(
           Icons.cell_tower,
           color: isLive
-              ? (isConnected ? Colors.green : Colors.orange)
+              ? (isConnected ? AppColors.green : Colors.orange)
               : null,
         );
 
@@ -76,7 +77,7 @@ class _LiveToggleButtonState extends State<LiveToggleButton>
                     width: 8,
                     height: 8,
                     decoration: const BoxDecoration(
-                      color: Colors.green,
+                      color: AppColors.green,
                       shape: BoxShape.circle,
                     ),
                   ),

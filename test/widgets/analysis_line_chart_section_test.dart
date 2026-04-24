@@ -48,6 +48,9 @@ Widget buildChart({
   VoidCallback? onPointerUpOrCancel,
   String valueLabel = '',
   Widget? topRight,
+  List<FlSpot>? marketValueData,
+  TextStyle? valueLabelStyle,
+  double? liveOverrideValue,
 }) {
   return MaterialApp(
     home: Scaffold(
@@ -73,6 +76,9 @@ Widget buildChart({
           showSma200Toggle: showSma200Toggle,
           valueLabel: valueLabel,
           topRight: topRight,
+          marketValueData: marketValueData,
+          valueLabelStyle: valueLabelStyle,
+          liveOverrideValue: liveOverrideValue,
         ),
       ),
     ),
@@ -685,6 +691,109 @@ void main() {
       );
       // When valueLabel is empty, column should have 1 child (just the value text)
       expect(column.children.length, 1);
+    });
+  });
+
+  // ============================================================
+  // Group 8: Market value line (live green line)
+  // ============================================================
+
+  group('Market value line', () {
+    testWidgets('adds green market value line when marketValueData provided', (tester) async {
+      final data = generateTestData(10);
+      final mvData = generateTestData(10, startValue: 120.0, dailyDelta: 2.0);
+      await tester.pumpWidget(buildChart(data: data, marketValueData: mvData));
+
+      final lineChart = tester.widget<LineChart>(find.byType(LineChart));
+      // 1 main line + 1 market value line = 2
+      expect(lineChart.data.lineBarsData.length, 2);
+      expect(lineChart.data.lineBarsData[1].color, AppColors.green);
+      expect(lineChart.data.lineBarsData[1].barWidth, 2);
+    });
+
+    testWidgets('no extra line when marketValueData is null', (tester) async {
+      final data = generateTestData(10);
+      await tester.pumpWidget(buildChart(data: data, marketValueData: null));
+
+      final lineChart = tester.widget<LineChart>(find.byType(LineChart));
+      expect(lineChart.data.lineBarsData.length, 1);
+    });
+
+    testWidgets('market value line respects range selection (1W)', (tester) async {
+      final data = generateTestData(50);
+      final mvData = generateTestData(50, startValue: 200.0, dailyDelta: 3.0);
+      await tester.pumpWidget(buildChart(
+        data: data,
+        marketValueData: mvData,
+        selectedRange: '1W',
+      ));
+
+      final lineChart = tester.widget<LineChart>(find.byType(LineChart));
+      expect(lineChart.data.lineBarsData.length, 2);
+      // Market value line for 1W should have last 7 points
+      expect(lineChart.data.lineBarsData[1].spots.length, 7);
+    });
+
+    testWidgets('market value line coexists with SMA', (tester) async {
+      final data = generateTestData(50);
+      final mvData = generateTestData(50, startValue: 200.0);
+      await tester.pumpWidget(buildChart(
+        data: data,
+        marketValueData: mvData,
+        showSma: true,
+      ));
+
+      final lineChart = tester.widget<LineChart>(find.byType(LineChart));
+      // 1 main + 1 market value + 1 SMA = 3
+      expect(lineChart.data.lineBarsData.length, 3);
+      expect(lineChart.data.lineBarsData[1].color, AppColors.green);
+      expect(lineChart.data.lineBarsData[2].color, Colors.orange);
+    });
+  });
+
+  // ============================================================
+  // Group 9: valueLabelStyle and liveOverrideValue
+  // ============================================================
+
+  group('valueLabelStyle and liveOverrideValue', () {
+    testWidgets('applies valueLabelStyle to value text', (tester) async {
+      final data = generateTestData(10);
+      const style = TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.green);
+      await tester.pumpWidget(buildChart(data: data, valueLabelStyle: style));
+
+      final text = tester.widget<Text>(find.text('109.00'));
+      expect(text.style?.color, AppColors.green);
+    });
+
+    testWidgets('shows liveOverrideValue instead of last data point', (tester) async {
+      final data = generateTestData(10);
+      await tester.pumpWidget(buildChart(data: data, liveOverrideValue: 999.99));
+
+      expect(find.text('999.99'), findsOneWidget);
+    });
+
+    testWidgets('defaults to normal style when valueLabelStyle is null', (tester) async {
+      final data = generateTestData(10);
+      await tester.pumpWidget(buildChart(data: data, valueLabelStyle: null));
+
+      final text = tester.widget<Text>(find.text('109.00'));
+      expect(text.style?.fontSize, 32);
+      expect(text.style?.fontWeight, FontWeight.bold);
+      expect(text.style?.color, isNull);
+    });
+
+    testWidgets('applies valueLabelStyle when topRight is provided', (tester) async {
+      final data = generateTestData(10);
+      const style = TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.green);
+      await tester.pumpWidget(buildChart(
+        data: data,
+        valueLabelStyle: style,
+        valueLabel: 'Total',
+        topRight: const Icon(Icons.settings),
+      ));
+
+      final text = tester.widget<Text>(find.text('109.00'));
+      expect(text.style?.color, AppColors.green);
     });
   });
 }

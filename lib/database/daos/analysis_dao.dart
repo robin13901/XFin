@@ -699,4 +699,81 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
 
     return spots;
   }
+
+  /// Balance history adjusted by historical market prices.
+  /// For each day: cost-basis balance + unrealized P&L of priced assets.
+  Future<List<FlSpot>> getMarketValueHistory() async {
+    final costBasisSpots = await getBalanceHistory();
+    if (costBasisSpots.isEmpty) return costBasisSpots;
+
+    final allPrices = await db.assetPricesDao.getAllPricesByAssetAndDate();
+    if (allPrices.isEmpty) return costBasisSpots;
+
+    final allBookings = await db.bookingsDao.getAllBookings();
+    final allTrades = await db.tradesDao.getAllTrades();
+
+    // Build daily deltas per asset for shares and cost-basis value
+    final shareDeltas = <int, Map<DateTime, double>>{};
+    final valueDeltas = <int, Map<DateTime, double>>{};
+
+    for (final b in allBookings) {
+      if (b.assetId == 1) continue;
+      final date = intToDateTime(b.date)!;
+      shareDeltas.putIfAbsent(b.assetId, () => {})[date] =
+          (shareDeltas[b.assetId]![date] ?? 0) + b.shares;
+      valueDeltas.putIfAbsent(b.assetId, () => {})[date] =
+          (valueDeltas[b.assetId]![date] ?? 0) + b.value;
+    }
+
+    for (final t in allTrades) {
+      final date = intToDateTime(t.datetime ~/ 1000000)!;
+      final sDelta = t.type == TradeTypes.buy ? t.shares : -t.shares;
+      shareDeltas.putIfAbsent(t.assetId, () => {})[date] =
+          (shareDeltas[t.assetId]![date] ?? 0) + sDelta;
+      valueDeltas.putIfAbsent(t.assetId, () => {})[date] =
+          (valueDeltas[t.assetId]![date] ?? 0) +
+              t.sourceAccountValueDelta +
+              t.targetAccountValueDelta;
+    }
+
+    final pricedAssetIds =
+        allPrices.keys.where((id) => shareDeltas.containsKey(id)).toSet();
+    if (pricedAssetIds.isEmpty) return costBasisSpots;
+
+    // Walk through each day and compute the adjustment
+    final runningShares = <int, double>{};
+    final runningCostValue = <int, double>{};
+
+    final adjustedSpots = <FlSpot>[];
+
+    for (final spot in costBasisSpots) {
+      final dt = DateTime.fromMillisecondsSinceEpoch(spot.x.toInt());
+      final dateOnly = DateTime(dt.year, dt.month, dt.day);
+      final dateInt =
+          dateOnly.year * 10000 + dateOnly.month * 100 + dateOnly.day;
+
+      for (final assetId in pricedAssetIds) {
+        runningShares[assetId] = (runningShares[assetId] ?? 0) +
+            (shareDeltas[assetId]?[dateOnly] ?? 0);
+        runningCostValue[assetId] = (runningCostValue[assetId] ?? 0) +
+            (valueDeltas[assetId]?[dateOnly] ?? 0);
+      }
+
+      double adjustment = 0;
+      for (final assetId in pricedAssetIds) {
+        final shares = runningShares[assetId] ?? 0;
+        if (shares <= 0) continue;
+        final marketPrice = allPrices[assetId]?[dateInt];
+        if (marketPrice == null) continue;
+        final marketValue = shares * marketPrice;
+        final costValue = runningCostValue[assetId] ?? 0;
+        adjustment += marketValue - costValue;
+      }
+
+      adjustedSpots
+          .add(FlSpot(spot.x, spot.y + adjustment));
+    }
+
+    return adjustedSpots;
+  }
 }

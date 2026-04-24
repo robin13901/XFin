@@ -58,23 +58,19 @@ class PriceService {
   }
 
   Future<void> _fetchAndEmitPrices() async {
-    final mapped = <int, double>{};
-
+    // Requests are already sorted by value (highest first).
+    // Emit after each asset so high-value positions update instantly.
     for (final req in _activeRequests) {
+      if (!_isStreaming) return;
       try {
         final yahooSymbol = _toYahooSymbol(req);
         final price = await _yahoo.getCurrentPrice(yahooSymbol);
         if (price != null) {
-          mapped[req.assetId] = price;
-          debugPrint('Live ${req.apiIdentifier} ($yahooSymbol): $price');
+          _livePriceController.add({req.assetId: price});
         }
       } catch (e) {
         debugPrint('Live fetch error for ${req.apiIdentifier}: $e');
       }
-    }
-
-    if (mapped.isNotEmpty) {
-      _livePriceController.add(mapped);
     }
   }
 

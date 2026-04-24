@@ -74,13 +74,17 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   LineBarSpot? _touchedSpot;
   late Future<AnalysisData> _analysisDataFuture;
   StreamSubscription<dynamic>? _tableWatcher;
+  LivePriceProvider? _liveProvider;
+  DatabaseProvider? _dbProvider;
 
   @override
   void initState() {
     super.initState();
-    final dbProvider = context.read<DatabaseProvider>();
-    db = dbProvider.db;
-    dbProvider.addListener(_onDbChanged);
+    _dbProvider = context.read<DatabaseProvider>();
+    db = _dbProvider!.db;
+    _dbProvider!.addListener(_onDbChanged);
+    _liveProvider = context.read<LivePriceProvider>();
+    _liveProvider!.addListener(_onLiveChanged);
     _fetchAnalysisData();
     _startTableWatch();
   }
@@ -92,8 +96,18 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     });
   }
 
+  bool _lastLiveState = false;
+
+  void _onLiveChanged() {
+    final isLive = _liveProvider?.isLive ?? false;
+    if (isLive != _lastLiveState) {
+      _lastLiveState = isLive;
+      if (mounted) _fetchAnalysisData();
+    }
+  }
+
   void _onDbChanged() {
-    final newDb = context.read<DatabaseProvider>().db;
+    final newDb = _dbProvider!.db;
     if (identical(newDb, db)) return;
     setState(() {
       db = newDb;
@@ -105,6 +119,8 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   @override
   void dispose() {
     _tableWatcher?.cancel();
+    _dbProvider?.removeListener(_onDbChanged);
+    _liveProvider?.removeListener(_onLiveChanged);
     try {
       context.read<DatabaseProvider>().removeListener(_onDbChanged);
     } catch (_) {}
@@ -114,9 +130,11 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
 
   void _fetchAnalysisData() {
     final now = DateTime.now();
+    final isLive = _liveProvider?.isLive ?? false;
 
-    final Future<List<FlSpot>> balanceHistoryFuture =
-        db.analysisDao.getBalanceHistory();
+    final Future<List<FlSpot>> balanceHistoryFuture = isLive
+        ? db.analysisDao.getMarketValueHistory()
+        : db.analysisDao.getBalanceHistory();
     final Future<double> sumOfInitialBalancesFuture =
         db.accountsDao.getSumOfInitialBalances();
     final Future<double> currentMonthInflowsFuture =

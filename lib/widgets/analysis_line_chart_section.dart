@@ -33,6 +33,8 @@ class AnalysisLineChartSection extends StatelessWidget {
   final String valueLabel;
   final Widget? topRight;
   final double? liveOverrideValue;
+  final List<FlSpot>? marketValueData;
+  final TextStyle? valueLabelStyle;
 
   const AnalysisLineChartSection({
     super.key,
@@ -57,6 +59,8 @@ class AnalysisLineChartSection extends StatelessWidget {
     this.valueLabel = "",
     this.topRight,
     this.liveOverrideValue,
+    this.marketValueData,
+    this.valueLabelStyle,
   });
 
   @override
@@ -120,6 +124,30 @@ class AnalysisLineChartSection extends StatelessWidget {
         dotData: const FlDotData(show: false),
       ),
     ];
+
+    // Green market-value line (historical price × shares)
+    List<FlSpot>? currentMarketValueData;
+    if (marketValueData != null && marketValueData!.isNotEmpty) {
+      final mvSets = <String, List<FlSpot>>{
+        '1W': marketValueData!.length > 7
+            ? marketValueData!.sublist(marketValueData!.length - 7)
+            : marketValueData!,
+        '1M': marketValueData!.length > 30
+            ? marketValueData!.sublist(marketValueData!.length - 30)
+            : marketValueData!,
+        '1J': marketValueData!.length > 365
+            ? marketValueData!.sublist(marketValueData!.length - 365)
+            : marketValueData!,
+        'MAX': marketValueData!,
+      };
+      currentMarketValueData = mvSets[selectedRange] ?? marketValueData!;
+      lineBarsData.add(LineChartBarData(
+        spots: currentMarketValueData,
+        barWidth: 2,
+        color: AppColors.green,
+        dotData: const FlDotData(show: false),
+      ));
+    }
 
     final firstDateInRange = currentData.isNotEmpty ? currentData.first.x : 0;
 
@@ -192,7 +220,7 @@ class AnalysisLineChartSection extends StatelessWidget {
         if (topRight == null) ...[
           Text(
             valueFormatter(totalToShow),
-            style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+            style: valueLabelStyle ?? const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
         ] else ...[
@@ -207,7 +235,7 @@ class AnalysisLineChartSection extends StatelessWidget {
                       Text(valueLabel, style: Theme.of(context).textTheme.bodySmall),
                     Text(
                       valueFormatter(totalToShow),
-                      style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                      style: valueLabelStyle ?? const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),

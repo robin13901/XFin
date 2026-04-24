@@ -37,6 +37,22 @@ class LivePriceProvider with ChangeNotifier {
     _priceService = service;
   }
 
+  @visibleForTesting
+  void setLivePriceForTesting(int assetId, double price) {
+    _livePrices[assetId] = price;
+    _isLive = true;
+    _isConnected = true;
+    notifyListeners();
+  }
+
+  @visibleForTesting
+  void clearLivePricesForTesting() {
+    _livePrices.clear();
+    _isLive = false;
+    _isConnected = false;
+    notifyListeners();
+  }
+
   Future<void> initialize(AppDatabase db, String baseCurrency) async {
     _db = db;
     _baseCurrency = baseCurrency;
@@ -66,6 +82,14 @@ class LivePriceProvider with ChangeNotifier {
     }
   }
 
+  /// Refresh the asset list and restart polling.
+  /// Call this after saving an apiIdentifier on an asset.
+  Future<void> refreshAssets() async {
+    if (!_isLive || _db == null || _priceService == null) return;
+    await _priceService!.stopLiveStreams();
+    await _loadAndStartStreams();
+  }
+
   Future<void> _startLive() async {
     if (_db == null || _priceService == null) {
       _lastError = 'Service nicht initialisiert';
@@ -77,6 +101,10 @@ class LivePriceProvider with ChangeNotifier {
     _lastError = null;
     notifyListeners();
 
+    await _loadAndStartStreams();
+  }
+
+  Future<void> _loadAndStartStreams() async {
     final assets = await _db!.assetPricesDao.getAssetsWithApiIdentifier();
     debugPrint('Live: found ${assets.length} assets with apiIdentifier');
     if (assets.isEmpty) {
@@ -86,7 +114,11 @@ class LivePriceProvider with ChangeNotifier {
       return;
     }
 
-    final requests = assets
+    // Sort by value descending — highest value assets get fetched first
+    final sorted = assets.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    final requests = sorted
         .map((a) => AssetPriceRequest(
               assetId: a.id,
               apiIdentifier: a.apiIdentifier!,
@@ -94,10 +126,10 @@ class LivePriceProvider with ChangeNotifier {
             ))
         .toList();
 
+    _priceSubscription?.cancel();
     _priceSubscription = _priceService!.livePriceUpdates.listen((prices) {
       _livePrices.addAll(prices);
       _isConnected = true;
-      debugPrint('Live prices updated: ${prices.length} assets');
       notifyListeners();
     });
 
@@ -136,7 +168,8 @@ class LivePriceProvider with ChangeNotifier {
       debugPrint('Starting historical price sync...');
       final result =
           await _priceSyncService!.syncAllAssets(onProgress: onProgress);
-      debugPrint('Sync done: ${result.synced}/${result.total} synced, ${result.failed} failed');
+      debugPrint(
+          'Sync done: ${result.synced}/${result.total} synced, ${result.failed} failed');
       return result;
     } catch (e) {
       debugPrint('Sync error: $e');
