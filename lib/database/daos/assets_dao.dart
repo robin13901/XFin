@@ -83,28 +83,27 @@ class AssetsDao extends DatabaseAccessor<AppDatabase> with _$AssetsDaoMixin {
       double runningShares = asset.shares;
       double runningValue = asset.value;
 
+      // Use calendar-day arithmetic to avoid DST skipping days
       for (var date = today;
           !date.isBefore(firstDate);
-          date = date.subtract(const Duration(days: 1))) {
-        final dateOnly = DateTime(date.year, date.month, date.day);
-        historyByDate[dateOnly] =
+          date = DateTime(date.year, date.month, date.day - 1)) {
+        historyByDate[date] =
             _AssetValueDelta(shares: runningShares, value: runningValue);
 
-        final delta = dailyDeltas[dateOnly] ?? const _AssetValueDelta();
+        final delta = dailyDeltas[date] ?? const _AssetValueDelta();
         runningShares -= delta.shares;
         runningValue -= delta.value;
       }
 
       for (var date = firstDate;
           !date.isAfter(today);
-          date = date.add(const Duration(days: 1))) {
-        final dateOnly = DateTime(date.year, date.month, date.day);
-        final point = historyByDate[dateOnly] ?? const _AssetValueDelta();
+          date = DateTime(date.year, date.month, date.day + 1)) {
+        final point = historyByDate[date] ?? const _AssetValueDelta();
 
         sharesHistory.add(FlSpot(
-            dateOnly.millisecondsSinceEpoch.toDouble(), normalize(point.shares)));
+            date.millisecondsSinceEpoch.toDouble(), normalize(point.shares)));
         valueHistory.add(FlSpot(
-            dateOnly.millisecondsSinceEpoch.toDouble(), normalize(point.value)));
+            date.millisecondsSinceEpoch.toDouble(), normalize(point.value)));
       }
     }
 

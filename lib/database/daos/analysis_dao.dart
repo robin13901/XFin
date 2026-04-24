@@ -683,18 +683,17 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
     final firstDate = sortedDates.first;
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final tomorrow = today.add(const Duration(days: 1));
+    final tomorrow = DateTime(today.year, today.month, today.day + 1);
 
     List<FlSpot> spots = [];
     double runningBalance = totalInitialBalance;
 
     for (var date = firstDate;
         date.isBefore(tomorrow);
-        date = date.add(const Duration(days: 1))) {
-      final dateOnly = DateTime(date.year, date.month, date.day);
-      runningBalance += dailyDeltas[dateOnly] ?? 0;
+        date = DateTime(date.year, date.month, date.day + 1)) {
+      runningBalance += dailyDeltas[date] ?? 0;
       spots.add(
-          FlSpot(dateOnly.millisecondsSinceEpoch.toDouble(), runningBalance));
+          FlSpot(date.millisecondsSinceEpoch.toDouble(), runningBalance));
     }
 
     return spots;

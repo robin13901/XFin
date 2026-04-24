@@ -374,5 +374,65 @@ void main() {
       });
 
     });
+
+    test('history has no zero-dip gaps (DST-safe day iteration)', () async {
+      await db.into(db.assets).insert(AssetsCompanion.insert(
+        name: 'EUR',
+        type: AssetTypes.fiat,
+        tickerSymbol: 'EUR',
+      ));
+      await db.into(db.assets).insert(AssetsCompanion.insert(
+        name: 'SOL',
+        type: AssetTypes.crypto,
+        tickerSymbol: 'SOL',
+        shares: const Value(10),
+        value: const Value(1000),
+        netCostBasis: const Value(100),
+      ));
+      final src = await db.into(db.accounts).insert(
+        AccountsCompanion.insert(name: 'Cash', type: AccountTypes.cash),
+      );
+      final dst = await db.into(db.accounts).insert(
+        AccountsCompanion.insert(name: 'Broker', type: AccountTypes.portfolio),
+      );
+
+      // Buy 90 days ago so history spans any DST boundary
+      final buyDate = DateTime.now().subtract(const Duration(days: 90));
+      final buyDateInt = buyDate.year * 10000 + buyDate.month * 100 + buyDate.day;
+      await db.into(db.trades).insert(TradesCompanion.insert(
+        datetime: buyDateInt * 1000000 + 120000,
+        type: TradeTypes.buy,
+        sourceAccountId: src,
+        targetAccountId: dst,
+        assetId: 2,
+        shares: 10,
+        costBasis: 100,
+        sourceAccountValueDelta: -1000,
+        targetAccountValueDelta: 1000,
+      ));
+
+      final details = await assetsDao.getAssetAnalysisDetails(2);
+
+      // Every day in the history must have non-negative shares/value
+      for (final spot in details.sharesHistory) {
+        expect(spot.y, greaterThanOrEqualTo(0),
+            reason: 'Shares should never go negative on any day');
+      }
+      for (final spot in details.valueHistory) {
+        expect(spot.y, greaterThanOrEqualTo(0),
+            reason: 'Value should never go negative on any day');
+      }
+
+      // No day should suddenly drop to 0 and recover
+      for (var i = 1; i < details.valueHistory.length - 1; i++) {
+        final prev = details.valueHistory[i - 1].y;
+        final curr = details.valueHistory[i].y;
+        final next = details.valueHistory[i + 1].y;
+        if (prev > 100 && next > 100) {
+          expect(curr, greaterThan(0),
+              reason: 'Value should not dip to 0 between two positive days');
+        }
+      }
+    });
   });
 }
