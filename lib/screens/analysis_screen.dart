@@ -23,6 +23,7 @@ import '../widgets/summary_row.dart';
 // A data class to hold all asynchronous results needed by AnalysisScreen
 class AnalysisData {
   final List<FlSpot> balanceHistory;
+  final List<FlSpot> marketValueHistory;
   final double sumOfInitialBalances;
   final double currentMonthInflows;
   final double currentMonthOutflows;
@@ -37,6 +38,7 @@ class AnalysisData {
 
   AnalysisData({
     required this.balanceHistory,
+    required this.marketValueHistory,
     required this.sumOfInitialBalances,
     required this.currentMonthInflows,
     required this.currentMonthOutflows,
@@ -130,11 +132,11 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
 
   void _fetchAnalysisData() {
     final now = DateTime.now();
-    final isLive = _liveProvider?.isLive ?? false;
 
-    final Future<List<FlSpot>> balanceHistoryFuture = isLive
-        ? db.analysisDao.getMarketValueHistory()
-        : db.analysisDao.getBalanceHistory();
+    final Future<List<FlSpot>> balanceHistoryFuture =
+        db.analysisDao.getBalanceHistory();
+    final Future<List<FlSpot>> marketValueHistoryFuture =
+        db.analysisDao.getMarketValueHistory();
     final Future<double> sumOfInitialBalancesFuture =
         db.accountsDao.getSumOfInitialBalances();
     final Future<double> currentMonthInflowsFuture =
@@ -174,6 +176,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     setState(() {
       _analysisDataFuture = Future.wait([
         balanceHistoryFuture,
+        marketValueHistoryFuture,
         sumOfInitialBalancesFuture,
         currentMonthInflowsFuture,
         currentMonthOutflowsFuture,
@@ -188,17 +191,18 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       ]).then((results) {
         return AnalysisData(
           balanceHistory: results[0] as List<FlSpot>,
-          sumOfInitialBalances: results[1] as double,
-          currentMonthInflows: results[2] as double,
-          currentMonthOutflows: results[3] as double,
-          currentMonthProfit: results[4] as double,
-          averageMonthlyInflows: results[5] as double,
-          averageMonthlyOutflows: results[6] as double,
-          averageMonthlyProfit: results[7] as double,
-          currentMonthCategoryInflows: results[8] as Map<String, double>,
-          currentMonthCategoryOutflows: results[9] as Map<String, double>,
-          assetShares: results[10] as Map<int, double>,
-          assetValues: results[11] as Map<int, double>,
+          marketValueHistory: results[1] as List<FlSpot>,
+          sumOfInitialBalances: results[2] as double,
+          currentMonthInflows: results[3] as double,
+          currentMonthOutflows: results[4] as double,
+          currentMonthProfit: results[5] as double,
+          averageMonthlyInflows: results[6] as double,
+          averageMonthlyOutflows: results[7] as double,
+          averageMonthlyProfit: results[8] as double,
+          currentMonthCategoryInflows: results[9] as Map<String, double>,
+          currentMonthCategoryOutflows: results[10] as Map<String, double>,
+          assetShares: results[11] as Map<int, double>,
+          assetValues: results[12] as Map<int, double>,
         );
       });
     });
@@ -255,35 +259,54 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                     children: [
                       Consumer<LivePriceProvider>(
                         builder: (context, liveProvider, _) {
+                          final isLive = liveProvider.isLive &&
+                              liveProvider.livePrices.isNotEmpty;
                           double? liveTotal;
-                          if (liveProvider.isLive &&
-                              liveProvider.livePrices.isNotEmpty) {
+                          if (isLive) {
                             liveTotal = 0;
                             final storedValues = analysisData.assetValues;
                             final shares = analysisData.assetShares;
                             final liveAssetIds =
                                 liveProvider.livePrices.keys.toSet();
 
-                            // Live-priced assets: shares × livePrice
                             for (final entry
                                 in liveProvider.livePrices.entries) {
                               final s = shares[entry.key] ?? 0;
                               liveTotal = liveTotal! + s * entry.value;
                             }
-                            // Non-live assets: use stored value
                             for (final entry in storedValues.entries) {
                               if (!liveAssetIds.contains(entry.key)) {
                                 liveTotal = liveTotal! + entry.value;
                               }
                             }
-                            // Add account balances that are not asset-based
                             liveTotal = liveTotal! +
                                 analysisData.sumOfInitialBalances;
                           }
+
+                          // Green market-value line with today's live data point
+                          List<FlSpot>? greenLine;
+                          if (isLive &&
+                              analysisData.marketValueHistory.isNotEmpty) {
+                            greenLine = [...analysisData.marketValueHistory];
+                            if (liveTotal != null) {
+                              final now = DateTime.now();
+                              final todayMs = DateTime(
+                                      now.year, now.month, now.day)
+                                  .millisecondsSinceEpoch
+                                  .toDouble();
+                              if (greenLine.last.x == todayMs) {
+                                greenLine.last = FlSpot(todayMs, liveTotal);
+                              } else {
+                                greenLine.add(FlSpot(todayMs, liveTotal));
+                              }
+                            }
+                          }
+
                           return AnalysisLineChartSection(
                         allData: allData,
                         startValue: analysisData.sumOfInitialBalances,
                         liveOverrideValue: liveTotal,
+                        marketValueData: greenLine,
                         selectedRange: _selectedRange,
                         onRangeSelected: _onRangeSelected,
                         showSma: _showSma,

@@ -106,6 +106,8 @@ void main() {
     // Default: make analysis DAO futures return immediate values.
     when(() => mockAnalysisDao.getBalanceHistory())
         .thenAnswer((_) async => balanceHistory);
+    when(() => mockAnalysisDao.getMarketValueHistory())
+        .thenAnswer((_) async => balanceHistory);
     when(() => mockAccountsDao.getSumOfInitialBalances())
         .thenAnswer((_) async => sumOfInitialBalances);
     when(() => mockAnalysisDao.getTotalInflowsForMonth(any()))
@@ -165,6 +167,12 @@ void main() {
           () => balanceHistory,
         ),
       );
+      when(() => mockAnalysisDao.getMarketValueHistory()).thenAnswer(
+        (_) => Future<List<FlSpot>>.delayed(
+          const Duration(milliseconds: 300),
+          () => balanceHistory,
+        ),
+      );
 
       // pump widget normally (no runAsync)
       await pumpWidget(tester);
@@ -189,6 +197,8 @@ void main() {
       // Make the DAO return a Future that completes with error (do NOT throw synchronously)
       when(() => mockAnalysisDao.getBalanceHistory())
           .thenAnswer((_) => Future<List<FlSpot>>.error(Exception('boom')));
+      when(() => mockAnalysisDao.getMarketValueHistory())
+          .thenAnswer((_) => Future<List<FlSpot>>.error(Exception('boom')));
 
       await tester.runAsync(() async {
         await pumpWidget(tester);
@@ -207,6 +217,8 @@ void main() {
     testWidgets('shows "No data available." when balance history is empty',
         (tester) async {
       when(() => mockAnalysisDao.getBalanceHistory())
+          .thenAnswer((_) async => <FlSpot>[]);
+      when(() => mockAnalysisDao.getMarketValueHistory())
           .thenAnswer((_) async => <FlSpot>[]);
 
       await tester.runAsync(() async {
@@ -453,6 +465,8 @@ void main() {
         FlSpot(DateTime.now().millisecondsSinceEpoch.toDouble(), 500.0)
       ];
       when(() => mockAnalysisDao.getBalanceHistory())
+          .thenAnswer((_) async => single);
+      when(() => mockAnalysisDao.getMarketValueHistory())
           .thenAnswer((_) async => single);
 
       await tester.runAsync(() async {
