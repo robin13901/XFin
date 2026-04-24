@@ -128,25 +128,18 @@ class AnalysisLineChartSection extends StatelessWidget {
     // Green market-value line (historical price × shares)
     List<FlSpot>? currentMarketValueData;
     if (marketValueData != null && marketValueData!.isNotEmpty) {
-      final mvSets = <String, List<FlSpot>>{
-        '1W': marketValueData!.length > 7
-            ? marketValueData!.sublist(marketValueData!.length - 7)
-            : marketValueData!,
-        '1M': marketValueData!.length > 30
-            ? marketValueData!.sublist(marketValueData!.length - 30)
-            : marketValueData!,
-        '1J': marketValueData!.length > 365
-            ? marketValueData!.sublist(marketValueData!.length - 365)
-            : marketValueData!,
-        'MAX': marketValueData!,
-      };
-      currentMarketValueData = mvSets[selectedRange] ?? marketValueData!;
-      lineBarsData.add(LineChartBarData(
-        spots: currentMarketValueData,
-        barWidth: 2,
-        color: AppColors.green,
-        dotData: const FlDotData(show: false),
-      ));
+      final rangeStart = currentData.isNotEmpty ? currentData.first.x : 0;
+      currentMarketValueData = marketValueData!
+          .where((spot) => spot.x >= rangeStart)
+          .toList();
+      if (currentMarketValueData.isNotEmpty) {
+        lineBarsData.add(LineChartBarData(
+          spots: currentMarketValueData,
+          barWidth: 2,
+          color: AppColors.green,
+          dotData: const FlDotData(show: false),
+        ));
+      }
     }
 
     final firstDateInRange = currentData.isNotEmpty ? currentData.first.x : 0;

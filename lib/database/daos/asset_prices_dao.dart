@@ -62,7 +62,7 @@ class AssetPricesDao extends DatabaseAccessor<AppDatabase>
       if (bRow?.read(bookings.date.min()) != null)
         bRow!.read(bookings.date.min())!,
       if (tRow?.read(trades.datetime.min()) != null)
-        tRow!.read(trades.datetime.min())!,
+        tRow!.read(trades.datetime.min())! ~/ 1000000,
       if (xRow?.read(transfers.date.min()) != null)
         xRow!.read(transfers.date.min())!,
     ];
