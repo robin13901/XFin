@@ -35,6 +35,14 @@ class AssetPricesDao extends DatabaseAccessor<AppDatabase>
     return row?.read(assetPrices.date.max());
   }
 
+  Future<int?> getEarliestPriceDate(int assetId) async {
+    final query = selectOnly(assetPrices)
+      ..addColumns([assetPrices.date.min()])
+      ..where(assetPrices.assetId.equals(assetId));
+    final row = await query.getSingleOrNull();
+    return row?.read(assetPrices.date.min());
+  }
+
   Future<int?> getFirstAssetUsageDate(int assetId) async {
     final bookingMin = selectOnly(bookings)
       ..addColumns([bookings.date.min()])

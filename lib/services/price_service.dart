@@ -77,15 +77,17 @@ class PriceService {
   String _toYahooSymbol(AssetPriceRequest req) {
     final id = req.apiIdentifier;
 
-    // If it already looks like a Yahoo symbol (contains . or -), use as-is
+    if (req.assetType == AssetTypes.crypto) {
+      final ticker = _cryptoIdToTicker(id);
+      return '$ticker-${_baseCurrency.toUpperCase()}';
+    }
+
+    // Non-crypto: if it already looks like a Yahoo symbol, use as-is
     if (id.contains('.') || id.contains('-')) return id;
 
     switch (req.assetType) {
       case AssetTypes.crypto:
-        // CoinGecko IDs like "bitcoin" → Yahoo format "BTC-EUR"
-        // Common mappings for well-known cryptos
-        final ticker = _cryptoIdToTicker(id);
-        return '$ticker-${_baseCurrency.toUpperCase()}';
+        throw StateError('unreachable');
       case AssetTypes.fiat:
         return '${id.toUpperCase()}${_baseCurrency.toUpperCase()}=X';
       case AssetTypes.stock:
@@ -119,6 +121,40 @@ class PriceService {
       'bitcoin-cash': 'BCH',
       'toncoin': 'TON',
       'hedera-hashgraph': 'HBAR',
+      'binancecoin': 'BNB',
+      'tether': 'USDT',
+      'usd-coin': 'USDC',
+      'polygon-ecosystem-token': 'POL',
+      'matic-network': 'MATIC',
+      'pi-network': 'PI',
+      'turbo-eth': 'TURBO',
+      'ethena-usde': 'USDE',
+      'internet-computer': 'ICP',
+      'render-token': 'RENDER',
+      'fetch-ai': 'FET',
+      'injective-protocol': 'INJ',
+      'arbitrum': 'ARB',
+      'optimism': 'OP',
+      'aave': 'AAVE',
+      'maker': 'MKR',
+      'the-graph': 'GRT',
+      'filecoin': 'FIL',
+      'monero': 'XMR',
+      'aptos': 'APT',
+      'mantle': 'MNT',
+      'kaspa': 'KAS',
+      'fantom': 'FTM',
+      'algorand': 'ALGO',
+      'theta-token': 'THETA',
+      'vechain': 'VET',
+      'eos': 'EOS',
+      'dai': 'DAI',
+      'lido-dao': 'LDO',
+      'bonk': 'BONK',
+      'floki': 'FLOKI',
+      'worldcoin-wld': 'WLD',
+      'jupiter-exchange-solana': 'JUP',
+      'ondo-finance': 'ONDO',
     };
     return map[coinGeckoId.toLowerCase()] ??
         coinGeckoId.toUpperCase();
@@ -134,7 +170,17 @@ class PriceService {
   Future<Map<int, double>> getHistoricalPrices(AssetPriceRequest request,
       DateTime from, DateTime to, String baseCurrency) async {
     final yahooSymbol = _toYahooSymbol(request);
-    return _yahoo.getHistoricalDailyPrices(yahooSymbol, from, to, baseCurrency);
+    final prices =
+        await _yahoo.getHistoricalDailyPrices(yahooSymbol, from, to, baseCurrency);
+    if (prices.isNotEmpty) return prices;
+
+    // Fallback: CoinGecko for crypto assets using the original CoinGecko ID
+    if (request.assetType == AssetTypes.crypto) {
+      debugPrint('Yahoo empty for $yahooSymbol, trying CoinGecko: ${request.apiIdentifier}');
+      return _coinGecko.getHistoricalDailyPrices(
+          request.apiIdentifier, from, to, baseCurrency);
+    }
+    return prices;
   }
 
   Future<List<SymbolSearchResult>> searchSymbols(

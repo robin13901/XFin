@@ -52,22 +52,9 @@ class PriceSyncService {
     final firstUsageDate = await _dao.getFirstAssetUsageDate(asset.id);
     if (firstUsageDate == null) return 0;
 
+    final firstUsageDt = _intToDate(firstUsageDate);
     final latestPriceDate = await _dao.getLatestPriceDate(asset.id);
-
-    final DateTime from;
-    if (latestPriceDate != null) {
-      final y = latestPriceDate ~/ 10000;
-      final m = (latestPriceDate % 10000) ~/ 100;
-      final d = latestPriceDate % 100;
-      from = DateTime(y, m, d).add(const Duration(days: 1));
-    } else {
-      final y = firstUsageDate ~/ 10000;
-      final m = (firstUsageDate % 10000) ~/ 100;
-      final d = firstUsageDate % 100;
-      from = DateTime(y, m, d);
-    }
-
-    if (from.isAfter(upTo)) return 0;
+    final earliestPriceDate = await _dao.getEarliestPriceDate(asset.id);
 
     final request = AssetPriceRequest(
       assetId: asset.id,
@@ -75,13 +62,44 @@ class PriceSyncService {
       assetType: asset.type,
     );
 
+    int totalSynced = 0;
+
+    // Fill backward gap: first usage date → earliest price date - 1
+    if (earliestPriceDate != null) {
+      final earliestDt = _intToDate(earliestPriceDate);
+      if (firstUsageDt.isBefore(earliestDt)) {
+        final backwardEnd = DateTime(earliestDt.year, earliestDt.month, earliestDt.day - 1);
+        totalSynced += await _fetchAndStore(request, asset.id, firstUsageDt, backwardEnd);
+      }
+    }
+
+    // Fill forward gap: latest price date + 1 → yesterday
+    final DateTime forwardFrom;
+    if (latestPriceDate != null) {
+      final latestDt = _intToDate(latestPriceDate);
+      forwardFrom = DateTime(latestDt.year, latestDt.month, latestDt.day + 1);
+    } else {
+      forwardFrom = firstUsageDt;
+    }
+
+    if (!forwardFrom.isAfter(upTo)) {
+      totalSynced += await _fetchAndStore(request, asset.id, forwardFrom, upTo);
+    }
+
+    return totalSynced;
+  }
+
+  Future<int> _fetchAndStore(AssetPriceRequest request, int assetId,
+      DateTime from, DateTime to) async {
+    if (from.isAfter(to)) return 0;
+
     final prices = await _priceService.getHistoricalPrices(
-        request, from, upTo, _baseCurrency);
+        request, from, to, _baseCurrency);
 
     if (prices.isNotEmpty) {
       final companions = prices.entries.map((e) {
         return AssetPricesCompanion(
-          assetId: Value(asset.id),
+          assetId: Value(assetId),
           date: Value(e.key),
           price: Value(e.value),
         );
@@ -90,6 +108,13 @@ class PriceSyncService {
       await _dao.insertPrices(companions);
     }
     return prices.length;
+  }
+
+  static DateTime _intToDate(int dateInt) {
+    final y = dateInt ~/ 10000;
+    final m = (dateInt % 10000) ~/ 100;
+    final d = dateInt % 100;
+    return DateTime(y, m, d);
   }
 
   Future<int> syncSingleAsset(Asset asset) async {
