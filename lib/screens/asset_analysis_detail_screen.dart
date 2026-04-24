@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 
 import '../app_theme.dart';
-import '../database/app_database.dart';
 import '../database/daos/assets_dao.dart';
 import '../providers/database_provider.dart';
 import '../providers/live_price_provider.dart';
@@ -41,7 +40,6 @@ class _AssetAnalysisDetailScreenState extends State<AssetAnalysisDetailScreen>
   int _chartPointerCount = 0;
 
   List<FlSpot>? _marketValueHistory;
-  bool _isSyncing = false;
 
   late final AnimationController _livePulseController;
   late final Animation<double> _livePulseAnimation;
@@ -88,35 +86,6 @@ class _AssetAnalysisDetailScreenState extends State<AssetAnalysisDetailScreen>
     return result;
   }
 
-  Future<void> _syncPrices(Asset asset) async {
-    if (_isSyncing) return;
-    setState(() => _isSyncing = true);
-    try {
-      final provider = context.read<LivePriceProvider>();
-      final count = await provider.syncSingleAssetPrices(asset);
-      if (!mounted) return;
-      if (count > 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$count Preisdaten synchronisiert')),
-        );
-        setState(() {
-          _future = _load();
-        });
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Bereits aktuell')),
-        );
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Fehler: $e')),
-      );
-    } finally {
-      if (mounted) setState(() => _isSyncing = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     AppLocalizations l10n = AppLocalizations.of(context)!;
@@ -141,6 +110,25 @@ class _AssetAnalysisDetailScreenState extends State<AssetAnalysisDetailScreen>
               final liveValue = isLive && livePrice != null
                   ? livePrice * currentShares
                   : null;
+
+              // Append today's live price to the green market-value line
+              List<FlSpot>? effectiveMarketValueData;
+              if (isLive && !_showShares && _marketValueHistory != null) {
+                effectiveMarketValueData = [..._marketValueHistory!];
+                if (livePrice != null && currentShares > 0) {
+                  final now = DateTime.now();
+                  final todayMs = DateTime(now.year, now.month, now.day)
+                      .millisecondsSinceEpoch
+                      .toDouble();
+                  final todayValue = livePrice * currentShares;
+                  if (effectiveMarketValueData.isNotEmpty &&
+                      effectiveMarketValueData.last.x == todayMs) {
+                    effectiveMarketValueData.last = FlSpot(todayMs, todayValue);
+                  } else {
+                    effectiveMarketValueData.add(FlSpot(todayMs, todayValue));
+                  }
+                }
+              }
 
               if (isLive && !_livePulseController.isAnimating) {
                 _livePulseController.repeat(reverse: true);
@@ -210,7 +198,7 @@ class _AssetAnalysisDetailScreenState extends State<AssetAnalysisDetailScreen>
                                   : formatCurrency,
                               valueLabel: l10n.total,
                               liveOverrideValue: !_showShares ? liveValue : null,
-                              marketValueData: isLive && !_showShares ? _marketValueHistory : null,
+                              marketValueData: effectiveMarketValueData,
                               valueLabelStyle: pulseColor != null
                                   ? TextStyle(
                                       fontSize: 32,
@@ -278,21 +266,7 @@ class _AssetAnalysisDetailScreenState extends State<AssetAnalysisDetailScreen>
                   buildLiquidGlassAppBar(
                     context,
                     title: Text(data.asset.name),
-                    actions: [
-                      if (data.asset.apiIdentifier != null)
-                        IconButton(
-                          icon: _isSyncing
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Icon(Icons.sync),
-                          onPressed: _isSyncing ? null : () => _syncPrices(data.asset),
-                          tooltip: 'Preise synchronisieren',
-                        ),
-                      const LiveToggleButton(),
-                    ],
+                    actions: const [LiveToggleButton()],
                   ),
                 ],
               );

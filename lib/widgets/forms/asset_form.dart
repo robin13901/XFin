@@ -156,13 +156,39 @@ class _AssetFormState extends State<AssetForm> {
       }
 
       // Refresh live streams so the new/updated asset is included
-      if (mounted) {
-        final liveProvider = context.read<LivePriceProvider>();
-        if (liveProvider.isLive) {
-          liveProvider.refreshAssets();
+      if (!mounted) return;
+      final liveProvider = context.read<LivePriceProvider>();
+      final messenger = ScaffoldMessenger.of(context);
+      final navigator = Navigator.of(context);
+
+      // Sync historical prices if API identifier was set or changed
+      final oldApiId = widget.asset?.apiIdentifier;
+      final newApiId = apiIdentifier;
+      final apiIdChanged = newApiId != null && newApiId != oldApiId;
+
+      if (apiIdChanged) {
+        final assetId = widget.isEditing
+            ? widget.asset!.id
+            : (await _db.assetsDao.getAssetByTickerSymbol(tickerSymbol)).id;
+        final asset = await _db.assetsDao.getAsset(assetId);
+
+        if (oldApiId != null && oldApiId != newApiId) {
+          await _db.assetPricesDao.deleteAllForAsset(assetId);
         }
-        Navigator.of(context).pop();
+
+        liveProvider.syncSingleAssetPrices(asset).then((count) {
+          if (count > 0) {
+            messenger.showSnackBar(
+              SnackBar(content: Text('$count Preisdaten synchronisiert')),
+            );
+          }
+        });
       }
+
+      if (liveProvider.isLive) {
+        liveProvider.refreshAssets();
+      }
+      navigator.pop();
     }
   }
 
