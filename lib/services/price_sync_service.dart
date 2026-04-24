@@ -48,9 +48,9 @@ class PriceSyncService {
     return SyncProgress(total: assets.length, synced: synced, failed: failed);
   }
 
-  Future<void> _syncAsset(Asset asset, DateTime upTo) async {
+  Future<int> _syncAsset(Asset asset, DateTime upTo) async {
     final firstUsageDate = await _dao.getFirstAssetUsageDate(asset.id);
-    if (firstUsageDate == null) return;
+    if (firstUsageDate == null) return 0;
 
     final latestPriceDate = await _dao.getLatestPriceDate(asset.id);
 
@@ -67,7 +67,7 @@ class PriceSyncService {
       from = DateTime(y, m, d);
     }
 
-    if (from.isAfter(upTo)) return;
+    if (from.isAfter(upTo)) return 0;
 
     final request = AssetPriceRequest(
       assetId: asset.id,
@@ -89,11 +89,12 @@ class PriceSyncService {
 
       await _dao.insertPrices(companions);
     }
+    return prices.length;
   }
 
-  Future<void> syncSingleAsset(Asset asset) async {
+  Future<int> syncSingleAsset(Asset asset) async {
     final yesterday = DateTime.now().subtract(const Duration(days: 1));
-    await _syncAsset(asset, yesterday);
+    return _syncAsset(asset, yesterday);
   }
 }
 

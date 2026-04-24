@@ -180,6 +180,11 @@ class LivePriceProvider with ChangeNotifier {
     }
   }
 
+  Future<int> syncSingleAssetPrices(Asset asset) async {
+    if (_priceSyncService == null) return 0;
+    return _priceSyncService!.syncSingleAsset(asset);
+  }
+
   @override
   void dispose() {
     _stopLive();
