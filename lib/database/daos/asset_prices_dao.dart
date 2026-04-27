@@ -116,6 +116,16 @@ class AssetPricesDao extends DatabaseAccessor<AppDatabase>
     return {for (final r in rows) r.date: r.price};
   }
 
+  Future<double?> getLatestPriceOnOrBefore(int assetId, int date) async {
+    final query = select(assetPrices)
+      ..where((t) =>
+          t.assetId.equals(assetId) & t.date.isSmallerOrEqualValue(date))
+      ..orderBy([(t) => OrderingTerm.desc(t.date)])
+      ..limit(1);
+    final row = await query.getSingleOrNull();
+    return row?.price;
+  }
+
   Future<Set<int>> getExistingPriceDates(
       int assetId, int fromDate, int toDate) async {
     final rows = await (select(assetPrices)

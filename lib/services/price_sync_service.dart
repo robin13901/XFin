@@ -92,8 +92,27 @@ class PriceSyncService {
     final prices = await _priceService.getHistoricalPrices(
         request, from, to, _baseCurrency);
 
-    if (prices.isNotEmpty) {
-      final companions = prices.entries.map((e) {
+    final seedDate = _dateToInt(DateTime(from.year, from.month, from.day - 1));
+    final seedPrice =
+        await _dao.getLatestPriceOnOrBefore(assetId, seedDate);
+
+    final completePrices = <int, double>{};
+    double? lastKnown = seedPrice;
+
+    DateTime current = from;
+    while (!current.isAfter(to)) {
+      final dateInt = _dateToInt(current);
+      if (prices.containsKey(dateInt)) {
+        lastKnown = prices[dateInt]!;
+        completePrices[dateInt] = lastKnown;
+      } else if (lastKnown != null) {
+        completePrices[dateInt] = lastKnown;
+      }
+      current = DateTime(current.year, current.month, current.day + 1);
+    }
+
+    if (completePrices.isNotEmpty) {
+      final companions = completePrices.entries.map((e) {
         return AssetPricesCompanion(
           assetId: Value(assetId),
           date: Value(e.key),
@@ -103,7 +122,7 @@ class PriceSyncService {
 
       await _dao.insertPrices(companions);
     }
-    return prices.length;
+    return completePrices.length;
   }
 
   static DateTime _intToDate(int dateInt) {

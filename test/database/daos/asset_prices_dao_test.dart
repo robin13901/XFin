@@ -236,6 +236,70 @@ void main() {
       expect(dates, {20260101});
     });
 
+    test('getLatestPriceOnOrBefore returns price for exact date', () async {
+      await db.assetPricesDao.insertPrice(const AssetPricesCompanion(
+        assetId: Value(2),
+        date: Value(20260110),
+        price: Value(42000.0),
+      ));
+
+      final price =
+          await db.assetPricesDao.getLatestPriceOnOrBefore(2, 20260110);
+      expect(price, 42000.0);
+    });
+
+    test('getLatestPriceOnOrBefore returns most recent earlier price',
+        () async {
+      await db.assetPricesDao.insertPrices([
+        const AssetPricesCompanion(
+          assetId: Value(2),
+          date: Value(20260108),
+          price: Value(41000.0),
+        ),
+        const AssetPricesCompanion(
+          assetId: Value(2),
+          date: Value(20260110),
+          price: Value(42000.0),
+        ),
+      ]);
+
+      final price =
+          await db.assetPricesDao.getLatestPriceOnOrBefore(2, 20260112);
+      expect(price, 42000.0);
+    });
+
+    test('getLatestPriceOnOrBefore returns null when no earlier price',
+        () async {
+      await db.assetPricesDao.insertPrice(const AssetPricesCompanion(
+        assetId: Value(2),
+        date: Value(20260110),
+        price: Value(42000.0),
+      ));
+
+      final price =
+          await db.assetPricesDao.getLatestPriceOnOrBefore(2, 20260105);
+      expect(price, isNull);
+    });
+
+    test('getLatestPriceOnOrBefore filters by asset id', () async {
+      await db.assetPricesDao.insertPrices([
+        const AssetPricesCompanion(
+          assetId: Value(2),
+          date: Value(20260110),
+          price: Value(42000.0),
+        ),
+        const AssetPricesCompanion(
+          assetId: Value(3),
+          date: Value(20260110),
+          price: Value(150.0),
+        ),
+      ]);
+
+      final price =
+          await db.assetPricesDao.getLatestPriceOnOrBefore(3, 20260115);
+      expect(price, 150.0);
+    });
+
     test('deleteAllForAsset removes all prices for asset', () async {
       await db.assetPricesDao.insertPrices([
         const AssetPricesCompanion(

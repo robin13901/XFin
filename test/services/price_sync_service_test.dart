@@ -331,5 +331,159 @@ void main() {
       expect(progressCalls[0].$2, 1);
       expect(progressCalls[0].$3, 'Bitcoin');
     });
+
+    test('carries forward Friday price to fill weekend gaps', () async {
+      // Booking on Monday April 20
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+            date: 20260420,
+            accountId: 1,
+            assetId: const Value(2),
+            category: 'Investment',
+            shares: 0.5,
+            value: 21000.0,
+          ));
+
+      // Existing price for Mon-Fri (April 20-24)
+      await db.assetPricesDao.insertPrices([
+        const AssetPricesCompanion(
+            assetId: Value(2), date: Value(20260420), price: Value(40000.0)),
+        const AssetPricesCompanion(
+            assetId: Value(2), date: Value(20260421), price: Value(41000.0)),
+        const AssetPricesCompanion(
+            assetId: Value(2), date: Value(20260422), price: Value(42000.0)),
+        const AssetPricesCompanion(
+            assetId: Value(2), date: Value(20260423), price: Value(43000.0)),
+        const AssetPricesCompanion(
+            assetId: Value(2), date: Value(20260424), price: Value(44000.0)),
+      ]);
+
+      // Also fill from Monday April 27 to yesterday so only Sat/Sun are gaps
+      final yesterday = DateTime.now().subtract(const Duration(days: 1));
+      final yesterdayInt =
+          yesterday.year * 10000 + yesterday.month * 100 + yesterday.day;
+      final fillers = <AssetPricesCompanion>[];
+      DateTime d = DateTime(2026, 4, 27);
+      while (d.year * 10000 + d.month * 100 + d.day <= yesterdayInt) {
+        fillers.add(AssetPricesCompanion(
+          assetId: const Value(2),
+          date: Value(d.year * 10000 + d.month * 100 + d.day),
+          price: const Value(45000.0),
+        ));
+        d = DateTime(d.year, d.month, d.day + 1);
+      }
+      if (fillers.isNotEmpty) {
+        await db.assetPricesDao.insertPrices(fillers);
+      }
+
+      // API returns nothing for Sat April 25 and Sun April 26
+      when(() => mockPriceService.getHistoricalPrices(
+              any(), any(), any(), any()))
+          .thenAnswer((_) async => {});
+
+      await syncService.syncAllAssets();
+
+      // Sat and Sun should now have Friday's price (44000)
+      final satPrice = await db.assetPricesDao.getPrice(2, 20260425);
+      final sunPrice = await db.assetPricesDao.getPrice(2, 20260426);
+      expect(satPrice, isNotNull);
+      expect(satPrice!.price, 44000.0);
+      expect(sunPrice, isNotNull);
+      expect(sunPrice!.price, 44000.0);
+    });
+
+    test('carries forward within API response when some days missing',
+        () async {
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+            date: 20260420,
+            accountId: 1,
+            assetId: const Value(2),
+            category: 'Investment',
+            shares: 0.5,
+            value: 21000.0,
+          ));
+
+      // Fill everything except April 20-26
+      final yesterday = DateTime.now().subtract(const Duration(days: 1));
+      final yesterdayInt =
+          yesterday.year * 10000 + yesterday.month * 100 + yesterday.day;
+      final fillers = <AssetPricesCompanion>[];
+      DateTime d = DateTime(2026, 4, 27);
+      while (d.year * 10000 + d.month * 100 + d.day <= yesterdayInt) {
+        fillers.add(AssetPricesCompanion(
+          assetId: const Value(2),
+          date: Value(d.year * 10000 + d.month * 100 + d.day),
+          price: const Value(45000.0),
+        ));
+        d = DateTime(d.year, d.month, d.day + 1);
+      }
+      if (fillers.isNotEmpty) {
+        await db.assetPricesDao.insertPrices(fillers);
+      }
+
+      // API returns prices for weekdays only (Mon-Fri), nothing for Sat/Sun
+      when(() => mockPriceService.getHistoricalPrices(
+              any(), any(), any(), any()))
+          .thenAnswer((_) async => {
+                20260420: 40000.0,
+                20260421: 41000.0,
+                20260422: 42000.0,
+                20260423: 43000.0,
+                20260424: 44000.0,
+              });
+
+      await syncService.syncAllAssets();
+
+      // Weekdays should have API prices
+      final monPrice = await db.assetPricesDao.getPrice(2, 20260420);
+      expect(monPrice!.price, 40000.0);
+      final friPrice = await db.assetPricesDao.getPrice(2, 20260424);
+      expect(friPrice!.price, 44000.0);
+
+      // Weekend should carry forward Friday's price
+      final satPrice = await db.assetPricesDao.getPrice(2, 20260425);
+      final sunPrice = await db.assetPricesDao.getPrice(2, 20260426);
+      expect(satPrice, isNotNull);
+      expect(satPrice!.price, 44000.0);
+      expect(sunPrice, isNotNull);
+      expect(sunPrice!.price, 44000.0);
+    });
+
+    test('does not fill gaps when no prior price exists', () async {
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+            date: 20260420,
+            accountId: 1,
+            assetId: const Value(2),
+            category: 'Investment',
+            shares: 0.5,
+            value: 21000.0,
+          ));
+
+      // Fill from April 23 onward so only 20-22 are gaps
+      final yesterday = DateTime.now().subtract(const Duration(days: 1));
+      final yesterdayInt =
+          yesterday.year * 10000 + yesterday.month * 100 + yesterday.day;
+      final fillers = <AssetPricesCompanion>[];
+      DateTime d = DateTime(2026, 4, 23);
+      while (d.year * 10000 + d.month * 100 + d.day <= yesterdayInt) {
+        fillers.add(AssetPricesCompanion(
+          assetId: const Value(2),
+          date: Value(d.year * 10000 + d.month * 100 + d.day),
+          price: const Value(43000.0),
+        ));
+        d = DateTime(d.year, d.month, d.day + 1);
+      }
+      await db.assetPricesDao.insertPrices(fillers);
+
+      // API returns nothing — and no prior price in DB
+      when(() => mockPriceService.getHistoricalPrices(
+              any(), any(), any(), any()))
+          .thenAnswer((_) async => {});
+
+      await syncService.syncAllAssets();
+
+      // No prior price → dates remain unfilled
+      final price = await db.assetPricesDao.getPrice(2, 20260420);
+      expect(price, isNull);
+    });
   });
 }
