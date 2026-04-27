@@ -137,6 +137,24 @@ class AssetPricesDao extends DatabaseAccessor<AppDatabase>
     return rows.map((r) => r.date).toSet();
   }
 
+  Future<Map<int, double>> getLatestPricePerAsset() async {
+    final result = await customSelect(
+      'SELECT ap.asset_id, ap.price '
+      'FROM asset_prices ap '
+      'INNER JOIN ('
+      '  SELECT asset_id, MAX(date) AS max_date '
+      '  FROM asset_prices '
+      '  GROUP BY asset_id'
+      ') latest ON ap.asset_id = latest.asset_id '
+      'AND ap.date = latest.max_date',
+      readsFrom: {assetPrices},
+    ).get();
+    return {
+      for (final row in result)
+        row.read<int>('asset_id'): row.read<double>('price'),
+    };
+  }
+
   Future<Map<int, Map<int, double>>> getAllPricesByAssetAndDate() async {
     final all = await select(assetPrices).get();
     final result = <int, Map<int, double>>{};

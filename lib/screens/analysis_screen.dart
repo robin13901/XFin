@@ -35,6 +35,7 @@ class AnalysisData {
   final Map<String, double> currentMonthCategoryOutflows;
   final Map<int, double> assetShares;
   final Map<int, double> assetValues;
+  final Map<int, double> latestPricePerAsset;
 
   AnalysisData({
     required this.balanceHistory,
@@ -50,6 +51,7 @@ class AnalysisData {
     required this.currentMonthCategoryOutflows,
     required this.assetShares,
     required this.assetValues,
+    required this.latestPricePerAsset,
   });
 }
 
@@ -181,6 +183,8 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       }
       return map;
     });
+    final Future<Map<int, double>> latestPricePerAssetFuture =
+        db.assetPricesDao.getLatestPricePerAsset();
 
     // Always assign the future inside setState so FutureBuilder reacts.
     setState(() {
@@ -198,6 +202,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
         currentMonthCategoryOutflowsFuture,
         assetSharesFuture,
         assetValuesFuture,
+        latestPricePerAssetFuture,
       ]).then((results) {
         return AnalysisData(
           balanceHistory: results[0] as List<FlSpot>,
@@ -213,6 +218,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           currentMonthCategoryOutflows: results[10] as Map<String, double>,
           assetShares: results[11] as Map<int, double>,
           assetValues: results[12] as Map<int, double>,
+          latestPricePerAsset: results[13] as Map<int, double>,
         );
       });
     });
@@ -276,6 +282,8 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                             liveTotal = 0;
                             final storedValues = analysisData.assetValues;
                             final shares = analysisData.assetShares;
+                            final latestPrices =
+                                analysisData.latestPricePerAsset;
                             final liveAssetIds =
                                 liveProvider.livePrices.keys.toSet();
 
@@ -286,7 +294,15 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                             }
                             for (final entry in storedValues.entries) {
                               if (!liveAssetIds.contains(entry.key)) {
-                                liveTotal = liveTotal! + entry.value;
+                                final s = shares[entry.key] ?? 0;
+                                final storedPrice =
+                                    latestPrices[entry.key];
+                                if (storedPrice != null && s > 0) {
+                                  liveTotal =
+                                      liveTotal! + s * storedPrice;
+                                } else {
+                                  liveTotal = liveTotal! + entry.value;
+                                }
                               }
                             }
                             liveTotal = liveTotal! +

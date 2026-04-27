@@ -13,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/daos/accounts_dao.dart';
 import 'package:xfin/database/daos/analysis_dao.dart';
+import 'package:xfin/database/daos/asset_prices_dao.dart';
 import 'package:xfin/database/daos/assets_dao.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/providers/database_provider.dart';
@@ -29,11 +30,14 @@ class _MockAccountsDao extends Mock implements AccountsDao {}
 
 class _MockAssetsDao extends Mock implements AssetsDao {}
 
+class _MockAssetPricesDao extends Mock implements AssetPricesDao {}
+
 void main() {
   late _MockAppDatabase mockDb;
   late _MockAnalysisDao mockAnalysisDao;
   late _MockAccountsDao mockAccountsDao;
   late _MockAssetsDao mockAssetsDao;
+  late _MockAssetPricesDao mockAssetPricesDao;
   late StreamController<Set<TableUpdate>> tableUpdateController;
 
   // Common test data
@@ -61,13 +65,17 @@ void main() {
     mockAnalysisDao = _MockAnalysisDao();
     mockAccountsDao = _MockAccountsDao();
     mockAssetsDao = _MockAssetsDao();
+    mockAssetPricesDao = _MockAssetPricesDao();
     tableUpdateController = StreamController<Set<TableUpdate>>.broadcast();
 
     // Wire the mock DB to return the mocked DAOs.
     when(() => mockDb.analysisDao).thenReturn(mockAnalysisDao);
     when(() => mockDb.accountsDao).thenReturn(mockAccountsDao);
     when(() => mockDb.assetsDao).thenReturn(mockAssetsDao);
+    when(() => mockDb.assetPricesDao).thenReturn(mockAssetPricesDao);
     when(() => mockAssetsDao.getAllAssets()).thenAnswer((_) async => <Asset>[]);
+    when(() => mockAssetPricesDao.getLatestPricePerAsset())
+        .thenAnswer((_) async => <int, double>{});
     when(() => mockDb.tableUpdates()).thenAnswer(
       (_) => tableUpdateController.stream,
     );

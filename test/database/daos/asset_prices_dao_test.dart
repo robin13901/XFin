@@ -300,6 +300,42 @@ void main() {
       expect(price, 150.0);
     });
 
+    test('getLatestPricePerAsset returns latest price for each asset',
+        () async {
+      await db.assetPricesDao.insertPrices([
+        const AssetPricesCompanion(
+          assetId: Value(2),
+          date: Value(20260101),
+          price: Value(40000.0),
+        ),
+        const AssetPricesCompanion(
+          assetId: Value(2),
+          date: Value(20260110),
+          price: Value(42000.0),
+        ),
+        const AssetPricesCompanion(
+          assetId: Value(3),
+          date: Value(20260105),
+          price: Value(150.0),
+        ),
+        const AssetPricesCompanion(
+          assetId: Value(3),
+          date: Value(20260108),
+          price: Value(155.0),
+        ),
+      ]);
+
+      final map = await db.assetPricesDao.getLatestPricePerAsset();
+      expect(map.length, 2);
+      expect(map[2], 42000.0);
+      expect(map[3], 155.0);
+    });
+
+    test('getLatestPricePerAsset returns empty map when no prices', () async {
+      final map = await db.assetPricesDao.getLatestPricePerAsset();
+      expect(map, isEmpty);
+    });
+
     test('deleteAllForAsset removes all prices for asset', () async {
       await db.assetPricesDao.insertPrices([
         const AssetPricesCompanion(
