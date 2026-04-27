@@ -730,9 +730,7 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
       shareDeltas.putIfAbsent(t.assetId, () => {})[date] =
           (shareDeltas[t.assetId]![date] ?? 0) + sDelta;
       valueDeltas.putIfAbsent(t.assetId, () => {})[date] =
-          (valueDeltas[t.assetId]![date] ?? 0) +
-              t.sourceAccountValueDelta +
-              t.targetAccountValueDelta;
+          (valueDeltas[t.assetId]![date] ?? 0) + t.targetAccountValueDelta;
     }
 
     final pricedAssetIds =
