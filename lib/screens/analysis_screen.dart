@@ -94,18 +94,28 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   void _startTableWatch() {
     _tableWatcher?.cancel();
     _tableWatcher = db.tableUpdates().listen((_) {
-      if (mounted) _fetchAnalysisData();
+      if (mounted && !(_liveProvider?.isSyncing ?? false)) {
+        _fetchAnalysisData();
+      }
     });
   }
 
   bool _lastLiveState = false;
+  bool _lastSyncingState = false;
 
   void _onLiveChanged() {
     final isLive = _liveProvider?.isLive ?? false;
+    final isSyncing = _liveProvider?.isSyncing ?? false;
+
     if (isLive != _lastLiveState) {
       _lastLiveState = isLive;
+      if (mounted && !isSyncing) _fetchAnalysisData();
+    }
+
+    if (_lastSyncingState && !isSyncing) {
       if (mounted) _fetchAnalysisData();
     }
+    _lastSyncingState = isSyncing;
   }
 
   void _onDbChanged() {

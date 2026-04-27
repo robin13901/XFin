@@ -53,8 +53,22 @@ class PriceSyncService {
     if (firstUsageDate == null) return 0;
 
     final firstUsageDt = _intToDate(firstUsageDate);
-    final latestPriceDate = await _dao.getLatestPriceDate(asset.id);
-    final earliestPriceDate = await _dao.getEarliestPriceDate(asset.id);
+    final upToInt = _dateToInt(upTo);
+
+    final existingDates =
+        await _dao.getExistingPriceDates(asset.id, firstUsageDate, upToInt);
+
+    final missingDateInts = <int>[];
+    DateTime current = firstUsageDt;
+    while (!current.isAfter(upTo)) {
+      final dateInt = _dateToInt(current);
+      if (!existingDates.contains(dateInt)) {
+        missingDateInts.add(dateInt);
+      }
+      current = DateTime(current.year, current.month, current.day + 1);
+    }
+
+    if (missingDateInts.isEmpty) return 0;
 
     final request = AssetPriceRequest(
       assetId: asset.id,
@@ -62,28 +76,10 @@ class PriceSyncService {
       assetType: asset.type,
     );
 
+    final ranges = _groupConsecutiveDates(missingDateInts);
     int totalSynced = 0;
-
-    // Fill backward gap: first usage date → earliest price date - 1
-    if (earliestPriceDate != null) {
-      final earliestDt = _intToDate(earliestPriceDate);
-      if (firstUsageDt.isBefore(earliestDt)) {
-        final backwardEnd = DateTime(earliestDt.year, earliestDt.month, earliestDt.day - 1);
-        totalSynced += await _fetchAndStore(request, asset.id, firstUsageDt, backwardEnd);
-      }
-    }
-
-    // Fill forward gap: latest price date + 1 → yesterday
-    final DateTime forwardFrom;
-    if (latestPriceDate != null) {
-      final latestDt = _intToDate(latestPriceDate);
-      forwardFrom = DateTime(latestDt.year, latestDt.month, latestDt.day + 1);
-    } else {
-      forwardFrom = firstUsageDt;
-    }
-
-    if (!forwardFrom.isAfter(upTo)) {
-      totalSynced += await _fetchAndStore(request, asset.id, forwardFrom, upTo);
+    for (final (from, to) in ranges) {
+      totalSynced += await _fetchAndStore(request, asset.id, from, to);
     }
 
     return totalSynced;
@@ -115,6 +111,35 @@ class PriceSyncService {
     final m = (dateInt % 10000) ~/ 100;
     final d = dateInt % 100;
     return DateTime(y, m, d);
+  }
+
+  static int _dateToInt(DateTime date) {
+    return date.year * 10000 + date.month * 100 + date.day;
+  }
+
+  static List<(DateTime, DateTime)> _groupConsecutiveDates(
+      List<int> sortedDates) {
+    if (sortedDates.isEmpty) return [];
+    final groups = <(DateTime, DateTime)>[];
+    int rangeStartInt = sortedDates.first;
+    int prevInt = rangeStartInt;
+
+    for (int i = 1; i < sortedDates.length; i++) {
+      final currentInt = sortedDates[i];
+      final prevDate = _intToDate(prevInt);
+      final nextDayInt =
+          _dateToInt(DateTime(prevDate.year, prevDate.month, prevDate.day + 1));
+
+      if (currentInt == nextDayInt) {
+        prevInt = currentInt;
+      } else {
+        groups.add((_intToDate(rangeStartInt), _intToDate(prevInt)));
+        rangeStartInt = currentInt;
+        prevInt = currentInt;
+      }
+    }
+    groups.add((_intToDate(rangeStartInt), _intToDate(prevInt)));
+    return groups;
   }
 
   Future<int> syncSingleAsset(Asset asset) async {

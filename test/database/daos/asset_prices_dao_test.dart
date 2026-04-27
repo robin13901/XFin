@@ -163,6 +163,79 @@ void main() {
       expect(assets[0].apiIdentifier, 'bitcoin');
     });
 
+    test('getExistingPriceDates returns dates in range', () async {
+      await db.assetPricesDao.insertPrices([
+        const AssetPricesCompanion(
+          assetId: Value(2),
+          date: Value(20260101),
+          price: Value(42000.0),
+        ),
+        const AssetPricesCompanion(
+          assetId: Value(2),
+          date: Value(20260103),
+          price: Value(43000.0),
+        ),
+        const AssetPricesCompanion(
+          assetId: Value(2),
+          date: Value(20260105),
+          price: Value(44000.0),
+        ),
+      ]);
+
+      final dates =
+          await db.assetPricesDao.getExistingPriceDates(2, 20260101, 20260105);
+      expect(dates, {20260101, 20260103, 20260105});
+    });
+
+    test('getExistingPriceDates returns empty set when no data', () async {
+      final dates =
+          await db.assetPricesDao.getExistingPriceDates(2, 20260101, 20260110);
+      expect(dates, isEmpty);
+    });
+
+    test('getExistingPriceDates filters by date range', () async {
+      await db.assetPricesDao.insertPrices([
+        const AssetPricesCompanion(
+          assetId: Value(2),
+          date: Value(20260101),
+          price: Value(42000.0),
+        ),
+        const AssetPricesCompanion(
+          assetId: Value(2),
+          date: Value(20260110),
+          price: Value(43000.0),
+        ),
+        const AssetPricesCompanion(
+          assetId: Value(2),
+          date: Value(20260120),
+          price: Value(44000.0),
+        ),
+      ]);
+
+      final dates =
+          await db.assetPricesDao.getExistingPriceDates(2, 20260105, 20260115);
+      expect(dates, {20260110});
+    });
+
+    test('getExistingPriceDates filters by asset id', () async {
+      await db.assetPricesDao.insertPrices([
+        const AssetPricesCompanion(
+          assetId: Value(2),
+          date: Value(20260101),
+          price: Value(42000.0),
+        ),
+        const AssetPricesCompanion(
+          assetId: Value(3),
+          date: Value(20260101),
+          price: Value(150.0),
+        ),
+      ]);
+
+      final dates =
+          await db.assetPricesDao.getExistingPriceDates(2, 20260101, 20260101);
+      expect(dates, {20260101});
+    });
+
     test('deleteAllForAsset removes all prices for asset', () async {
       await db.assetPricesDao.insertPrices([
         const AssetPricesCompanion(
