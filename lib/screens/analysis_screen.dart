@@ -278,35 +278,24 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                           final isLive = liveProvider.isLive &&
                               liveProvider.livePrices.isNotEmpty;
                           double? liveTotal;
-                          if (isLive) {
-                            liveTotal = 0;
-                            final storedValues = analysisData.assetValues;
+                          if (isLive &&
+                              analysisData.marketValueHistory.isNotEmpty) {
+                            final baseValue =
+                                analysisData.marketValueHistory.last.y;
                             final shares = analysisData.assetShares;
                             final latestPrices =
                                 analysisData.latestPricePerAsset;
-                            final liveAssetIds =
-                                liveProvider.livePrices.keys.toSet();
 
+                            double liveDelta = 0;
                             for (final entry
                                 in liveProvider.livePrices.entries) {
                               final s = shares[entry.key] ?? 0;
-                              liveTotal = liveTotal! + s * entry.value;
+                              if (s <= 0) continue;
+                              final stored =
+                                  latestPrices[entry.key] ?? 0;
+                              liveDelta += s * (entry.value - stored);
                             }
-                            for (final entry in storedValues.entries) {
-                              if (!liveAssetIds.contains(entry.key)) {
-                                final s = shares[entry.key] ?? 0;
-                                final storedPrice =
-                                    latestPrices[entry.key];
-                                if (storedPrice != null && s > 0) {
-                                  liveTotal =
-                                      liveTotal! + s * storedPrice;
-                                } else {
-                                  liveTotal = liveTotal! + entry.value;
-                                }
-                              }
-                            }
-                            liveTotal = liveTotal! +
-                                analysisData.sumOfInitialBalances;
+                            liveTotal = baseValue + liveDelta;
                           }
 
                           // Green market-value line with today's live data point

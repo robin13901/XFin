@@ -740,6 +740,7 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
     // Walk through each day and compute the adjustment
     final runningShares = <int, double>{};
     final runningCostValue = <int, double>{};
+    final lastKnownPrice = <int, double>{};
 
     final adjustedSpots = <FlSpot>[];
 
@@ -761,8 +762,12 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
         final shares = runningShares[assetId] ?? 0;
         if (shares <= 0) continue;
         final marketPrice = allPrices[assetId]?[dateInt];
-        if (marketPrice == null) continue;
-        final marketValue = shares * marketPrice;
+        if (marketPrice != null) {
+          lastKnownPrice[assetId] = marketPrice;
+        }
+        final price = marketPrice ?? lastKnownPrice[assetId];
+        if (price == null) continue;
+        final marketValue = shares * price;
         final costValue = runningCostValue[assetId] ?? 0;
         adjustment += marketValue - costValue;
       }
