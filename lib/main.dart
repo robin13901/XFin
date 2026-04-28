@@ -176,18 +176,7 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _syncHistoricalPricesInBackground() async {
-    final result = await LivePriceProvider.instance.syncHistoricalPrices();
-    if (!mounted || result == null) return;
-    final total = result.synced + result.failed;
-    if (total == 0) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '${result.synced}/$total historische Asset-Preise synchronisiert'
-          '${result.failed > 0 ? ' (${result.failed} fehlgeschlagen)' : ''}',
-        ),
-      ),
-    );
+    await LivePriceProvider.instance.syncHistoricalPrices();
   }
 
   @override
