@@ -58,8 +58,6 @@ class PriceService {
   }
 
   Future<void> _fetchAndEmitPrices() async {
-    // Requests are already sorted by value (highest first).
-    // Emit after each asset so high-value positions update instantly.
     for (final req in _activeRequests) {
       if (!_isStreaming) return;
       try {
@@ -67,6 +65,13 @@ class PriceService {
         final price = await _yahoo.getCurrentPrice(yahooSymbol);
         if (price != null) {
           _livePriceController.add({req.assetId: price});
+        } else if (req.assetType == AssetTypes.crypto) {
+          final cgPrices = await _coinGecko.getCurrentPrices(
+              [req.apiIdentifier], _baseCurrency);
+          final cgPrice = cgPrices[req.apiIdentifier];
+          if (cgPrice != null) {
+            _livePriceController.add({req.assetId: cgPrice});
+          }
         }
       } catch (e) {
         debugPrint('Live fetch error for ${req.apiIdentifier}: $e');
@@ -192,42 +197,10 @@ class PriceService {
       case AssetTypes.etf:
       case AssetTypes.fund:
       case AssetTypes.derivative:
-        // Yahoo has no search API — use CoinGecko for crypto,
-        // for stocks the user enters the Yahoo ticker directly
-        return _searchYahooViaValidation(query);
+        return _yahoo.search(query);
       case AssetTypes.fiat:
         return _searchFiat(query);
     }
-  }
-
-  Future<List<SymbolSearchResult>> _searchYahooViaValidation(
-      String query) async {
-    // Try the query as a Yahoo symbol directly
-    final symbol = query.toUpperCase();
-    final price = await _yahoo.getCurrentPrice(symbol);
-    if (price != null) {
-      return [
-        SymbolSearchResult(
-          symbol: symbol,
-          name: '$symbol (${price.toStringAsFixed(2)})',
-          type: 'Yahoo Finance',
-        ),
-      ];
-    }
-    // Try with .DE suffix for German exchange
-    final deSymbol = '$symbol.DE';
-    final dePrice = await _yahoo.getCurrentPrice(deSymbol);
-    if (dePrice != null) {
-      return [
-        SymbolSearchResult(
-          symbol: deSymbol,
-          name: '$deSymbol (${dePrice.toStringAsFixed(2)})',
-          exchange: 'XETRA',
-          type: 'Yahoo Finance',
-        ),
-      ];
-    }
-    return [];
   }
 
   List<SymbolSearchResult> _searchFiat(String query) {

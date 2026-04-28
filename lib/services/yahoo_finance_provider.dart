@@ -7,6 +7,7 @@ import 'price_provider.dart';
 
 class YahooFinanceProvider implements RestPriceProvider {
   static const _baseUrl = 'https://query1.finance.yahoo.com/v8/finance/chart';
+  static const _searchUrl = 'https://query1.finance.yahoo.com/v1/finance/search';
   final http.Client _client;
 
   YahooFinanceProvider({http.Client? client})
@@ -87,6 +88,40 @@ class YahooFinanceProvider implements RestPriceProvider {
     } catch (e) {
       debugPrint('Yahoo historical error for $identifier: $e');
       return {};
+    }
+  }
+
+  Future<List<SymbolSearchResult>> search(String query) async {
+    try {
+      final uri = Uri.parse(
+          '$_searchUrl?q=${Uri.encodeComponent(query)}&quotesCount=10&newsCount=0');
+      final response = await _client
+          .get(uri)
+          .timeout(const Duration(seconds: 10));
+      if (response.statusCode != 200) return [];
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final quotes = data['quotes'] as List<dynamic>?;
+      if (quotes == null || quotes.isEmpty) return [];
+
+      return quotes.map((q) {
+        final item = q as Map<String, dynamic>;
+        final symbol = item['symbol'] as String? ?? '';
+        final name = item['longname'] as String? ??
+            item['shortname'] as String? ??
+            symbol;
+        final exchange = item['exchange'] as String?;
+        final quoteType = item['quoteType'] as String?;
+        return SymbolSearchResult(
+          symbol: symbol,
+          name: name,
+          exchange: exchange,
+          type: quoteType,
+        );
+      }).toList();
+    } catch (e) {
+      debugPrint('Yahoo search error: $e');
+      return [];
     }
   }
 
