@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../app_theme.dart';
+import '../l10n/app_localizations.dart';
 import '../providers/live_price_provider.dart';
 
 class LiveToggleButton extends StatefulWidget {
@@ -36,6 +37,7 @@ class _LiveToggleButtonState extends State<LiveToggleButton>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Consumer<LivePriceProvider>(
       builder: (context, provider, _) {
         final isSyncing = provider.isSyncing;
@@ -59,19 +61,19 @@ class _LiveToggleButtonState extends State<LiveToggleButton>
               child: const Icon(Icons.sync),
             ),
             onPressed: null,
-            tooltip: 'Synchronisierung läuft...',
+            tooltip: l10n.syncInProgress,
           );
         }
 
         if (syncFailed && !isLive) {
-          return const IconButton(
-            key: Key('live_toggle'),
-            icon: Icon(
+          return IconButton(
+            key: const Key('live_toggle'),
+            icon: const Icon(
               Icons.wifi_off,
               color: Colors.orange,
             ),
             onPressed: null,
-            tooltip: 'Keine Internetverbindung',
+            tooltip: l10n.noInternetConnection,
           );
         }
 
@@ -121,7 +123,7 @@ class _LiveToggleButtonState extends State<LiveToggleButton>
               );
             }
           },
-          tooltip: isLive ? 'Live off' : 'Live on',
+          tooltip: isLive ? l10n.liveOn : l10n.liveOff,
         );
       },
     );

@@ -309,5 +309,10 @@
         "type": "String"
       }
     }
-  }
+  },
+
+  "syncInProgress": "Synchronisierung l\u00e4uft...",
+  "noInternetConnection": "Keine Internetverbindung",
+  "liveOn": "Live aus",
+  "liveOff": "Live an"
 }

@@ -867,4 +867,16 @@ class AppLocalizationsDe extends AppLocalizations {
   String lotShares(String shares, String costBasis, String value) {
     return '$shares @ $costBasis ≈ $value';
   }
+
+  @override
+  String get syncInProgress => 'Synchronisierung läuft...';
+
+  @override
+  String get noInternetConnection => 'Keine Internetverbindung';
+
+  @override
+  String get liveOn => 'Live aus';
+
+  @override
+  String get liveOff => 'Live an';
 }

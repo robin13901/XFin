@@ -859,4 +859,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String lotShares(String shares, String costBasis, String value) {
     return '$shares @ $costBasis ≈ $value';
   }
+
+  @override
+  String get syncInProgress => 'Syncing...';
+
+  @override
+  String get noInternetConnection => 'No internet connection';
+
+  @override
+  String get liveOn => 'Live on';
+
+  @override
+  String get liveOff => 'Live off';
 }

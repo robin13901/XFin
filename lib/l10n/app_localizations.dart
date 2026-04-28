@@ -1693,6 +1693,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{shares} @ {costBasis} ≈ {value}'**
   String lotShares(String shares, String costBasis, String value);
+
+  /// No description provided for @syncInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing...'**
+  String get syncInProgress;
+
+  /// No description provided for @noInternetConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'No internet connection'**
+  String get noInternetConnection;
+
+  /// No description provided for @liveOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Live on'**
+  String get liveOn;
+
+  /// No description provided for @liveOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Live off'**
+  String get liveOff;
 }
 
 class _AppLocalizationsDelegate
