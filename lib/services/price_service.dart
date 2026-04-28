@@ -249,7 +249,9 @@ class PriceService {
       'ZAR': 'Südafrikanischer Rand',
       'NGN': 'Nigerianischer Naira',
       'KES': 'Kenianischer Schilling',
+      'TZS': 'Tansanischer Schilling',
       'GHS': 'Ghanaischer Cedi',
+      'GHC': 'Ghanaischer Cedi (alt)',
       // Asia & Pacific
       'CNY': 'Chinesischer Yuan',
       'INR': 'Indische Rupie',
