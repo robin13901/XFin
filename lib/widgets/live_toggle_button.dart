@@ -38,15 +38,41 @@ class _LiveToggleButtonState extends State<LiveToggleButton>
   Widget build(BuildContext context) {
     return Consumer<LivePriceProvider>(
       builder: (context, provider, _) {
+        final isSyncing = provider.isSyncing;
+        final syncFailed = provider.syncFailed;
         final isLive = provider.isLive;
         final isConnected = provider.isConnected;
         final isConnecting = isLive && !isConnected;
 
-        if (isConnecting && !_pulseController.isAnimating) {
+        if ((isConnecting || isSyncing) && !_pulseController.isAnimating) {
           _pulseController.repeat(reverse: true);
-        } else if (!isConnecting && _pulseController.isAnimating) {
+        } else if (!isConnecting && !isSyncing && _pulseController.isAnimating) {
           _pulseController.stop();
           _pulseController.value = 1.0;
+        }
+
+        if (isSyncing) {
+          return IconButton(
+            key: const Key('live_toggle'),
+            icon: FadeTransition(
+              opacity: _pulseAnimation,
+              child: const Icon(Icons.sync),
+            ),
+            onPressed: null,
+            tooltip: 'Synchronisierung läuft...',
+          );
+        }
+
+        if (syncFailed && !isLive) {
+          return const IconButton(
+            key: Key('live_toggle'),
+            icon: Icon(
+              Icons.wifi_off,
+              color: Colors.orange,
+            ),
+            onPressed: null,
+            tooltip: 'Keine Internetverbindung',
+          );
         }
 
         Widget icon = Icon(

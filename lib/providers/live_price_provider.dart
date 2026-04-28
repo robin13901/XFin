@@ -20,6 +20,7 @@ class LivePriceProvider with ChangeNotifier {
   bool _isLive = false;
   bool _isConnected = false;
   bool _isSyncing = false;
+  bool _syncFailed = false;
   String? _lastError;
   final Map<int, double> _livePrices = {};
   StreamSubscription? _priceSubscription;
@@ -27,6 +28,7 @@ class LivePriceProvider with ChangeNotifier {
   bool get isLive => _isLive;
   bool get isConnected => _isConnected;
   bool get isSyncing => _isSyncing;
+  bool get syncFailed => _syncFailed;
   String? get lastError => _lastError;
   Map<int, double> get livePrices => Map.unmodifiable(_livePrices);
 
@@ -162,6 +164,7 @@ class LivePriceProvider with ChangeNotifier {
     }
 
     _isSyncing = true;
+    _syncFailed = false;
     notifyListeners();
 
     try {
@@ -170,9 +173,11 @@ class LivePriceProvider with ChangeNotifier {
           await _priceSyncService!.syncAllAssets(onProgress: onProgress);
       debugPrint(
           'Sync done: ${result.synced}/${result.total} synced, ${result.failed} failed');
+      _syncFailed = result.failed > 0 && result.synced == 0;
       return result;
     } catch (e) {
       debugPrint('Sync error: $e');
+      _syncFailed = true;
       return null;
     } finally {
       _isSyncing = false;
