@@ -879,4 +879,46 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get liveOff => 'Live an';
+
+  @override
+  String searchAssetType(String type) {
+    return '$type suchen';
+  }
+
+  @override
+  String get assetTypeCrypto => 'Crypto';
+
+  @override
+  String get assetTypeStock => 'Aktie';
+
+  @override
+  String get assetTypeEtf => 'ETF';
+
+  @override
+  String get assetTypeFund => 'Fonds';
+
+  @override
+  String get assetTypeFiat => 'Währung';
+
+  @override
+  String get assetTypeDerivative => 'Derivat';
+
+  @override
+  String get searchHintCrypto => 'z.B. Bitcoin, Ethereum, Solana...';
+
+  @override
+  String get searchHintFiat => 'z.B. USD, CHF, GBP...';
+
+  @override
+  String get searchHintGeneral => 'z.B. Apple, MSCI World, Tesla...';
+
+  @override
+  String noResultsFor(String query) {
+    return 'Keine Ergebnisse für \"$query\"';
+  }
+
+  @override
+  String searchError(String error) {
+    return 'Fehler: $error';
+  }
 }

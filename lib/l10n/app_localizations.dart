@@ -1717,6 +1717,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Live off'**
   String get liveOff;
+
+  /// No description provided for @searchAssetType.
+  ///
+  /// In en, this message translates to:
+  /// **'Search {type}'**
+  String searchAssetType(String type);
+
+  /// No description provided for @assetTypeCrypto.
+  ///
+  /// In en, this message translates to:
+  /// **'Crypto'**
+  String get assetTypeCrypto;
+
+  /// No description provided for @assetTypeStock.
+  ///
+  /// In en, this message translates to:
+  /// **'Stock'**
+  String get assetTypeStock;
+
+  /// No description provided for @assetTypeEtf.
+  ///
+  /// In en, this message translates to:
+  /// **'ETF'**
+  String get assetTypeEtf;
+
+  /// No description provided for @assetTypeFund.
+  ///
+  /// In en, this message translates to:
+  /// **'Fund'**
+  String get assetTypeFund;
+
+  /// No description provided for @assetTypeFiat.
+  ///
+  /// In en, this message translates to:
+  /// **'Currency'**
+  String get assetTypeFiat;
+
+  /// No description provided for @assetTypeDerivative.
+  ///
+  /// In en, this message translates to:
+  /// **'Derivative'**
+  String get assetTypeDerivative;
+
+  /// No description provided for @searchHintCrypto.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Bitcoin, Ethereum, Solana...'**
+  String get searchHintCrypto;
+
+  /// No description provided for @searchHintFiat.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. USD, CHF, GBP...'**
+  String get searchHintFiat;
+
+  /// No description provided for @searchHintGeneral.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Apple, MSCI World, Tesla...'**
+  String get searchHintGeneral;
+
+  /// No description provided for @noResultsFor.
+  ///
+  /// In en, this message translates to:
+  /// **'No results for \"{query}\"'**
+  String noResultsFor(String query);
+
+  /// No description provided for @searchError.
+  ///
+  /// In en, this message translates to:
+  /// **'Error: {error}'**
+  String searchError(String error);
 }
 
 class _AppLocalizationsDelegate

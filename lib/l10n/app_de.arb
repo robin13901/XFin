@@ -314,5 +314,18 @@
   "syncInProgress": "Synchronisierung l\u00e4uft...",
   "noInternetConnection": "Keine Internetverbindung",
   "liveOn": "Live aus",
-  "liveOff": "Live an"
+  "liveOff": "Live an",
+
+  "searchAssetType": "{type} suchen",
+  "assetTypeCrypto": "Crypto",
+  "assetTypeStock": "Aktie",
+  "assetTypeEtf": "ETF",
+  "assetTypeFund": "Fonds",
+  "assetTypeFiat": "W\u00e4hrung",
+  "assetTypeDerivative": "Derivat",
+  "searchHintCrypto": "z.B. Bitcoin, Ethereum, Solana...",
+  "searchHintFiat": "z.B. USD, CHF, GBP...",
+  "searchHintGeneral": "z.B. Apple, MSCI World, Tesla...",
+  "noResultsFor": "Keine Ergebnisse f\u00fcr \"{query}\"",
+  "searchError": "Fehler: {error}"
 }

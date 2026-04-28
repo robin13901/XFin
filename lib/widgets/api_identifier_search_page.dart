@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../services/price_provider.dart';
 import '../services/price_service.dart';
 import '../database/tables.dart';
@@ -68,22 +69,26 @@ class _ApiIdentifierSearchPageState extends State<ApiIdentifierSearchPage> {
       _error = null;
     });
     try {
-      final results =
-          await widget.priceService.searchSymbols(query, widget.assetType);
+      final locale =
+          Localizations.localeOf(context).languageCode;
+      final results = await widget.priceService
+          .searchSymbols(query, widget.assetType, locale: locale);
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         setState(() {
           _results = results;
           _isSearching = false;
           if (results.isEmpty) {
-            _error = 'Keine Ergebnisse für "$query"';
+            _error = l10n.noResultsFor(query);
           }
         });
       }
     } catch (e) {
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         setState(() {
           _isSearching = false;
-          _error = 'Fehler: $e';
+          _error = l10n.searchError(e.toString());
         });
       }
     }
@@ -91,18 +96,19 @@ class _ApiIdentifierSearchPageState extends State<ApiIdentifierSearchPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final typeLabel = switch (widget.assetType) {
-      AssetTypes.crypto => 'Crypto',
-      AssetTypes.stock => 'Aktie',
-      AssetTypes.etf => 'ETF',
-      AssetTypes.fund => 'Fonds',
-      AssetTypes.fiat => 'Währung',
-      AssetTypes.derivative => 'Derivat',
+      AssetTypes.crypto => l10n.assetTypeCrypto,
+      AssetTypes.stock => l10n.assetTypeStock,
+      AssetTypes.etf => l10n.assetTypeEtf,
+      AssetTypes.fund => l10n.assetTypeFund,
+      AssetTypes.fiat => l10n.assetTypeFiat,
+      AssetTypes.derivative => l10n.assetTypeDerivative,
     };
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('$typeLabel suchen'),
+        title: Text(l10n.searchAssetType(typeLabel)),
       ),
       body: Column(
         children: [
@@ -113,10 +119,10 @@ class _ApiIdentifierSearchPageState extends State<ApiIdentifierSearchPage> {
               autofocus: true,
               decoration: InputDecoration(
                 hintText: widget.assetType == AssetTypes.crypto
-                    ? 'z.B. Bitcoin, Ethereum, Solana...'
+                    ? l10n.searchHintCrypto
                     : widget.assetType == AssetTypes.fiat
-                        ? 'z.B. USD, CHF, GBP...'
-                        : 'z.B. Apple, MSCI World, Tesla...',
+                        ? l10n.searchHintFiat
+                        : l10n.searchHintGeneral,
                 prefixIcon: const Icon(Icons.search),
                 border: const OutlineInputBorder(),
                 suffixIcon: _isSearching

@@ -314,5 +314,39 @@
   "syncInProgress": "Syncing...",
   "noInternetConnection": "No internet connection",
   "liveOn": "Live on",
-  "liveOff": "Live off"
+  "liveOff": "Live off",
+
+  "searchAssetType": "Search {type}",
+  "@searchAssetType": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "assetTypeCrypto": "Crypto",
+  "assetTypeStock": "Stock",
+  "assetTypeEtf": "ETF",
+  "assetTypeFund": "Fund",
+  "assetTypeFiat": "Currency",
+  "assetTypeDerivative": "Derivative",
+  "searchHintCrypto": "e.g. Bitcoin, Ethereum, Solana...",
+  "searchHintFiat": "e.g. USD, CHF, GBP...",
+  "searchHintGeneral": "e.g. Apple, MSCI World, Tesla...",
+  "noResultsFor": "No results for \"{query}\"",
+  "@noResultsFor": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "searchError": "Error: {error}",
+  "@searchError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  }
 }
