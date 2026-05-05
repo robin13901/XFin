@@ -322,6 +322,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                         startValue: analysisData.sumOfInitialBalances,
                         liveOverrideValue: liveTotal,
                         marketValueData: greenLine,
+                        isLive: isLive,
                         selectedRange: _selectedRange,
                         onRangeSelected: _onRangeSelected,
                         showSma: _showSma,

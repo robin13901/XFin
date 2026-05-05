@@ -707,7 +707,7 @@ void main() {
       final lineChart = tester.widget<LineChart>(find.byType(LineChart));
       // 1 main line + 1 market value line = 2
       expect(lineChart.data.lineBarsData.length, 2);
-      expect(lineChart.data.lineBarsData[1].color, AppColors.green);
+      expect(lineChart.data.lineBarsData[1].color, AppColors.historyLine);
       expect(lineChart.data.lineBarsData[1].barWidth, 2);
     });
 
@@ -746,7 +746,7 @@ void main() {
       final lineChart = tester.widget<LineChart>(find.byType(LineChart));
       // 1 main + 1 market value + 1 SMA = 3
       expect(lineChart.data.lineBarsData.length, 3);
-      expect(lineChart.data.lineBarsData[1].color, AppColors.green);
+      expect(lineChart.data.lineBarsData[1].color, AppColors.historyLine);
       expect(lineChart.data.lineBarsData[2].color, Colors.orange);
     });
   });

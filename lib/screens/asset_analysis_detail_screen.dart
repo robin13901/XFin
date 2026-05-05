@@ -199,6 +199,7 @@ class _AssetAnalysisDetailScreenState extends State<AssetAnalysisDetailScreen>
                               valueLabel: l10n.total,
                               liveOverrideValue: !_showShares ? liveValue : null,
                               marketValueData: effectiveMarketValueData,
+                              isLive: isLive,
                               valueLabelStyle: pulseColor != null
                                   ? TextStyle(
                                       fontSize: 32,

@@ -35,6 +35,7 @@ class AnalysisLineChartSection extends StatelessWidget {
   final double? liveOverrideValue;
   final List<FlSpot>? marketValueData;
   final TextStyle? valueLabelStyle;
+  final bool isLive;
 
   const AnalysisLineChartSection({
     super.key,
@@ -61,6 +62,7 @@ class AnalysisLineChartSection extends StatelessWidget {
     this.liveOverrideValue,
     this.marketValueData,
     this.valueLabelStyle,
+    this.isLive = false,
   });
 
   @override
@@ -125,7 +127,7 @@ class AnalysisLineChartSection extends StatelessWidget {
       ),
     ];
 
-    // Green market-value line (historical price × shares)
+    // History market-value line (historical price × shares)
     List<FlSpot>? currentMarketValueData;
     if (marketValueData != null && marketValueData!.isNotEmpty) {
       final rangeStart = currentData.isNotEmpty ? currentData.first.x : 0;
@@ -136,7 +138,7 @@ class AnalysisLineChartSection extends StatelessWidget {
         lineBarsData.add(LineChartBarData(
           spots: currentMarketValueData,
           barWidth: 2,
-          color: AppColors.green,
+          color: AppColors.historyLine,
           dotData: const FlDotData(show: false),
         ));
       }
@@ -144,8 +146,13 @@ class AnalysisLineChartSection extends StatelessWidget {
 
     final firstDateInRange = currentData.isNotEmpty ? currentData.first.x : 0;
 
+    // When live is active and marketValueData is available, indicators use the history line
+    final indicatorSource = isLive && marketValueData != null && marketValueData!.isNotEmpty
+        ? marketValueData!
+        : allData;
+
     if (showSma) {
-      final smaData = IndicatorCalculator.calculateSma(allData, 30);
+      final smaData = IndicatorCalculator.calculateSma(indicatorSource, 30);
       lineBarsData.add(LineChartBarData(
         spots: smaData.where((spot) => spot.x >= firstDateInRange).toList(),
         isCurved: true,
@@ -156,7 +163,7 @@ class AnalysisLineChartSection extends StatelessWidget {
     }
 
     if (showSma200) {
-      final smaData200 = IndicatorCalculator.calculateSma(allData, 200);
+      final smaData200 = IndicatorCalculator.calculateSma(indicatorSource, 200);
       lineBarsData.add(LineChartBarData(
         spots: smaData200.where((spot) => spot.x >= firstDateInRange).toList(),
         isCurved: true,
@@ -167,7 +174,7 @@ class AnalysisLineChartSection extends StatelessWidget {
     }
 
     if (showEma) {
-      final emaData = IndicatorCalculator.calculateEma(allData, 30);
+      final emaData = IndicatorCalculator.calculateEma(indicatorSource, 30);
       lineBarsData.add(LineChartBarData(
         spots: emaData.where((spot) => spot.x >= firstDateInRange).toList(),
         isCurved: true,
@@ -180,7 +187,7 @@ class AnalysisLineChartSection extends StatelessWidget {
     int? bbUpperIndex;
     int? bbLowerIndex;
     if (showBb) {
-      final bbData = IndicatorCalculator.calculateBb(allData, 20);
+      final bbData = IndicatorCalculator.calculateBb(indicatorSource, 20);
       if (bbData.length == 3) {
         bbUpperIndex = lineBarsData.length;
         lineBarsData.addAll(

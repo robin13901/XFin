@@ -18,6 +18,7 @@ class AppColors {
   // Highlight colors
   static const red = Color(0xffd85858);
   static const green = Color(0xff78d668);
+  static const historyLine = Color(0xff45ffd0);
 }
 
 class AppTheme {
