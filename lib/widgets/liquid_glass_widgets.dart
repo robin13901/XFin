@@ -6,7 +6,7 @@ import '../providers/theme_provider.dart';
 LiquidGlassSettings get liquidGlassSettings => LiquidGlassSettings(
   thickness: 30,
   blur: 1.4,
-  glassColor: ThemeProvider.isDark() ? const Color(0x33000000) : const Color(0x18E1E1E1),
+  glassColor: ThemeProvider.isDark() ? const Color(0x33000000) : const Color(0x55000000),
 );
 
 class LiquidGlassBottomNav extends StatelessWidget {

@@ -336,7 +336,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       builder: (context, lp, _) => Text(
                         lp.isSyncing
                             ? 'Synchronisiere...'
-                            : 'Yahoo Finance · CoinGecko · Kein API-Key nötig',
+                            : 'Yahoo Finance · CoinGecko',
                       ),
                     ),
                   ),
