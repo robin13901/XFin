@@ -819,6 +819,45 @@ class AppLocalizationsEn extends AppLocalizations {
   String get eventsPerMonth => 'Events per Month';
 
   @override
+  String get tradingStats => 'Trading Stats';
+
+  @override
+  String get buys => 'Buys';
+
+  @override
+  String get sells => 'Sells';
+
+  @override
+  String get totalProfit => 'Total Profit';
+
+  @override
+  String get totalUnrealizedPnl => 'Unrealized P&L';
+
+  @override
+  String get tradeVolume => 'Trade Volume';
+
+  @override
+  String get generalStats => 'General Stats';
+
+  @override
+  String get bookingInflows => 'Booking Inflows';
+
+  @override
+  String get bookingOutflows => 'Booking Outflows';
+
+  @override
+  String get transferVolume => 'Transfer Volume';
+
+  @override
+  String get heldOnAccounts => 'Held on Accounts';
+
+  @override
+  String get noAccountPositions => 'No account positions.';
+
+  @override
+  String get edit => 'Edit';
+
+  @override
   String get noAssetHoldings => 'No asset holdings';
 
   @override

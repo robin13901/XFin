@@ -65,7 +65,8 @@
       "Bash(flutter test test/database/daos/trades_dao_test.dart test/database/daos/periodic_transfers_dao_test.dart)",
       "Bash(node -e \"console.log\\(new Date\\(2026,2,29\\).toLocaleDateString\\('en',{weekday:'long'}\\)\\)\")",
       "Bash(dart -e \"print\\(DateTime\\(2026,3,29\\).weekday\\);\")",
-      "Bash(dart -e ' *)"
+      "Bash(dart -e ' *)",
+      "Bash(cd c:\\\\\\\\SAPDevelop\\\\\\\\Privat\\\\\\\\XFin)"
     ]
   }
 }

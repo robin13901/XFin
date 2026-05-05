@@ -18,6 +18,8 @@ import '../widgets/common_widgets.dart';
 import '../widgets/live_toggle_button.dart';
 import '../widgets/liquid_glass_widgets.dart';
 
+const double _cardGap = 8;
+
 class AssetAnalysisDetailScreen extends StatefulWidget {
   final int assetId;
 
@@ -229,35 +231,20 @@ class _AssetAnalysisDetailScreenState extends State<AssetAnalysisDetailScreen>
                           },
                         ),
                         const SizedBox(height: 12),
-                        SectionTitle(title: 'Trading stats', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-                        StatTile(label: 'Buys', value: data.buys.toString()),
-                        StatTile(label: 'Sells', value: data.sells.toString()),
-                        StatTile(label: 'Total profit', value: formatCurrency(data.totalProfit)),
-                        if (unrealizedProfit != null)
-                          StatTile(
-                            label: 'Total unrealized P&L',
-                            value: formatCurrency(unrealizedProfit),
-                            valueStyle: const TextStyle(
-                              color: AppColors.green,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        StatTile(label: 'Total fees', value: formatCurrency(data.totalFees)),
-                        StatTile(label: 'Trade volume', value: formatCurrency(data.tradeVolume)),
+                        SectionTitle(title: l10n.tradingStats, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 8),
+                        _buildTradingStatsCards(data, unrealizedProfit, l10n),
                         const SizedBox(height: 12),
-                        SectionTitle(title: 'General stats', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-                        StatTile(label: 'Booking inflows', value: formatCurrency(data.bookingInflows)),
-                        StatTile(label: 'Booking outflows', value: formatCurrency(data.bookingOutflows)),
-                        StatTile(label: 'Transfers', value: data.transferCount.toString()),
-                        StatTile(label: 'Transfer volume', value: formatCurrency(data.transferVolume)),
-                        StatTile(label: 'Events per month', value: data.eventFrequency.toStringAsFixed(1)),
+                        SectionTitle(title: l10n.generalStats, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 8),
+                        _buildGeneralStatsCards(data, l10n),
                         const SizedBox(height: 12),
-                        SectionTitle(title: 'Held on accounts', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                        SectionTitle(title: l10n.heldOnAccounts, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                         const SizedBox(height: 32),
                         if (data.accountHoldings.isEmpty)
-                          const Padding(
-                            padding: EdgeInsets.all(8),
-                            child: Text('No account positions.'),
+                          Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Text(l10n.noAccountPositions),
                           )
                         else
                           _buildAccountHoldingsSection(data, isLive, livePrice, l10n),
@@ -278,6 +265,76 @@ class _AssetAnalysisDetailScreenState extends State<AssetAnalysisDetailScreen>
     );
   }
 
+  Widget _statCard(String label, String value, double width, {Color? valueColor}) {
+    final isDark = ThemeProvider.isDark();
+    return SizedBox(
+      width: width,
+      child: buildLiquidGlassCard(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark ? Colors.white70 : Colors.black54,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: valueColor ?? (isDark ? Colors.white : Colors.black),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTradingStatsCards(
+    AssetAnalysisDetailsData data,
+    double? unrealizedProfit,
+    AppLocalizations l10n,
+  ) {
+    return LayoutBuilder(builder: (context, constraints) {
+      final cardWidth = (constraints.maxWidth - _cardGap) / 2;
+      return Wrap(
+        spacing: _cardGap,
+        runSpacing: _cardGap,
+        children: [
+          _statCard(l10n.buys, data.buys.toString(), cardWidth),
+          _statCard(l10n.sells, data.sells.toString(), cardWidth),
+          _statCard(l10n.totalProfit, formatCurrency(data.totalProfit), cardWidth,
+              valueColor: data.totalProfit >= 0 ? AppColors.green : Colors.red),
+          if (unrealizedProfit != null)
+            _statCard(l10n.totalUnrealizedPnl, formatCurrency(unrealizedProfit), cardWidth,
+                valueColor: unrealizedProfit >= 0 ? AppColors.green : Colors.red),
+          _statCard(l10n.totalFees, formatCurrency(data.totalFees), cardWidth),
+          _statCard(l10n.tradeVolume, formatCurrency(data.tradeVolume), cardWidth),
+        ],
+      );
+    });
+  }
+
+  Widget _buildGeneralStatsCards(AssetAnalysisDetailsData data, AppLocalizations l10n) {
+    return LayoutBuilder(builder: (context, constraints) {
+      final cardWidth = (constraints.maxWidth - _cardGap) / 2;
+      return Wrap(
+        spacing: _cardGap,
+        runSpacing: _cardGap,
+        children: [
+          _statCard(l10n.bookingInflows, formatCurrency(data.bookingInflows), cardWidth),
+          _statCard(l10n.bookingOutflows, formatCurrency(data.bookingOutflows), cardWidth),
+          _statCard(l10n.transfers, data.transferCount.toString(), cardWidth),
+          _statCard(l10n.transferVolume, formatCurrency(data.transferVolume), cardWidth),
+          _statCard(l10n.eventsPerMonth, data.eventFrequency.toStringAsFixed(1), cardWidth),
+        ],
+      );
+    });
+  }
+
   Widget _buildAccountHoldingsSection(
     AssetAnalysisDetailsData data,
     bool isLive,
@@ -289,7 +346,7 @@ class _AssetAnalysisDetailScreenState extends State<AssetAnalysisDetailScreen>
         items: data.accountHoldings
             .map((h) => AllocationItem(label: h.label, value: h.shares))
             .toList(),
-        title: l10n.investments,
+        title: l10n.accounts,
         valueFormatter: (value) => value.toStringAsFixed(4),
       );
     }
@@ -302,7 +359,7 @@ class _AssetAnalysisDetailScreenState extends State<AssetAnalysisDetailScreen>
                   value: h.shares * livePrice,
                 ))
             .toList(),
-        title: l10n.investments,
+        title: l10n.accounts,
         valueColor: AppColors.green,
       );
     }
@@ -311,7 +368,7 @@ class _AssetAnalysisDetailScreenState extends State<AssetAnalysisDetailScreen>
       items: data.accountHoldings
           .map((h) => AllocationItem(label: h.label, value: h.value))
           .toList(),
-      title: l10n.investments,
+      title: l10n.accounts,
     );
   }
 }

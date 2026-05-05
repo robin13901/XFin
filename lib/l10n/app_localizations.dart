@@ -1616,6 +1616,84 @@ abstract class AppLocalizations {
   /// **'Events per Month'**
   String get eventsPerMonth;
 
+  /// No description provided for @tradingStats.
+  ///
+  /// In en, this message translates to:
+  /// **'Trading Stats'**
+  String get tradingStats;
+
+  /// No description provided for @buys.
+  ///
+  /// In en, this message translates to:
+  /// **'Buys'**
+  String get buys;
+
+  /// No description provided for @sells.
+  ///
+  /// In en, this message translates to:
+  /// **'Sells'**
+  String get sells;
+
+  /// No description provided for @totalProfit.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Profit'**
+  String get totalProfit;
+
+  /// No description provided for @totalUnrealizedPnl.
+  ///
+  /// In en, this message translates to:
+  /// **'Unrealized P&L'**
+  String get totalUnrealizedPnl;
+
+  /// No description provided for @tradeVolume.
+  ///
+  /// In en, this message translates to:
+  /// **'Trade Volume'**
+  String get tradeVolume;
+
+  /// No description provided for @generalStats.
+  ///
+  /// In en, this message translates to:
+  /// **'General Stats'**
+  String get generalStats;
+
+  /// No description provided for @bookingInflows.
+  ///
+  /// In en, this message translates to:
+  /// **'Booking Inflows'**
+  String get bookingInflows;
+
+  /// No description provided for @bookingOutflows.
+  ///
+  /// In en, this message translates to:
+  /// **'Booking Outflows'**
+  String get bookingOutflows;
+
+  /// No description provided for @transferVolume.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer Volume'**
+  String get transferVolume;
+
+  /// No description provided for @heldOnAccounts.
+  ///
+  /// In en, this message translates to:
+  /// **'Held on Accounts'**
+  String get heldOnAccounts;
+
+  /// No description provided for @noAccountPositions.
+  ///
+  /// In en, this message translates to:
+  /// **'No account positions.'**
+  String get noAccountPositions;
+
+  /// No description provided for @edit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get edit;
+
   /// No description provided for @noAssetHoldings.
   ///
   /// In en, this message translates to:

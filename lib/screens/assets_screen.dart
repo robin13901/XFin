@@ -8,6 +8,7 @@ import 'package:xfin/widgets/forms/asset_form.dart';
 import 'package:xfin/widgets/charts.dart';
 import 'package:xfin/widgets/dialogs.dart';
 
+import '../app_theme.dart';
 import '../models/filter/asset_filter_config.dart';
 import '../mixins/nav_bar_visibility_mixin.dart';
 import '../mixins/search_filter_mixin.dart';
@@ -35,6 +36,7 @@ class _AssetsScreenState extends State<AssetsScreen>
   int _selectedTab = 1;
   AssetTypes? _selectedType;
   final ValueNotifier<bool> _navBarVisible = ValueNotifier<bool>(true);
+  bool _lastLiveState = false;
 
   // Cached data sources — avoids recreating Future/Stream on every build,
   // so tab switches don't trigger loading spinners.
@@ -97,49 +99,46 @@ class _AssetsScreenState extends State<AssetsScreen>
     final hasTrades = await db.assetsDao.hasTrades(asset.id);
     final hasAssetsOnAccounts = await db.assetsDao.hasAssetsOnAccounts(asset.id);
     final deletionProhibited = hasTrades || hasAssetsOnAccounts || asset.id == 1;
+    final canArchive = deletionProhibited && asset.id != 1 && asset.value <= 0;
 
     if (!context.mounted) return;
 
-    if (deletionProhibited) {
-      if (asset.id == 1 || asset.value > 0) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text(l10n.cannotDeleteAsset),
-            content: Text(l10n.assetHasReferences),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text(l10n.ok),
-              ),
-            ],
-          ),
-        );
-      } else {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text(l10n.cannotDeleteAsset),
-            content: Text(l10n.assetHasReferences),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text(l10n.cancel),
-              ),
-              TextButton(
-                onPressed: () {
+    showModalBottomSheet(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: Text(l10n.edit),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                _showAssetForm(context, asset: asset);
+              },
+            ),
+            if (canArchive)
+              ListTile(
+                leading: const Icon(Icons.archive_outlined),
+                title: Text(l10n.archive),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
                   db.assetsDao.setArchived(asset.id, true);
-                  Navigator.of(context).pop();
                 },
-                child: Text(l10n.archive),
               ),
-            ],
-          ),
-        );
-      }
-    } else {
-      showDeleteDialog(context, asset: asset);
-    }
+            if (!deletionProhibited)
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: Text(l10n.delete, style: const TextStyle(color: Colors.red)),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  showDeleteDialog(context, asset: asset);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _handleArchivedAssetTap(BuildContext context, AppDatabase db, Asset asset) {
@@ -165,15 +164,18 @@ class _AssetsScreenState extends State<AssetsScreen>
     );
   }
 
-  Future<List<AllocationItem>> _loadAllocationItems(AppDatabase db) async {
+  Future<List<AllocationItem>> _loadAllocationItems(AppDatabase db, {Map<int, double>? livePrices}) async {
     final assets = (await db.assetsDao.getAllAssets())
         .where((a) => !a.isArchived)
         .toList();
     if (_selectedType == null) {
       final Map<AssetTypes, double> byType = {};
       for (final asset in assets) {
-        byType.update(asset.type, (v) => v + asset.value,
-            ifAbsent: () => asset.value);
+        final displayValue = livePrices != null && livePrices.containsKey(asset.id)
+            ? livePrices[asset.id]! * asset.shares
+            : asset.value;
+        byType.update(asset.type, (v) => v + displayValue,
+            ifAbsent: () => displayValue);
       }
       return byType.entries
           .map((e) => AllocationItem(
@@ -188,97 +190,117 @@ class _AssetsScreenState extends State<AssetsScreen>
 
     return assets
         .where((a) => a.type == _selectedType)
-        .map((a) => AllocationItem(label: a.name, value: a.value, asset: a))
+        .map((a) {
+          final displayValue = livePrices != null && livePrices.containsKey(a.id)
+              ? livePrices[a.id]! * a.shares
+              : a.value;
+          return AllocationItem(label: a.name, value: displayValue, asset: a);
+        })
         .where((e) => e.value > 0)
         .toList()
       ..sort((a, b) => b.value.compareTo(a.value));
   }
 
   Widget _buildAnalysisTab(BuildContext context, AppLocalizations l10n) {
-    return FutureBuilder<List<AllocationItem>>(
-      future: _allocationFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return Center(child: Text(l10n.errorLoadingData));
-        }
-        final items = snapshot.data ?? [];
-        return SingleChildScrollView(
-          padding: EdgeInsets.only(
-            top: MediaQuery.of(context).padding.top + kToolbarHeight + 12,
-            bottom: 96,
-            left: 12,
-            right: 12,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: AssetTypes.values.map((type) {
-                    final selected = _selectedType == type;
+    return Consumer<LivePriceProvider>(
+      builder: (context, liveProvider, _) {
+        final isLive = liveProvider.isLive && liveProvider.isConnected;
 
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: ChoiceChip(
-                        label: Text(getAssetTypeName(l10n, type, plural: true)),
-                        showCheckmark: false,
-                        selected: selected,
-                        onSelected: (_) => setState(() {
-                          _selectedType = selected ? null : type;
-                          _allocationFuture = _loadAllocationItems(_db);
-                        }),
-                      ),
-                    );
-                  }).toList(),
-                ),
+        if (isLive != _lastLiveState) {
+          _lastLiveState = isLive;
+          final livePrices = isLive ? liveProvider.livePrices : null;
+          _allocationFuture = _loadAllocationItems(_db, livePrices: livePrices);
+        }
+
+        return FutureBuilder<List<AllocationItem>>(
+          future: _allocationFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) {
+              return Center(child: Text(l10n.errorLoadingData));
+            }
+            final items = snapshot.data ?? [];
+            return SingleChildScrollView(
+              padding: EdgeInsets.only(
+                top: MediaQuery.of(context).padding.top + kToolbarHeight + 12,
+                bottom: 96,
+                left: 12,
+                right: 12,
               ),
-              const SizedBox(height: 32),
-              if (items.isEmpty)
-                Center(
-                    child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Text(l10n.noAssetsOfThisTypeYet),
-                ))
-              else ...[
-                AllocationBreakdownSection(
-                  items: items
-                      .map(
-                        (item) => AllocationItem(
-                          label: _selectedType == null
-                              ? getAssetTypeName(l10n, item.type!, plural: true)
-                              : item.label,
-                          value: item.value,
-                          type: item.type,
-                          asset: item.asset,
-                        ),
-                      )
-                      .toList(),
-                  title: l10n.investments,
-                  onItemTap: (item) {
-                    if (_selectedType == null && item.type != null) {
-                      setState(() {
-                        _selectedType = item.type;
-                        _allocationFuture = _loadAllocationItems(_db);
-                      });
-                      return;
-                    }
-                    if (item.asset == null) return;
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            AssetAnalysisDetailScreen(assetId: item.asset!.id),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ],
-          ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: AssetTypes.values.map((type) {
+                        final selected = _selectedType == type;
+
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: ChoiceChip(
+                            label: Text(getAssetTypeName(l10n, type, plural: true)),
+                            showCheckmark: false,
+                            selected: selected,
+                            onSelected: (_) => setState(() {
+                              _selectedType = selected ? null : type;
+                              final livePrices = isLive ? liveProvider.livePrices : null;
+                              _allocationFuture = _loadAllocationItems(_db, livePrices: livePrices);
+                            }),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  if (items.isEmpty)
+                    Center(
+                        child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(l10n.noAssetsOfThisTypeYet),
+                    ))
+                  else ...[
+                    AllocationBreakdownSection(
+                      items: items
+                          .map(
+                            (item) => AllocationItem(
+                              label: _selectedType == null
+                                  ? getAssetTypeName(l10n, item.type!, plural: true)
+                                  : item.label,
+                              value: item.value,
+                              type: item.type,
+                              asset: item.asset,
+                            ),
+                          )
+                          .toList(),
+                      title: l10n.investments,
+                      valueColor: isLive ? AppColors.green : null,
+                      onItemTap: (item) {
+                        if (_selectedType == null && item.type != null) {
+                          setState(() {
+                            _selectedType = item.type;
+                            final livePrices = isLive ? liveProvider.livePrices : null;
+                            _allocationFuture = _loadAllocationItems(_db, livePrices: livePrices);
+                          });
+                          return;
+                        }
+                        if (item.asset == null) return;
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                AssetAnalysisDetailScreen(assetId: item.asset!.id),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
         );
       },
     );
@@ -344,7 +366,11 @@ class _AssetsScreenState extends State<AssetsScreen>
                     ],
                   ),
                   trailing: Text(getAssetTypeName(l10n, asset.type)),
-                  onTap: () => _showAssetForm(context, asset: asset),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => AssetAnalysisDetailScreen(assetId: asset.id),
+                    ),
+                  ),
                   onLongPress: () => _handleLongPress(context, _db, asset, l10n),
                 );}),
             StreamBuilder<List<Asset>>(

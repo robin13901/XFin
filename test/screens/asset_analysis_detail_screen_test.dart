@@ -100,9 +100,9 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('ACME'), findsOneWidget);
-        expect(find.text('Trading stats'), findsOneWidget);
-        expect(find.text('General stats'), findsOneWidget);
-        expect(find.text('Held on accounts'), findsOneWidget);
+        expect(find.text('Trading Stats'), findsOneWidget);
+        expect(find.text('General Stats'), findsOneWidget);
+        expect(find.text('Held on Accounts'), findsOneWidget);
 
         // Tap value/shares toggle (lines 113, 119)
         await tester.tap(find.text('Shares'));
@@ -155,7 +155,7 @@ void main() {
         await tester.pumpAndSettle();
 
         // Initially no unrealized P&L
-        expect(find.text('Total unrealized P&L'), findsNothing);
+        expect(find.text('Unrealized P&L'), findsNothing);
 
         // Simulate live state: set livePrice for asset 2
         final provider = LivePriceProvider.instance;
@@ -165,7 +165,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 500));
 
         // Unrealized P&L = (livePrice - netCostBasis) * shares = (75 - 50) * 3 = 75
-        expect(find.text('Total unrealized P&L'), findsOneWidget);
+        expect(find.text('Unrealized P&L'), findsOneWidget);
 
         // Clean up
         provider.clearLivePricesForTesting();
@@ -179,7 +179,7 @@ void main() {
 
         // Tap "Shares" toggle
         await tester.tap(find.text('Shares'));
-        await tester.pumpAndSettle();
+        await tester.pump(const Duration(milliseconds: 500));
 
         // Should show shares with 4 decimal places (chart header + allocation subtitle)
         expect(find.text('3.0000'), findsNWidgets(2));

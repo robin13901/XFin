@@ -827,6 +827,45 @@ class AppLocalizationsDe extends AppLocalizations {
   String get eventsPerMonth => 'Ereignisse pro Monat';
 
   @override
+  String get tradingStats => 'Handelsstatistik';
+
+  @override
+  String get buys => 'Käufe';
+
+  @override
+  String get sells => 'Verkäufe';
+
+  @override
+  String get totalProfit => 'Gesamtgewinn';
+
+  @override
+  String get totalUnrealizedPnl => 'Unrealisierte G&V';
+
+  @override
+  String get tradeVolume => 'Handelsvolumen';
+
+  @override
+  String get generalStats => 'Allgemeine Statistik';
+
+  @override
+  String get bookingInflows => 'Buchungszuflüsse';
+
+  @override
+  String get bookingOutflows => 'Buchungsabflüsse';
+
+  @override
+  String get transferVolume => 'Überweisungsvolumen';
+
+  @override
+  String get heldOnAccounts => 'Auf Konten gehalten';
+
+  @override
+  String get noAccountPositions => 'Keine Kontopositionen.';
+
+  @override
+  String get edit => 'Bearbeiten';
+
+  @override
   String get noAssetHoldings => 'Keine Vermögenswerte';
 
   @override

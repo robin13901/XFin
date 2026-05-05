@@ -182,7 +182,7 @@ void main() {
         await tester.pumpAndSettle();
       }));
 
-  testWidgets('long press protected asset shows cannot-delete dialog', (tester) => tester.runAsync(() async {
+  testWidgets('long press protected asset shows context menu with edit only', (tester) => tester.runAsync(() async {
         final l10n = await pumpWidget(tester);
         await tester.pumpAndSettle();
 
@@ -193,8 +193,9 @@ void main() {
         await gesture.up();
         await tester.pumpAndSettle();
 
-        expect(find.text(l10n.cannotDeleteAsset), findsOneWidget);
-        expect(find.text(l10n.assetHasReferences), findsOneWidget);
+        expect(find.text(l10n.edit), findsOneWidget);
+        expect(find.text(l10n.delete), findsNothing);
+        expect(find.text(l10n.archive), findsNothing);
 
         await tester.pumpWidget(Container());
         await tester.pumpAndSettle();
