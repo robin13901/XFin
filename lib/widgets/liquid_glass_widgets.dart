@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 
@@ -355,6 +357,53 @@ Widget buildLiquidGlassCard({
       ),
     ),
   );
+}
+
+/// Lightweight frosted-glass card using [BackdropFilter] instead of the
+/// heavy shader-based [LiquidGlassLayer]. Use this for grids/lists of
+/// many small cards where the full liquid-glass effect causes jank.
+class FrostedGlassCard extends StatelessWidget {
+  final List<Widget> children;
+  final double borderRadius;
+  final EdgeInsetsGeometry padding;
+
+  const FrostedGlassCard({
+    super.key,
+    required this.children,
+    this.borderRadius = 20,
+    this.padding = const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = ThemeProvider.isDark();
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(borderRadius),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          padding: padding,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(borderRadius),
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.08)
+                : Colors.white.withValues(alpha: 0.45),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.12)
+                  : Colors.white.withValues(alpha: 0.6),
+              width: 0.5,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: children,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// A simple model for menu items shown in the panel

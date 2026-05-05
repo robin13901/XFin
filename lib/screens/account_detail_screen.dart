@@ -313,8 +313,7 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
   }) {
     return SizedBox(
       width: width,
-      child: buildLiquidGlassCard(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+      child: FrostedGlassCard(
         children: [
           Row(
             children: [

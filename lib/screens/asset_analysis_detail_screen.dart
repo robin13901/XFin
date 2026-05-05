@@ -269,8 +269,7 @@ class _AssetAnalysisDetailScreenState extends State<AssetAnalysisDetailScreen>
     final isDark = ThemeProvider.isDark();
     return SizedBox(
       width: width,
-      child: buildLiquidGlassCard(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+      child: FrostedGlassCard(
         children: [
           Text(
             label,
