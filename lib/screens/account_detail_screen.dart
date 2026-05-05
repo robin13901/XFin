@@ -122,36 +122,7 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
                           ?.copyWith(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 12),
-                    // Design A: Card Grid for Account Information
-                    DashboardCardGrid(
-                      items: [
-                        DashboardCardItem(
-                          label: l10n.currentBalance,
-                          value: formatCurrency(data.account.balance),
-                          icon: Icons.account_balance_wallet,
-                          iconColor: Colors.blue,
-                        ),
-                        DashboardCardItem(
-                          label: l10n.initialBalance,
-                          value: formatCurrency(data.account.initialBalance),
-                          icon: Icons.flag,
-                          iconColor: Colors.orange,
-                        ),
-                        DashboardCardItem(
-                          label: l10n.netChange,
-                          value: formatCurrency(data.netChange),
-                          icon: data.netChange >= 0 ? Icons.trending_up : Icons.trending_down,
-                          iconColor: data.netChange >= 0 ? AppColors.green : AppColors.red,
-                          valueColor: data.netChange >= 0 ? AppColors.green : AppColors.red,
-                        ),
-                        DashboardCardItem(
-                          label: l10n.accountType,
-                          value: getAccountTypeName(l10n, data.account.type),
-                          icon: _getAccountTypeIcon(data.account.type),
-                          iconColor: Colors.purple,
-                        ),
-                      ],
-                    ),
+                    _buildInfoCards(data, l10n),
                     const SizedBox(height: 20),
                     SectionTitle(
                       title: l10n.transactionStatistics,
@@ -161,56 +132,7 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
                           ?.copyWith(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 12),
-                    // Design B: Stats List for Transaction Statistics
-                    DashboardStatsList(
-                      items: [
-                        DashboardStatItem(
-                          label: l10n.bookings,
-                          value: data.bookingCount.toString(),
-                          icon: Icons.receipt_long,
-                          accentColor: Colors.blue,
-                        ),
-                        DashboardStatItem(
-                          label: l10n.transfers,
-                          value: data.transferCount.toString(),
-                          icon: Icons.swap_horiz,
-                          accentColor: Colors.orange,
-                        ),
-                        if (data.tradeCount > 0)
-                          DashboardStatItem(
-                            label: l10n.trades,
-                            value: data.tradeCount.toString(),
-                            icon: Icons.candlestick_chart,
-                            accentColor: Colors.purple,
-                          ),
-                        DashboardStatItem(
-                          label: l10n.totalInflows,
-                          value: formatCurrency(data.totalInflows),
-                          icon: Icons.arrow_downward,
-                          accentColor: AppColors.green,
-                          valueColor: AppColors.green,
-                        ),
-                        DashboardStatItem(
-                          label: l10n.totalOutflows,
-                          value: formatCurrency(data.totalOutflows),
-                          icon: Icons.arrow_upward,
-                          accentColor: AppColors.red,
-                          valueColor: AppColors.red,
-                        ),
-                        DashboardStatItem(
-                          label: l10n.totalVolume,
-                          value: formatCurrency(data.totalVolume),
-                          icon: Icons.width_full_outlined,
-                          accentColor: Colors.indigoAccent,
-                        ),
-                        DashboardStatItem(
-                          label: l10n.eventsPerMonth,
-                          value: data.eventFrequency.toStringAsFixed(1),
-                          icon: Icons.calendar_month,
-                          accentColor: Colors.teal,
-                        ),
-                      ],
-                    ),
+                    _buildStatCards(data, l10n),
                     const SizedBox(height: 20),
                     SectionTitle(
                       title: l10n.assetHoldings,
@@ -250,6 +172,175 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildInfoCards(AccountDetailsData data, AppLocalizations l10n) {
+    final isDark = ThemeProvider.isDark();
+    const double gap = 8;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cardWidth = (constraints.maxWidth - gap) / 2;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            _buildGlassCard(
+              width: cardWidth,
+              icon: Icons.account_balance_wallet,
+              iconColor: Colors.blue,
+              label: l10n.currentBalance,
+              value: formatCurrency(data.account.balance),
+              isDark: isDark,
+            ),
+            _buildGlassCard(
+              width: cardWidth,
+              icon: Icons.flag,
+              iconColor: Colors.orange,
+              label: l10n.initialBalance,
+              value: formatCurrency(data.account.initialBalance),
+              isDark: isDark,
+            ),
+            _buildGlassCard(
+              width: cardWidth,
+              icon: data.netChange >= 0 ? Icons.trending_up : Icons.trending_down,
+              iconColor: data.netChange >= 0 ? AppColors.green : AppColors.red,
+              label: l10n.netChange,
+              value: formatCurrency(data.netChange),
+              valueColor: data.netChange >= 0 ? AppColors.green : AppColors.red,
+              isDark: isDark,
+            ),
+            _buildGlassCard(
+              width: cardWidth,
+              icon: _getAccountTypeIcon(data.account.type),
+              iconColor: Colors.purple,
+              label: l10n.accountType,
+              value: getAccountTypeName(l10n, data.account.type),
+              isDark: isDark,
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildStatCards(AccountDetailsData data, AppLocalizations l10n) {
+    final isDark = ThemeProvider.isDark();
+    const double gap = 8;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cardWidth = (constraints.maxWidth - gap) / 2;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            _buildGlassCard(
+              width: cardWidth,
+              icon: Icons.receipt_long,
+              iconColor: Colors.blue,
+              label: l10n.bookings,
+              value: data.bookingCount.toString(),
+              isDark: isDark,
+            ),
+            _buildGlassCard(
+              width: cardWidth,
+              icon: Icons.swap_horiz,
+              iconColor: Colors.orange,
+              label: l10n.transfers,
+              value: data.transferCount.toString(),
+              isDark: isDark,
+            ),
+            if (data.tradeCount > 0)
+              _buildGlassCard(
+                width: cardWidth,
+                icon: Icons.candlestick_chart,
+                iconColor: Colors.purple,
+                label: l10n.trades,
+                value: data.tradeCount.toString(),
+                isDark: isDark,
+              ),
+            _buildGlassCard(
+              width: cardWidth,
+              icon: Icons.arrow_downward,
+              iconColor: AppColors.green,
+              label: l10n.totalInflows,
+              value: formatCurrency(data.totalInflows),
+              valueColor: AppColors.green,
+              isDark: isDark,
+            ),
+            _buildGlassCard(
+              width: cardWidth,
+              icon: Icons.arrow_upward,
+              iconColor: AppColors.red,
+              label: l10n.totalOutflows,
+              value: formatCurrency(data.totalOutflows),
+              valueColor: AppColors.red,
+              isDark: isDark,
+            ),
+            _buildGlassCard(
+              width: cardWidth,
+              icon: Icons.width_full_outlined,
+              iconColor: Colors.indigoAccent,
+              label: l10n.totalVolume,
+              value: formatCurrency(data.totalVolume),
+              isDark: isDark,
+            ),
+            _buildGlassCard(
+              width: cardWidth,
+              icon: Icons.calendar_month,
+              iconColor: Colors.teal,
+              label: l10n.eventsPerMonth,
+              value: data.eventFrequency.toStringAsFixed(1),
+              isDark: isDark,
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildGlassCard({
+    required double width,
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String value,
+    required bool isDark,
+    Color? valueColor,
+  }) {
+    return SizedBox(
+      width: width,
+      child: buildLiquidGlassCard(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: iconColor),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark ? Colors.white70 : Colors.black54,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: valueColor ?? (isDark ? Colors.white : Colors.black),
+            ),
+          ),
+        ],
       ),
     );
   }
