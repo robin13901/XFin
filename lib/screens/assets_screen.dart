@@ -289,9 +289,11 @@ class _AssetsScreenState extends State<AssetsScreen>
                         }
                         if (item.asset == null) return;
                         Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) =>
+                          PageRouteBuilder(
+                            pageBuilder: (_, __, ___) =>
                                 AssetAnalysisDetailScreen(assetId: item.asset!.id),
+                            transitionDuration: Duration.zero,
+                            reverseTransitionDuration: Duration.zero,
                           ),
                         );
                       },
@@ -367,8 +369,10 @@ class _AssetsScreenState extends State<AssetsScreen>
                   ),
                   trailing: Text(getAssetTypeName(l10n, asset.type)),
                   onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => AssetAnalysisDetailScreen(assetId: asset.id),
+                    PageRouteBuilder(
+                      pageBuilder: (_, __, ___) => AssetAnalysisDetailScreen(assetId: asset.id),
+                      transitionDuration: Duration.zero,
+                      reverseTransitionDuration: Duration.zero,
                     ),
                   ),
                   onLongPress: () => _handleLongPress(context, _db, asset, l10n),
