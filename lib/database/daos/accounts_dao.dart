@@ -425,6 +425,7 @@ class AccountsDao extends DatabaseAccessor<AppDatabase>
         .map((aoa) => AccountAssetHolding(
               label: assetMap[aoa.assetId]?.name ?? 'Asset ${aoa.assetId}',
               value: aoa.value,
+              shares: aoa.shares,
               assetId: aoa.assetId,
             ))
         .toList()
@@ -561,11 +562,13 @@ class AccountDetailsData {
 class AccountAssetHolding {
   final String label;
   final double value;
+  final double shares;
   final int assetId;
 
   const AccountAssetHolding({
     required this.label,
     required this.value,
+    required this.shares,
     required this.assetId,
   });
 }

@@ -48,6 +48,13 @@ String formatCurrency(double value) {
   return _currencyFormat.format(value);
 }
 
+String formatDecimal(double value, {int decimals = 1}) {
+  final formatter = NumberFormat.decimalPattern('de_DE')
+    ..minimumFractionDigits = decimals
+    ..maximumFractionDigits = decimals;
+  return formatter.format(value);
+}
+
 String getAssetTypeName(AppLocalizations l10n, AssetTypes type, {bool plural = false}) {
   return switch ((type, plural)) {
     (AssetTypes.stock, false) => l10n.stock,
