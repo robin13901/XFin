@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 
@@ -359,9 +357,9 @@ Widget buildLiquidGlassCard({
   );
 }
 
-/// Lightweight frosted-glass card using [BackdropFilter] instead of the
-/// heavy shader-based [LiquidGlassLayer]. Use this for grids/lists of
-/// many small cards where the full liquid-glass effect causes jank.
+/// Lightweight glass-style card that avoids [BackdropFilter] entirely.
+/// Uses a semi-transparent fill with border and subtle shadow to simulate
+/// the frosted-glass look without per-frame GPU blur operations.
 class FrostedGlassCard extends StatelessWidget {
   final List<Widget> children;
   final double borderRadius;
@@ -377,30 +375,31 @@ class FrostedGlassCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = ThemeProvider.isDark();
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(borderRadius),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-        child: Container(
-          padding: padding,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(borderRadius),
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.08)
-                : Colors.white.withValues(alpha: 0.45),
-            border: Border.all(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.12)
-                  : Colors.white.withValues(alpha: 0.6),
-              width: 0.5,
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: children,
-          ),
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(borderRadius),
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.09)
+            : Colors.white.withValues(alpha: 0.55),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.13)
+              : Colors.white.withValues(alpha: 0.7),
+          width: 0.5,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: children,
       ),
     );
   }
