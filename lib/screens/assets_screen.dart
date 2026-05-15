@@ -37,6 +37,7 @@ class _AssetsScreenState extends State<AssetsScreen>
   AssetTypes? _selectedType;
   final ValueNotifier<bool> _navBarVisible = ValueNotifier<bool>(true);
   bool _lastLiveState = false;
+  int _lastLivePriceCount = 0;
 
   // Cached data sources — avoids recreating Future/Stream on every build,
   // so tab switches don't trigger loading spinners.
@@ -170,18 +171,22 @@ class _AssetsScreenState extends State<AssetsScreen>
         .toList();
     if (_selectedType == null) {
       final Map<AssetTypes, double> byType = {};
+      final Map<AssetTypes, bool> typeHasLive = {};
       for (final asset in assets) {
-        final displayValue = livePrices != null && livePrices.containsKey(asset.id)
+        final hasLive = livePrices != null && livePrices.containsKey(asset.id);
+        final displayValue = hasLive
             ? livePrices[asset.id]! * asset.shares
             : asset.value;
         byType.update(asset.type, (v) => v + displayValue,
             ifAbsent: () => displayValue);
+        if (hasLive) typeHasLive[asset.type] = true;
       }
       return byType.entries
           .map((e) => AllocationItem(
                 label: e.key.name.toUpperCase(),
                 value: e.value,
                 type: e.key,
+                valueColor: typeHasLive[e.key] == true ? AppColors.green : null,
               ))
           .where((e) => e.value > 0)
           .toList()
@@ -191,10 +196,16 @@ class _AssetsScreenState extends State<AssetsScreen>
     return assets
         .where((a) => a.type == _selectedType)
         .map((a) {
-          final displayValue = livePrices != null && livePrices.containsKey(a.id)
+          final hasLive = livePrices != null && livePrices.containsKey(a.id);
+          final displayValue = hasLive
               ? livePrices[a.id]! * a.shares
               : a.value;
-          return AllocationItem(label: a.name, value: displayValue, asset: a);
+          return AllocationItem(
+            label: a.name,
+            value: displayValue,
+            asset: a,
+            valueColor: hasLive ? AppColors.green : null,
+          );
         })
         .where((e) => e.value > 0)
         .toList()
@@ -205,9 +216,11 @@ class _AssetsScreenState extends State<AssetsScreen>
     return Consumer<LivePriceProvider>(
       builder: (context, liveProvider, _) {
         final isLive = liveProvider.isLive && liveProvider.isConnected;
+        final livePriceCount = isLive ? liveProvider.livePrices.length : 0;
 
-        if (isLive != _lastLiveState) {
+        if (isLive != _lastLiveState || (isLive && livePriceCount != _lastLivePriceCount)) {
           _lastLiveState = isLive;
+          _lastLivePriceCount = livePriceCount;
           final livePrices = isLive ? liveProvider.livePrices : null;
           _allocationFuture = _loadAllocationItems(_db, livePrices: livePrices);
         }
@@ -273,11 +286,11 @@ class _AssetsScreenState extends State<AssetsScreen>
                               value: item.value,
                               type: item.type,
                               asset: item.asset,
+                              valueColor: item.valueColor,
                             ),
                           )
                           .toList(),
                       title: l10n.investments,
-                      valueColor: isLive ? AppColors.green : null,
                       onItemTap: (item) {
                         if (_selectedType == null && item.type != null) {
                           setState(() {

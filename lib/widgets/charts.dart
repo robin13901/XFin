@@ -11,12 +11,14 @@ class AllocationItem {
   final double value;
   final AssetTypes? type;
   final Asset? asset;
+  final Color? valueColor;
 
   const AllocationItem({
     required this.label,
     required this.value,
     this.type,
     this.asset,
+    this.valueColor,
   });
 }
 
@@ -64,7 +66,7 @@ class AllocationBreakdownSection extends StatelessWidget {
             ),
             subtitle: Text(
               formatValue(item.value),
-              style: TextStyle(color: valueColor ?? Colors.grey),
+              style: TextStyle(color: item.valueColor ?? valueColor ?? Colors.grey),
             ),
             trailing: Text(
               formatPercent(ratio),

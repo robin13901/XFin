@@ -571,5 +571,29 @@ void main() {
       final valueText = tester.widget<Text>(find.text(formatCurrency(100)));
       expect(valueText.style?.color, Colors.grey);
     });
+
+    testWidgets('per-item valueColor overrides section-level valueColor', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: AllocationBreakdownSection(
+                items: [
+                  const AllocationItem(label: 'Live', value: 500, valueColor: AppColors.green),
+                  const AllocationItem(label: 'Static', value: 300),
+                ],
+                title: 'Test',
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final liveText = tester.widget<Text>(find.text(formatCurrency(500)));
+      expect(liveText.style?.color, AppColors.green);
+
+      final staticText = tester.widget<Text>(find.text(formatCurrency(300)));
+      expect(staticText.style?.color, Colors.grey);
+    });
   });
 }
