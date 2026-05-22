@@ -515,8 +515,11 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   void _openCategoryDetail(String category) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => CategoryDetailScreen(category: category),
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) =>
+            CategoryDetailScreen(category: category),
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
       ),
     );
   }
