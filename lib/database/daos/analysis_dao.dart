@@ -544,6 +544,105 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
     return sortedMap;
   }
 
+  /// Aggregates all bookings of a single [category] for [CategoryDetailScreen].
+  ///
+  /// - [monthlyBuckets] is contiguous from the earliest booking month
+  ///   up to the current calendar month (inclusive); months with no bookings
+  ///   get a zero-filled bucket so the histogram has no gaps.
+  /// - [dailyBuckets] only contains days that actually have at least one
+  ///   booking — empty days are represented by an absent map entry.
+  /// - Excludes generated bookings (from periodic templates) so the
+  ///   histogram reflects only real entries.
+  /// - Ignores the global timeframe filter on purpose: this screen always
+  ///   shows the full history of a category.
+  Future<CategoryStats> getCategoryStats(String category) async {
+    final rows = await (select(bookings)
+          ..where((b) =>
+              b.category.equals(category) & b.isGenerated.equals(false))
+          ..orderBy([(b) => OrderingTerm.asc(b.date)]))
+        .get();
+
+    if (rows.isEmpty) {
+      return CategoryStats(
+        category: category,
+        monthlyBuckets: const [],
+        dailyBuckets: const {},
+        totalCount: 0,
+        totalSum: 0.0,
+        earliestBookingDate: null,
+      );
+    }
+
+    final monthlyMap = <int, _MutableMonthBucket>{};
+    final dailyMap = <int, _MutableDayBucket>{};
+    var totalSum = 0.0;
+    var totalCount = 0;
+
+    for (final row in rows) {
+      totalSum += row.value;
+      totalCount += 1;
+
+      final dateInt = row.date;
+      final daily = dailyMap.putIfAbsent(
+          dateInt, () => _MutableDayBucket(dateInt: dateInt));
+      daily.count += 1;
+      daily.sum += row.value;
+
+      final year = dateInt ~/ 10000;
+      final month = (dateInt ~/ 100) % 100;
+      final monthKey = year * 100 + month;
+      final monthly = monthlyMap.putIfAbsent(
+          monthKey, () => _MutableMonthBucket(year: year, month: month));
+      monthly.count += 1;
+      monthly.sum += row.value;
+    }
+
+    final earliestDateInt = rows.first.date;
+    final earliest = DateTime(
+      earliestDateInt ~/ 10000,
+      (earliestDateInt ~/ 100) % 100,
+      1,
+    );
+    final now = DateTime.now();
+    final endMonth = DateTime(now.year, now.month, 1);
+
+    final filledBuckets = <CategoryMonthBucket>[];
+    var cursor = earliest;
+    while (!cursor.isAfter(endMonth)) {
+      final key = cursor.year * 100 + cursor.month;
+      final found = monthlyMap[key];
+      filledBuckets.add(CategoryMonthBucket(
+        year: cursor.year,
+        month: cursor.month,
+        count: found?.count ?? 0,
+        sum: found?.sum ?? 0.0,
+      ));
+      cursor = DateTime(cursor.year, cursor.month + 1, 1);
+    }
+
+    final daily = <int, CategoryDayBucket>{
+      for (final entry in dailyMap.entries)
+        entry.key: CategoryDayBucket(
+          dateInt: entry.value.dateInt,
+          count: entry.value.count,
+          sum: entry.value.sum,
+        ),
+    };
+
+    return CategoryStats(
+      category: category,
+      monthlyBuckets: filledBuckets,
+      dailyBuckets: daily,
+      totalCount: totalCount,
+      totalSum: totalSum,
+      earliestBookingDate: DateTime(
+        earliestDateInt ~/ 10000,
+        (earliestDateInt ~/ 100) % 100,
+        earliestDateInt % 100,
+      ),
+    );
+  }
+
   // Singles
   Future<Map<int, double>> getDailyNetFlowInRange({
     required DateTime start,
@@ -778,4 +877,21 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
 
     return adjustedSpots;
   }
+}
+
+class _MutableMonthBucket {
+  final int year;
+  final int month;
+  int count = 0;
+  double sum = 0.0;
+
+  _MutableMonthBucket({required this.year, required this.month});
+}
+
+class _MutableDayBucket {
+  final int dateInt;
+  int count = 0;
+  double sum = 0.0;
+
+  _MutableDayBucket({required this.dateInt});
 }

@@ -53,10 +53,12 @@ CategoryDisplayData calculateCategoryData({
 /// A reusable pie chart widget for displaying category breakdowns
 class CategoryPieChart extends StatelessWidget {
   final CategoryDisplayData data;
+  final ValueChanged<String>? onCategoryTap;
 
   const CategoryPieChart({
     super.key,
     required this.data,
+    this.onCategoryTap,
   });
 
   @override
@@ -72,6 +74,22 @@ class CategoryPieChart extends StatelessWidget {
           sectionsSpace: 3,
           centerSpaceRadius: 40,
           startDegreeOffset: -90,
+          pieTouchData: onCategoryTap == null
+              ? null
+              : PieTouchData(
+                  touchCallback: (event, response) {
+                    if (event is FlTapUpEvent &&
+                        response?.touchedSection != null) {
+                      final idx =
+                          response!.touchedSection!.touchedSectionIndex;
+                      if (idx < 0 || idx >= data.entries.length) return;
+                      final key = data.entries[idx].key;
+                      // Don't navigate from the synthetic "..." aggregation row.
+                      if (key == '...') return;
+                      onCategoryTap!(key);
+                    }
+                  },
+                ),
           sections: List.generate(data.entries.length, (index) {
             final entry = data.entries[index];
             final ratio =
@@ -97,6 +115,7 @@ class CategoryList extends StatelessWidget {
   final String showAllLabel;
   final String showLessLabel;
   final ValueChanged<bool>? onShowAllChanged;
+  final ValueChanged<String>? onCategoryTap;
 
   const CategoryList({
     super.key,
@@ -105,6 +124,7 @@ class CategoryList extends StatelessWidget {
     required this.showAllLabel,
     required this.showLessLabel,
     this.onShowAllChanged,
+    this.onCategoryTap,
   });
 
   @override
@@ -119,12 +139,17 @@ class CategoryList extends StatelessWidget {
       final entry = data.entries[i];
       final percentage =
           data.totalAmount == 0 ? 0.0 : (entry.value.abs() / data.totalAmount) * 100.0;
+      // Don't make the synthetic "..." aggregation row tappable.
+      final isAggregator = entry.key == '...';
       widgets.add(
         CategoryListItem(
           category: entry.key,
           amount: entry.value,
           percentage: percentage,
           color: chartColors[i % chartColors.length],
+          onTap: (onCategoryTap == null || isAggregator)
+              ? null
+              : () => onCategoryTap!(entry.key),
         ),
       );
     }
@@ -157,6 +182,7 @@ class CategoryListItem extends StatelessWidget {
   final double amount;
   final double percentage;
   final Color color;
+  final VoidCallback? onTap;
 
   const CategoryListItem({
     super.key,
@@ -164,11 +190,12 @@ class CategoryListItem extends StatelessWidget {
     required this.amount,
     required this.percentage,
     required this.color,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    final row = Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -201,6 +228,12 @@ class CategoryListItem extends StatelessWidget {
           ),
         ],
       ),
+    );
+    if (onTap == null) return row;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: row,
     );
   }
 }

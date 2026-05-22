@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import 'package:xfin/app_theme.dart';
 import 'package:xfin/l10n/app_localizations.dart';
+import 'package:xfin/screens/category_detail_screen.dart';
 import 'package:xfin/utils/format.dart';
 import 'package:xfin/utils/global_constants.dart';
 import 'package:xfin/widgets/category_widgets.dart';
@@ -85,6 +86,7 @@ class MonthSummarySection extends StatelessWidget {
                 : data.monthlySnapshot.categoryOutflows,
             showAllCategories: showAllCategories,
           ),
+          onCategoryTap: (category) => _openCategoryDetail(context, category),
         ),
         const SizedBox(height: 32),
         CategoryListWrapper(
@@ -96,6 +98,15 @@ class MonthSummarySection extends StatelessWidget {
       ],
     );
   }
+}
+
+void _openCategoryDetail(BuildContext context, String category) {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => CategoryDetailScreen(category: category),
+    ),
+  );
 }
 
 /// Wrapper to handle category list display logic
@@ -135,7 +146,8 @@ class CategoryListWrapper extends StatelessWidget {
           final percentage = displayData.totalAmount == 0
               ? 0
               : (entry.value.abs() / displayData.totalAmount) * 100;
-          return Padding(
+          final isAggregator = entry.key == '...';
+          final row = Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -168,6 +180,12 @@ class CategoryListWrapper extends StatelessWidget {
                 )
               ],
             ),
+          );
+          if (isAggregator) return row;
+          return InkWell(
+            borderRadius: BorderRadius.circular(6),
+            onTap: () => _openCategoryDetail(context, entry.key),
+            child: row,
           );
         }),
         if (displayData.hasOther && !showAllCategories)

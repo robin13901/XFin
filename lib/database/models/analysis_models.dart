@@ -17,6 +17,59 @@ class MonthlyAnalysisSnapshot {
   });
 }
 
+/// Per-month aggregation for a single category.
+class CategoryMonthBucket {
+  final int year;
+  final int month;
+  final int count;
+  final double sum;
+
+  const CategoryMonthBucket({
+    required this.year,
+    required this.month,
+    required this.count,
+    required this.sum,
+  });
+
+  /// First day of this bucket's month.
+  DateTime get monthStart => DateTime(year, month, 1);
+
+  /// Stable key in yyyyMM form for fast lookups.
+  int get key => year * 100 + month;
+}
+
+/// Per-day aggregation for a single category (for heatmap rendering).
+class CategoryDayBucket {
+  final int dateInt; // yyyyMMdd
+  final int count;
+  final double sum;
+
+  const CategoryDayBucket({
+    required this.dateInt,
+    required this.count,
+    required this.sum,
+  });
+}
+
+/// Aggregated statistics for a single category, used by [CategoryDetailScreen].
+class CategoryStats {
+  final String category;
+  final List<CategoryMonthBucket> monthlyBuckets; // ascending by date, all months filled with zeros
+  final Map<int, CategoryDayBucket> dailyBuckets; // keyed by yyyyMMdd, only days with bookings
+  final int totalCount;
+  final double totalSum;
+  final DateTime? earliestBookingDate;
+
+  const CategoryStats({
+    required this.category,
+    required this.monthlyBuckets,
+    required this.dailyBuckets,
+    required this.totalCount,
+    required this.totalSum,
+    required this.earliestBookingDate,
+  });
+}
+
 /// Detailed breakdown of bookings, transfers, and trades for a single day.
 class CalendarDayDetails {
   final DateTime day;

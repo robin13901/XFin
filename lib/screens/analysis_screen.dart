@@ -19,6 +19,7 @@ import '../widgets/inflow_outflow_toggle.dart';
 import '../widgets/liquid_glass_widgets.dart';
 import '../widgets/live_toggle_button.dart';
 import '../widgets/summary_row.dart';
+import 'category_detail_screen.dart';
 
 // A data class to hold all asynchronous results needed by AnalysisScreen
 class AnalysisData {
@@ -478,7 +479,10 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       showAllCategories: _showAllCategories,
     );
 
-    return CategoryPieChart(data: displayData);
+    return CategoryPieChart(
+      data: displayData,
+      onCategoryTap: _openCategoryDetail,
+    );
   }
 
   Widget _buildCategoryList(AnalysisData analysisData) {
@@ -496,6 +500,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       noCategoriesMessage: 'Keine Daten für diese Kategorie verfügbar.',
       showAllLabel: 'Alle anzeigen',
       showLessLabel: 'Weniger anzeigen',
+      onCategoryTap: _openCategoryDetail,
       onShowAllChanged: (showAll) {
         setState(() {
           _showAllCategories = showAll;
@@ -504,6 +509,15 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           });
         });
       },
+    );
+  }
+
+  void _openCategoryDetail(String category) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CategoryDetailScreen(category: category),
+      ),
     );
   }
 
