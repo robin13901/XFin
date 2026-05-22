@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 import 'package:xfin/database/models/analysis_models.dart';
 import 'package:xfin/widgets/category_histogram.dart';
@@ -15,8 +17,15 @@ List<CategoryMonthBucket> _buckets(List<(int, int, int, double)> tuples) {
       .toList();
 }
 
-Widget _wrap(Widget child) {
+Widget _wrap(Widget child, {Locale locale = const Locale('en')}) {
   return MaterialApp(
+    locale: locale,
+    localizationsDelegates: const [
+      GlobalMaterialLocalizations.delegate,
+      GlobalWidgetsLocalizations.delegate,
+      GlobalCupertinoLocalizations.delegate,
+    ],
+    supportedLocales: const [Locale('en'), Locale('de')],
     home: Scaffold(
       body: SizedBox(width: 360, child: child),
     ),
@@ -24,6 +33,11 @@ Widget _wrap(Widget child) {
 }
 
 void main() {
+  setUpAll(() async {
+    await initializeDateFormatting('de');
+    await initializeDateFormatting('en');
+  });
+
   group('CategoryHistogram', () {
     testWidgets('renders placeholder when no buckets', (tester) async {
       await tester.pumpWidget(_wrap(
@@ -120,6 +134,50 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('bar-0')));
       await tester.pump();
       expect(find.text('5'), findsOneWidget);
+    });
+
+    testWidgets('uses German month abbreviations under de locale',
+        (tester) async {
+      final buckets = _buckets([
+        (2024, 10, 1, 100), // October -> "Okt" (de) vs "Oct" (en)
+        (2024, 12, 1, 100), // December -> "Dez" (de) vs "Dec" (en)
+      ]);
+
+      await tester.pumpWidget(_wrap(
+        CategoryHistogram(
+          buckets: buckets,
+          mode: CategoryHistogramMode.sum,
+          sumFormatter: (v) => v.toStringAsFixed(0),
+        ),
+        locale: const Locale('de'),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Okt'), findsOneWidget);
+      expect(find.text('Dez'), findsOneWidget);
+      // English forms must NOT appear.
+      expect(find.text('Oct'), findsNothing);
+      expect(find.text('Dec'), findsNothing);
+    });
+
+    testWidgets('uses English month abbreviations under en locale',
+        (tester) async {
+      final buckets = _buckets([
+        (2024, 10, 1, 100),
+      ]);
+
+      await tester.pumpWidget(_wrap(
+        CategoryHistogram(
+          buckets: buckets,
+          mode: CategoryHistogramMode.sum,
+          sumFormatter: (v) => v.toStringAsFixed(0),
+        ),
+        locale: const Locale('en'),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Oct'), findsOneWidget);
+      expect(find.text('Okt'), findsNothing);
     });
   });
 }

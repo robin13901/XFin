@@ -101,6 +101,7 @@ class _CategoryHistogramState extends State<CategoryHistogram> {
 
     final isDark = ThemeProvider.isDark();
     final fg = isDark ? Colors.white : Colors.black;
+    final locale = Localizations.localeOf(context).toLanguageTag();
 
     final values = widget.buckets.map(_valueOf).toList();
     final maxValue = values.reduce((a, b) => a > b ? a : b);
@@ -166,6 +167,7 @@ class _CategoryHistogramState extends State<CategoryHistogram> {
                               child: _MonthLabel(
                                 bucket: widget.buckets[i],
                                 color: fg.withAlpha(140),
+                                locale: locale,
                               ),
                             ),
                           if (_selectedIndex != null)
@@ -175,6 +177,7 @@ class _CategoryHistogramState extends State<CategoryHistogram> {
                               barCellWidth: barCellWidth,
                               fg: fg,
                               isDark: isDark,
+                              locale: locale,
                             ),
                         ],
                       ),
@@ -260,8 +263,10 @@ class _CategoryHistogramState extends State<CategoryHistogram> {
     required double barCellWidth,
     required Color fg,
     required bool isDark,
+    required String locale,
   }) {
-    final monthName = DateFormat('MMM yyyy').format(bucket.monthStart);
+    final monthName =
+        DateFormat('MMM yyyy', locale).format(bucket.monthStart);
     final value = _formatValue(bucket);
     return Positioned(
       left: index * barCellWidth - 40 + barCellWidth / 2,
@@ -306,15 +311,19 @@ class _CategoryHistogramState extends State<CategoryHistogram> {
 class _MonthLabel extends StatelessWidget {
   final CategoryMonthBucket bucket;
   final Color color;
+  final String locale;
 
-  const _MonthLabel({required this.bucket, required this.color});
+  const _MonthLabel({
+    required this.bucket,
+    required this.color,
+    required this.locale,
+  });
 
   @override
   Widget build(BuildContext context) {
     final isJan = bucket.month == 1;
-    final label = isJan
-        ? "${DateFormat('MMM').format(bucket.monthStart)} '${bucket.year % 100}"
-        : DateFormat('MMM').format(bucket.monthStart);
+    final monthShort = DateFormat('MMM', locale).format(bucket.monthStart);
+    final label = isJan ? "$monthShort '${bucket.year % 100}" : monthShort;
     return Padding(
       padding: const EdgeInsets.only(top: 6),
       child: FittedBox(

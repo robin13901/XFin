@@ -156,7 +156,11 @@ void main() {
       expect(stats.monthlyBuckets.length, greaterThanOrEqualTo(3));
     });
 
-    test('excludes generated bookings (from periodic templates)', () async {
+    test('includes generated bookings (e.g. from standing orders)', () async {
+      // The detail screen shows real history of a category. Standing-order
+      // generated bookings are materialized rows with isGenerated=true and
+      // must count toward histogram/totals — otherwise standing-order-only
+      // categories like "Salary" appear empty.
       await _insertBooking(db,
           dateInt: 20240101, category: 'Salary', value: 1000.0);
       await _insertBooking(
@@ -166,11 +170,18 @@ void main() {
         value: 1000.0,
         isGenerated: true,
       );
+      await _insertBooking(
+        db,
+        dateInt: 20240301,
+        category: 'Salary',
+        value: 1000.0,
+        isGenerated: true,
+      );
 
       final stats = await dao.getCategoryStats('Salary');
 
-      expect(stats.totalCount, 1);
-      expect(stats.totalSum, 1000.0);
+      expect(stats.totalCount, 3);
+      expect(stats.totalSum, 3000.0);
     });
 
     test('earliestBookingDate equals the actual day of the earliest booking',

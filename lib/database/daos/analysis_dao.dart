@@ -551,14 +551,14 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
   ///   get a zero-filled bucket so the histogram has no gaps.
   /// - [dailyBuckets] only contains days that actually have at least one
   ///   booking — empty days are represented by an absent map entry.
-  /// - Excludes generated bookings (from periodic templates) so the
-  ///   histogram reflects only real entries.
+  /// - Includes generated bookings (those materialized from periodic
+  ///   templates), since they are part of the actual history shown to the
+  ///   user. Excluding them would hide standing-order activity entirely.
   /// - Ignores the global timeframe filter on purpose: this screen always
   ///   shows the full history of a category.
   Future<CategoryStats> getCategoryStats(String category) async {
     final rows = await (select(bookings)
-          ..where((b) =>
-              b.category.equals(category) & b.isGenerated.equals(false))
+          ..where((b) => b.category.equals(category))
           ..orderBy([(b) => OrderingTerm.asc(b.date)]))
         .get();
 

@@ -77,6 +77,7 @@ class _CategoryHeatmapState extends State<CategoryHeatmap> {
     final earliest = widget.earliestDate;
     final isDark = ThemeProvider.isDark();
     final fg = isDark ? Colors.white : Colors.black;
+    final locale = Localizations.localeOf(context).toLanguageTag();
 
     if (earliest == null || widget.dailyBuckets.isEmpty) {
       return SizedBox(
@@ -125,8 +126,8 @@ class _CategoryHeatmapState extends State<CategoryHeatmap> {
               child: Stack(
                 children: [
                   // Month labels strip
-                  for (final label
-                      in _buildMonthLabels(startMonday, totalWeeks, cellSize))
+                  for (final label in _buildMonthLabels(
+                      startMonday, totalWeeks, cellSize, locale))
                     Positioned(
                       left: label.left,
                       top: 0,
@@ -247,6 +248,7 @@ class _CategoryHeatmapState extends State<CategoryHeatmap> {
     DateTime startMonday,
     int totalWeeks,
     double cellSize,
+    String locale,
   ) {
     final labels = <_MonthLabelRect>[];
     int? lastMonthRendered;
@@ -260,7 +262,7 @@ class _CategoryHeatmapState extends State<CategoryHeatmap> {
         labels.add(_MonthLabelRect(
           left: w * (cellSize + widget.cellGap),
           width: cellSize * 5,
-          text: DateFormat('MMM').format(pivot),
+          text: DateFormat('MMM', locale).format(pivot),
         ));
       }
     }
