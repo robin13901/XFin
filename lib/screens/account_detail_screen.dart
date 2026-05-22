@@ -30,7 +30,7 @@ class AccountDetailScreen extends StatefulWidget {
 }
 
 class _AccountDetailScreenState extends State<AccountDetailScreen> {
-  late Future<AccountDetailsData> _future;
+  late Future<_LoadResult> _future;
   String _range = '1W';
   bool _showSma = false;
   bool _showSma200 = false;
@@ -45,9 +45,105 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
     _future = _load();
   }
 
-  Future<AccountDetailsData> _load() async {
+  Future<_LoadResult> _load() async {
     final db = context.read<DatabaseProvider>().db;
-    return db.accountsDao.getAccountDetails(widget.accountId);
+    final results = await Future.wait([
+      db.accountsDao.getAccountDetails(widget.accountId),
+      db.accountsDao.getMarketValueHistory(widget.accountId),
+    ]);
+    return _LoadResult(
+      data: results[0] as AccountDetailsData,
+      marketValueHistory: results[1] as List<FlSpot>,
+    );
+  }
+
+  /// Compute live-adjusted aggregates without mutating [data].
+  /// [data.balanceHistory] is left untouched so the chart's white line stays
+  /// stable across price ticks; the live overlay line is built separately.
+  _LiveSnapshot _computeLive(
+      AccountDetailsData data, LivePriceProvider liveProvider) {
+    final isLive = liveProvider.isLive && liveProvider.isConnected;
+    if (!isLive) {
+      return _LiveSnapshot(
+        isLive: false,
+        balance: data.account.balance,
+        netChange: data.netChange,
+        adjustedHoldings: data.assetHoldings,
+        liveTotalDelta: 0.0,
+      );
+    }
+
+    double totalDelta = 0.0;
+    final adjustedHoldings = <AccountAssetHolding>[];
+
+    for (final h in data.assetHoldings) {
+      final livePrice = liveProvider.getLivePrice(h.assetId);
+      if (livePrice != null && h.shares.abs() > 1e-9) {
+        final storedPrice = h.value / h.shares;
+        final delta = h.shares * (livePrice - storedPrice);
+        totalDelta += delta;
+        adjustedHoldings.add(AccountAssetHolding(
+          label: h.label,
+          value: h.value + delta,
+          shares: h.shares,
+          assetId: h.assetId,
+        ));
+      } else {
+        adjustedHoldings.add(h);
+      }
+    }
+
+    final liveBalance = data.account.balance + totalDelta;
+    final liveNetChange = liveBalance - data.account.initialBalance;
+
+    return _LiveSnapshot(
+      isLive: true,
+      balance: liveBalance,
+      netChange: liveNetChange,
+      adjustedHoldings: adjustedHoldings,
+      liveTotalDelta: totalDelta,
+    );
+  }
+
+  /// Builds the green market-value line shown alongside the white balance
+  /// line. Historical points come from the precomputed market-value series
+  /// (shares × historical price); when live is active, today's last point
+  /// is overridden with the live total balance.
+  List<FlSpot>? _buildMarketValueLine(
+    _LoadResult result,
+    _LiveSnapshot live,
+  ) {
+    final history = result.marketValueHistory;
+    if (history.isEmpty) return null;
+
+    final hasMeaningfulSpread = _diverges(history, result.data.balanceHistory);
+    if (!live.isLive && !hasMeaningfulSpread) {
+      // Cost basis ≈ market basis throughout (no historical price data) and
+      // not live → drawing the line would just overlap the white one.
+      return null;
+    }
+
+    if (!live.isLive) return history;
+
+    final adjusted = List<FlSpot>.from(history);
+    final now = DateTime.now();
+    final todayMs = DateTime(now.year, now.month, now.day)
+        .millisecondsSinceEpoch
+        .toDouble();
+    if (adjusted.isNotEmpty && adjusted.last.x == todayMs) {
+      adjusted[adjusted.length - 1] = FlSpot(todayMs, live.balance);
+    } else {
+      adjusted.add(FlSpot(todayMs, live.balance));
+    }
+    return adjusted;
+  }
+
+  bool _diverges(List<FlSpot> a, List<FlSpot> b) {
+    if (a.length != b.length) return true;
+    for (var i = 0; i < a.length; i++) {
+      if ((a[i].y - b[i].y).abs() > 1e-6) return true;
+    }
+    return false;
   }
 
   @override
@@ -56,7 +152,7 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
     return Scaffold(
       backgroundColor:
           context.watch<ThemeProvider>().isAurora ? Colors.transparent : null,
-      body: FutureBuilder<AccountDetailsData>(
+      body: FutureBuilder<_LoadResult>(
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -65,152 +161,126 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
           if (snapshot.hasError || !snapshot.hasData) {
             return Center(child: Text(l10n.errorLoadingData));
           }
-          final data = snapshot.data!;
-          return Consumer<LivePriceProvider>(
-            builder: (context, liveProvider, _) {
-              final isLive = liveProvider.isLive && liveProvider.isConnected;
-
-              double liveBalance = data.account.balance;
-              double liveNetChange = data.netChange;
-              List<AccountAssetHolding> effectiveHoldings = data.assetHoldings;
-
-              if (isLive) {
-                double totalDelta = 0.0;
-                final adjustedHoldings = <AccountAssetHolding>[];
-
-                for (final h in data.assetHoldings) {
-                  final livePrice = liveProvider.getLivePrice(h.assetId);
-                  if (livePrice != null && h.shares.abs() > 1e-9) {
-                    final storedPrice = h.value / h.shares;
-                    final delta = h.shares * (livePrice - storedPrice);
-                    totalDelta += delta;
-                    adjustedHoldings.add(AccountAssetHolding(
-                      label: h.label,
-                      value: h.value + delta,
-                      shares: h.shares,
-                      assetId: h.assetId,
-                    ));
-                  } else {
-                    adjustedHoldings.add(h);
-                  }
-                }
-
-                liveBalance = data.account.balance + totalDelta;
-                liveNetChange = liveBalance - data.account.initialBalance;
-                effectiveHoldings = adjustedHoldings;
-              }
-
-              List<FlSpot> effectiveHistory = data.balanceHistory;
-              if (isLive && liveBalance != data.account.balance) {
-                effectiveHistory = [...data.balanceHistory];
-                final now = DateTime.now();
-                final todayMs = DateTime(now.year, now.month, now.day)
-                    .millisecondsSinceEpoch
-                    .toDouble();
-                if (effectiveHistory.isNotEmpty &&
-                    effectiveHistory.last.x == todayMs) {
-                  effectiveHistory[effectiveHistory.length - 1] =
-                      FlSpot(todayMs, liveBalance);
-                } else {
-                  effectiveHistory.add(FlSpot(todayMs, liveBalance));
-                }
-              }
-
-              return Stack(
-                children: [
-                  buildAuroraLayer(context),
-                  SingleChildScrollView(
-                    physics: _chartPointerCount > 0
-                        ? const NeverScrollableScrollPhysics()
-                        : null,
-                    padding: EdgeInsets.only(
-                      top: MediaQuery.of(context).padding.top +
-                          kToolbarHeight +
-                          12,
-                      left: 12,
-                      right: 12,
-                      bottom: 24,
+          final result = snapshot.data!;
+          final data = result.data;
+          // IMPORTANT: keep buildAuroraLayer and buildLiquidGlassAppBar OUTSIDE
+          // any LivePriceProvider subscription. Both are GPU-expensive
+          // (gradient + BackdropFilter) and would cause whole-screen flicker
+          // if rebuilt at the live-price tick rate.
+          return Stack(
+            children: [
+              buildAuroraLayer(context),
+              SingleChildScrollView(
+                physics: _chartPointerCount > 0
+                    ? const NeverScrollableScrollPhysics()
+                    : null,
+                padding: EdgeInsets.only(
+                  top: MediaQuery.of(context).padding.top +
+                      kToolbarHeight +
+                      12,
+                  left: 12,
+                  right: 12,
+                  bottom: 24,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Consumer<LivePriceProvider>(
+                      builder: (context, liveProvider, _) {
+                        final live = _computeLive(data, liveProvider);
+                        final marketValueLine =
+                            _buildMarketValueLine(result, live);
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            AnalysisLineChartSection(
+                              allData: data.balanceHistory,
+                              startValue: data.account.initialBalance,
+                              selectedRange: _range,
+                              onRangeSelected: (range) {
+                                setState(() {
+                                  _range = range;
+                                  _touchedSpot = null;
+                                });
+                              },
+                              showSma: _showSma,
+                              showSma200: _showSma200,
+                              showEma: _showEma,
+                              showBb: _showBb,
+                              onShowSmaChanged: (value) =>
+                                  setState(() => _showSma = value),
+                              onShowSma200Changed: (value) =>
+                                  setState(() => _showSma200 = value),
+                              onShowEmaChanged: (value) =>
+                                  setState(() => _showEma = value),
+                              onShowBbChanged: (value) =>
+                                  setState(() => _showBb = value),
+                              touchedSpot: _touchedSpot,
+                              onTouchedSpotChanged: (spot) =>
+                                  setState(() => _touchedSpot = spot),
+                              onPointerDown: () =>
+                                  setState(() => _chartPointerCount += 1),
+                              onPointerUpOrCancel: () => setState(() =>
+                                  _chartPointerCount =
+                                      max(0, _chartPointerCount - 1)),
+                              liveOverrideValue:
+                                  live.isLive ? live.balance : null,
+                              marketValueData: marketValueLine,
+                              isLive: live.isLive,
+                              valueFormatter: formatCurrency,
+                              valueLabel: l10n.total,
+                              chartTransitionDuration:
+                                  live.isLive ? Duration.zero : null,
+                            ),
+                            const SizedBox(height: 12),
+                            SectionTitle(
+                              title: l10n.accountInformation,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                            const SizedBox(height: 12),
+                            _buildInfoCards(data, l10n,
+                                liveBalance: live.balance,
+                                liveNetChange: live.netChange,
+                                isLive: live.isLive),
+                          ],
+                        );
+                      },
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        AnalysisLineChartSection(
-                          allData: effectiveHistory,
-                          startValue: data.account.initialBalance,
-                          selectedRange: _range,
-                          onRangeSelected: (range) {
-                            setState(() {
-                              _range = range;
-                              _touchedSpot = null;
-                            });
-                          },
-                          showSma: _showSma,
-                          showSma200: _showSma200,
-                          showEma: _showEma,
-                          showBb: _showBb,
-                          onShowSmaChanged: (value) =>
-                              setState(() => _showSma = value),
-                          onShowSma200Changed: (value) =>
-                              setState(() => _showSma200 = value),
-                          onShowEmaChanged: (value) =>
-                              setState(() => _showEma = value),
-                          onShowBbChanged: (value) =>
-                              setState(() => _showBb = value),
-                          touchedSpot: _touchedSpot,
-                          onTouchedSpotChanged: (spot) =>
-                              setState(() => _touchedSpot = spot),
-                          onPointerDown: () =>
-                              setState(() => _chartPointerCount += 1),
-                          onPointerUpOrCancel: () => setState(() =>
-                              _chartPointerCount =
-                                  max(0, _chartPointerCount - 1)),
-                          liveOverrideValue: isLive ? liveBalance : null,
-                          isLive: isLive,
-                          valueFormatter: formatCurrency,
-                          valueLabel: l10n.total,
-                        ),
-                        const SizedBox(height: 12),
-                        SectionTitle(
-                          title: l10n.accountInformation,
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w700),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildInfoCards(data, l10n,
-                            liveBalance: liveBalance,
-                            liveNetChange: liveNetChange,
-                            isLive: isLive),
-                        const SizedBox(height: 20),
-                        SectionTitle(
-                          title: l10n.transactionStatistics,
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w700),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildStatCards(data, l10n),
-                        const SizedBox(height: 20),
-                        SectionTitle(
-                          title: l10n.assetHoldings,
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w700),
-                        ),
-                        const SizedBox(height: 32),
-                        if (effectiveHoldings.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Text(l10n.noAssetHoldings),
-                          )
-                        else
-                          AllocationBreakdownSection(
-                            items: effectiveHoldings
-                                .map((h) =>
-                                    AllocationItem(label: h.label, value: h.value))
+                    const SizedBox(height: 20),
+                    SectionTitle(
+                      title: l10n.transactionStatistics,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildStatCards(data, l10n),
+                    const SizedBox(height: 20),
+                    SectionTitle(
+                      title: l10n.assetHoldings,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 32),
+                    if (data.assetHoldings.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Text(l10n.noAssetHoldings),
+                      )
+                    else
+                      Consumer<LivePriceProvider>(
+                        builder: (context, liveProvider, _) {
+                          final live = _computeLive(data, liveProvider);
+                          return AllocationBreakdownSection(
+                            items: live.adjustedHoldings
+                                .map((h) => AllocationItem(
+                                    label: h.label, value: h.value))
                                 .toList(),
                             title: l10n.investments,
                             onItemTap: (item) {
@@ -224,16 +294,16 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
                                 ),
                               );
                             },
-                          ),
-                      ],
-                    ),
-                  ),
-                  buildLiquidGlassAppBar(context,
-                      title: Text(data.account.name),
-                      actions: const [LiveToggleButton()]),
-                ],
-              );
-            },
+                          );
+                        },
+                      ),
+                  ],
+                ),
+              ),
+              buildLiquidGlassAppBar(context,
+                  title: Text(data.account.name),
+                  actions: const [LiveToggleButton()]),
+            ],
           );
         },
       ),
@@ -431,4 +501,30 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
         return Icons.currency_bitcoin;
     }
   }
+}
+
+class _LiveSnapshot {
+  final bool isLive;
+  final double balance;
+  final double netChange;
+  final List<AccountAssetHolding> adjustedHoldings;
+  final double liveTotalDelta;
+
+  const _LiveSnapshot({
+    required this.isLive,
+    required this.balance,
+    required this.netChange,
+    required this.adjustedHoldings,
+    required this.liveTotalDelta,
+  });
+}
+
+class _LoadResult {
+  final AccountDetailsData data;
+  final List<FlSpot> marketValueHistory;
+
+  const _LoadResult({
+    required this.data,
+    required this.marketValueHistory,
+  });
 }

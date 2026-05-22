@@ -36,6 +36,7 @@ class AnalysisLineChartSection extends StatelessWidget {
   final List<FlSpot>? marketValueData;
   final TextStyle? valueLabelStyle;
   final bool isLive;
+  final Duration? chartTransitionDuration;
 
   const AnalysisLineChartSection({
     super.key,
@@ -63,6 +64,7 @@ class AnalysisLineChartSection extends StatelessWidget {
     this.marketValueData,
     this.valueLabelStyle,
     this.isLive = false,
+    this.chartTransitionDuration,
   });
 
   @override
@@ -302,6 +304,8 @@ class AnalysisLineChartSection extends StatelessWidget {
           child: SizedBox(
             height: 400,
             child: LineChart(
+              duration: chartTransitionDuration ??
+                  const Duration(milliseconds: 150),
               LineChartData(
                 minY: minY,
                 maxY: maxY,

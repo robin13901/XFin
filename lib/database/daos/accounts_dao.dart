@@ -529,6 +529,130 @@ class AccountsDao extends DatabaseAccessor<AppDatabase>
 
     return history;
   }
+
+  /// Returns the account's value over time evaluated at HISTORICAL MARKET
+  /// PRICES (vs. balanceHistory which uses cost-basis values for asset
+  /// positions). Mirrors [AssetsDao]'s per-asset market-value series, but
+  /// scoped to assets held on this account.
+  ///
+  /// For each date in the balance history we compute:
+  ///   account_market_value[d] = balance[d] + Σ_{aoa on account}
+  ///       (shares_at_d × historical_price_at_d − cost_basis_value_at_d)
+  ///
+  /// Assets without historical price data for a given date contribute 0 to
+  /// the delta on that date (i.e. their cost-basis value is used).
+  Future<List<FlSpot>> getMarketValueHistory(int accountId) async {
+    final account = await getAccount(accountId);
+    final balanceDeltas = await getBalanceDeltasByDate(accountId);
+    final balanceHistory = _buildBalanceHistory(account, balanceDeltas);
+    if (balanceHistory.isEmpty) return [];
+
+    final aoas = (await db.assetsOnAccountsDao.getAOAsForAccount(accountId))
+        .where((a) => a.assetId != 1 && a.shares.abs() > 1e-9)
+        .toList();
+    if (aoas.isEmpty) return balanceHistory;
+
+    final Map<int, double> deltaByMs = {};
+
+    for (final aoa in aoas) {
+      final results = await Future.wait([
+        db.tradesDao.getTradesForAOA(aoa.assetId, accountId),
+        db.bookingsDao.getBookingsForAOA(aoa.assetId, accountId),
+        db.assetPricesDao.getPriceMapForAsset(aoa.assetId),
+      ]);
+      final aoaTrades = results[0] as List<Trade>;
+      final aoaBookings = results[1] as List<Booking>;
+      final priceMap = results[2] as Map<int, double>;
+
+      if (priceMap.isEmpty) continue;
+
+      final Map<DateTime, _AssetValueDelta> dailyDeltas = {};
+
+      for (final trade in aoaTrades) {
+        final date = intToDateTime(trade.datetime ~/ 1000000)!;
+        final dateOnly = DateTime(date.year, date.month, date.day);
+
+        double sharesDelta;
+        double valueDelta;
+        if (trade.targetAccountId == accountId &&
+            trade.type == TradeTypes.buy) {
+          sharesDelta = trade.shares;
+          valueDelta = trade.targetAccountValueDelta;
+        } else if (trade.sourceAccountId == accountId &&
+            trade.type == TradeTypes.sell) {
+          sharesDelta = -trade.shares;
+          valueDelta = trade.sourceAccountValueDelta;
+        } else {
+          continue;
+        }
+
+        final cur = dailyDeltas[dateOnly] ?? const _AssetValueDelta();
+        dailyDeltas[dateOnly] = _AssetValueDelta(
+          shares: cur.shares + sharesDelta,
+          value: cur.value + valueDelta,
+        );
+      }
+
+      for (final booking in aoaBookings) {
+        final date = intToDateTime(booking.date)!;
+        final dateOnly = DateTime(date.year, date.month, date.day);
+        final cur = dailyDeltas[dateOnly] ?? const _AssetValueDelta();
+        dailyDeltas[dateOnly] = _AssetValueDelta(
+          shares: cur.shares + booking.shares,
+          value: cur.value + booking.value,
+        );
+      }
+
+      if (dailyDeltas.isEmpty) continue;
+
+      // Walk back from current AOA state to reconstruct (shares, value)
+      // at each historical date.
+      double runningShares = aoa.shares;
+      double runningValue = aoa.value;
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final firstDate =
+          (dailyDeltas.keys.toList()..sort()).first;
+
+      final Map<int, _AssetValueDelta> historyByMs = {};
+      for (var date = today;
+          !date.isBefore(firstDate);
+          date = DateTime(date.year, date.month, date.day - 1)) {
+        historyByMs[date.millisecondsSinceEpoch] = _AssetValueDelta(
+          shares: runningShares,
+          value: runningValue,
+        );
+        final d = dailyDeltas[date] ?? const _AssetValueDelta();
+        runningShares -= d.shares;
+        runningValue -= d.value;
+      }
+
+      // Accumulate (market - cost_basis) delta per balance-history date.
+      for (final spot in balanceHistory) {
+        final ms = spot.x.toInt();
+        final snap = historyByMs[ms];
+        if (snap == null) continue;
+        final date = DateTime.fromMillisecondsSinceEpoch(ms);
+        final price = priceMap[dateTimeToInt(date)];
+        if (price == null) continue;
+        final marketValue = snap.shares * price;
+        deltaByMs[ms] =
+            (deltaByMs[ms] ?? 0) + (marketValue - snap.value);
+      }
+    }
+
+    return balanceHistory.map((spot) {
+      final delta = deltaByMs[spot.x.toInt()] ?? 0.0;
+      return FlSpot(spot.x, normalize(spot.y + delta));
+    }).toList();
+  }
+}
+
+class _AssetValueDelta {
+  final double shares;
+  final double value;
+
+  const _AssetValueDelta({this.shares = 0, this.value = 0});
 }
 
 class AccountDetailsData {

@@ -36,13 +36,11 @@ class _AssetsScreenState extends State<AssetsScreen>
   int _selectedTab = 1;
   AssetTypes? _selectedType;
   final ValueNotifier<bool> _navBarVisible = ValueNotifier<bool>(true);
-  bool _lastLiveState = false;
-  int _lastLivePriceCount = 0;
 
-  // Cached data sources — avoids recreating Future/Stream on every build,
+  // Cached data sources — avoids recreating Stream on every build,
   // so tab switches don't trigger loading spinners.
   late AppDatabase _db;
-  Future<List<AllocationItem>>? _allocationFuture;
+  Stream<List<Asset>>? _allAssetsStream;
   Stream<List<Asset>>? _assetsStream;
 
   @override
@@ -59,7 +57,7 @@ class _AssetsScreenState extends State<AssetsScreen>
   void didChangeDependencies() {
     super.didChangeDependencies();
     _db = context.read<DatabaseProvider>().db;
-    _allocationFuture ??= _loadAllocationItems(_db);
+    _allAssetsStream ??= _db.assetsDao.watchAllAssets();
     _assetsStream ??= _createAssetsStream();
   }
 
@@ -165,10 +163,9 @@ class _AssetsScreenState extends State<AssetsScreen>
     );
   }
 
-  Future<List<AllocationItem>> _loadAllocationItems(AppDatabase db, {Map<int, double>? livePrices}) async {
-    final assets = (await db.assetsDao.getAllAssets())
-        .where((a) => !a.isArchived)
-        .toList();
+  List<AllocationItem> _computeAllocationItems(
+      List<Asset> allAssets, Map<int, double>? livePrices) {
+    final assets = allAssets.where((a) => !a.isArchived).toList();
     if (_selectedType == null) {
       final Map<AssetTypes, double> byType = {};
       final Map<AssetTypes, bool> typeHasLive = {};
@@ -213,109 +210,99 @@ class _AssetsScreenState extends State<AssetsScreen>
   }
 
   Widget _buildAnalysisTab(BuildContext context, AppLocalizations l10n) {
-    return Consumer<LivePriceProvider>(
-      builder: (context, liveProvider, _) {
-        final isLive = liveProvider.isLive && liveProvider.isConnected;
-        final livePriceCount = isLive ? liveProvider.livePrices.length : 0;
-
-        if (isLive != _lastLiveState || (isLive && livePriceCount != _lastLivePriceCount)) {
-          _lastLiveState = isLive;
-          _lastLivePriceCount = livePriceCount;
-          final livePrices = isLive ? liveProvider.livePrices : null;
-          _allocationFuture = _loadAllocationItems(_db, livePrices: livePrices);
+    return StreamBuilder<List<Asset>>(
+      stream: _allAssetsStream,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData &&
+            snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
         }
-
-        return FutureBuilder<List<AllocationItem>>(
-          future: _allocationFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (snapshot.hasError) {
-              return Center(child: Text(l10n.errorLoadingData));
-            }
-            final items = snapshot.data ?? [];
-            return SingleChildScrollView(
-              padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + kToolbarHeight + 12,
-                bottom: 96,
-                left: 12,
-                right: 12,
+        if (snapshot.hasError) {
+          return Center(child: Text(l10n.errorLoadingData));
+        }
+        final allAssets = snapshot.data ?? const <Asset>[];
+        return SingleChildScrollView(
+          padding: EdgeInsets.only(
+            top: MediaQuery.of(context).padding.top + kToolbarHeight + 12,
+            bottom: 96,
+            left: 12,
+            right: 12,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: AssetTypes.values.map((type) {
+                    final selected = _selectedType == type;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: ChoiceChip(
+                        label: Text(getAssetTypeName(l10n, type, plural: true)),
+                        showCheckmark: false,
+                        selected: selected,
+                        onSelected: (_) => setState(() {
+                          _selectedType = selected ? null : type;
+                        }),
+                      ),
+                    );
+                  }).toList(),
+                ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: AssetTypes.values.map((type) {
-                        final selected = _selectedType == type;
-
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: ChoiceChip(
-                            label: Text(getAssetTypeName(l10n, type, plural: true)),
-                            showCheckmark: false,
-                            selected: selected,
-                            onSelected: (_) => setState(() {
-                              _selectedType = selected ? null : type;
-                              final livePrices = isLive ? liveProvider.livePrices : null;
-                              _allocationFuture = _loadAllocationItems(_db, livePrices: livePrices);
-                            }),
+              const SizedBox(height: 32),
+              Consumer<LivePriceProvider>(
+                builder: (context, liveProvider, _) {
+                  final livePrices =
+                      liveProvider.isLive ? liveProvider.livePrices : null;
+                  final items = _computeAllocationItems(allAssets, livePrices);
+                  if (items.isEmpty) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text(l10n.noAssetsOfThisTypeYet),
+                      ),
+                    );
+                  }
+                  return AllocationBreakdownSection(
+                    items: items
+                        .map(
+                          (item) => AllocationItem(
+                            label: _selectedType == null
+                                ? getAssetTypeName(l10n, item.type!,
+                                    plural: true)
+                                : item.label,
+                            value: item.value,
+                            type: item.type,
+                            asset: item.asset,
+                            valueColor: item.valueColor,
                           ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  if (items.isEmpty)
-                    Center(
-                        child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Text(l10n.noAssetsOfThisTypeYet),
-                    ))
-                  else ...[
-                    AllocationBreakdownSection(
-                      items: items
-                          .map(
-                            (item) => AllocationItem(
-                              label: _selectedType == null
-                                  ? getAssetTypeName(l10n, item.type!, plural: true)
-                                  : item.label,
-                              value: item.value,
-                              type: item.type,
-                              asset: item.asset,
-                              valueColor: item.valueColor,
-                            ),
-                          )
-                          .toList(),
-                      title: l10n.investments,
-                      onItemTap: (item) {
-                        if (_selectedType == null && item.type != null) {
-                          setState(() {
-                            _selectedType = item.type;
-                            final livePrices = isLive ? liveProvider.livePrices : null;
-                            _allocationFuture = _loadAllocationItems(_db, livePrices: livePrices);
-                          });
-                          return;
-                        }
-                        if (item.asset == null) return;
-                        Navigator.of(context).push(
-                          PageRouteBuilder(
-                            pageBuilder: (_, __, ___) =>
-                                AssetAnalysisDetailScreen(assetId: item.asset!.id),
-                            transitionDuration: Duration.zero,
-                            reverseTransitionDuration: Duration.zero,
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ],
+                        )
+                        .toList(),
+                    title: l10n.investments,
+                    onItemTap: (item) {
+                      if (_selectedType == null && item.type != null) {
+                        setState(() {
+                          _selectedType = item.type;
+                        });
+                        return;
+                      }
+                      if (item.asset == null) return;
+                      Navigator.of(context).push(
+                        PageRouteBuilder(
+                          pageBuilder: (_, __, ___) =>
+                              AssetAnalysisDetailScreen(assetId: item.asset!.id),
+                          transitionDuration: Duration.zero,
+                          reverseTransitionDuration: Duration.zero,
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
-            );
-          },
+            ],
+          ),
         );
       },
     );

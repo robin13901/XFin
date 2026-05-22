@@ -29,8 +29,7 @@ class AssetAnalysisDetailScreen extends StatefulWidget {
   State<AssetAnalysisDetailScreen> createState() => _AssetAnalysisDetailScreenState();
 }
 
-class _AssetAnalysisDetailScreenState extends State<AssetAnalysisDetailScreen>
-    with SingleTickerProviderStateMixin {
+class _AssetAnalysisDetailScreenState extends State<AssetAnalysisDetailScreen> {
   late Future<AssetAnalysisDetailsData> _future;
   String _range = '1W';
   bool _showShares = false;
@@ -43,26 +42,10 @@ class _AssetAnalysisDetailScreenState extends State<AssetAnalysisDetailScreen>
 
   List<FlSpot>? _marketValueHistory;
 
-  late final AnimationController _livePulseController;
-  late final Animation<double> _livePulseAnimation;
-
   @override
   void initState() {
     super.initState();
     _future = _load();
-    _livePulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    );
-    _livePulseAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _livePulseController, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _livePulseController.dispose();
-    super.dispose();
   }
 
   Future<AssetAnalysisDetailsData> _load() async {
@@ -104,161 +87,196 @@ class _AssetAnalysisDetailScreenState extends State<AssetAnalysisDetailScreen>
             return Center(child: Text(l10n.errorLoadingData));
           }
           final data = snapshot.data!;
-          return Consumer<LivePriceProvider>(
-            builder: (context, liveProvider, _) {
-              final isLive = liveProvider.isLive && liveProvider.isConnected;
-              final livePrice = liveProvider.getLivePrice(widget.assetId);
-              final currentShares = data.asset.shares;
-              final liveValue = isLive && livePrice != null
-                  ? livePrice * currentShares
-                  : null;
+          // IMPORTANT: keep buildAuroraLayer and buildLiquidGlassAppBar OUTSIDE
+          // any LivePriceProvider subscription. Both are GPU-expensive
+          // (gradient + BackdropFilter) and would cause whole-screen flicker
+          // if rebuilt at the live-price tick rate.
+          return Stack(
+            children: [
+              buildAuroraLayer(context),
+              SingleChildScrollView(
+                physics: _chartPointerCount > 0
+                    ? const NeverScrollableScrollPhysics()
+                    : null,
+                padding: EdgeInsets.only(
+                  top: MediaQuery.of(context).padding.top + kToolbarHeight + 12,
+                  left: 12,
+                  right: 12,
+                  bottom: 24,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Consumer<LivePriceProvider>(
+                      builder: (context, liveProvider, _) {
+                        final isLive =
+                            liveProvider.isLive && liveProvider.isConnected;
+                        final livePrice =
+                            liveProvider.getLivePrice(widget.assetId);
+                        final currentShares = data.asset.shares;
+                        final liveValue = isLive && livePrice != null
+                            ? livePrice * currentShares
+                            : null;
 
-              // Append today's live price to the green market-value line
-              List<FlSpot>? effectiveMarketValueData;
-              if (isLive && !_showShares && _marketValueHistory != null) {
-                effectiveMarketValueData = [..._marketValueHistory!];
-                if (livePrice != null && currentShares > 0) {
-                  final now = DateTime.now();
-                  final todayMs = DateTime(now.year, now.month, now.day)
-                      .millisecondsSinceEpoch
-                      .toDouble();
-                  final todayValue = livePrice * currentShares;
-                  if (effectiveMarketValueData.isNotEmpty &&
-                      effectiveMarketValueData.last.x == todayMs) {
-                    effectiveMarketValueData.last = FlSpot(todayMs, todayValue);
-                  } else {
-                    effectiveMarketValueData.add(FlSpot(todayMs, todayValue));
-                  }
-                }
-              }
+                        // Append today's live price to the green market-value
+                        // line. Only this list mutates per tick; the white
+                        // (sharesHistory/valueHistory) line stays stable.
+                        List<FlSpot>? effectiveMarketValueData;
+                        if (isLive && !_showShares && _marketValueHistory != null) {
+                          effectiveMarketValueData = [..._marketValueHistory!];
+                          if (livePrice != null && currentShares > 0) {
+                            final now = DateTime.now();
+                            final todayMs = DateTime(now.year, now.month, now.day)
+                                .millisecondsSinceEpoch
+                                .toDouble();
+                            final todayValue = livePrice * currentShares;
+                            if (effectiveMarketValueData.isNotEmpty &&
+                                effectiveMarketValueData.last.x == todayMs) {
+                              effectiveMarketValueData.last =
+                                  FlSpot(todayMs, todayValue);
+                            } else {
+                              effectiveMarketValueData
+                                  .add(FlSpot(todayMs, todayValue));
+                            }
+                          }
+                        }
 
-              if (isLive && !_livePulseController.isAnimating) {
-                _livePulseController.repeat(reverse: true);
-              } else if (!isLive && _livePulseController.isAnimating) {
-                _livePulseController.stop();
-                _livePulseController.value = 0.0;
-              }
-
-              final unrealizedProfit = isLive && livePrice != null
-                  ? (livePrice - data.asset.netCostBasis) * currentShares
-                  : null;
-
-              return Stack(
-                children: [
-                  buildAuroraLayer(context),
-                  SingleChildScrollView(
-                    physics: _chartPointerCount > 0
-                        ? const NeverScrollableScrollPhysics()
-                        : null,
-                    padding: EdgeInsets.only(
-                      top: MediaQuery.of(context).padding.top + kToolbarHeight + 12,
-                      left: 12,
-                      right: 12,
-                      bottom: 24,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-
-                        AnimatedBuilder(
-                          animation: _livePulseAnimation,
-                          builder: (context, _) {
-                            final showLivePulse = isLive && !_showShares;
-                            final pulseColor = showLivePulse
-                                ? Color.lerp(
-                                    AppColors.green.withValues(alpha: 0.5),
-                                    AppColors.green,
-                                    _livePulseAnimation.value,
-                                  )
-                                : null;
-                            return AnalysisLineChartSection(
-                              allData: _showShares ? data.sharesHistory : data.valueHistory,
-                              startValue: 0,
-                              selectedRange: _range,
-                              onRangeSelected: (range) {
-                                setState(() {
-                                  _range = range;
-                                  _touchedSpot = null;
-                                });
-                              },
-                              showSma: _showSma,
-                              showSma200: _showSma200,
-                              showEma: _showEma,
-                              showBb: _showBb,
-                              showSma200Toggle: true,
-                              onShowSmaChanged: (value) => setState(() => _showSma = value),
-                              onShowSma200Changed: (value) => setState(() => _showSma200 = value),
-                              onShowEmaChanged: (value) => setState(() => _showEma = value),
-                              onShowBbChanged: (value) => setState(() => _showBb = value),
-                              touchedSpot: _touchedSpot,
-                              onTouchedSpotChanged: (spot) => setState(() => _touchedSpot = spot),
-                              onPointerDown: () => setState(() => _chartPointerCount += 1),
-                              onPointerUpOrCancel: () =>
-                                  setState(() => _chartPointerCount = max(0, _chartPointerCount - 1)),
-                              valueFormatter: _showShares
-                                  ? (value) => value.toStringAsFixed(4)
-                                  : formatCurrency,
-                              valueLabel: l10n.total,
-                              liveOverrideValue: !_showShares ? liveValue : null,
-                              marketValueData: effectiveMarketValueData,
-                              isLive: isLive,
-                              valueLabelStyle: pulseColor != null
-                                  ? TextStyle(
-                                      fontSize: 32,
-                                      fontWeight: FontWeight.bold,
-                                      color: pulseColor,
-                                    )
-                                  : null,
-                              topRight: Wrap(
-                                alignment: WrapAlignment.end,
-                                spacing: 8,
-                                children: [
-                                  ChoiceChip(
-                                    label: Text(l10n.value),
-                                    selected: !_showShares,
-                                    showCheckmark: false,
-                                    onSelected: (_) => setState(() => _showShares = false),
-                                  ),
-                                  ChoiceChip(
-                                    label: Text(l10n.shares),
-                                    selected: _showShares,
-                                    showCheckmark: false,
-                                    onSelected: (_) => setState(() => _showShares = true),
-                                  ),
-                                ],
-                              ),
-                            );
+                        return AnalysisLineChartSection(
+                          allData: _showShares
+                              ? data.sharesHistory
+                              : data.valueHistory,
+                          startValue: 0,
+                          selectedRange: _range,
+                          onRangeSelected: (range) {
+                            setState(() {
+                              _range = range;
+                              _touchedSpot = null;
+                            });
                           },
-                        ),
-                        const SizedBox(height: 12),
-                        SectionTitle(title: l10n.tradingStats, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-                        const SizedBox(height: 8),
-                        _buildTradingStatsCards(data, unrealizedProfit, l10n),
-                        const SizedBox(height: 12),
-                        SectionTitle(title: l10n.generalStats, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-                        const SizedBox(height: 8),
-                        _buildGeneralStatsCards(data, l10n),
-                        const SizedBox(height: 12),
-                        SectionTitle(title: l10n.heldOnAccounts, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-                        const SizedBox(height: 32),
-                        if (data.accountHoldings.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Text(l10n.noAccountPositions),
-                          )
-                        else
-                          _buildAccountHoldingsSection(data, isLive, livePrice, l10n),
-                      ],
+                          showSma: _showSma,
+                          showSma200: _showSma200,
+                          showEma: _showEma,
+                          showBb: _showBb,
+                          showSma200Toggle: true,
+                          onShowSmaChanged: (value) =>
+                              setState(() => _showSma = value),
+                          onShowSma200Changed: (value) =>
+                              setState(() => _showSma200 = value),
+                          onShowEmaChanged: (value) =>
+                              setState(() => _showEma = value),
+                          onShowBbChanged: (value) =>
+                              setState(() => _showBb = value),
+                          touchedSpot: _touchedSpot,
+                          onTouchedSpotChanged: (spot) =>
+                              setState(() => _touchedSpot = spot),
+                          onPointerDown: () =>
+                              setState(() => _chartPointerCount += 1),
+                          onPointerUpOrCancel: () => setState(() =>
+                              _chartPointerCount =
+                                  max(0, _chartPointerCount - 1)),
+                          valueFormatter: _showShares
+                              ? (value) => value.toStringAsFixed(4)
+                              : formatCurrency,
+                          valueLabel: l10n.total,
+                          liveOverrideValue: !_showShares ? liveValue : null,
+                          marketValueData: effectiveMarketValueData,
+                          isLive: isLive,
+                          valueLabelStyle: isLive && !_showShares
+                              ? const TextStyle(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.green,
+                                )
+                              : null,
+                          chartTransitionDuration:
+                              isLive ? Duration.zero : null,
+                          topRight: Wrap(
+                            alignment: WrapAlignment.end,
+                            spacing: 8,
+                            children: [
+                              ChoiceChip(
+                                label: Text(l10n.value),
+                                selected: !_showShares,
+                                showCheckmark: false,
+                                onSelected: (_) =>
+                                    setState(() => _showShares = false),
+                              ),
+                              ChoiceChip(
+                                label: Text(l10n.shares),
+                                selected: _showShares,
+                                showCheckmark: false,
+                                onSelected: (_) =>
+                                    setState(() => _showShares = true),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
-                  ),
-                  buildLiquidGlassAppBar(
-                    context,
-                    title: Text(data.asset.name),
-                    actions: const [LiveToggleButton()],
-                  ),
-                ],
-              );
-            },
+                    const SizedBox(height: 12),
+                    SectionTitle(
+                        title: l10n.tradingStats,
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 8),
+                    Consumer<LivePriceProvider>(
+                      builder: (context, liveProvider, _) {
+                        final isLive =
+                            liveProvider.isLive && liveProvider.isConnected;
+                        final livePrice =
+                            liveProvider.getLivePrice(widget.assetId);
+                        final unrealizedProfit = isLive && livePrice != null
+                            ? (livePrice - data.asset.netCostBasis) *
+                                data.asset.shares
+                            : null;
+                        return _buildTradingStatsCards(
+                            data, unrealizedProfit, l10n);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    SectionTitle(
+                        title: l10n.generalStats,
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 8),
+                    _buildGeneralStatsCards(data, l10n),
+                    const SizedBox(height: 12),
+                    SectionTitle(
+                        title: l10n.heldOnAccounts,
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 32),
+                    if (data.accountHoldings.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Text(l10n.noAccountPositions),
+                      )
+                    else
+                      Consumer<LivePriceProvider>(
+                        builder: (context, liveProvider, _) {
+                          final isLive =
+                              liveProvider.isLive && liveProvider.isConnected;
+                          final livePrice =
+                              liveProvider.getLivePrice(widget.assetId);
+                          return _buildAccountHoldingsSection(
+                              data, isLive, livePrice, l10n);
+                        },
+                      ),
+                  ],
+                ),
+              ),
+              buildLiquidGlassAppBar(
+                context,
+                title: Text(data.asset.name),
+                actions: const [LiveToggleButton()],
+              ),
+            ],
           );
         },
       ),
