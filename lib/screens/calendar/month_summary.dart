@@ -173,7 +173,7 @@ class CategoryListWrapper extends StatelessWidget {
                     Text(formatCurrency(entry.value)),
                     const SizedBox(width: 8),
                     Text(
-                      '${percentage.toStringAsFixed(1)}%',
+                      '${formatDecimal(percentage.toDouble())}%',
                       style: TextStyle(color: Theme.of(context).hintColor),
                     ),
                   ],

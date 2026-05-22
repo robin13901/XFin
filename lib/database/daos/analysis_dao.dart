@@ -467,15 +467,22 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
     final positivePnLTotal = await positivePnLFuture;
     final monthsInTimeFrame = await monthsInTimeFrameFuture;
 
-    final resultMap = <String, double>{
-      for (final row in bookingsRows)
-        row['category'] as String:
-            (row['amount'] as double) / monthsInTimeFrame,
-      for (final row in periodicBookingsRows)
-        row['category'] as String: row['amount'] as double,
-      if (positivePnLTotal != 0)
-        'Profit aus Trades': positivePnLTotal / monthsInTimeFrame,
-    };
+    // Accumulate so manual bookings and one or more standing orders for the
+    // same category sum together instead of overwriting.
+    final resultMap = <String, double>{};
+    for (final row in bookingsRows) {
+      final cat = row['category'] as String;
+      final monthly = (row['amount'] as double) / monthsInTimeFrame;
+      resultMap[cat] = (resultMap[cat] ?? 0.0) + monthly;
+    }
+    for (final row in periodicBookingsRows) {
+      final cat = row['category'] as String;
+      final monthly = row['amount'] as double;
+      resultMap[cat] = (resultMap[cat] ?? 0.0) + monthly;
+    }
+    if (positivePnLTotal != 0) {
+      resultMap['Profit aus Trades'] = positivePnLTotal / monthsInTimeFrame;
+    }
 
     final sortedMap = Map.fromEntries(
       resultMap.entries.toList()..sort((a, b) => b.value.compareTo(a.value)),
@@ -524,18 +531,29 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
     final taxTotal = await taxFuture;
     final monthsInTimeFrame = await monthsInTimeFrameFuture;
 
-    final resultMap = <String, double>{
-      for (final row in bookingsRows)
-        row['category'] as String:
-            (row['amount'] as double) / monthsInTimeFrame,
-      for (final row in periodicBookingsRows)
-        row['category'] as String: row['amount'] as double,
-      if (negativePnLTotal != 0)
-        'Verlust aus Trades': negativePnLTotal / monthsInTimeFrame,
-      if (tradingFeesTotal != 0)
-        'Trading Gebühren': -tradingFeesTotal / monthsInTimeFrame,
-      if (taxTotal != 0) 'Steuern': -taxTotal / monthsInTimeFrame,
-    };
+    // Use accumulating map: a category can have BOTH manual bookings and a
+    // standing order, and multiple standing orders may share a category.
+    // A naive map literal would silently overwrite earlier entries.
+    final resultMap = <String, double>{};
+    for (final row in bookingsRows) {
+      final cat = row['category'] as String;
+      final monthly = (row['amount'] as double) / monthsInTimeFrame;
+      resultMap[cat] = (resultMap[cat] ?? 0.0) + monthly;
+    }
+    for (final row in periodicBookingsRows) {
+      final cat = row['category'] as String;
+      final monthly = row['amount'] as double;
+      resultMap[cat] = (resultMap[cat] ?? 0.0) + monthly;
+    }
+    if (negativePnLTotal != 0) {
+      resultMap['Verlust aus Trades'] = negativePnLTotal / monthsInTimeFrame;
+    }
+    if (tradingFeesTotal != 0) {
+      resultMap['Trading Gebühren'] = -tradingFeesTotal / monthsInTimeFrame;
+    }
+    if (taxTotal != 0) {
+      resultMap['Steuern'] = -taxTotal / monthsInTimeFrame;
+    }
 
     final sortedMap = Map.fromEntries(
       resultMap.entries.toList()..sort((a, b) => a.value.compareTo(b.value)),

@@ -1,6 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
+import '../utils/format.dart';
 import '../utils/global_constants.dart';
 
 /// Data class for category display information
@@ -218,10 +219,10 @@ class CategoryListItem extends StatelessWidget {
           ),
           Row(
             children: [
-              Text(amount.toStringAsFixed(2)),
+              Text(formatDecimal(amount, decimals: 2)),
               const SizedBox(width: 8),
               Text(
-                '${percentage.toStringAsFixed(1)}%',
+                '${formatDecimal(percentage)}%',
                 style: TextStyle(color: Theme.of(context).hintColor),
               ),
             ],

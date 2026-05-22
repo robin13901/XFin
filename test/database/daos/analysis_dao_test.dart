@@ -427,6 +427,95 @@ void main() {
           expect(outflowMap['Verlust aus Trades'],
               closeTo(-60.0 / months, 1e-6)); // DAO divides negative by months
         });
+
+    test(
+        'manual bookings + standing order in same category accumulate (outflows)',
+        () async {
+      // The same category "Health" has both a manual booking and a yearly
+      // standing order. Both must contribute to the monthly average — a
+      // map literal would silently overwrite one of them.
+      // Manual: -60 in Jan -> divided by months in timeframe.
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+            date: 20240115,
+            accountId: 1,
+            category: 'Health',
+            shares: -60.0,
+            value: -60.0,
+          ));
+      // Yearly SO -120/year -> -10/month (factor 1/12).
+      await db.into(db.periodicBookings).insert(PeriodicBookingsCompanion.insert(
+            nextExecutionDate: 20240115,
+            accountId: 1,
+            shares: -120.0,
+            value: -120.0,
+            category: 'Health',
+            cycle: const Value(Cycles.yearly),
+            monthlyAverageFactor: const Value(1.0 / 12.0),
+          ));
+
+      final outflowMap = await analysisDao.getMonthlyCategoryOutflows();
+
+      final months = _monthsBetweenInts(20240101, 20240131);
+      final expected = (-60.0 / months) + (-120.0 / 12.0);
+      expect(outflowMap.containsKey('Health'), isTrue);
+      expect(outflowMap['Health'], closeTo(expected, 1e-6));
+    });
+
+    test(
+        'multiple standing orders in the same category accumulate (outflows)',
+        () async {
+      // Two monthly SOs in the same category — without group-by, the second
+      // would overwrite the first.
+      await db.into(db.periodicBookings).insert(PeriodicBookingsCompanion.insert(
+            nextExecutionDate: 20240115,
+            accountId: 1,
+            shares: -50.0,
+            value: -50.0,
+            category: 'Health',
+            cycle: const Value(Cycles.monthly),
+            monthlyAverageFactor: const Value(1.0),
+          ));
+      await db.into(db.periodicBookings).insert(PeriodicBookingsCompanion.insert(
+            nextExecutionDate: 20240115,
+            accountId: 1,
+            shares: -25.0,
+            value: -25.0,
+            category: 'Health',
+            cycle: const Value(Cycles.monthly),
+            monthlyAverageFactor: const Value(1.0),
+          ));
+
+      final outflowMap = await analysisDao.getMonthlyCategoryOutflows();
+
+      expect(outflowMap['Health'], closeTo(-75.0, 1e-6));
+    });
+
+    test(
+        'manual bookings + standing order in same category accumulate (inflows)',
+        () async {
+      await db.into(db.bookings).insert(BookingsCompanion.insert(
+            date: 20240115,
+            accountId: 1,
+            category: 'Bonus',
+            shares: 60.0,
+            value: 60.0,
+          ));
+      await db.into(db.periodicBookings).insert(PeriodicBookingsCompanion.insert(
+            nextExecutionDate: 20240115,
+            accountId: 1,
+            shares: 1200.0,
+            value: 1200.0,
+            category: 'Bonus',
+            cycle: const Value(Cycles.yearly),
+            monthlyAverageFactor: const Value(1.0 / 12.0),
+          ));
+
+      final inflowMap = await analysisDao.getMonthlyCategoryInflows();
+
+      final months = _monthsBetweenInts(20240101, 20240131);
+      final expected = (60.0 / months) + (1200.0 / 12.0);
+      expect(inflowMap['Bonus'], closeTo(expected, 1e-6));
+    });
   });
 
   group('AnalysisDao - balance history', () {

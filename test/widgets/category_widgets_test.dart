@@ -495,8 +495,8 @@ void main() {
       );
 
       expect(find.text('Food'), findsOneWidget);
-      expect(find.text('150.50'), findsOneWidget);
-      expect(find.text('33.5%'), findsOneWidget);
+      expect(find.text('150,50'), findsOneWidget);
+      expect(find.text('33,5%'), findsOneWidget);
     });
 
     testWidgets('renders color indicator with correct color', (tester) async {
@@ -540,8 +540,8 @@ void main() {
       );
 
       expect(find.text('Empty'), findsOneWidget);
-      expect(find.text('0.00'), findsOneWidget);
-      expect(find.text('0.0%'), findsOneWidget);
+      expect(find.text('0,00'), findsOneWidget);
+      expect(find.text('0,0%'), findsOneWidget);
     });
 
     testWidgets('renders with 100 percentage', (tester) async {
@@ -559,8 +559,8 @@ void main() {
       );
 
       expect(find.text('All'), findsOneWidget);
-      expect(find.text('1000.00'), findsOneWidget);
-      expect(find.text('100.0%'), findsOneWidget);
+      expect(find.text('1.000,00'), findsOneWidget);
+      expect(find.text('100,0%'), findsOneWidget);
     });
 
     testWidgets('renders with negative amount', (tester) async {
@@ -578,8 +578,8 @@ void main() {
       );
 
       expect(find.text('Refund'), findsOneWidget);
-      expect(find.text('-50.00'), findsOneWidget);
-      expect(find.text('10.0%'), findsOneWidget);
+      expect(find.text('-50,00'), findsOneWidget);
+      expect(find.text('10,0%'), findsOneWidget);
     });
 
     testWidgets('renders with very small percentage', (tester) async {
@@ -597,8 +597,8 @@ void main() {
       );
 
       expect(find.text('Tiny'), findsOneWidget);
-      expect(find.text('0.01'), findsOneWidget);
-      expect(find.text('0.1%'), findsOneWidget); // Formatted to 1 decimal
+      expect(find.text('0,01'), findsOneWidget);
+      expect(find.text('0,1%'), findsOneWidget); // Formatted to 1 decimal
     });
 
     testWidgets('has correct layout structure', (tester) async {
@@ -687,7 +687,7 @@ void main() {
         ),
       );
 
-      final percentageText = tester.widget<Text>(find.text('50.0%'));
+      final percentageText = tester.widget<Text>(find.text('50,0%'));
       expect(percentageText.style?.color, Colors.grey);
     });
   });
