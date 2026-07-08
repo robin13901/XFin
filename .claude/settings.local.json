@@ -66,7 +66,28 @@
       "Bash(node -e \"console.log\\(new Date\\(2026,2,29\\).toLocaleDateString\\('en',{weekday:'long'}\\)\\)\")",
       "Bash(dart -e \"print\\(DateTime\\(2026,3,29\\).weekday\\);\")",
       "Bash(dart -e ' *)",
-      "Bash(cd c:\\\\\\\\SAPDevelop\\\\\\\\Privat\\\\\\\\XFin)"
+      "Bash(cd c:\\\\\\\\SAPDevelop\\\\\\\\Privat\\\\\\\\XFin)",
+      "Bash(gh repo *)",
+      "Bash(gh workflow *)",
+      "Bash(gh run *)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('C:/Users/I551358/.claude/settings.json','utf8'\\)\\); console.log\\('valid JSON'\\)\")",
+      "Bash(ls \"C:/Users/I551358/.claude.json\" 2>/dev/null; ls \"C:/SAPDevelop/Privat/XFin/.mcp.json\" 2>/dev/null; ls \"C:/SAPDevelop/Privat/XFin/.claude/settings.json\" 2>/dev/null; ls \"C:/SAPDevelop/Privat/XFin/.claude/settings.local.json\" 2>/dev/null)",
+      "Read(//c/Users/I551358/**)",
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('C:/Users/I551358/.claude/settings.json','utf8'\\)\\); console.log\\('settings.json: valid'\\)\")",
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('C:/Users/I551358/.claude.json','utf8'\\)\\); console.log\\('.claude.json: valid'\\)\")",
+      "Bash(xargs grep -l \"validateDecimal\\\\|validateMaxTwoDecimals\\\\|tooManyDecimalPlaces\\\\|invalidInput\")",
+      "Bash(flutter analyze *)",
+      "Bash(flutter test *)",
+      "Read(//tmp/**)",
+      "Bash(git stash *)",
+      "Bash(gh --version)",
+      "Bash(gh auth *)",
+      "Bash(git add *)",
+      "Bash(git -c user.name=robin13901 commit -m 'fix\\(forms\\): accept comma or dot as decimal separator; auto-fit more-pane labels *)",
+      "Bash(git push *)"
     ]
   }
 }
