@@ -9,6 +9,7 @@ import 'package:xfin/l10n/app_localizations.dart';
 import '../../providers/base_currency_provider.dart';
 import '../../providers/database_provider.dart';
 import '../../utils/format.dart';
+import '../../utils/global_constants.dart';
 import '../../utils/validators.dart';
 import '../dialogs.dart';
 import '../form_fields/form_fields.dart';
@@ -192,11 +193,11 @@ class _TradeFormState extends State<TradeForm> {
           int.parse(DateFormat('yyyyMMddHHmmss').format(_datetime))),
       assetId: drift.Value(_assetId!),
       type: drift.Value(_tradeType!),
-      shares: drift.Value(double.parse(_sharesController.text)),
-      costBasis: drift.Value(double.parse(_costBasisController.text)),
-      fee: drift.Value(double.parse(_feeController.text)),
+      shares: drift.Value(parseFlexibleDouble(_sharesController.text)),
+      costBasis: drift.Value(parseFlexibleDouble(_costBasisController.text)),
+      fee: drift.Value(parseFlexibleDouble(_feeController.text)),
       tax: _tradeType == TradeTypes.sell
-          ? drift.Value(double.parse(_taxController.text))
+          ? drift.Value(parseFlexibleDouble(_taxController.text))
           : const drift.Value(0),
       sourceAccountId: drift.Value(_clearingAccountId!),
       targetAccountId: drift.Value(_portfolioAccountId!),
@@ -344,9 +345,9 @@ class _TradeFormState extends State<TradeForm> {
     String? error = _validator.validateNotInitial(account?.name);
     if (_tradeType == TradeTypes.buy) {
       try {
-        double shares = double.parse(_sharesController.text);
-        double costBasis = double.parse(_costBasisController.text);
-        double fee = double.parse(_feeController.text);
+        double shares = parseFlexibleDouble(_sharesController.text);
+        double costBasis = parseFlexibleDouble(_costBasisController.text);
+        double fee = parseFlexibleDouble(_feeController.text);
         double oldClearingAccountValueDelta =
             _isEditing ? widget.trade!.sourceAccountValueDelta : 0;
         double clearingAccountValueDelta = shares * costBasis + fee;

@@ -53,6 +53,50 @@ double normalize(num value) {
   return double.parse(value.toStringAsFixed(decimals));
 }
 
+/// Normalizes user-entered decimal input by accepting either "." or ","
+/// as the decimal separator — but only one of them, and only once.
+///
+/// Returns a string with a single "." as decimal separator, suitable for
+/// [double.parse] / [double.tryParse]. Returns `null` if the input is not
+/// a valid single-separator decimal number.
+///
+/// Examples:
+///   "3.4"    → "3.4"
+///   "3,4"    → "3.4"
+///   "-3,45"  → "-3.45"
+///   "3.4,5"  → null  (two separators)
+///   "3,4,5"  → null  (two separators)
+///   ""       → null
+String? normalizeDecimalInput(String? raw) {
+  if (raw == null) return null;
+  final trimmed = raw.trim();
+  if (trimmed.isEmpty) return null;
+  final commaCount = ','.allMatches(trimmed).length;
+  final dotCount = '.'.allMatches(trimmed).length;
+  // Allow at most one separator character total.
+  if (commaCount + dotCount > 1) return null;
+  final normalized = trimmed.replaceFirst(',', '.');
+  return normalized;
+}
+
+/// Parses a decimal input string that may use "," or "." as the decimal
+/// separator. Returns `null` for invalid input.
+double? tryParseFlexibleDouble(String? raw) {
+  final normalized = normalizeDecimalInput(raw);
+  if (normalized == null) return null;
+  return double.tryParse(normalized);
+}
+
+/// Like [tryParseFlexibleDouble] but throws if the input is invalid.
+/// Use inside form save handlers after validation has already succeeded.
+double parseFlexibleDouble(String raw) {
+  final result = tryParseFlexibleDouble(raw);
+  if (result == null) {
+    throw FormatException('Invalid decimal input: "$raw"');
+  }
+  return result;
+}
+
 void showToast2(String msg) {
   final isDark = ThemeProvider.isDark();
 

@@ -116,7 +116,7 @@ class _PeriodicTransferFormState extends State<PeriodicTransferForm> {
     }
 
     final intNextExecutionDate = dateTimeToInt(_nextExecDate);
-    final shares = double.parse(_sharesCtrl.text.replaceAll(',', '.'));
+    final shares = parseFlexibleDouble(_sharesCtrl.text);
     final value = shares;
     final notes = _notesCtrl.text.trim();
     final monthlyAverageFactor = CyclesHelper.monthlyFactorForCycle(_selectedCycle);

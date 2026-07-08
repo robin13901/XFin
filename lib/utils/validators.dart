@@ -1,6 +1,7 @@
 import 'package:xfin/database/tables.dart';
 
 import '../l10n/app_localizations.dart';
+import 'global_constants.dart';
 
 class Validator {
   AppLocalizations l10n;
@@ -14,31 +15,34 @@ class Validator {
 
   String? validateDecimal(String? value) {
     if (validateNotInitial(value) case String error) return error;
-    if (double.tryParse(value!) == null) return l10n.invalidInput;
+    if (tryParseFlexibleDouble(value) == null) return l10n.invalidInput;
     return null;
   }
 
   String? validateDecimalGreaterZero(String? value) {
     if (validateDecimal(value) case String error) return error;
-    if (double.parse(value!) <= 0) return l10n.valueMustBeGreaterZero;
+    if (parseFlexibleDouble(value!) <= 0) return l10n.valueMustBeGreaterZero;
     return null;
   }
 
   String? validateDecimalNotZero(String? value) {
     if (validateDecimal(value) case String error) return error;
-    if (double.parse(value!) == 0) return l10n.valueMustNotBeZero;
+    if (parseFlexibleDouble(value!) == 0) return l10n.valueMustNotBeZero;
     return null;
   }
 
   String? validateDecimalGreaterEqualZero(String? value) {
     if (validateDecimal(value) case String error) return error;
-    if (double.parse(value!) < 0) return l10n.valueMustBeGreaterEqualZero;
+    if (parseFlexibleDouble(value!) < 0) return l10n.valueMustBeGreaterEqualZero;
     return null;
   }
 
   String? validateMaxTwoDecimals(String? value) {
     if (validateDecimal(value) case String error) return error;
-    if (value!.contains('.') && value.split('.')[1].length > 2) {
+    // At this point normalizeDecimalInput succeeded, so value! contains at most
+    // one separator (either "." or ",").
+    final normalized = normalizeDecimalInput(value)!;
+    if (normalized.contains('.') && normalized.split('.')[1].length > 2) {
       return l10n.tooManyDecimalPlaces;
     }
     return null;
@@ -46,13 +50,14 @@ class Validator {
 
   String? validateMaxTwoDecimalsNotZero(String? value) {
     if (validateMaxTwoDecimals(value) case String error) return error;
-    if (double.parse(value!) == 0) return l10n.valueCannotBeZero;
+    if (parseFlexibleDouble(value!) == 0) return l10n.valueCannotBeZero;
     return null;
   }
 
   String? validateMaxTwoDecimalsGreaterZero(String? value) {
     if (validateDecimalGreaterZero(value) case String error) return error;
-    if (value!.contains('.') && value.split('.')[1].length > 2) {
+    final normalized = normalizeDecimalInput(value)!;
+    if (normalized.contains('.') && normalized.split('.')[1].length > 2) {
       return l10n.tooManyDecimalPlaces;
     }
     return null;
@@ -60,7 +65,8 @@ class Validator {
 
   String? validateMaxTwoDecimalsGreaterEqualZero(String? value) {
     if (validateDecimalGreaterEqualZero(value) case String error) return error;
-    if (value!.contains('.') && value.split('.')[1].length > 2) {
+    final normalized = normalizeDecimalInput(value)!;
+    if (normalized.contains('.') && normalized.split('.')[1].length > 2) {
       return l10n.tooManyDecimalPlaces;
     }
     return null;
@@ -71,7 +77,7 @@ class Validator {
     if (validateDecimalGreaterZero(value) case String error) return error;
 
     if (tradeType == TradeTypes.sell) {
-      final sharesToBeSold = double.parse(value!);
+      final sharesToBeSold = parseFlexibleDouble(value!);
       if (ownedShares < sharesToBeSold) return l10n.insufficientShares;
     }
 

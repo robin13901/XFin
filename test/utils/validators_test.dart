@@ -44,8 +44,10 @@ void main() {
     test('returns invalidInput for non-numeric string', () {
       expect(validator.validateDecimal('abc'), l10n.invalidInput);
       expect(validator.validateDecimal('12a'), l10n.invalidInput);
-      expect(validator.validateDecimal('1,23'),
-          l10n.invalidInput); // comma not accepted by double.parse
+      // Multiple separators are rejected (only one comma or dot allowed).
+      expect(validator.validateDecimal('1,23,4'), l10n.invalidInput);
+      expect(validator.validateDecimal('1.23.4'), l10n.invalidInput);
+      expect(validator.validateDecimal('1,23.4'), l10n.invalidInput);
     });
 
     test('accepts valid decimals and integers', () {
@@ -55,6 +57,12 @@ void main() {
       expect(validator.validateDecimal('-12.3'), isNull);
       expect(validator.validateDecimal('1e3'),
           isNull); // scientific notation ok for double.tryParse
+    });
+
+    test('accepts comma as decimal separator (German locale)', () {
+      expect(validator.validateDecimal('1,23'), isNull);
+      expect(validator.validateDecimal('-12,3'), isNull);
+      expect(validator.validateDecimal('0,5'), isNull);
     });
   });
 
@@ -115,22 +123,26 @@ void main() {
     test('returns invalidInput for non-numeric strings', () {
       expect(validator.validateDecimalNotZero('abc'), l10n.invalidInput);
       expect(validator.validateDecimalNotZero('12a'), l10n.invalidInput);
-      expect(validator.validateDecimalNotZero('1,23'),
-          l10n.invalidInput); // comma not accepted by double.parse
+      expect(validator.validateDecimalNotZero('1,23,4'),
+          l10n.invalidInput); // multiple separators
     });
 
     test('returns error for zero (including -0 variants)', () {
       expect(validator.validateDecimalNotZero('0'), l10n.valueMustNotBeZero);
       expect(validator.validateDecimalNotZero('0.0'), l10n.valueMustNotBeZero);
+      expect(validator.validateDecimalNotZero('0,0'), l10n.valueMustNotBeZero);
       expect(validator.validateDecimalNotZero('-0'), l10n.valueMustNotBeZero);
       expect(
           validator.validateDecimalNotZero('-0.00'), l10n.valueMustNotBeZero);
     });
 
-    test('accepts non-zero numbers (positive, negative, scientific)', () {
+    test('accepts non-zero numbers (positive, negative, scientific, comma)',
+        () {
       expect(validator.validateDecimalNotZero('0.0001'), isNull);
+      expect(validator.validateDecimalNotZero('0,0001'), isNull);
       expect(validator.validateDecimalNotZero('1'), isNull);
       expect(validator.validateDecimalNotZero('-1.2'), isNull);
+      expect(validator.validateDecimalNotZero('-1,2'), isNull);
       expect(validator.validateDecimalNotZero('1e3'),
           isNull); // scientific notation
     });
@@ -148,6 +160,9 @@ void main() {
       expect(validator.validateMaxTwoDecimals('1.00'), isNull);
       expect(validator.validateMaxTwoDecimals('123.45'), isNull);
       expect(validator.validateMaxTwoDecimals('0.5'), isNull);
+      // Comma as decimal separator (German locale).
+      expect(validator.validateMaxTwoDecimals('123,45'), isNull);
+      expect(validator.validateMaxTwoDecimals('0,5'), isNull);
     });
 
     test('rejects numbers with more than 2 decimal places', () {
@@ -156,6 +171,11 @@ void main() {
       expect(
           validator.validateMaxTwoDecimals('0.001'), l10n.tooManyDecimalPlaces);
       expect(validator.validateMaxTwoDecimals('10.9999'),
+          l10n.tooManyDecimalPlaces);
+      // Comma variant must also be rejected.
+      expect(validator.validateMaxTwoDecimals('1,234'),
+          l10n.tooManyDecimalPlaces);
+      expect(validator.validateMaxTwoDecimals('10,9999'),
           l10n.tooManyDecimalPlaces);
     });
 

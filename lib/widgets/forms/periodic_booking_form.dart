@@ -119,7 +119,7 @@ class _PeriodicBookingFormState extends State<PeriodicBookingForm> {
     if (!_formKey.currentState!.validate()) return;
 
     final intNextExecutionDate = dateTimeToInt(_nextExecDate);
-    final shares = double.parse(_sharesCtrl.text.replaceAll(',', '.'));
+    final shares = parseFlexibleDouble(_sharesCtrl.text);
     final notes = _notesCtrl.text.trim();
     final monthlyAverageFactor = CyclesHelper.monthlyFactorForCycle(_selectedCycle);
 

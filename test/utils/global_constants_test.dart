@@ -18,6 +18,63 @@ void main() {
     });
   });
 
+  group('normalizeDecimalInput', () {
+    test('returns null for null, empty, or whitespace-only input', () {
+      expect(normalizeDecimalInput(null), isNull);
+      expect(normalizeDecimalInput(''), isNull);
+      expect(normalizeDecimalInput('   '), isNull);
+    });
+
+    test('leaves dot-separator strings unchanged (after trim)', () {
+      expect(normalizeDecimalInput('3.4'), '3.4');
+      expect(normalizeDecimalInput('  -12.34  '), '-12.34');
+      expect(normalizeDecimalInput('0'), '0');
+    });
+
+    test('converts comma separator to dot', () {
+      expect(normalizeDecimalInput('3,4'), '3.4');
+      expect(normalizeDecimalInput('-12,34'), '-12.34');
+      expect(normalizeDecimalInput('0,5'), '0.5');
+    });
+
+    test('rejects strings with more than one separator', () {
+      // No thousands separators allowed — user shouldn't be typing them anyway.
+      expect(normalizeDecimalInput('1,234.5'), isNull);
+      expect(normalizeDecimalInput('1.234,5'), isNull);
+      expect(normalizeDecimalInput('1,2,3'), isNull);
+      expect(normalizeDecimalInput('1.2.3'), isNull);
+    });
+  });
+
+  group('tryParseFlexibleDouble', () {
+    test('parses dot- and comma-formatted decimals', () {
+      expect(tryParseFlexibleDouble('3.4'), 3.4);
+      expect(tryParseFlexibleDouble('3,4'), 3.4);
+      expect(tryParseFlexibleDouble('-12,34'), -12.34);
+      expect(tryParseFlexibleDouble('0'), 0);
+    });
+
+    test('returns null for invalid input', () {
+      expect(tryParseFlexibleDouble(null), isNull);
+      expect(tryParseFlexibleDouble(''), isNull);
+      expect(tryParseFlexibleDouble('abc'), isNull);
+      expect(tryParseFlexibleDouble('1,234.5'), isNull);
+    });
+  });
+
+  group('parseFlexibleDouble', () {
+    test('parses valid input', () {
+      expect(parseFlexibleDouble('3,45'), 3.45);
+      expect(parseFlexibleDouble('3.45'), 3.45);
+    });
+
+    test('throws FormatException on invalid input', () {
+      expect(() => parseFlexibleDouble('abc'), throwsFormatException);
+      expect(() => parseFlexibleDouble('1,2,3'), throwsFormatException);
+      expect(() => parseFlexibleDouble(''), throwsFormatException);
+    });
+  });
+
   group('preciseDecimal', () {
     test('handles NaN and infinities', () {
       expect(preciseDecimal(double.nan), 'NaN');

@@ -265,7 +265,7 @@ class _BookingFormState extends State<BookingForm> {
     final dateInt = int.parse(DateFormat('yyyyMMdd').format(_date));
 
     // --- Parsing ---
-    final shares = double.parse(_sharesCtrl.text.replaceAll(',', '.'));
+    final shares = parseFlexibleDouble(_sharesCtrl.text);
 
     // --- Validation Checks ---
     // 1. Balance Checks (New Bookings Only)
@@ -313,7 +313,7 @@ class _BookingFormState extends State<BookingForm> {
     if (shares > 0) {
       double costBasis = _assetId == 1
           ? 1
-          : double.parse(_costBasisCtrl.text.replaceAll(',', '.'));
+          : parseFlexibleDouble(_costBasisCtrl.text);
       companion = companion.copyWith(
           costBasis: drift.Value(costBasis),
           value: drift.Value(shares * costBasis));

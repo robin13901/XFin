@@ -5,6 +5,7 @@ import '../../models/filter/filter_config.dart';
 import '../../models/filter/filter_rule.dart';
 import '../../providers/theme_provider.dart';
 import '../../utils/format.dart';
+import '../../utils/global_constants.dart';
 
 /// Input widget for numeric filter values
 class NumericFilterInput extends StatefulWidget {
@@ -50,7 +51,7 @@ class _NumericFilterInputState extends State<NumericFilterInput> {
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
       onChanged: (text) {
-        final parsed = double.tryParse(text);
+        final parsed = tryParseFlexibleDouble(text);
         widget.onChanged(parsed);
       },
     );

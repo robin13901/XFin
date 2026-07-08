@@ -10,6 +10,7 @@ import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/widgets/form_fields/form_fields.dart';
 import '../../database/tables.dart';
 import '../../providers/database_provider.dart';
+import '../../utils/global_constants.dart';
 import '../../utils/validators.dart';
 import '../dialogs.dart';
 
@@ -124,7 +125,7 @@ class _TransferFormState extends State<TransferForm> {
 
   Future<void> _saveForm() async {
     if (!_formKey.currentState!.validate()) return;
-    final shares = double.parse(_sharesCtrl.text.replaceAll(',', '.'));
+    final shares = parseFlexibleDouble(_sharesCtrl.text);
 
     // --- Validation Checks ---
     if (_sendingAccountId == _receivingAccountId) {

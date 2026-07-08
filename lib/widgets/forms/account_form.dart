@@ -9,6 +9,7 @@ import 'package:xfin/providers/base_currency_provider.dart';
 import 'package:xfin/utils/format.dart';
 import '../form_fields/form_fields.dart';
 import '../../providers/database_provider.dart';
+import '../../utils/global_constants.dart';
 import '../../utils/validators.dart';
 import '../dialogs.dart';
 
@@ -131,10 +132,10 @@ class _AccountFormState extends State<AccountForm> {
       if (_selectedAssetId == null) return;
 
       // Parse values
-      final shares = double.parse(_sharesController.text.replaceAll(',', '.'));
+      final shares = parseFlexibleDouble(_sharesController.text);
       final pricePerShare = _selectedAssetId == 1
           ? 1.0
-          : double.parse(_pricePerShareController.text.replaceAll(',', '.'));
+          : parseFlexibleDouble(_pricePerShareController.text);
       final value = shares * pricePerShare;
 
       setState(() {

@@ -247,11 +247,22 @@ class _PaneContent extends StatelessWidget {
                 children: [
                   Icon(it.icon, size: 24, color: theme.iconTheme.color),
                   const SizedBox(height: 4),
-                  Text(
-                    it.label,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(fontSize: 14, fontWeight: FontWeight.w600),
+                  // Auto-shrink label to fit on a single line without wrapping.
+                  // FittedBox scales the text down to the largest possible size
+                  // that fits horizontally — no line breaks, no truncation.
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        it.label,
+                        maxLines: 1,
+                        softWrap: false,
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                            fontSize: 14, fontWeight: FontWeight.w600),
+                      ),
+                    ),
                   ),
                 ],
               ),
