@@ -2,7 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../utils/format.dart';
-import '../utils/global_constants.dart';
+import 'inflow_outflow_toggle.dart';
 
 /// Data class for category display information
 class CategoryDisplayData {
@@ -55,11 +55,13 @@ CategoryDisplayData calculateCategoryData({
 class CategoryPieChart extends StatelessWidget {
   final CategoryDisplayData data;
   final ValueChanged<String>? onCategoryTap;
+  final bool showInflows;
 
   const CategoryPieChart({
     super.key,
     required this.data,
     this.onCategoryTap,
+    this.showInflows = true,
   });
 
   @override
@@ -67,6 +69,10 @@ class CategoryPieChart extends StatelessWidget {
     if (data.entries.isEmpty) {
       return const SizedBox.shrink();
     }
+
+    final colors = showInflows
+        ? inflowCategoryColors(data.entries.length)
+        : outflowCategoryColors(data.entries.length);
 
     return SizedBox(
       height: 220,
@@ -97,10 +103,14 @@ class CategoryPieChart extends StatelessWidget {
                 data.totalAmount == 0 ? 0.0 : entry.value.abs() / data.totalAmount;
             return PieChartSectionData(
               value: entry.value.abs(),
-              color: chartColors[index % chartColors.length],
+              color: colors[index % colors.length],
               radius: 84,
               title: ratio >= 0.08 ? '${(ratio * 100).toStringAsFixed(0)}%' : '',
-              titleStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
+              titleStyle: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 11,
+                color: Colors.white,
+              ),
             );
           }),
         ),
@@ -117,6 +127,7 @@ class CategoryList extends StatelessWidget {
   final String showLessLabel;
   final ValueChanged<bool>? onShowAllChanged;
   final ValueChanged<String>? onCategoryTap;
+  final bool showInflows;
 
   const CategoryList({
     super.key,
@@ -126,6 +137,7 @@ class CategoryList extends StatelessWidget {
     required this.showLessLabel,
     this.onShowAllChanged,
     this.onCategoryTap,
+    this.showInflows = true,
   });
 
   @override
@@ -133,6 +145,10 @@ class CategoryList extends StatelessWidget {
     if (data.entries.isEmpty) {
       return Center(child: Text(noCategoriesMessage));
     }
+
+    final colors = showInflows
+        ? inflowCategoryColors(data.entries.length)
+        : outflowCategoryColors(data.entries.length);
 
     final widgets = <Widget>[];
 
@@ -147,7 +163,7 @@ class CategoryList extends StatelessWidget {
           category: entry.key,
           amount: entry.value,
           percentage: percentage,
-          color: chartColors[i % chartColors.length],
+          color: colors[i % colors.length],
           onTap: (onCategoryTap == null || isAggregator)
               ? null
               : () => onCategoryTap!(entry.key),

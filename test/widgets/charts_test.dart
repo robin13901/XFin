@@ -574,13 +574,13 @@ void main() {
 
     testWidgets('per-item valueColor overrides section-level valueColor', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: SingleChildScrollView(
               child: AllocationBreakdownSection(
                 items: [
-                  const AllocationItem(label: 'Live', value: 500, valueColor: AppColors.green),
-                  const AllocationItem(label: 'Static', value: 300),
+                  AllocationItem(label: 'Live', value: 500, valueColor: AppColors.green),
+                  AllocationItem(label: 'Static', value: 300),
                 ],
                 title: 'Test',
               ),

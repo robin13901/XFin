@@ -5,7 +5,6 @@ import 'package:xfin/app_theme.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/screens/category_detail_screen.dart';
 import 'package:xfin/utils/format.dart';
-import 'package:xfin/utils/global_constants.dart';
 import 'package:xfin/widgets/category_widgets.dart';
 import 'package:xfin/widgets/common_widgets.dart';
 import 'package:xfin/widgets/inflow_outflow_toggle.dart';
@@ -87,6 +86,7 @@ class MonthSummarySection extends StatelessWidget {
             showAllCategories: showAllCategories,
           ),
           onCategoryTap: (category) => _openCategoryDetail(context, category),
+          showInflows: showInflows,
         ),
         const SizedBox(height: 32),
         CategoryListWrapper(
@@ -141,6 +141,10 @@ class CategoryListWrapper extends StatelessWidget {
       showAllCategories: showAllCategories,
     );
 
+    final colors = showInflows
+        ? inflowCategoryColors(displayData.entries.length)
+        : outflowCategoryColors(displayData.entries.length);
+
     return Column(
       children: [
         ...List.generate(displayData.entries.length, (i) {
@@ -161,7 +165,7 @@ class CategoryListWrapper extends StatelessWidget {
                         width: 10,
                         height: 10,
                         decoration: BoxDecoration(
-                          color: chartColors[i % chartColors.length],
+                          color: colors[i % colors.length],
                           shape: BoxShape.circle,
                         ),
                       ),

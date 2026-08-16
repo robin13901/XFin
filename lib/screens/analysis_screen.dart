@@ -482,6 +482,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     return CategoryPieChart(
       data: displayData,
       onCategoryTap: _openCategoryDetail,
+      showInflows: _showInflows,
     );
   }
 
@@ -501,6 +502,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       showAllLabel: 'Alle anzeigen',
       showLessLabel: 'Weniger anzeigen',
       onCategoryTap: _openCategoryDetail,
+      showInflows: _showInflows,
       onShowAllChanged: (showAll) {
         setState(() {
           _showAllCategories = showAll;
