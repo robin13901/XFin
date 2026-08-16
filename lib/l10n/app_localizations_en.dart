@@ -952,4 +952,64 @@ class AppLocalizationsEn extends AppLocalizations {
   String searchError(String error) {
     return 'Error: $error';
   }
+
+  @override
+  String get lockTitle => 'Unlock XFin';
+
+  @override
+  String get lockPasswordLabel => 'Password';
+
+  @override
+  String get lockUnlock => 'Unlock';
+
+  @override
+  String get lockWrongPassword => 'Wrong password. Please try again.';
+
+  @override
+  String get lockBiometricReason => 'Please authenticate to open XFin.';
+
+  @override
+  String get lockUseBiometrics => 'Use biometrics';
+
+  @override
+  String get securitySettings => 'Security';
+
+  @override
+  String get securitySetPassword => 'Set Password';
+
+  @override
+  String get securityChangePassword => 'Change Password';
+
+  @override
+  String get securityRemovePassword => 'Remove Password';
+
+  @override
+  String get securityRemovePasswordConfirm =>
+      'Do you really want to disable password protection?';
+
+  @override
+  String get securityBiometrics => 'Biometric Login';
+
+  @override
+  String get securityBiometricsNotAvailable =>
+      'Biometrics not available on this device';
+
+  @override
+  String get securityNewPassword => 'New Password';
+
+  @override
+  String get securityConfirmPassword => 'Confirm Password';
+
+  @override
+  String get securityPasswordTooShort =>
+      'Password must be at least 4 characters';
+
+  @override
+  String get securityPasswordMismatch => 'Passwords do not match';
+
+  @override
+  String get securityCurrentPassword => 'Current Password';
+
+  @override
+  String get securityCurrentPasswordWrong => 'Current password is incorrect';
 }

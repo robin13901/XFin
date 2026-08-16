@@ -15,6 +15,8 @@ import 'package:xfin/screens/accounts_screen.dart';
 import 'package:xfin/screens/analysis_screen.dart';
 import 'package:xfin/screens/bookings_screen.dart';
 import 'package:xfin/screens/currency_selection_screen.dart';
+import 'package:xfin/screens/lock_screen.dart';
+import 'package:xfin/services/auth_service.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:xfin/utils/global_constants.dart';
@@ -52,6 +54,15 @@ void main() async {
   await LivePriceProvider.instance
       .initialize(initialDb, currencyProvider.tickerSymbol ?? 'EUR');
 
+  String initialRoute;
+  if (!isBaseCurrencySelected) {
+    initialRoute = '/currencySelection';
+  } else if (await AuthService.instance.isPasswordSet) {
+    initialRoute = '/lock';
+  } else {
+    initialRoute = '/main';
+  }
+
   runApp(
     MultiProvider(
       providers: [
@@ -63,9 +74,7 @@ void main() async {
         ChangeNotifierProvider.value(value: currencyProvider),
         ChangeNotifierProvider.value(value: LivePriceProvider.instance),
       ],
-      child: MyApp(
-          initialRoute:
-              isBaseCurrencySelected ? '/main' : '/currencySelection'),
+      child: MyApp(initialRoute: initialRoute),
     ),
   );
 }
@@ -99,6 +108,7 @@ class MyApp extends StatelessWidget {
           // Set initial route dynamically
           routes: {
             '/currencySelection': (context) => const CurrencySelectionScreen(),
+            '/lock': (context) => const LockScreen(),
             '/main': (context) => const MainScreen(),
           },
           builder: (context, child) => MediaQuery(

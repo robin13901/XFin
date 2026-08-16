@@ -8,6 +8,7 @@ import 'package:xfin/providers/theme_provider.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 
 import 'package:xfin/database/app_database.dart';
+import 'package:xfin/services/auth_service.dart';
 import 'package:xfin/utils/db_backup.dart';
 import 'package:xfin/utils/date_picker_locale.dart';
 import 'package:xfin/utils/format.dart';
@@ -31,6 +32,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late bool _isSinceStartSelected, _isTodaySelected;
   Asset? _baseCurrencyAsset;
 
+  bool _passwordSet = false;
+  bool _biometricsEnabled = false;
+  bool _biometricsAvailable = false;
 
   @override
   void initState() {
@@ -42,6 +46,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _isTodaySelected = _endDate == null;
 
     _loadBaseCurrency();
+    _loadSecurityState();
+  }
+
+  Future<void> _loadSecurityState() async {
+    final passwordSet = await AuthService.instance.isPasswordSet;
+    final biometricsEnabled = await AuthService.instance.isBiometricsEnabled;
+    final biometricsAvailable = await AuthService.instance.canCheckBiometrics;
+    if (mounted) {
+      setState(() {
+        _passwordSet = passwordSet;
+        _biometricsEnabled = biometricsEnabled;
+        _biometricsAvailable = biometricsAvailable;
+      });
+    }
   }
 
   Future<void> _loadBaseCurrency() async {
@@ -95,6 +113,107 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (confirmed != true || !context.mounted) return;
     AppDatabase currentDb = context.read<DatabaseProvider>().db;
     await DbBackup.importDatabaseFromPicker(context, currentDb, l10n);
+  }
+
+  Future<void> _showSetPasswordDialog(BuildContext context, AppLocalizations l10n, {bool isChange = false}) async {
+    final currentCtrl = TextEditingController();
+    final newCtrl = TextEditingController();
+    final confirmCtrl = TextEditingController();
+    String? errorMsg;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(isChange ? l10n.securityChangePassword : l10n.securitySetPassword),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isChange) ...[
+                TextField(
+                  controller: currentCtrl,
+                  obscureText: true,
+                  decoration: InputDecoration(labelText: l10n.securityCurrentPassword),
+                ),
+                const SizedBox(height: 8),
+              ],
+              TextField(
+                controller: newCtrl,
+                obscureText: true,
+                decoration: InputDecoration(labelText: l10n.securityNewPassword),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: confirmCtrl,
+                obscureText: true,
+                decoration: InputDecoration(labelText: l10n.securityConfirmPassword),
+              ),
+              if (errorMsg != null) ...[
+                const SizedBox(height: 8),
+                Text(errorMsg!, style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(l10n.cancel),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (isChange) {
+                  final ok = await AuthService.instance.verifyPassword(currentCtrl.text);
+                  if (!ok) {
+                    setDialogState(() => errorMsg = l10n.securityCurrentPasswordWrong);
+                    return;
+                  }
+                }
+                if (newCtrl.text.length < 4) {
+                  setDialogState(() => errorMsg = l10n.securityPasswordTooShort);
+                  return;
+                }
+                if (newCtrl.text != confirmCtrl.text) {
+                  setDialogState(() => errorMsg = l10n.securityPasswordMismatch);
+                  return;
+                }
+                await AuthService.instance.setPassword(newCtrl.text);
+                if (ctx.mounted) Navigator.of(ctx).pop();
+              },
+              child: Text(l10n.save),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    currentCtrl.dispose();
+    newCtrl.dispose();
+    confirmCtrl.dispose();
+    await _loadSecurityState();
+  }
+
+  Future<void> _removePassword(BuildContext context, AppLocalizations l10n) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.securityRemovePassword),
+        content: Text(l10n.securityRemovePasswordConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.confirm),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await AuthService.instance.removePassword();
+      await _loadSecurityState();
+    }
   }
 
   Future<void> _pickStartDate(BuildContext context) async {
@@ -340,6 +459,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                   ),
+                ],
+              ),
+
+              SizedBox(height: showAurora ? 14 : 0),
+              if (!showAurora) const Divider(),
+
+              // ── Security ──
+              _wrapCard(
+                showAurora: showAurora,
+                children: [
+                  if (!_passwordSet)
+                    ListTile(
+                      leading: const Icon(Icons.lock_outline),
+                      title: Text(l10n.securitySetPassword),
+                      onTap: () => _showSetPasswordDialog(context, l10n),
+                    )
+                  else ...[
+                    ListTile(
+                      leading: const Icon(Icons.lock),
+                      title: Text(l10n.securityChangePassword),
+                      onTap: () => _showSetPasswordDialog(context, l10n, isChange: true),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.lock_open),
+                      title: Text(l10n.securityRemovePassword),
+                      onTap: () => _removePassword(context, l10n),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.fingerprint),
+                      title: Text(l10n.securityBiometrics),
+                      subtitle: _biometricsAvailable
+                          ? null
+                          : Text(l10n.securityBiometricsNotAvailable),
+                      trailing: Switch(
+                        value: _biometricsEnabled,
+                        onChanged: _biometricsAvailable
+                            ? (val) async {
+                                await AuthService.instance.setBiometricsEnabled(val);
+                                await _loadSecurityState();
+                              }
+                            : null,
+                      ),
+                    ),
+                  ],
                 ],
               ),
 

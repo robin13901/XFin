@@ -185,6 +185,8 @@
   "nextExecutionDate": "Nächste Ausführung",
   "cycle": "Zyklus",
   "pleaseSelectACycle": "Bitte wähle einen Zyklus!",
+  "pleaseSelectADate": "Bitte wählen Sie Datum und Uhrzeit!",
+  "profitAndLoss": "Gewinn & Verlust",
   "daily": "Täglich",
   "weekly": "Wöchentlich",
   "monthly": "Monatlich",
@@ -340,5 +342,26 @@
   "searchHintFiat": "z.B. USD, CHF, GBP...",
   "searchHintGeneral": "z.B. Apple, MSCI World, Tesla...",
   "noResultsFor": "Keine Ergebnisse f\u00fcr \"{query}\"",
-  "searchError": "Fehler: {error}"
+  "searchError": "Fehler: {error}",
+
+  "lockTitle": "XFin entsperren",
+  "lockPasswordLabel": "Passwort",
+  "lockUnlock": "Entsperren",
+  "lockWrongPassword": "Falsches Passwort. Bitte erneut versuchen.",
+  "lockBiometricReason": "Bitte authentifizieren Sie sich, um XFin zu öffnen.",
+  "lockUseBiometrics": "Biometrie verwenden",
+
+  "securitySettings": "Sicherheit",
+  "securitySetPassword": "Passwort setzen",
+  "securityChangePassword": "Passwort ändern",
+  "securityRemovePassword": "Passwort entfernen",
+  "securityRemovePasswordConfirm": "Möchten Sie den Passwortschutz wirklich deaktivieren?",
+  "securityBiometrics": "Biometrische Anmeldung",
+  "securityBiometricsNotAvailable": "Biometrie auf diesem Gerät nicht verfügbar",
+  "securityNewPassword": "Neues Passwort",
+  "securityConfirmPassword": "Passwort bestätigen",
+  "securityPasswordTooShort": "Passwort muss mindestens 4 Zeichen haben",
+  "securityPasswordMismatch": "Passwörter stimmen nicht überein",
+  "securityCurrentPassword": "Aktuelles Passwort",
+  "securityCurrentPasswordWrong": "Aktuelles Passwort ist falsch"
 }

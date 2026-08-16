@@ -371,7 +371,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get investmentAccount => 'Investment-Konto';
 
   @override
-  String get pleaseSelectADate => 'Please select date and time!';
+  String get pleaseSelectADate => 'Bitte wählen Sie Datum und Uhrzeit!';
 
   @override
   String get pleaseSelectAType => 'Bitte wählen Sie einen Typ!';
@@ -396,7 +396,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get shares => 'Anteile';
 
   @override
-  String get profitAndLoss => 'Profit & Loss';
+  String get profitAndLoss => 'Gewinn & Verlust';
 
   @override
   String get tax => 'Steuer';
@@ -960,4 +960,65 @@ class AppLocalizationsDe extends AppLocalizations {
   String searchError(String error) {
     return 'Fehler: $error';
   }
+
+  @override
+  String get lockTitle => 'XFin entsperren';
+
+  @override
+  String get lockPasswordLabel => 'Passwort';
+
+  @override
+  String get lockUnlock => 'Entsperren';
+
+  @override
+  String get lockWrongPassword => 'Falsches Passwort. Bitte erneut versuchen.';
+
+  @override
+  String get lockBiometricReason =>
+      'Bitte authentifizieren Sie sich, um XFin zu öffnen.';
+
+  @override
+  String get lockUseBiometrics => 'Biometrie verwenden';
+
+  @override
+  String get securitySettings => 'Sicherheit';
+
+  @override
+  String get securitySetPassword => 'Passwort setzen';
+
+  @override
+  String get securityChangePassword => 'Passwort ändern';
+
+  @override
+  String get securityRemovePassword => 'Passwort entfernen';
+
+  @override
+  String get securityRemovePasswordConfirm =>
+      'Möchten Sie den Passwortschutz wirklich deaktivieren?';
+
+  @override
+  String get securityBiometrics => 'Biometrische Anmeldung';
+
+  @override
+  String get securityBiometricsNotAvailable =>
+      'Biometrie auf diesem Gerät nicht verfügbar';
+
+  @override
+  String get securityNewPassword => 'Neues Passwort';
+
+  @override
+  String get securityConfirmPassword => 'Passwort bestätigen';
+
+  @override
+  String get securityPasswordTooShort =>
+      'Passwort muss mindestens 4 Zeichen haben';
+
+  @override
+  String get securityPasswordMismatch => 'Passwörter stimmen nicht überein';
+
+  @override
+  String get securityCurrentPassword => 'Aktuelles Passwort';
+
+  @override
+  String get securityCurrentPasswordWrong => 'Aktuelles Passwort ist falsch';
 }

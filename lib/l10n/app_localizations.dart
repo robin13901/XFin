@@ -1867,6 +1867,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Error: {error}'**
   String searchError(String error);
+
+  /// No description provided for @lockTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock XFin'**
+  String get lockTitle;
+
+  /// No description provided for @lockPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get lockPasswordLabel;
+
+  /// No description provided for @lockUnlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock'**
+  String get lockUnlock;
+
+  /// No description provided for @lockWrongPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong password. Please try again.'**
+  String get lockWrongPassword;
+
+  /// No description provided for @lockBiometricReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Please authenticate to open XFin.'**
+  String get lockBiometricReason;
+
+  /// No description provided for @lockUseBiometrics.
+  ///
+  /// In en, this message translates to:
+  /// **'Use biometrics'**
+  String get lockUseBiometrics;
+
+  /// No description provided for @securitySettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Security'**
+  String get securitySettings;
+
+  /// No description provided for @securitySetPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Set Password'**
+  String get securitySetPassword;
+
+  /// No description provided for @securityChangePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Change Password'**
+  String get securityChangePassword;
+
+  /// No description provided for @securityRemovePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove Password'**
+  String get securityRemovePassword;
+
+  /// No description provided for @securityRemovePasswordConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Do you really want to disable password protection?'**
+  String get securityRemovePasswordConfirm;
+
+  /// No description provided for @securityBiometrics.
+  ///
+  /// In en, this message translates to:
+  /// **'Biometric Login'**
+  String get securityBiometrics;
+
+  /// No description provided for @securityBiometricsNotAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Biometrics not available on this device'**
+  String get securityBiometricsNotAvailable;
+
+  /// No description provided for @securityNewPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'New Password'**
+  String get securityNewPassword;
+
+  /// No description provided for @securityConfirmPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Password'**
+  String get securityConfirmPassword;
+
+  /// No description provided for @securityPasswordTooShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Password must be at least 4 characters'**
+  String get securityPasswordTooShort;
+
+  /// No description provided for @securityPasswordMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Passwords do not match'**
+  String get securityPasswordMismatch;
+
+  /// No description provided for @securityCurrentPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Current Password'**
+  String get securityCurrentPassword;
+
+  /// No description provided for @securityCurrentPasswordWrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Current password is incorrect'**
+  String get securityCurrentPasswordWrong;
 }
 
 class _AppLocalizationsDelegate

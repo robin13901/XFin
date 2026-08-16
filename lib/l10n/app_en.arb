@@ -361,5 +361,26 @@
         "type": "String"
       }
     }
-  }
+  },
+
+  "lockTitle": "Unlock XFin",
+  "lockPasswordLabel": "Password",
+  "lockUnlock": "Unlock",
+  "lockWrongPassword": "Wrong password. Please try again.",
+  "lockBiometricReason": "Please authenticate to open XFin.",
+  "lockUseBiometrics": "Use biometrics",
+
+  "securitySettings": "Security",
+  "securitySetPassword": "Set Password",
+  "securityChangePassword": "Change Password",
+  "securityRemovePassword": "Remove Password",
+  "securityRemovePasswordConfirm": "Do you really want to disable password protection?",
+  "securityBiometrics": "Biometric Login",
+  "securityBiometricsNotAvailable": "Biometrics not available on this device",
+  "securityNewPassword": "New Password",
+  "securityConfirmPassword": "Confirm Password",
+  "securityPasswordTooShort": "Password must be at least 4 characters",
+  "securityPasswordMismatch": "Passwords do not match",
+  "securityCurrentPassword": "Current Password",
+  "securityCurrentPasswordWrong": "Current password is incorrect"
 }
