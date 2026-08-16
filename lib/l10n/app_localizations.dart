@@ -1981,6 +1981,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Current password is incorrect'**
   String get securityCurrentPasswordWrong;
+
+  /// No description provided for @privacyMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy Mode'**
+  String get privacyMode;
+
+  /// No description provided for @privacyModeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide values when the app starts'**
+  String get privacyModeDescription;
+
+  /// No description provided for @showValues.
+  ///
+  /// In en, this message translates to:
+  /// **'Show values'**
+  String get showValues;
+
+  /// No description provided for @hideValues.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide values'**
+  String get hideValues;
 }
 
 class _AppLocalizationsDelegate

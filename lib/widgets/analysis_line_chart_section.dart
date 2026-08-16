@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:ui';
 
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -37,6 +38,7 @@ class AnalysisLineChartSection extends StatelessWidget {
   final TextStyle? valueLabelStyle;
   final bool isLive;
   final Duration? chartTransitionDuration;
+  final bool hidden;
 
   const AnalysisLineChartSection({
     super.key,
@@ -65,6 +67,7 @@ class AnalysisLineChartSection extends StatelessWidget {
     this.valueLabelStyle,
     this.isLive = false,
     this.chartTransitionDuration,
+    this.hidden = false,
   });
 
   @override
@@ -220,9 +223,12 @@ class AnalysisLineChartSection extends StatelessWidget {
     return Column(
       children: [
         if (topRight == null) ...[
-          Text(
-            valueFormatter(totalToShow),
-            style: valueLabelStyle ?? const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+          _maybeBlur(
+            hidden: hidden,
+            child: Text(
+              valueFormatter(totalToShow),
+              style: valueLabelStyle ?? const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+            ),
           ),
           const SizedBox(height: 16),
         ] else ...[
@@ -235,9 +241,12 @@ class AnalysisLineChartSection extends StatelessWidget {
                   children: [
                     if (valueLabel.isNotEmpty)
                       Text(valueLabel, style: Theme.of(context).textTheme.bodySmall),
-                    Text(
-                      valueFormatter(totalToShow),
-                      style: valueLabelStyle ?? const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                    _maybeBlur(
+                      hidden: hidden,
+                      child: Text(
+                        valueFormatter(totalToShow),
+                        style: valueLabelStyle ?? const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ],
                 ),
@@ -322,7 +331,7 @@ class AnalysisLineChartSection extends StatelessWidget {
                 titlesData: FlTitlesData(
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
-                      showTitles: true,
+                      showTitles: !hidden,
                       reservedSize: 38,
                       getTitlesWidget: (value, meta) {
                         if ((value - meta.min).abs() < 0.001 ||
@@ -444,8 +453,15 @@ class AnalysisLineChartSection extends StatelessWidget {
     );
   }
 
-  Widget _buildCompactIndicatorToggle(bool isDark, bool selected, Color color, String label, String subscript, ValueChanged<bool> onChanged) {
-    final textColor = selected ? color : (isDark ? Colors.white70 : Colors.black54);
+  Widget _maybeBlur({required bool hidden, required Widget child}) {
+    if (!hidden) return child;
+    return ImageFiltered(
+      imageFilter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+      child: child,
+    );
+  }
+
+  Widget _buildCompactIndicatorToggle(bool isDark, bool selected, Color color, String label, String subscript, ValueChanged<bool> onChanged) {    final textColor = selected ? color : (isDark ? Colors.white70 : Colors.black54);
     return GestureDetector(
       onTap: () => onChanged(!selected),
       child: Container(

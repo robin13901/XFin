@@ -34,6 +34,7 @@ class PrefKeys {
       'filterEndDate'; // stored as yyyyMMdd or "99999999"
   static const String isBaseCurrencySelected = 'isBaseCurrencySelected';
   static const String baseCurrencyTickerSymbol = 'baseCurrencyTickerSymbol';
+  static const String privacyModeEnabled = 'privacy_mode_enabled';
 }
 
 Future<void> loadPrefs([SharedPreferences? prefsOverride]) async {

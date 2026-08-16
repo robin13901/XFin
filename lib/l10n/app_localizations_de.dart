@@ -1021,4 +1021,16 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get securityCurrentPasswordWrong => 'Aktuelles Passwort ist falsch';
+
+  @override
+  String get privacyMode => 'Privatsphäre-Modus';
+
+  @override
+  String get privacyModeDescription => 'Zahlen beim App-Start ausblenden';
+
+  @override
+  String get showValues => 'Werte anzeigen';
+
+  @override
+  String get hideValues => 'Werte ausblenden';
 }

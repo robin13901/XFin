@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:xfin/providers/language_provider.dart';
 import 'package:xfin/providers/live_price_provider.dart';
+import 'package:xfin/providers/privacy_provider.dart';
 import 'package:xfin/providers/theme_provider.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 
@@ -469,6 +470,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _wrapCard(
                 showAurora: showAurora,
                 children: [
+                  ListTile(
+                    leading: const Icon(Icons.visibility_off_outlined),
+                    title: Text(l10n.privacyMode),
+                    subtitle: Text(l10n.privacyModeDescription),
+                    trailing: Consumer<PrivacyProvider>(
+                      builder: (context, privacy, _) => Switch(
+                        value: privacy.enabled,
+                        onChanged: (val) => privacy.setEnabled(val),
+                      ),
+                    ),
+                  ),
                   if (!_passwordSet)
                     ListTile(
                       leading: const Icon(Icons.lock_outline),

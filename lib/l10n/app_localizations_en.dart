@@ -1012,4 +1012,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get securityCurrentPasswordWrong => 'Current password is incorrect';
+
+  @override
+  String get privacyMode => 'Privacy Mode';
+
+  @override
+  String get privacyModeDescription => 'Hide values when the app starts';
+
+  @override
+  String get showValues => 'Show values';
+
+  @override
+  String get hideValues => 'Hide values';
 }

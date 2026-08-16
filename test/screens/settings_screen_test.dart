@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:xfin/providers/live_price_provider.dart';
+import 'package:xfin/providers/privacy_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:xfin/database/app_database.dart';
@@ -81,6 +82,7 @@ void main() {
             ChangeNotifierProvider.value(value: DatabaseProvider.instance),
             ChangeNotifierProvider.value(value: baseCurrencyProvider),
             ChangeNotifierProvider.value(value: LivePriceProvider.instance),
+            ChangeNotifierProvider.value(value: PrivacyProvider.instance),
           ],
           child: Consumer<LanguageProvider>(
             builder: (context, languageProvider, child) {

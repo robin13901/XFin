@@ -11,6 +11,7 @@ import 'package:xfin/providers/language_provider.dart';
 import 'package:xfin/providers/theme_provider.dart';
 import 'package:xfin/providers/base_currency_provider.dart';
 import 'package:xfin/providers/live_price_provider.dart';
+import 'package:xfin/providers/privacy_provider.dart';
 import 'package:xfin/screens/accounts_screen.dart';
 import 'package:xfin/screens/analysis_screen.dart';
 import 'package:xfin/screens/bookings_screen.dart';
@@ -54,6 +55,8 @@ void main() async {
   await LivePriceProvider.instance
       .initialize(initialDb, currencyProvider.tickerSymbol ?? 'EUR');
 
+  await PrivacyProvider.instance.load(prefs);
+
   String initialRoute;
   if (!isBaseCurrencySelected) {
     initialRoute = '/currencySelection';
@@ -73,6 +76,7 @@ void main() async {
         ChangeNotifierProvider.value(value: languageProvider),
         ChangeNotifierProvider.value(value: currencyProvider),
         ChangeNotifierProvider.value(value: LivePriceProvider.instance),
+        ChangeNotifierProvider.value(value: PrivacyProvider.instance),
       ],
       child: MyApp(initialRoute: initialRoute),
     ),

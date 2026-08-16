@@ -9,6 +9,7 @@ import '../app_theme.dart';
 import '../database/app_database.dart';
 import '../providers/database_provider.dart';
 import '../providers/live_price_provider.dart';
+import '../providers/privacy_provider.dart';
 import '../providers/theme_provider.dart';
 import '../utils/format.dart';
 import '../widgets/analysis_line_chart_section.dart';
@@ -350,6 +351,10 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                           });
                         },
                         valueFormatter: formatCurrency,
+                        hidden: context.watch<PrivacyProvider>().hidden,
+                        topRight: context.watch<PrivacyProvider>().enabled
+                            ? _buildPrivacyToggle(context)
+                            : null,
                       );
                         },
                       ),
@@ -401,6 +406,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   }
 
   Widget _buildMonthlySummary(AnalysisData analysisData) {
+    final hidden = context.watch<PrivacyProvider>().hidden;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -410,11 +416,13 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           label: 'Einnahmen Aktueller Monat:',
           value: formatCurrency(analysisData.currentMonthInflows),
           valueColor: AppColors.green,
+          hidden: hidden,
         ),
         SummaryRow(
           label: 'Ausgaben Aktueller Monat:',
           value: formatCurrency(analysisData.currentMonthOutflows),
           valueColor: AppColors.red,
+          hidden: hidden,
         ),
         SummaryRow(
           label: 'Gewinn Aktueller Monat:',
@@ -422,6 +430,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           valueColor: analysisData.currentMonthProfit >= 0
               ? AppColors.green
               : AppColors.red,
+          hidden: hidden,
         ),
         const SizedBox(height: 8),
         const Divider(color: Colors.grey),
@@ -430,11 +439,13 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           label: 'Ø Monatliche Einnahmen:',
           value: formatCurrency(analysisData.averageMonthlyInflows),
           valueColor: AppColors.green,
+          hidden: hidden,
         ),
         SummaryRow(
           label: 'Ø Monatliche Ausgaben:',
           value: formatCurrency(analysisData.averageMonthlyOutflows),
           valueColor: AppColors.red,
+          hidden: hidden,
         ),
         SummaryRow(
           label: 'Ø Monatlicher Gewinn:',
@@ -442,8 +453,18 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           valueColor: analysisData.averageMonthlyProfit >= 0
               ? AppColors.green
               : AppColors.red,
+          hidden: hidden,
         ),
       ],
+    );
+  }
+
+  Widget _buildPrivacyToggle(BuildContext context) {
+    final privacy = context.watch<PrivacyProvider>();
+    return IconButton(
+      icon: Icon(privacy.hidden ? Icons.visibility_off : Icons.visibility),
+      tooltip: privacy.hidden ? 'Werte anzeigen' : 'Werte ausblenden',
+      onPressed: () => privacy.toggleHidden(),
     );
   }
 

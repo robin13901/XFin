@@ -382,5 +382,10 @@
   "securityPasswordTooShort": "Password must be at least 4 characters",
   "securityPasswordMismatch": "Passwords do not match",
   "securityCurrentPassword": "Current Password",
-  "securityCurrentPasswordWrong": "Current password is incorrect"
+  "securityCurrentPasswordWrong": "Current password is incorrect",
+
+  "privacyMode": "Privacy Mode",
+  "privacyModeDescription": "Hide values when the app starts",
+  "showValues": "Show values",
+  "hideValues": "Hide values"
 }
