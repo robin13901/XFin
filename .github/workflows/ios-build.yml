@@ -165,8 +165,8 @@ jobs:
           WORKSPACE=$(find . -maxdepth 1 -name "*.xcworkspace" | head -1)
           PROJECT=$(find . -maxdepth 1 -name "*.xcodeproj" | head -1)
 
-          # Install pods if Podfile exists (always run to ensure sync with Podfile.lock)
-          if [ -f "Podfile" ]; then
+          # For non-Flutter projects, install pods before build
+          if [ -f "Podfile" ] && [ "$PROJECT_TYPE" != "flutter" ]; then
             echo "Running pod install..."
             pod install
             WORKSPACE=$(find . -maxdepth 1 -name "*.xcworkspace" | head -1)
@@ -198,7 +198,20 @@ jobs:
               flutter build ios --release --no-codesign
             fi
             cd "$IOS_PATH"
-          elif [ "$PROJECT_TYPE" = "reactnative" ] || [ "$PROJECT_TYPE" = "expo" ]; then
+          fi
+
+          # Find workspace or project (after flutter build generates Flutter.xcframework)
+          WORKSPACE=$(find . -maxdepth 1 -name "*.xcworkspace" | head -1)
+          PROJECT=$(find . -maxdepth 1 -name "*.xcodeproj" | head -1)
+
+          # Install pods if Podfile exists (always run to ensure sync with Podfile.lock)
+          if [ -f "Podfile" ]; then
+            echo "Running pod install..."
+            pod install
+            WORKSPACE=$(find . -maxdepth 1 -name "*.xcworkspace" | head -1)
+          fi
+
+          if [ "$PROJECT_TYPE" != "flutter" ]; then
             # Use xcodebuild directly for React Native/Expo
             echo "Building React Native iOS ($CONFIGURATION)..."
             BUILD_CMD="xcodebuild"
