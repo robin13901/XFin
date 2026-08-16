@@ -94,14 +94,11 @@ class InflowOutflowToggle extends StatelessWidget {
                 showInflows ? Alignment.centerLeft : Alignment.centerRight,
             child: FractionallySizedBox(
               widthFactor: 0.5,
-              child: Padding(
-                padding: const EdgeInsets.all(4),
-                child: LiquidGlassLayer(
-                  settings: liquidGlassSettings,
-                  child: const LiquidGlass.grouped(
-                    shape: LiquidRoundedSuperellipse(borderRadius: 11),
-                    child: SizedBox.expand(),
-                  ),
+              child: LiquidGlassLayer(
+                settings: liquidGlassSettings,
+                child: const LiquidGlass.grouped(
+                  shape: LiquidRoundedSuperellipse(borderRadius: 14),
+                  child: SizedBox.expand(),
                 ),
               ),
             ),
