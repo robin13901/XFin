@@ -211,7 +211,7 @@ jobs:
             WORKSPACE=$(find . -maxdepth 1 -name "*.xcworkspace" | head -1)
           fi
 
-          if [ "$PROJECT_TYPE" != "flutter" ]; then
+          if [ "$PROJECT_TYPE" = "reactnative" ] || [ "$PROJECT_TYPE" = "expo" ]; then
             # Use xcodebuild directly for React Native/Expo
             echo "Building React Native iOS ($CONFIGURATION)..."
             BUILD_CMD="xcodebuild"
@@ -238,7 +238,7 @@ jobs:
 
             echo "Running: $BUILD_CMD"
             eval $BUILD_CMD
-          else
+          elif [ "$PROJECT_TYPE" = "native" ]; then
             BUILD_CMD="xcodebuild"
             if [ -n "$WORKSPACE" ]; then
               BUILD_CMD="$BUILD_CMD -workspace $WORKSPACE"
