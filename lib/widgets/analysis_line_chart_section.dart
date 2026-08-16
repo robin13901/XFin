@@ -233,22 +233,22 @@ class AnalysisLineChartSection extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              children: [
-                Icon(
-                  isProfit ? Icons.arrow_upward : Icons.arrow_downward,
-                  color: profitColor,
-                  size: 16,
-                ),
-                const SizedBox(width: 4),
-                _maybeBlur(
-                  hidden: hidden,
-                  child: Text(
+            _maybeBlur(
+              hidden: hidden,
+              child: Row(
+                children: [
+                  Icon(
+                    isProfit ? Icons.arrow_upward : Icons.arrow_downward,
+                    color: profitColor,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
                     '${valueFormatter(profit)} (${formatPercent(profitPercent)})',
                     style: TextStyle(color: profitColor, fontSize: 16),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             Text(dateText, style: const TextStyle(fontSize: 16)),
           ],
