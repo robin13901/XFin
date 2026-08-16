@@ -222,40 +222,14 @@ class AnalysisLineChartSection extends StatelessWidget {
 
     return Column(
       children: [
-        if (topRight == null) ...[
-          _maybeBlur(
-            hidden: hidden,
-            child: Text(
-              valueFormatter(totalToShow),
-              style: valueLabelStyle ?? const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-            ),
+        _maybeBlur(
+          hidden: hidden,
+          child: Text(
+            valueFormatter(totalToShow),
+            style: valueLabelStyle ?? const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 16),
-        ] else ...[
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (valueLabel.isNotEmpty)
-                      Text(valueLabel, style: Theme.of(context).textTheme.bodySmall),
-                    _maybeBlur(
-                      hidden: hidden,
-                      child: Text(
-                        valueFormatter(totalToShow),
-                        style: valueLabelStyle ?? const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              topRight!,
-            ],
-          ),
-          const SizedBox(height: 16),
-        ],
+        ),
+        const SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [

@@ -352,9 +352,6 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                         },
                         valueFormatter: formatCurrency,
                         hidden: context.watch<PrivacyProvider>().hidden,
-                        topRight: context.watch<PrivacyProvider>().enabled
-                            ? _buildPrivacyToggle(context)
-                            : null,
                       );
                         },
                       ),
@@ -398,7 +395,11 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             context,
             title: const Text('Analyse'),
             showBackButton: false,
-            actions: const [LiveToggleButton()],
+            actions: [
+              if (context.watch<PrivacyProvider>().enabled)
+                _buildPrivacyToggle(context),
+              const LiveToggleButton(),
+            ],
           ),
         ],
       ),
