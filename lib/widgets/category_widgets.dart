@@ -1,4 +1,6 @@
 import 'package:fl_chart/fl_chart.dart';
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 import '../utils/format.dart';
@@ -128,6 +130,7 @@ class CategoryList extends StatelessWidget {
   final ValueChanged<bool>? onShowAllChanged;
   final ValueChanged<String>? onCategoryTap;
   final bool showInflows;
+  final bool hidden;
 
   const CategoryList({
     super.key,
@@ -138,6 +141,7 @@ class CategoryList extends StatelessWidget {
     this.onShowAllChanged,
     this.onCategoryTap,
     this.showInflows = true,
+    this.hidden = false,
   });
 
   @override
@@ -164,6 +168,7 @@ class CategoryList extends StatelessWidget {
           amount: entry.value,
           percentage: percentage,
           color: colors[i % colors.length],
+          hidden: hidden,
           onTap: (onCategoryTap == null || isAggregator)
               ? null
               : () => onCategoryTap!(entry.key),
@@ -200,6 +205,7 @@ class CategoryListItem extends StatelessWidget {
   final double percentage;
   final Color color;
   final VoidCallback? onTap;
+  final bool hidden;
 
   const CategoryListItem({
     super.key,
@@ -208,10 +214,29 @@ class CategoryListItem extends StatelessWidget {
     required this.percentage,
     required this.color,
     this.onTap,
+    this.hidden = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    Widget amountWidget = Row(
+      children: [
+        Text(formatDecimal(amount, decimals: 2)),
+        const SizedBox(width: 8),
+        Text(
+          '${formatDecimal(percentage)}%',
+          style: TextStyle(color: Theme.of(context).hintColor),
+        ),
+      ],
+    );
+
+    if (hidden) {
+      amountWidget = ImageFiltered(
+        imageFilter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+        child: amountWidget,
+      );
+    }
+
     final row = Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -233,16 +258,7 @@ class CategoryListItem extends StatelessWidget {
               ],
             ),
           ),
-          Row(
-            children: [
-              Text(formatDecimal(amount, decimals: 2)),
-              const SizedBox(width: 8),
-              Text(
-                '${formatDecimal(percentage)}%',
-                style: TextStyle(color: Theme.of(context).hintColor),
-              ),
-            ],
-          ),
+          amountWidget,
         ],
       ),
     );

@@ -524,6 +524,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       showLessLabel: 'Weniger anzeigen',
       onCategoryTap: _openCategoryDetail,
       showInflows: _showInflows,
+      hidden: context.watch<PrivacyProvider>().hidden,
       onShowAllChanged: (showAll) {
         setState(() {
           _showAllCategories = showAll;

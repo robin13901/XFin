@@ -267,9 +267,12 @@ class AnalysisLineChartSection extends StatelessWidget {
                   size: 16,
                 ),
                 const SizedBox(width: 4),
-                Text(
-                  '${valueFormatter(profit)} (${formatPercent(profitPercent)})',
-                  style: TextStyle(color: profitColor, fontSize: 16),
+                _maybeBlur(
+                  hidden: hidden,
+                  child: Text(
+                    '${valueFormatter(profit)} (${formatPercent(profitPercent)})',
+                    style: TextStyle(color: profitColor, fontSize: 16),
+                  ),
                 ),
               ],
             ),
