@@ -1,25 +1,55 @@
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 
-// Dark green for inflows, dark red for outflows
-const _kGreenDark = Color(0xFF0D4A2A);
-const _kGreenMid = Color(0xFF1A7A44);
-const _kRedMid = Color(0xFF7A1A1A);
-const _kRedDark = Color(0xFF4A0D0D);
+import '../providers/theme_provider.dart';
+import 'liquid_glass_widgets.dart';
 
-/// Gradient palette for inflow categories (10 steps, dark→light green)
-List<Color> inflowCategoryColors(int count) =>
-    _gradientStops(_kGreenDark, _kGreenMid, count);
+// Gradient: green edge → neutral center → red edge
+// The neutral center adapts to dark/light theme
+LinearGradient _buildToggleGradient(bool isDark) {
+  final neutral = isDark ? const Color(0xFF111111) : const Color(0xFFEEEEEE);
+  return LinearGradient(
+    colors: [
+      const Color(0xFF0A5C30), // deep green
+      neutral,
+      const Color(0xFF5C0A0A), // deep red
+    ],
+    stops: const [0.0, 0.5, 1.0],
+  );
+}
 
-/// Gradient palette for outflow categories (10 steps, dark→light red)
-List<Color> outflowCategoryColors(int count) =>
-    _gradientStops(_kRedDark, _kRedMid, count);
+/// Gradient palette for inflow categories – widely spaced greens
+List<Color> inflowCategoryColors(int count) => _wideGradient(
+      const [
+        Color(0xFF0A5C30),
+        Color(0xFF1A8A4A),
+        Color(0xFF2EBD68),
+        Color(0xFF5FD98A),
+        Color(0xFF96EDB5),
+      ],
+      count,
+    );
 
-List<Color> _gradientStops(Color from, Color to, int count) {
+/// Gradient palette for outflow categories – widely spaced reds
+List<Color> outflowCategoryColors(int count) => _wideGradient(
+      const [
+        Color(0xFF5C0A0A),
+        Color(0xFF8A1A1A),
+        Color(0xFFBD2E2E),
+        Color(0xFFD96060),
+        Color(0xFFEDA0A0),
+      ],
+      count,
+    );
+
+List<Color> _wideGradient(List<Color> palette, int count) {
   if (count <= 0) return [];
-  if (count == 1) return [from];
+  if (count == 1) return [palette.first];
   return List.generate(count, (i) {
-    final t = i / (count - 1);
-    return Color.lerp(from, to, t)!;
+    final t = i / (count - 1) * (palette.length - 1);
+    final lo = t.floor().clamp(0, palette.length - 2);
+    final hi = (lo + 1).clamp(0, palette.length - 1);
+    return Color.lerp(palette[lo], palette[hi], t - lo)!;
   });
 }
 
@@ -39,25 +69,24 @@ class InflowOutflowToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
-      height: 46,
+      height: 48,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
-        gradient: const LinearGradient(
-          colors: [_kGreenDark, _kGreenMid, _kRedMid, _kRedDark],
-          stops: [0.0, 0.38, 0.62, 1.0],
-        ),
+        gradient: _buildToggleGradient(isDark),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.35),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            color: Colors.black.withValues(alpha: 0.4),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Stack(
         children: [
-          // Sliding glass pill
+          // Sliding liquid glass pill
           AnimatedAlign(
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeInOut,
@@ -65,32 +94,28 @@ class InflowOutflowToggle extends StatelessWidget {
                 showInflows ? Alignment.centerLeft : Alignment.centerRight,
             child: FractionallySizedBox(
               widthFactor: 0.5,
-              child: Container(
-                margin: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(11),
-                  color: Colors.white.withValues(alpha: 0.18),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.35),
-                    width: 0.8,
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: LiquidGlassLayer(
+                  settings: liquidGlassSettings,
+                  child: const LiquidGlass.grouped(
+                    shape: LiquidRoundedSuperellipse(borderRadius: 11),
+                    child: SizedBox.expand(),
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.18),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
                 ),
               ),
             ),
           ),
-          // Labels row
+          // Labels
           Row(
             children: [
-              _buildLabel(context, label: inflowLabel, isSelected: showInflows,
+              _buildLabel(context,
+                  label: inflowLabel,
+                  isSelected: showInflows,
                   onTap: () => onChanged(true)),
-              _buildLabel(context, label: outflowLabel, isSelected: !showInflows,
+              _buildLabel(context,
+                  label: outflowLabel,
+                  isSelected: !showInflows,
                   onTap: () => onChanged(false)),
             ],
           ),
@@ -105,6 +130,7 @@ class InflowOutflowToggle extends StatelessWidget {
     required bool isSelected,
     required VoidCallback onTap,
   }) {
+    final isDark = ThemeProvider.isDark();
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
@@ -116,8 +142,10 @@ class InflowOutflowToggle extends StatelessWidget {
               fontSize: 14,
               fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
               color: isSelected
-                  ? Colors.white
-                  : Colors.white.withValues(alpha: 0.6),
+                  ? (isDark ? Colors.white : Colors.black)
+                  : (isDark
+                      ? Colors.white.withValues(alpha: 0.5)
+                      : Colors.black.withValues(alpha: 0.45)),
               letterSpacing: isSelected ? 0.3 : 0,
             ),
             child: Text(label),
