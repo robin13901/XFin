@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 import 'package:provider/provider.dart';
 
 import '../app_theme.dart';
@@ -327,13 +328,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
               top: MediaQuery.of(context).padding.top + kToolbarHeight + 12,
               left: 12,
               right: 12,
-              bottom: 24,
+              bottom: 96,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildAnimatedMonthHeader(),
-                const SizedBox(height: 12),
                 _buildCalendarPager(),
                 const SizedBox(height: 20),
                 _buildMonthSummary(),
@@ -341,49 +340,69 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
           ),
           buildLiquidGlassAppBar(context, title: Text(l10n.calendar), actions: const [LiveToggleButton()]),
+          _buildMonthNavBar(context),
         ],
       ),
     );
   }
 
-  /// Month label with navigation buttons and a smooth crossfade on change.
-  Widget _buildAnimatedMonthHeader() {
-    return ValueListenableBuilder<int>(
-      valueListenable: _pageNotifier,
-      builder: (context, pageIndex, _) {
-        final month = _monthAtPage(pageIndex);
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            IconButton(
-              onPressed: () => _goToMonth(-1),
-              icon: const Icon(Icons.chevron_left),
-              visualDensity: VisualDensity.compact,
-              tooltip: MaterialLocalizations.of(context).previousMonthTooltip,
+  /// LiquidGlass bottom bar with month navigation (same visual style as main-screen nav).
+  Widget _buildMonthNavBar(BuildContext context) {
+    final bottom = MediaQuery.of(context).padding.bottom;
+    return Positioned(
+      left: 32,
+      right: 32,
+      bottom: bottom + 24,
+      child: SizedBox(
+        height: 68,
+        child: LiquidGlassLayer(
+          settings: liquidGlassSettings,
+          child: LiquidGlass.grouped(
+            shape: const LiquidRoundedSuperellipse(borderRadius: 28),
+            child: ValueListenableBuilder<int>(
+              valueListenable: _pageNotifier,
+              builder: (context, pageIndex, _) {
+                final month = _monthAtPage(pageIndex);
+                return Row(
+                  children: [
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => _goToMonth(-1),
+                      child: const SizedBox(
+                        width: 56,
+                        height: 68,
+                        child: Icon(Icons.chevron_left, size: 26),
+                      ),
+                    ),
+                    Expanded(
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        switchInCurve: Curves.easeOut,
+                        switchOutCurve: Curves.easeIn,
+                        transitionBuilder: (child, animation) =>
+                            FadeTransition(opacity: animation, child: child),
+                        child: MonthHeader(
+                          key: ValueKey(_monthCacheKey(month)),
+                          month: month,
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => _goToMonth(1),
+                      child: const SizedBox(
+                        width: 56,
+                        height: 68,
+                        child: Icon(Icons.chevron_right, size: 26),
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
-            Expanded(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 200),
-                switchInCurve: Curves.easeOut,
-                switchOutCurve: Curves.easeIn,
-                transitionBuilder: (child, animation) {
-                  return FadeTransition(opacity: animation, child: child);
-                },
-                child: MonthHeader(
-                  key: ValueKey(_monthCacheKey(month)),
-                  month: month,
-                ),
-              ),
-            ),
-            IconButton(
-              onPressed: () => _goToMonth(1),
-              icon: const Icon(Icons.chevron_right),
-              visualDensity: VisualDensity.compact,
-              tooltip: MaterialLocalizations.of(context).nextMonthTooltip,
-            ),
-          ],
-        );
-      },
+          ),
+        ),
+      ),
     );
   }
 
