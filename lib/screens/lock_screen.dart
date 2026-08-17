@@ -22,24 +22,31 @@ class _LockScreenState extends State<LockScreen> {
   String? _errorText;
   bool _loading = false;
   bool _biometricsAvailable = false;
+  bool _biometricsChecked = false;
 
   AuthService get _auth => widget.authService ?? AuthService.instance;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _initBiometrics());
+    _initBiometrics();
   }
 
   Future<void> _initBiometrics() async {
     final enabled = await _auth.isBiometricsEnabled;
-    if (!enabled || !mounted) return;
+    if (!enabled || !mounted) {
+      setState(() => _biometricsChecked = true);
+      _focusNode.requestFocus();
+      return;
+    }
     final available = await _auth.canCheckBiometrics;
     if (!mounted) return;
-    setState(() => _biometricsAvailable = available);
+    setState(() {
+      _biometricsAvailable = available;
+      _biometricsChecked = true;
+    });
     if (available) {
       final ok = await _tryBiometrics();
-      // Only raise keyboard after biometrics finished (failed or unavailable)
       if (!ok && mounted) _focusNode.requestFocus();
     } else {
       _focusNode.requestFocus();
@@ -118,10 +125,11 @@ class _LockScreenState extends State<LockScreen> {
                     style: theme.textTheme.headlineSmall,
                   ),
                   const SizedBox(height: 32),
-                  if (isAurora)
-                    _buildGlassField(l10n, theme)
-                  else
-                    _buildPlainField(l10n, theme),
+                  if (_biometricsChecked)
+                    if (isAurora)
+                      _buildGlassField(l10n, theme)
+                    else
+                      _buildPlainField(l10n, theme),
                   const SizedBox(height: 16),
                   if (_errorText != null)
                     Text(
@@ -132,7 +140,7 @@ class _LockScreenState extends State<LockScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton(
-                      onPressed: _loading ? null : _submit,
+                      onPressed: _loading || !_biometricsChecked ? null : _submit,
                       child: _loading
                           ? const SizedBox(
                               height: 20,
