@@ -400,35 +400,13 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
   }
 
   Future<double> getMonthlyProfitAndLoss() async {
-    final bookingsFuture = (selectOnly(bookings)
-          ..addColumns([bookings.value.sum()])
-          ..where(bookings.isGenerated.equals(false) &
-              bookings.excludeFromAverage.equals(false) &
-              bookings.date.isBetweenValues(filterStartDate, filterEndDate)))
-        .map((row) => row.read(bookings.value.sum()) ?? 0.0)
-        .getSingle();
+    final inflowsFuture = getMonthlyInflows();
+    final outflowsFuture = getMonthlyOutflows();
 
-    final periodicBookingsFuture = (select(periodicBookings)).get().then(
-        (rows) => rows.fold<double>(
-            0.0, (acc, row) => acc + (row.value * row.monthlyAverageFactor)));
+    final inflows = await inflowsFuture;
+    final outflows = await outflowsFuture;
 
-    final tradeResultExpression =
-        trades.profitAndLoss.sum() - trades.fee.sum() - trades.tax.sum();
-
-    final tradesFuture = (selectOnly(trades)
-          ..addColumns([tradeResultExpression]))
-        .map((row) => row.read(tradeResultExpression) ?? 0.0)
-        .getSingle();
-
-    final monthsInTimeFrameFuture = _getMonthsInTimeFrame();
-
-    final bookingsTotal = await bookingsFuture;
-    final periodicBookingsTotal = await periodicBookingsFuture;
-    final tradesTotal = await tradesFuture;
-    final monthsInTimeFrame = await monthsInTimeFrameFuture;
-
-    return (bookingsTotal + tradesTotal) / monthsInTimeFrame +
-        periodicBookingsTotal;
+    return inflows + outflows;
   }
 
   Future<Map<String, double>> getMonthlyCategoryInflows() async {
