@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 
@@ -8,7 +9,14 @@ class AuthService {
   static const _keyBiometricsEnabled = 'xfin_biometrics_enabled';
 
   static final AuthService _instance = AuthService._internal(
-    const FlutterSecureStorage(),
+    FlutterSecureStorage(
+      iOptions: const IOSOptions(
+        accessibility: KeychainAccessibility.first_unlock,
+      ),
+      aOptions: const AndroidOptions(
+        encryptedSharedPreferences: true,
+      ),
+    ),
     LocalAuthentication(),
   );
   static AuthService get instance => _instance;
@@ -32,8 +40,13 @@ class AuthService {
       sha256.convert(utf8.encode(password)).toString();
 
   Future<bool> get isPasswordSet async {
-    final hash = await _storage.read(key: _keyPasswordHash);
-    return hash != null && hash.isNotEmpty;
+    try {
+      final hash = await _storage.read(key: _keyPasswordHash);
+      return hash != null && hash.isNotEmpty;
+    } catch (e) {
+      debugPrint('AuthService.isPasswordSet error: $e');
+      return false;
+    }
   }
 
   Future<void> setPassword(String password) async {
@@ -41,9 +54,14 @@ class AuthService {
   }
 
   Future<bool> verifyPassword(String password) async {
-    final stored = await _storage.read(key: _keyPasswordHash);
-    if (stored == null) return false;
-    return stored == _hash(password);
+    try {
+      final stored = await _storage.read(key: _keyPasswordHash);
+      if (stored == null) return false;
+      return stored == _hash(password);
+    } catch (e) {
+      debugPrint('AuthService.verifyPassword error: $e');
+      return false;
+    }
   }
 
   Future<void> removePassword() async {
@@ -52,8 +70,12 @@ class AuthService {
   }
 
   Future<bool> get isBiometricsEnabled async {
-    final val = await _storage.read(key: _keyBiometricsEnabled);
-    return val == 'true';
+    try {
+      final val = await _storage.read(key: _keyBiometricsEnabled);
+      return val == 'true';
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> setBiometricsEnabled(bool enabled) async {
@@ -85,3 +107,4 @@ class AuthService {
     }
   }
 }
+
