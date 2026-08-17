@@ -9,11 +9,11 @@ class AuthService {
   static const _keyBiometricsEnabled = 'xfin_biometrics_enabled';
 
   static final AuthService _instance = AuthService._internal(
-    FlutterSecureStorage(
-      iOptions: const IOSOptions(
+    const FlutterSecureStorage(
+      iOptions: IOSOptions(
         accessibility: KeychainAccessibility.first_unlock,
       ),
-      aOptions: const AndroidOptions(
+      aOptions: AndroidOptions(
         encryptedSharedPreferences: true,
       ),
     ),
