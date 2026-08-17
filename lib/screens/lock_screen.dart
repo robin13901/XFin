@@ -37,7 +37,13 @@ class _LockScreenState extends State<LockScreen> {
     final available = await _auth.canCheckBiometrics;
     if (!mounted) return;
     setState(() => _biometricsAvailable = available);
-    if (available) _tryBiometrics();
+    if (available) {
+      final ok = await _tryBiometrics();
+      // Only raise keyboard after biometrics finished (failed or unavailable)
+      if (!ok && mounted) _focusNode.requestFocus();
+    } else {
+      _focusNode.requestFocus();
+    }
   }
 
   @override
@@ -47,11 +53,12 @@ class _LockScreenState extends State<LockScreen> {
     super.dispose();
   }
 
-  Future<void> _tryBiometrics() async {
-    if (!mounted) return;
+  Future<bool> _tryBiometrics() async {
+    if (!mounted) return false;
     final l10n = AppLocalizations.of(context)!;
     final ok = await _auth.authenticateWithBiometrics(l10n.lockBiometricReason);
     if (ok && mounted) _unlock();
+    return ok;
   }
 
   Future<void> _submit() async {
@@ -156,7 +163,7 @@ class _LockScreenState extends State<LockScreen> {
       controller: _controller,
       focusNode: _focusNode,
       obscureText: _obscure,
-      autofocus: true,
+      autofocus: false,
       textInputAction: TextInputAction.done,
       onSubmitted: (_) => _submit(),
       decoration: InputDecoration(
@@ -179,7 +186,7 @@ class _LockScreenState extends State<LockScreen> {
             controller: _controller,
             focusNode: _focusNode,
             obscureText: _obscure,
-            autofocus: true,
+            autofocus: false,
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => _submit(),
             decoration: InputDecoration(
