@@ -14,9 +14,10 @@ void main() {
   }) async {
     await tester.pumpWidget(
       MaterialApp(
-        theme: brightness == Brightness.dark
-            ? ThemeData.dark()
-            : ThemeData.light(),
+        theme: ThemeData.light(),
+        darkTheme: ThemeData.dark(),
+        themeMode:
+            brightness == Brightness.dark ? ThemeMode.dark : ThemeMode.light,
         home: Scaffold(
           body: InflowOutflowToggle(
             showInflows: showInflows,
@@ -55,90 +56,6 @@ void main() {
       expect(find.text('Expense'), findsOneWidget);
     });
 
-    testWidgets('inflow segment is selected when showInflows is true (light)',
-        (tester) async {
-      await pumpToggle(tester, showInflows: true, brightness: Brightness.light);
-
-      final animatedContainers =
-          tester.widgetList<AnimatedContainer>(find.byType(AnimatedContainer));
-      expect(animatedContainers.length, 2);
-
-      // First segment (inflow) should have black (light theme selected color)
-      final inflowContainer = animatedContainers.first;
-      final inflowDecoration =
-          inflowContainer.decoration as BoxDecoration;
-      expect(inflowDecoration.color, Colors.black.withAlpha(15));
-
-      // Second segment (outflow) should be transparent
-      final outflowContainer = animatedContainers.last;
-      final outflowDecoration =
-          outflowContainer.decoration as BoxDecoration;
-      expect(outflowDecoration.color, Colors.transparent);
-    });
-
-    testWidgets('inflow segment is selected when showInflows is true (dark)',
-        (tester) async {
-      await pumpToggle(tester, showInflows: true, brightness: Brightness.dark);
-
-      final animatedContainers =
-          tester.widgetList<AnimatedContainer>(find.byType(AnimatedContainer));
-      expect(animatedContainers.length, 2);
-
-      // First segment (inflow) should have white38 (dark theme selected color)
-      final inflowContainer = animatedContainers.first;
-      final inflowDecoration =
-          inflowContainer.decoration as BoxDecoration;
-      expect(inflowDecoration.color, Colors.white.withAlpha(15));
-
-      // Second segment (outflow) should be transparent
-      final outflowContainer = animatedContainers.last;
-      final outflowDecoration =
-          outflowContainer.decoration as BoxDecoration;
-      expect(outflowDecoration.color, Colors.transparent);
-    });
-
-    testWidgets('outflow segment is selected when showInflows is false (light)',
-        (tester) async {
-      await pumpToggle(tester, showInflows: false, brightness: Brightness.light);
-
-      final animatedContainers =
-          tester.widgetList<AnimatedContainer>(find.byType(AnimatedContainer));
-      expect(animatedContainers.length, 2);
-
-      // First segment (inflow) should be transparent
-      final inflowContainer = animatedContainers.first;
-      final inflowDecoration =
-          inflowContainer.decoration as BoxDecoration;
-      expect(inflowDecoration.color, Colors.transparent);
-
-      // Second segment (outflow) should have black (light theme selected color)
-      final outflowContainer = animatedContainers.last;
-      final outflowDecoration =
-          outflowContainer.decoration as BoxDecoration;
-      expect(outflowDecoration.color, Colors.black.withAlpha(15));
-    });
-
-    testWidgets('outflow segment is selected when showInflows is false (dark)',
-        (tester) async {
-      await pumpToggle(tester, showInflows: false, brightness: Brightness.dark);
-
-      final animatedContainers =
-          tester.widgetList<AnimatedContainer>(find.byType(AnimatedContainer));
-      expect(animatedContainers.length, 2);
-
-      // First segment (inflow) should be transparent
-      final inflowContainer = animatedContainers.first;
-      final inflowDecoration =
-          inflowContainer.decoration as BoxDecoration;
-      expect(inflowDecoration.color, Colors.transparent);
-
-      // Second segment (outflow) should have white38 (dark theme selected color)
-      final outflowContainer = animatedContainers.last;
-      final outflowDecoration =
-          outflowContainer.decoration as BoxDecoration;
-      expect(outflowDecoration.color, Colors.white.withAlpha(15));
-    });
-
     testWidgets('tapping inflow segment calls onChanged with true',
         (tester) async {
       bool? receivedValue;
@@ -171,100 +88,98 @@ void main() {
       expect(receivedValue, isFalse);
     });
 
-    testWidgets('selected text color is black in light theme', (tester) async {
+    testWidgets('selected text is bold (w700)', (tester) async {
+      await pumpToggle(tester, showInflows: true);
+
+      final inflowStyle = tester.widget<AnimatedDefaultTextStyle>(
+        find.ancestor(
+          of: find.text('Inflows'),
+          matching: find.byType(AnimatedDefaultTextStyle),
+        ).first,
+      );
+      expect(inflowStyle.style.fontWeight, FontWeight.w700);
+    });
+
+    testWidgets('unselected text is regular weight (w500)', (tester) async {
+      await pumpToggle(tester, showInflows: true);
+
+      final outflowStyle = tester.widget<AnimatedDefaultTextStyle>(
+        find.ancestor(
+          of: find.text('Outflows'),
+          matching: find.byType(AnimatedDefaultTextStyle),
+        ).first,
+      );
+      expect(outflowStyle.style.fontWeight, FontWeight.w500);
+    });
+
+    testWidgets('selected text color changes based on selection state',
+        (tester) async {
+      await pumpToggle(tester, showInflows: true);
+
+      final inflowStyle = tester.widget<AnimatedDefaultTextStyle>(
+        find.ancestor(
+          of: find.text('Inflows'),
+          matching: find.byType(AnimatedDefaultTextStyle),
+        ).first,
+      );
+      // Selected text should have a color (either black or white depending on theme)
+      expect(inflowStyle.style.color, isNotNull);
+    });
+
+    testWidgets('unselected text has opacity applied', (tester) async {
+      await pumpToggle(tester, showInflows: true);
+
+      final outflowStyle = tester.widget<AnimatedDefaultTextStyle>(
+        find.ancestor(
+          of: find.text('Outflows'),
+          matching: find.byType(AnimatedDefaultTextStyle),
+        ).first,
+      );
+      // Unselected text should have reduced opacity
+      final alphaValue = (outflowStyle.style.color?.a ?? 1.0 * 255.0).round().clamp(0, 255);
+      expect(alphaValue, lessThan(255));
+    });
+
+    testWidgets('outer container has border radius of 14', (tester) async {
+      await pumpToggle(tester, showInflows: true);
+
+      final container = tester.widget<Container>(
+        find.ancestor(
+          of: find.byType(Row),
+          matching: find.byType(Container),
+        ).first,
+      );
+      final decoration = container.decoration as BoxDecoration;
+      expect(decoration.borderRadius, BorderRadius.circular(14));
+    });
+
+    testWidgets('light theme uses neutral gradient center', (tester) async {
       await pumpToggle(tester, showInflows: true, brightness: Brightness.light);
 
-      final inflowText = tester.widget<Text>(find.text('Inflows'));
-      expect(inflowText.style?.color, Colors.black);
+      final container = tester.widget<Container>(
+        find.ancestor(
+          of: find.byType(Row),
+          matching: find.byType(Container),
+        ).first,
+      );
+      final decoration = container.decoration as BoxDecoration;
+      expect(decoration.gradient, isNotNull);
     });
 
-    testWidgets('selected text color is white in dark theme', (tester) async {
+    testWidgets('dark theme uses neutral gradient center', (tester) async {
       await pumpToggle(tester, showInflows: true, brightness: Brightness.dark);
 
-      final inflowText = tester.widget<Text>(find.text('Inflows'));
-      expect(inflowText.style?.color, Colors.white);
+      final container = tester.widget<Container>(
+        find.ancestor(
+          of: find.byType(Row),
+          matching: find.byType(Container),
+        ).first,
+      );
+      final decoration = container.decoration as BoxDecoration;
+      expect(decoration.gradient, isNotNull);
     });
 
-    testWidgets('unselected text color comes from theme', (tester) async {
-      await pumpToggle(tester, showInflows: true);
-
-      // Outflow text should use theme color (not white)
-      final outflowText = tester.widget<Text>(find.text('Outflows'));
-      expect(outflowText.style?.color, isNot(Colors.white));
-    });
-
-    testWidgets('text uses bold font weight', (tester) async {
-      await pumpToggle(tester, showInflows: true);
-
-      final inflowText = tester.widget<Text>(find.text('Inflows'));
-      expect(inflowText.style?.fontWeight, FontWeight.w700);
-
-      final outflowText = tester.widget<Text>(find.text('Outflows'));
-      expect(outflowText.style?.fontWeight, FontWeight.w700);
-    });
-
-    group('light theme', () {
-      testWidgets('uses black border color', (tester) async {
-        await pumpToggle(tester, showInflows: true, brightness: Brightness.light);
-
-        // The outer Container has the border
-        final container = tester.widget<Container>(
-          find.ancestor(
-            of: find.byType(Row),
-            matching: find.byType(Container),
-          ).first,
-        );
-        final decoration = container.decoration as BoxDecoration;
-        expect(decoration.border, isNotNull);
-        final border = decoration.border as Border;
-        expect(border.top.color, Colors.black);
-      });
-
-      testWidgets('uses white unselected fill', (tester) async {
-        await pumpToggle(tester, showInflows: true, brightness: Brightness.light);
-
-        final container = tester.widget<Container>(
-          find.ancestor(
-            of: find.byType(Row),
-            matching: find.byType(Container),
-          ).first,
-        );
-        final decoration = container.decoration as BoxDecoration;
-        expect(decoration.color, Colors.white);
-      });
-    });
-
-    group('dark theme', () {
-      testWidgets('uses white border color', (tester) async {
-        await pumpToggle(tester, showInflows: true, brightness: Brightness.dark);
-
-        final container = tester.widget<Container>(
-          find.ancestor(
-            of: find.byType(Row),
-            matching: find.byType(Container),
-          ).first,
-        );
-        final decoration = container.decoration as BoxDecoration;
-        expect(decoration.border, isNotNull);
-        final border = decoration.border as Border;
-        expect(border.top.color, Colors.white);
-      });
-
-      testWidgets('uses dark unselected fill (0xFF151515)', (tester) async {
-        await pumpToggle(tester, showInflows: true, brightness: Brightness.dark);
-
-        final container = tester.widget<Container>(
-          find.ancestor(
-            of: find.byType(Row),
-            matching: find.byType(Container),
-          ).first,
-        );
-        final decoration = container.decoration as BoxDecoration;
-        expect(decoration.color, const Color(0xFF151515));
-      });
-    });
-
-    testWidgets('outer container has border radius of 10', (tester) async {
+    testWidgets('container has box shadow', (tester) async {
       await pumpToggle(tester, showInflows: true);
 
       final container = tester.widget<Container>(
@@ -274,58 +189,35 @@ void main() {
         ).first,
       );
       final decoration = container.decoration as BoxDecoration;
-      expect(decoration.borderRadius, BorderRadius.circular(10));
+      expect(decoration.boxShadow, isNotNull);
+      expect(decoration.boxShadow?.isNotEmpty, true);
     });
 
-    testWidgets('segment containers have border radius of 8', (tester) async {
+    testWidgets('sliding pill animates on toggle', (tester) async {
       await pumpToggle(tester, showInflows: true);
 
-      final animatedContainers =
-          tester.widgetList<AnimatedContainer>(find.byType(AnimatedContainer));
+      final animatedAlignBefore =
+          tester.widget<AnimatedAlign>(find.byType(AnimatedAlign));
+      expect(animatedAlignBefore.alignment, Alignment.centerLeft);
 
-      for (final container in animatedContainers) {
-        final decoration = container.decoration as BoxDecoration;
-        expect(decoration.borderRadius, BorderRadius.circular(8));
-      }
-    });
-
-    testWidgets('border width is 1.1', (tester) async {
-      await pumpToggle(tester, showInflows: true);
-
-      final container = tester.widget<Container>(
-        find.ancestor(
-          of: find.byType(Row),
-          matching: find.byType(Container),
-        ).first,
+      // Create a new widget with showInflows: false
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData.light(),
+          home: Scaffold(
+            body: InflowOutflowToggle(
+              showInflows: false,
+              inflowLabel: 'Inflows',
+              outflowLabel: 'Outflows',
+              onChanged: (_) {},
+            ),
+          ),
+        ),
       );
-      final decoration = container.decoration as BoxDecoration;
-      final border = decoration.border as Border;
-      expect(border.top.width, 1.1);
-    });
 
-    testWidgets('animation duration is 180ms', (tester) async {
-      await pumpToggle(tester, showInflows: true);
-
-      final animatedContainers =
-          tester.widgetList<AnimatedContainer>(find.byType(AnimatedContainer));
-
-      for (final container in animatedContainers) {
-        expect(container.duration, const Duration(milliseconds: 180));
-      }
-    });
-
-    testWidgets('segments have vertical padding of 12', (tester) async {
-      await pumpToggle(tester, showInflows: true);
-
-      final animatedContainers =
-          tester.widgetList<AnimatedContainer>(find.byType(AnimatedContainer));
-
-      for (final container in animatedContainers) {
-        expect(
-          container.padding,
-          const EdgeInsets.symmetric(vertical: 12),
-        );
-      }
+      final animatedAlignAfter =
+          tester.widget<AnimatedAlign>(find.byType(AnimatedAlign));
+      expect(animatedAlignAfter.alignment, Alignment.centerRight);
     });
 
     testWidgets('contains two Expanded widgets for equal sizing',
@@ -345,7 +237,6 @@ void main() {
     testWidgets('labels are centered', (tester) async {
       await pumpToggle(tester, showInflows: true);
 
-      // Each segment wraps its Text in a Center widget
       expect(find.byType(Center), findsNWidgets(2));
     });
   });

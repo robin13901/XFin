@@ -87,7 +87,8 @@
       "Bash(gh auth *)",
       "Bash(git add *)",
       "Bash(git -c user.name=robin13901 commit -m 'fix\\(forms\\): accept comma or dot as decimal separator; auto-fit more-pane labels *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(git -c user.name=robin13901 commit -m 'chore: replace stale IPAs with fresh XFin-de10a4c.ipa build *)"
     ]
   }
 }

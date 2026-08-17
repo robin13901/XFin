@@ -222,13 +222,57 @@ class AnalysisLineChartSection extends StatelessWidget {
 
     return Column(
       children: [
-        _maybeBlur(
-          hidden: hidden,
-          child: Text(
-            valueFormatter(totalToShow),
-            style: valueLabelStyle ?? const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+        if (topRight == null)
+          Column(
+            children: [
+              if (valueLabel.isNotEmpty)
+                _maybeBlur(
+                  hidden: hidden,
+                  child: Text(
+                    valueLabel,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              if (valueLabel.isNotEmpty) const SizedBox(height: 4),
+              _maybeBlur(
+                hidden: hidden,
+                child: Text(
+                  valueFormatter(totalToShow),
+                  style: valueLabelStyle ?? const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          )
+        else
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (valueLabel.isNotEmpty)
+                      _maybeBlur(
+                        hidden: hidden,
+                        child: Text(
+                          valueLabel,
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    if (valueLabel.isNotEmpty) const SizedBox(height: 4),
+                    _maybeBlur(
+                      hidden: hidden,
+                      child: Text(
+                        valueFormatter(totalToShow),
+                        style: valueLabelStyle ?? const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (topRight != null) topRight!,
+            ],
           ),
-        ),
         const SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
