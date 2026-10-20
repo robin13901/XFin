@@ -11,17 +11,21 @@ import 'package:mocktail/mocktail.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:intl/date_symbol_data_local.dart';
+
 import 'package:xfin/database/app_database.dart';
 import 'package:xfin/database/daos/accounts_dao.dart';
 import 'package:xfin/database/daos/analysis_dao.dart';
 import 'package:xfin/database/daos/asset_prices_dao.dart';
 import 'package:xfin/database/daos/assets_dao.dart';
+import 'package:xfin/database/models/analysis_models.dart';
 import 'package:xfin/l10n/app_localizations.dart';
 import 'package:xfin/providers/database_provider.dart';
 import 'package:xfin/providers/theme_provider.dart';
 import 'package:xfin/screens/analysis_screen.dart';
 import 'package:xfin/utils/format.dart';
 import 'package:xfin/widgets/aurora_background.dart';
+import 'package:xfin/widgets/monthly_profit_chart.dart';
 
 class _MockAppDatabase extends Mock implements AppDatabase {}
 
@@ -57,6 +61,7 @@ void main() {
     TestWidgetsFlutterBinding.ensureInitialized();
     // register fallback values for mocktail if matchers require them
     registerFallbackValue(DateTime(2000));
+    initializeDateFormatting('de_DE');
   });
 
   setUp(() {
@@ -135,6 +140,17 @@ void main() {
         .thenAnswer((_) async => currentMonthCategoryInflows);
     when(() => mockAnalysisDao.getMonthlyCategoryOutflows())
         .thenAnswer((_) async => currentMonthCategoryOutflows);
+    when(() => mockAnalysisDao.getMonthlyProfitHistory())
+        .thenAnswer((_) async => [
+              MonthlyProfitPoint(
+                  monthDate: DateTime(2024, 1, 1),
+                  profit: 100,
+                  runningAverage: 100),
+              MonthlyProfitPoint(
+                  monthDate: DateTime(2024, 2, 1),
+                  profit: 200,
+                  runningAverage: 150),
+            ]);
   });
 
   group('AnalysisScreen widget tests', () {
@@ -200,6 +216,24 @@ void main() {
       expect(find.text('Monatliche Übersicht'), findsOneWidget);
 
       await tester.pumpWidget(Container());
+    });
+
+    testWidgets(
+        'tapping "Ø Monatlicher Gewinn" opens the monthly profit chart popup',
+        (tester) async {
+      await pumpWidget(tester);
+      await tester.pumpAndSettle();
+
+      final rowFinder = find.text('Ø Monatlicher Gewinn:');
+      await tester.ensureVisible(rowFinder);
+      await tester.pumpAndSettle();
+
+      await tester.tap(rowFinder);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(Dialog), findsOneWidget);
+      expect(find.byType(MonthlyProfitChart), findsOneWidget);
+      verify(() => mockAnalysisDao.getMonthlyProfitHistory()).called(1);
     });
 
     testWidgets('shows error message when a DAO future completes with error',

@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../app_theme.dart';
 import '../database/app_database.dart';
+import '../database/models/analysis_models.dart';
 import '../providers/database_provider.dart';
 import '../providers/live_price_provider.dart';
 import '../providers/privacy_provider.dart';
@@ -19,6 +20,7 @@ import '../widgets/common_widgets.dart';
 import '../widgets/inflow_outflow_toggle.dart';
 import '../widgets/liquid_glass_widgets.dart';
 import '../widgets/live_toggle_button.dart';
+import '../widgets/monthly_profit_chart.dart';
 import '../widgets/summary_row.dart';
 import 'category_detail_screen.dart';
 
@@ -448,15 +450,71 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           valueColor: AppColors.red,
           hidden: hidden,
         ),
-        SummaryRow(
-          label: 'Ø Monatlicher Gewinn:',
-          value: formatCurrency(analysisData.averageMonthlyProfit),
-          valueColor: analysisData.averageMonthlyProfit >= 0
-              ? AppColors.green
-              : AppColors.red,
-          hidden: hidden,
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _openMonthlyProfitChart,
+          child: Row(
+            children: [
+              Expanded(
+                child: SummaryRow(
+                  label: 'Ø Monatlicher Gewinn:',
+                  value: formatCurrency(analysisData.averageMonthlyProfit),
+                  valueColor: analysisData.averageMonthlyProfit >= 0
+                      ? AppColors.green
+                      : AppColors.red,
+                  hidden: hidden,
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.only(left: 6),
+                child: Icon(Icons.show_chart, size: 18),
+              ),
+            ],
+          ),
         ),
       ],
+    );
+  }
+
+  void _openMonthlyProfitChart() {
+    final hidden = context.read<PrivacyProvider>().hidden;
+    final historyFuture = db.analysisDao.getMonthlyProfitHistory();
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560),
+          child: FutureBuilder<List<MonthlyProfitPoint>>(
+            future: historyFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const SizedBox(
+                  height: 200,
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              final points = snapshot.data ?? const <MonthlyProfitPoint>[];
+              return Padding(
+                padding: const EdgeInsets.all(16),
+                child: points.isEmpty
+                    ? const SizedBox(
+                        height: 120,
+                        child: Center(
+                          child: Text('Keine Daten verfügbar.'),
+                        ),
+                      )
+                    : SingleChildScrollView(
+                        child: MonthlyProfitChart(
+                          points: points,
+                          hidden: hidden,
+                        ),
+                      ),
+              );
+            },
+          ),
+        ),
+      ),
     );
   }
 

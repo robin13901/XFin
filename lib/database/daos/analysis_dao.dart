@@ -409,6 +409,148 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
     return inflows + outflows;
   }
 
+  /// Builds a gap-free monthly history for the analysis popup line chart.
+  ///
+  /// For every month from the earliest recorded activity (bounded by the
+  /// active timeframe filter) up to the current/last month, this returns:
+  /// - [MonthlyProfitPoint.profit]: the month's realized profit via
+  ///   [getProfitAndLossForMonth] — the same methodology as the
+  ///   "Gewinn Aktueller Monat" row.
+  /// - [MonthlyProfitPoint.runningAverage]: the average monthly profit using
+  ///   the identical methodology as the headline "Ø Monatlicher Gewinn" value
+  ///   ([getMonthlyProfitAndLoss]), but with the timeframe truncated to the end
+  ///   of each month. The final point is computed via [getMonthlyProfitAndLoss]
+  ///   itself, so the line ends exactly on the value shown on the screen.
+  ///
+  /// Returns an empty list when there is no recorded activity.
+  Future<List<MonthlyProfitPoint>> getMonthlyProfitHistory() async {
+    // Effective end of the window, bounded by the filter.
+    final DateTime effectiveEndDate;
+    if (filterEndDate == 99999999) {
+      final now = DateTime.now();
+      effectiveEndDate = DateTime(now.year, now.month, now.day);
+    } else {
+      effectiveEndDate = intToDateTime(filterEndDate)!;
+    }
+
+    // Effective start of the window, bounded by the filter.
+    final DateTime effectiveStartDate;
+    if (filterStartDate == 0) {
+      final allMinDates = <int>[];
+      final minBookingDate = await (selectOnly(bookings)
+            ..addColumns([bookings.date.min()]))
+          .map((row) => row.read(bookings.date.min()))
+          .getSingle();
+      if (minBookingDate != null) allMinDates.add(minBookingDate);
+      final minTransferDate = await (selectOnly(transfers)
+            ..addColumns([transfers.date.min()]))
+          .map((row) => row.read(transfers.date.min()))
+          .getSingle();
+      if (minTransferDate != null) allMinDates.add(minTransferDate);
+      final minTradeDate = await (selectOnly(trades)
+            ..addColumns([trades.datetime.min()]))
+          .map((row) => row.read(trades.datetime.min()))
+          .getSingle();
+      // trades.datetime is yyyyMMddHHmmss — reduce to the yyyyMMdd date part.
+      if (minTradeDate != null) allMinDates.add(minTradeDate ~/ 1000000);
+
+      if (allMinDates.isEmpty) return [];
+      allMinDates.sort();
+      effectiveStartDate = intToDateTime(allMinDates.first)!;
+    } else {
+      effectiveStartDate = intToDateTime(filterStartDate)!;
+    }
+
+    if (effectiveStartDate.isAfter(effectiveEndDate)) return [];
+
+    final startInt = dateTimeToInt(effectiveStartDate);
+
+    // Collect every month start from the first month up to the last month.
+    final monthStarts = <DateTime>[];
+    var cursor = DateTime(effectiveStartDate.year, effectiveStartDate.month, 1);
+    final endMonth = DateTime(effectiveEndDate.year, effectiveEndDate.month, 1);
+    while (!cursor.isAfter(endMonth)) {
+      monthStarts.add(cursor);
+      cursor = DateTime(cursor.year, cursor.month + 1, 1);
+    }
+
+    final points = <MonthlyProfitPoint>[];
+    for (var i = 0; i < monthStarts.length; i++) {
+      final month = monthStarts[i];
+      final profit = await getProfitAndLossForMonth(month);
+
+      final double runningAverage;
+      if (i == monthStarts.length - 1) {
+        // The last point must line up exactly with the headline
+        // "Ø Monatlicher Gewinn" value, so reuse the very same calculation.
+        runningAverage = await getMonthlyProfitAndLoss();
+      } else {
+        // Progressive average with the timeframe truncated to this month's end.
+        final (_, monthEndInt) = getMonthStartEnd(month);
+        runningAverage =
+            await _averageMonthlyProfitForWindow(startInt, monthEndInt);
+      }
+
+      points.add(MonthlyProfitPoint(
+        monthDate: month,
+        profit: profit,
+        runningAverage: runningAverage,
+      ));
+    }
+
+    return points;
+  }
+
+  /// Average monthly profit over the window `[startInt, endInt]` (both
+  /// yyyyMMdd), mirroring [getMonthlyProfitAndLoss] exactly:
+  ///
+  ///   (bookings + tradeResult) / monthsInWindow + periodicMonthlyTotal
+  ///
+  /// where bookings excludes generated and "excludeFromAverage" rows,
+  /// tradeResult is `profitAndLoss - fee - tax`, and the periodic standing-order
+  /// contribution (a projection, independent of the window) is added flat —
+  /// identical to `getMonthlyInflows`/`getMonthlyOutflows`.
+  Future<double> _averageMonthlyProfitForWindow(
+      int startInt, int endInt) async {
+    final bookingsFuture = (selectOnly(bookings)
+          ..addColumns([bookings.value.sum()])
+          ..where(bookings.isGenerated.equals(false) &
+              bookings.excludeFromAverage.equals(false) &
+              bookings.date.isBetweenValues(startInt, endInt)))
+        .map((row) => row.read(bookings.value.sum()) ?? 0.0)
+        .getSingle();
+
+    final tradeResultExpression =
+        trades.profitAndLoss.sum() - trades.fee.sum() - trades.tax.sum();
+    final tradeFuture = (selectOnly(trades)
+          ..addColumns([tradeResultExpression])
+          ..where(trades.datetime.isBetweenValues(
+              monthStartDateTimeInt(startInt),
+              monthEndDateTimeInt(endInt),
+            )))
+        .map((row) => row.read(tradeResultExpression) ?? 0.0)
+        .getSingle();
+
+    final periodicFuture = (select(periodicBookings)
+          ..where((pb) =>
+              pb.shares.isBiggerThanValue(0) |
+              pb.shares.isSmallerThanValue(0)))
+        .get()
+        .then((rows) => rows.fold<double>(
+            0.0, (acc, row) => acc + (row.value * row.monthlyAverageFactor)));
+
+    final bookingsTotal = await bookingsFuture;
+    final tradeTotal = await tradeFuture;
+    final periodicTotal = await periodicFuture;
+
+    final startDate = intToDateTime(startInt)!;
+    final endDate = intToDateTime(endInt)!;
+    final days = endDate.difference(startDate).inDays + 1;
+    final months = days / 30.436875;
+
+    return (bookingsTotal + tradeTotal) / months + periodicTotal;
+  }
+
   Future<Map<String, double>> getMonthlyCategoryInflows() async {
     final bookingsFuture = (selectOnly(bookings)
           ..addColumns([bookings.category, bookings.value.sum()])

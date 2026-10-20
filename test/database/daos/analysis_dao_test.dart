@@ -1078,4 +1078,129 @@ void main() {
     });
   });
 
+  group('AnalysisDao - getMonthlyProfitHistory', () {
+    setUp(() async {
+      await db.into(db.accounts).insert(AccountsCompanion.insert(
+          name: 'Cash',
+          type: AccountTypes.cash,
+          initialBalance: const Value(0)));
+      // Deterministic default window, independent of the current date.
+      filterStartDate = 0;
+      filterEndDate = 99999999;
+    });
+
+    tearDown(() {
+      filterStartDate = 0;
+      filterEndDate = 99999999;
+    });
+
+    Future<void> insertBooking(int date, double value, String category) {
+      return db.into(db.bookings).insert(BookingsCompanion.insert(
+            date: date,
+            shares: value,
+            value: value,
+            category: category,
+            accountId: 1,
+            notes: const Value.absent(),
+          ));
+    }
+
+    test('returns empty list when there is no activity', () async {
+      final history = await analysisDao.getMonthlyProfitHistory();
+      expect(history, isEmpty);
+    });
+
+    test('builds a gap-free monthly series; running average uses headline '
+        'methodology and ends exactly on getMonthlyProfitAndLoss', () async {
+      SharedPreferences.setMockInitialValues({
+        PrefKeys.filterStartDate: 20240101,
+        PrefKeys.filterEndDate: 20240331,
+      });
+      filterStartDate = 20240101;
+      filterEndDate = 20240331;
+
+      await insertBooking(20240110, 100.0, 'Salary'); // January
+      // February intentionally has no bookings -> zero-filled bucket.
+      await insertBooking(20240310, 300.0, 'Salary'); // March
+
+      final history = await analysisDao.getMonthlyProfitHistory();
+
+      expect(history.length, 3);
+
+      // --- per-month profit (same as the "Gewinn Aktueller Monat" row) ---
+      expect(history[0].monthDate, DateTime(2024, 1, 1));
+      expect(history[0].profit, closeTo(100.0, 1e-9));
+      expect(history[1].monthDate, DateTime(2024, 2, 1));
+      expect(history[1].profit, closeTo(0.0, 1e-9));
+      expect(history[2].monthDate, DateTime(2024, 3, 1));
+      expect(history[2].profit, closeTo(300.0, 1e-9));
+
+      // --- running average: average monthly profit as of each month's end ---
+      // Jan window [01-01, 01-31]: 100 / months(31d)
+      expect(history[0].runningAverage,
+          closeTo(100.0 / _monthsBetweenInts(20240101, 20240131), 1e-9));
+      // Feb window [01-01, 02-29]: 100 / months(60d)
+      expect(history[1].runningAverage,
+          closeTo(100.0 / _monthsBetweenInts(20240101, 20240229), 1e-9));
+
+      // Final point must equal the headline value EXACTLY.
+      final headline = await analysisDao.getMonthlyProfitAndLoss();
+      expect(history.last.runningAverage, headline);
+      // Sanity: headline is 400 spread over the full 91-day window.
+      expect(history.last.runningAverage,
+          closeTo(400.0 / _monthsBetweenInts(20240101, 20240331), 1e-9));
+    });
+
+    test('respects the active timeframe filter bounds', () async {
+      // The January booking lies before the filter start and must be excluded.
+      await insertBooking(20240110, 100.0, 'Salary');
+      await insertBooking(20240310, 300.0, 'Salary');
+
+      SharedPreferences.setMockInitialValues({
+        PrefKeys.filterStartDate: 20240201,
+        PrefKeys.filterEndDate: 20240331,
+      });
+      filterStartDate = 20240201;
+      filterEndDate = 20240331;
+
+      final history = await analysisDao.getMonthlyProfitHistory();
+
+      expect(history.length, 2);
+      expect(history[0].monthDate, DateTime(2024, 2, 1));
+      expect(history[0].profit, closeTo(0.0, 1e-9));
+      expect(history[0].runningAverage, closeTo(0.0, 1e-9));
+
+      expect(history[1].monthDate, DateTime(2024, 3, 1));
+      expect(history[1].profit, closeTo(300.0, 1e-9));
+
+      // Final point equals the headline value exactly (January excluded).
+      final headline = await analysisDao.getMonthlyProfitAndLoss();
+      expect(history.last.runningAverage, headline);
+      expect(history.last.runningAverage,
+          closeTo(300.0 / _monthsBetweenInts(20240201, 20240331), 1e-9));
+    });
+
+    test('final running-average point matches headline exactly for an '
+        'open-ended (unfiltered) window', () async {
+      // Unfiltered: end is 99999999 -> window runs up to "today". The headline
+      // numerator/denominator bounds diverge here, so this guards that the last
+      // point still lines up precisely with getMonthlyProfitAndLoss().
+      SharedPreferences.setMockInitialValues({
+        PrefKeys.filterStartDate: 0,
+        PrefKeys.filterEndDate: 99999999,
+      });
+      filterStartDate = 0;
+      filterEndDate = 99999999;
+
+      await insertBooking(20240110, 100.0, 'Salary');
+      await insertBooking(20240210, -40.0, 'Rent');
+
+      final history = await analysisDao.getMonthlyProfitHistory();
+      final headline = await analysisDao.getMonthlyProfitAndLoss();
+
+      expect(history, isNotEmpty);
+      expect(history.last.runningAverage, headline);
+    });
+  });
+
 }

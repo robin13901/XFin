@@ -17,6 +17,33 @@ class MonthlyAnalysisSnapshot {
   });
 }
 
+/// A single month's realized profit together with the average monthly profit
+/// as of that month.
+///
+/// Used by the monthly-profit line chart popup on the analysis screen.
+/// [profit] is computed with the same methodology as the "Gewinn Aktueller
+/// Monat" row (`AnalysisDao.getProfitAndLossForMonth`). [runningAverage] uses
+/// the same methodology as the headline "Ø Monatlicher Gewinn"
+/// (`AnalysisDao.getMonthlyProfitAndLoss`) with the timeframe truncated to the
+/// end of this month, so the series' last point matches that headline exactly.
+class MonthlyProfitPoint {
+  /// First day of the represented month.
+  final DateTime monthDate;
+
+  /// Realized profit/loss for this month (bookings + trade result).
+  final double profit;
+
+  /// Average monthly profit computed as if the timeframe ended with this month
+  /// (headline methodology).
+  final double runningAverage;
+
+  const MonthlyProfitPoint({
+    required this.monthDate,
+    required this.profit,
+    required this.runningAverage,
+  });
+}
+
 /// Per-month aggregation for a single category.
 class CategoryMonthBucket {
   final int year;
