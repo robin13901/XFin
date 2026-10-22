@@ -442,18 +442,18 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
   ///   months (full months via [getProfitAndLossForMonth] with the timeframe
   ///   filter removed), clipped so it never starts before the first recorded
   ///   activity. Independent of the active timeframe.
-  /// - `cumulativeAverage`: one point per day from the start of the active
-  ///   timeframe up to today, each the average monthly profit as of that day
-  ///   using the headline methodology ([getMonthlyProfitAndLoss]). The final
-  ///   day's value is taken from [getMonthlyProfitAndLoss] directly, so the line
-  ///   ends exactly on the "Ø Monatlicher Gewinn" value shown on the screen.
+  /// - `movingAverage`: one point per day from the start of the active
+  ///   timeframe up to today. Each y is the 100-day moving average of monthly
+  ///   profit: sum of realized profit over the last 100 days (clipped to the
+  ///   timeframe start) divided by the number of months in that window, plus
+  ///   the standing-order projection.
   ///
   /// Returns empty series when there is no recorded activity.
   Future<MonthlyProfitChartData> getMonthlyProfitChartData() async {
     final earliestDataInt = await _earliestActivityDateInt();
     if (earliestDataInt == null) {
       return const MonthlyProfitChartData(
-          perMonthProfit: [], cumulativeAverage: []);
+          perMonthProfit: [], movingAverage: []);
     }
     final earliestDataDate = intToDateTime(earliestDataInt)!;
 
@@ -477,19 +477,21 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
       monthCursor = DateTime(monthCursor.year, monthCursor.month + 1, 1);
     }
 
-    // ── Daily cumulative average: respects the active timeframe ──
+    // ── 100-day moving average: respects the active timeframe ──
+    const movingAverageWindowDays = 100;
+
     final effectiveEndDate =
         filterEndDate == 99999999 ? today : intToDateTime(filterEndDate)!;
     final effectiveStartDate = filterStartDate == 0
         ? earliestDataDate
         : intToDateTime(filterStartDate)!;
 
-    final cumulativeAverage = <FlSpot>[];
+    final movingAverage = <FlSpot>[];
     if (!effectiveStartDate.isAfter(effectiveEndDate)) {
       final startInt = dateTimeToInt(effectiveStartDate);
       final endInt = dateTimeToInt(effectiveEndDate);
 
-      // Daily deltas for non-generated, non-excluded bookings (headline basis).
+      // Daily deltas for non-generated, non-excluded bookings.
       final bookingRows = await (select(bookings)
             ..where((b) =>
                 b.isGenerated.equals(false) &
@@ -521,28 +523,35 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
       final periodicTotal = periodicRows.fold<double>(
           0.0, (acc, row) => acc + row.value * row.monthlyAverageFactor);
 
-      // The final day must equal the headline value exactly.
-      final headline = await getMonthlyProfitAndLoss();
+      // Sliding window over the daily delta values.
+      // windowDeltas[i] holds the delta for the i-th day in the iteration.
+      final windowDeltas = <double>[];
+      var windowSum = 0.0;
 
-      var cumulative = 0.0;
-      var dayIndex = 0;
       var day = DateTime(effectiveStartDate.year, effectiveStartDate.month,
           effectiveStartDate.day);
       while (!day.isAfter(effectiveEndDate)) {
-        dayIndex++;
-        cumulative += dailyDelta[dateTimeToInt(day)] ?? 0;
-        final isLast = !day.isBefore(effectiveEndDate);
-        final months = dayIndex / 30.436875;
-        final value = isLast ? headline : (cumulative / months + periodicTotal);
-        cumulativeAverage
-            .add(FlSpot(day.millisecondsSinceEpoch.toDouble(), value));
+        final delta = dailyDelta[dateTimeToInt(day)] ?? 0;
+        windowDeltas.add(delta);
+        windowSum += delta;
+
+        // Drop the value that just left the 100-day window.
+        if (windowDeltas.length > movingAverageWindowDays) {
+          windowSum -= windowDeltas[windowDeltas.length - movingAverageWindowDays - 1];
+        }
+
+        final windowDays =
+            windowDeltas.length.clamp(1, movingAverageWindowDays);
+        final months = windowDays / 30.436875;
+        final value = windowSum / months + periodicTotal;
+        movingAverage.add(FlSpot(day.millisecondsSinceEpoch.toDouble(), value));
         day = DateTime(day.year, day.month, day.day + 1);
       }
     }
 
     return MonthlyProfitChartData(
       perMonthProfit: perMonthProfit,
-      cumulativeAverage: cumulativeAverage,
+      movingAverage: movingAverage,
     );
   }
 

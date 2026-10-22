@@ -497,7 +497,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
               final data = snapshot.data;
               final isEmpty = data == null ||
                   (data.perMonthProfit.isEmpty &&
-                      data.cumulativeAverage.isEmpty);
+                      data.movingAverage.isEmpty);
               return Padding(
                 padding: const EdgeInsets.all(16),
                 child: isEmpty
@@ -510,7 +510,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                     : SingleChildScrollView(
                         child: MonthlyProfitChart(
                           perMonthProfit: data.perMonthProfit,
-                          cumulativeAverage: data.cumulativeAverage,
+                          movingAverage: data.movingAverage,
                           hidden: hidden,
                         ),
                       ),

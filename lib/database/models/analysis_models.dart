@@ -20,25 +20,25 @@ class MonthlyAnalysisSnapshot {
 
 /// Data backing the monthly-profit line chart popup on the analysis screen.
 ///
-/// The two series are shown exclusively (toggled by the user) and intentionally
-/// use different x-axis granularity and range:
+/// The two series are shown exclusively (toggled by the user) and use
+/// different x-axis granularity and range:
 /// - [perMonthProfit]: one point per calendar month (x = month start in ms
 ///   since epoch) for roughly the last two years, independent of the active
 ///   timeframe filter. Each y is the month's realized profit, computed with the
 ///   same methodology as the "Gewinn Aktueller Monat" row
 ///   (`AnalysisDao.getProfitAndLossForMonth`).
-/// - [cumulativeAverage]: one point per day (x = day in ms since epoch) from the
-///   start of the active timeframe up to today. Each y is the average monthly
-///   profit as of that day, using the headline methodology
-///   (`AnalysisDao.getMonthlyProfitAndLoss`); the last point matches that
-///   headline value exactly.
+/// - [movingAverage]: one point per day (x = day in ms since epoch) from the
+///   start of the active timeframe up to today. Each y is a 100-day moving
+///   average of the monthly profit: the sum of realized profit over the last
+///   100 days (clipped to the timeframe start) divided by the number of months
+///   in that window, plus the standing-order projection.
 class MonthlyProfitChartData {
   final List<FlSpot> perMonthProfit;
-  final List<FlSpot> cumulativeAverage;
+  final List<FlSpot> movingAverage;
 
   const MonthlyProfitChartData({
     required this.perMonthProfit,
-    required this.cumulativeAverage,
+    required this.movingAverage,
   });
 }
 

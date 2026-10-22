@@ -43,7 +43,7 @@ void main() {
   testWidgets('renders chart, title and both series toggles', (tester) async {
     await tester.pumpWidget(_wrap(MonthlyProfitChart(
       perMonthProfit: _perMonth(),
-      cumulativeAverage: _cumulative(),
+      movingAverage: _cumulative(),
     )));
 
     expect(find.text('Monatlicher Gewinn'), findsOneWidget);
@@ -56,7 +56,7 @@ void main() {
       (tester) async {
     await tester.pumpWidget(_wrap(MonthlyProfitChart(
       perMonthProfit: _perMonth(),
-      cumulativeAverage: _cumulative(),
+      movingAverage: _cumulative(),
     )));
 
     expect(find.text(formatCurrency(30)), findsOneWidget);
@@ -66,7 +66,7 @@ void main() {
       (tester) async {
     await tester.pumpWidget(_wrap(MonthlyProfitChart(
       perMonthProfit: _perMonth(),
-      cumulativeAverage: _cumulative(),
+      movingAverage: _cumulative(),
     )));
 
     await tester.tap(find.text('Je Monat'));
@@ -78,7 +78,7 @@ void main() {
   testWidgets('blurs the header value when hidden', (tester) async {
     await tester.pumpWidget(_wrap(MonthlyProfitChart(
       perMonthProfit: _perMonth(),
-      cumulativeAverage: _cumulative(),
+      movingAverage: _cumulative(),
       hidden: true,
     )));
 
@@ -88,7 +88,7 @@ void main() {
   testWidgets('handles a single data point without crashing', (tester) async {
     await tester.pumpWidget(_wrap(MonthlyProfitChart(
       perMonthProfit: const [],
-      cumulativeAverage: [FlSpot(_ms(DateTime(2024, 1, 1)), 42)],
+      movingAverage: [FlSpot(_ms(DateTime(2024, 1, 1)), 42)],
     )));
 
     expect(find.byType(LineChart), findsOneWidget);
@@ -99,7 +99,7 @@ void main() {
       (tester) async {
     await tester.pumpWidget(_wrap(MonthlyProfitChart(
       perMonthProfit: const [],
-      cumulativeAverage: _cumulative(),
+      movingAverage: _cumulative(),
     )));
 
     // Default (cumulative) renders a chart; switching to the empty per-month

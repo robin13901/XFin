@@ -148,7 +148,7 @@ void main() {
                 FlSpot(DateTime(2024, 2, 1).millisecondsSinceEpoch.toDouble(),
                     200),
               ],
-              cumulativeAverage: [
+              movingAverage: [
                 FlSpot(DateTime(2024, 1, 1).millisecondsSinceEpoch.toDouble(),
                     100),
                 FlSpot(DateTime(2024, 1, 2).millisecondsSinceEpoch.toDouble(),

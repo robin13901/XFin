@@ -18,13 +18,13 @@ import '../utils/format.dart';
 /// unlabeled on purpose to avoid overlapping date labels.
 class MonthlyProfitChart extends StatefulWidget {
   final List<FlSpot> perMonthProfit;
-  final List<FlSpot> cumulativeAverage;
+  final List<FlSpot> movingAverage;
   final bool hidden;
 
   const MonthlyProfitChart({
     super.key,
     required this.perMonthProfit,
-    required this.cumulativeAverage,
+    required this.movingAverage,
     this.hidden = false,
   });
 
@@ -39,7 +39,7 @@ class _MonthlyProfitChartState extends State<MonthlyProfitChart> {
   LineBarSpot? _touchedSpot;
 
   List<FlSpot> get _currentData =>
-      _showAverage ? widget.cumulativeAverage : widget.perMonthProfit;
+      _showAverage ? widget.movingAverage : widget.perMonthProfit;
 
   /// Formats an x value (ms since epoch) for the header: a full day for the
   /// cumulative (daily) view, a month for the per-month view.
