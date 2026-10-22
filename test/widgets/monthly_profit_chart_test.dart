@@ -48,7 +48,7 @@ void main() {
 
     expect(find.text('Monatlicher Gewinn'), findsOneWidget);
     expect(find.byType(LineChart), findsOneWidget);
-    expect(find.widgetWithText(ChoiceChip, 'Ø kumuliert'), findsOneWidget);
+    expect(find.widgetWithText(ChoiceChip, '100-SMA'), findsOneWidget);
     expect(find.widgetWithText(ChoiceChip, 'Je Monat'), findsOneWidget);
   });
 

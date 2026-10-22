@@ -1115,7 +1115,7 @@ void main() {
       expect(data.movingAverage, isEmpty);
     });
 
-    test('moving average is daily and has one point per day in the window',
+    test('no spots are emitted before the full 100-day window is reached',
         () async {
       SharedPreferences.setMockInitialValues({
         PrefKeys.filterStartDate: 20240101,
@@ -1127,54 +1127,62 @@ void main() {
       await insertBooking(20240103, 100.0, 'Salary');
 
       final data = await analysisDao.getMonthlyProfitChartData();
+      // Only 5 days in the window — all below the 100-day threshold.
+      expect(data.movingAverage, isEmpty);
+    });
+
+    test('first spot appears on day 100, value uses the full 100-day window',
+        () async {
+      // 100-day window: booking on day 1 (60) and day 100 (40).
+      // Day 100 is 2024-04-09 (99 days after 2024-01-01).
+      await insertBooking(20240101, 60.0, 'Salary');
+      await insertBooking(20240409, 40.0, 'Salary'); // day 100
+
+      SharedPreferences.setMockInitialValues({
+        PrefKeys.filterStartDate: 20240101,
+        PrefKeys.filterEndDate: 20240409,
+      });
+      filterStartDate = 20240101;
+      filterEndDate = 20240409;
+
+      final data = await analysisDao.getMonthlyProfitChartData();
       final ma = data.movingAverage;
 
-      // One point per day from 01-01 to 01-05 (5 days, all within the 100-day
-      // window so windowDays == dayIndex for each point).
-      expect(ma.length, 5);
-      expect(spotDate(ma.first), DateTime(2024, 1, 1));
-      expect(spotDate(ma.last), DateTime(2024, 1, 5));
-
-      // Days before the booking: window sum = 0 -> average 0.
-      expect(ma[0].y, closeTo(0.0, 1e-9)); // 01-01
-      expect(ma[1].y, closeTo(0.0, 1e-9)); // 01-02
-
-      // 01-03: 100 over a 3-day window.
-      expect(ma[2].y, closeTo(100.0 / (3 / 30.436875), 1e-9));
-      // 01-04: 100 still in window, now 4-day window.
-      expect(ma[3].y, closeTo(100.0 / (4 / 30.436875), 1e-9));
-      // 01-05: 100 still in window, now 5-day window.
-      expect(ma[4].y, closeTo(100.0 / (5 / 30.436875), 1e-9));
+      // Exactly one spot: day 100 is the first (and only) eligible day.
+      expect(ma.length, 1);
+      expect(spotDate(ma.first), DateTime(2024, 4, 9));
+      // Window sum = 60 + 40 = 100 over 100 days.
+      expect(ma.first.y, closeTo(100.0 / (100 / 30.436875), 1e-9));
     });
 
     test('100-day window drops values older than 100 days', () async {
-      // 101 days of data: one booking on day 1 (should drop out after day 100),
-      // one booking on day 101 (enters the window on the last day).
-      const start = 20240101;
-      // day 1 booking
+      // 101 days of data: booking on day 1 (60) drops out after day 100;
+      // booking on day 101 (40) enters the window on the last day.
+      // day 1 = 2024-01-01, day 101 = 2024-04-10
       await insertBooking(20240101, 60.0, 'Salary');
-      // day 101 booking (2024-04-10 is day 101 from 2024-01-01)
       await insertBooking(20240410, 40.0, 'Salary');
 
-      // Use a 101-day filter window.
       SharedPreferences.setMockInitialValues({
-        PrefKeys.filterStartDate: start,
+        PrefKeys.filterStartDate: 20240101,
         PrefKeys.filterEndDate: 20240410,
       });
-      filterStartDate = start;
+      filterStartDate = 20240101;
       filterEndDate = 20240410;
 
       final data = await analysisDao.getMonthlyProfitChartData();
       final ma = data.movingAverage;
 
-      expect(ma.length, 101);
+      // 101 days total, spots only from day 100 onward -> 2 spots (day 100, 101).
+      expect(ma.length, 2);
 
-      // Day 100 (index 99): window [day1..day100] — 60 in window, 100-day window.
-      expect(ma[99].y, closeTo(60.0 / (100 / 30.436875), 1e-9));
+      // Day 100 (2024-04-09): window [day1..day100] — 60 in window.
+      expect(spotDate(ma[0]), DateTime(2024, 4, 9));
+      expect(ma[0].y, closeTo(60.0 / (100 / 30.436875), 1e-9));
 
-      // Day 101 (index 100 = last): window [day2..day101] — day1's 60 dropped,
-      // day101's 40 entered. Window sum = 40, still 100-day window.
-      expect(ma[100].y, closeTo(40.0 / (100 / 30.436875), 1e-9));
+      // Day 101 (2024-04-10): window [day2..day101] — day1's 60 dropped,
+      // day101's 40 entered. Window sum = 40.
+      expect(spotDate(ma[1]), DateTime(2024, 4, 10));
+      expect(ma[1].y, closeTo(40.0 / (100 / 30.436875), 1e-9));
     });
 
     test('per-month profit ignores the active timeframe filter', () async {

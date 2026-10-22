@@ -540,11 +540,13 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
           windowSum -= windowDeltas[windowDeltas.length - movingAverageWindowDays - 1];
         }
 
-        final windowDays =
-            windowDeltas.length.clamp(1, movingAverageWindowDays);
-        final months = windowDays / 30.436875;
-        final value = windowSum / months + periodicTotal;
-        movingAverage.add(FlSpot(day.millisecondsSinceEpoch.toDouble(), value));
+        // Only emit a spot once the full 100-day window is available.
+        if (windowDeltas.length >= movingAverageWindowDays) {
+          const months = movingAverageWindowDays / 30.436875;
+          final value = windowSum / months + periodicTotal;
+          movingAverage
+              .add(FlSpot(day.millisecondsSinceEpoch.toDouble(), value));
+        }
         day = DateTime(day.year, day.month, day.day + 1);
       }
     }

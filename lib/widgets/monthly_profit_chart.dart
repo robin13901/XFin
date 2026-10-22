@@ -212,7 +212,7 @@ class _MonthlyProfitChartState extends State<MonthlyProfitChart> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         ChoiceChip(
-          label: const Text('Ø kumuliert'),
+          label: const Text('100-SMA'),
           selected: _showAverage,
           showCheckmark: false,
           onSelected: (_) => setState(() {
