@@ -478,15 +478,15 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
 
   void _openMonthlyProfitChart() {
     final hidden = context.read<PrivacyProvider>().hidden;
-    final historyFuture = db.analysisDao.getMonthlyProfitHistory();
+    final dataFuture = db.analysisDao.getMonthlyProfitChartData();
     showDialog<void>(
       context: context,
       builder: (dialogContext) => Dialog(
         insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 560),
-          child: FutureBuilder<List<MonthlyProfitPoint>>(
-            future: historyFuture,
+          child: FutureBuilder<MonthlyProfitChartData>(
+            future: dataFuture,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const SizedBox(
@@ -494,10 +494,13 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                   child: Center(child: CircularProgressIndicator()),
                 );
               }
-              final points = snapshot.data ?? const <MonthlyProfitPoint>[];
+              final data = snapshot.data;
+              final isEmpty = data == null ||
+                  (data.perMonthProfit.isEmpty &&
+                      data.cumulativeAverage.isEmpty);
               return Padding(
                 padding: const EdgeInsets.all(16),
-                child: points.isEmpty
+                child: isEmpty
                     ? const SizedBox(
                         height: 120,
                         child: Center(
@@ -506,7 +509,8 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                       )
                     : SingleChildScrollView(
                         child: MonthlyProfitChart(
-                          points: points,
+                          perMonthProfit: data.perMonthProfit,
+                          cumulativeAverage: data.cumulativeAverage,
                           hidden: hidden,
                         ),
                       ),

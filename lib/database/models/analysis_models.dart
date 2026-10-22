@@ -1,3 +1,4 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:xfin/database/app_database.dart';
 
 /// Aggregated snapshot of a single calendar month's financial data.
@@ -17,30 +18,27 @@ class MonthlyAnalysisSnapshot {
   });
 }
 
-/// A single month's realized profit together with the average monthly profit
-/// as of that month.
+/// Data backing the monthly-profit line chart popup on the analysis screen.
 ///
-/// Used by the monthly-profit line chart popup on the analysis screen.
-/// [profit] is computed with the same methodology as the "Gewinn Aktueller
-/// Monat" row (`AnalysisDao.getProfitAndLossForMonth`). [runningAverage] uses
-/// the same methodology as the headline "Ø Monatlicher Gewinn"
-/// (`AnalysisDao.getMonthlyProfitAndLoss`) with the timeframe truncated to the
-/// end of this month, so the series' last point matches that headline exactly.
-class MonthlyProfitPoint {
-  /// First day of the represented month.
-  final DateTime monthDate;
+/// The two series are shown exclusively (toggled by the user) and intentionally
+/// use different x-axis granularity and range:
+/// - [perMonthProfit]: one point per calendar month (x = month start in ms
+///   since epoch) for roughly the last two years, independent of the active
+///   timeframe filter. Each y is the month's realized profit, computed with the
+///   same methodology as the "Gewinn Aktueller Monat" row
+///   (`AnalysisDao.getProfitAndLossForMonth`).
+/// - [cumulativeAverage]: one point per day (x = day in ms since epoch) from the
+///   start of the active timeframe up to today. Each y is the average monthly
+///   profit as of that day, using the headline methodology
+///   (`AnalysisDao.getMonthlyProfitAndLoss`); the last point matches that
+///   headline value exactly.
+class MonthlyProfitChartData {
+  final List<FlSpot> perMonthProfit;
+  final List<FlSpot> cumulativeAverage;
 
-  /// Realized profit/loss for this month (bookings + trade result).
-  final double profit;
-
-  /// Average monthly profit computed as if the timeframe ended with this month
-  /// (headline methodology).
-  final double runningAverage;
-
-  const MonthlyProfitPoint({
-    required this.monthDate,
-    required this.profit,
-    required this.runningAverage,
+  const MonthlyProfitChartData({
+    required this.perMonthProfit,
+    required this.cumulativeAverage,
   });
 }
 

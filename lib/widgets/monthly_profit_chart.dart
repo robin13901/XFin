@@ -6,23 +6,25 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../app_theme.dart';
-import '../database/models/analysis_models.dart';
 import '../providers/theme_provider.dart';
 import '../utils/format.dart';
 
 /// A compact line chart that visualizes the development of the monthly profit.
 ///
-/// Mirrors the visual styling of [AnalysisLineChartSection] (same line, axes
-/// and tooltip look) but is tailored to a monthly series: it drops the
-/// day-oriented range buttons and SMA/EMA/BB indicators and instead offers a
-/// toggle between the running (cumulative) average and the per-month profit.
+/// Mirrors the visual styling of [AnalysisLineChartSection] (same line and
+/// tooltip look) but is tailored to this popup: a toggle switches between the
+/// per-month profit (monthly points, last ~2 years) and the cumulative average
+/// (daily points over the active timeframe). The horizontal axis is left
+/// unlabeled on purpose to avoid overlapping date labels.
 class MonthlyProfitChart extends StatefulWidget {
-  final List<MonthlyProfitPoint> points;
+  final List<FlSpot> perMonthProfit;
+  final List<FlSpot> cumulativeAverage;
   final bool hidden;
 
   const MonthlyProfitChart({
     super.key,
-    required this.points,
+    required this.perMonthProfit,
+    required this.cumulativeAverage,
     this.hidden = false,
   });
 
@@ -31,39 +33,50 @@ class MonthlyProfitChart extends StatefulWidget {
 }
 
 class _MonthlyProfitChartState extends State<MonthlyProfitChart> {
-  /// Whether the running cumulative average is shown (true) or the raw
-  /// per-month profit (false).
+  /// Whether the cumulative daily average is shown (true) or the per-month
+  /// profit (false).
   bool _showAverage = true;
   LineBarSpot? _touchedSpot;
 
-  List<FlSpot> _toSpots(bool average) {
-    return widget.points
-        .map((point) => FlSpot(
-              point.monthDate.millisecondsSinceEpoch.toDouble(),
-              average ? point.runningAverage : point.profit,
-            ))
-        .toList();
+  List<FlSpot> get _currentData =>
+      _showAverage ? widget.cumulativeAverage : widget.perMonthProfit;
+
+  /// Formats an x value (ms since epoch) for the header: a full day for the
+  /// cumulative (daily) view, a month for the per-month view.
+  String _formatDate(double xMillis) {
+    final date = DateTime.fromMillisecondsSinceEpoch(xMillis.toInt());
+    return _showAverage
+        ? DateFormat('dd.MM.yyyy').format(date)
+        : DateFormat.yMMM('de_DE').format(date);
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = ThemeProvider.isDark();
-    final currentData = _toSpots(_showAverage);
+    final currentData = _currentData;
+
+    if (currentData.isEmpty) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(
+            height: 120,
+            child: Center(child: Text('Keine Daten verfügbar.')),
+          ),
+          const SizedBox(height: 16),
+          _buildToggle(),
+        ],
+      );
+    }
 
     final double valueToShow;
     final String dateText;
     if (_touchedSpot == null) {
-      valueToShow = currentData.isNotEmpty ? currentData.last.y : 0;
-      dateText = currentData.isNotEmpty
-          ? DateFormat.yMMM('de_DE').format(
-              DateTime.fromMillisecondsSinceEpoch(currentData.last.x.toInt()),
-            )
-          : '';
+      valueToShow = currentData.last.y;
+      dateText = _formatDate(currentData.last.x);
     } else {
       valueToShow = _touchedSpot!.y;
-      dateText = DateFormat.yMMM('de_DE').format(
-        DateTime.fromMillisecondsSinceEpoch(_touchedSpot!.x.toInt()),
-      );
+      dateText = _formatDate(_touchedSpot!.x);
     }
 
     final valueColor = valueToShow >= 0 ? AppColors.green : AppColors.red;
@@ -147,26 +160,10 @@ class _MonthlyProfitChartState extends State<MonthlyProfitChart> {
                     },
                   ),
                 ),
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    interval: _bottomTitleInterval(currentData),
-                    getTitlesWidget: (value, meta) {
-                      if ((value - meta.min).abs() < 0.001 ||
-                          (value - meta.max).abs() < 0.001) {
-                        return const SizedBox.shrink();
-                      }
-                      final date =
-                          DateTime.fromMillisecondsSinceEpoch(value.toInt());
-                      return SideTitleWidget(
-                        axisSide: meta.axisSide,
-                        child: Text(
-                          DateFormat.yMMM('de_DE').format(date),
-                          style: const TextStyle(fontSize: 10),
-                        ),
-                      );
-                    },
-                  ),
+                // Horizontal axis intentionally unlabeled to avoid overlapping
+                // date labels.
+                bottomTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
                 ),
                 topTitles: const AxisTitles(
                   sideTitles: SideTitles(showTitles: false),
@@ -205,29 +202,33 @@ class _MonthlyProfitChartState extends State<MonthlyProfitChart> {
           ),
         ),
         const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ChoiceChip(
-              label: const Text('Ø kumuliert'),
-              selected: _showAverage,
-              showCheckmark: false,
-              onSelected: (_) => setState(() {
-                _showAverage = true;
-                _touchedSpot = null;
-              }),
-            ),
-            const SizedBox(width: 8),
-            ChoiceChip(
-              label: const Text('Je Monat'),
-              selected: !_showAverage,
-              showCheckmark: false,
-              onSelected: (_) => setState(() {
-                _showAverage = false;
-                _touchedSpot = null;
-              }),
-            ),
-          ],
+        _buildToggle(),
+      ],
+    );
+  }
+
+  Widget _buildToggle() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        ChoiceChip(
+          label: const Text('Ø kumuliert'),
+          selected: _showAverage,
+          showCheckmark: false,
+          onSelected: (_) => setState(() {
+            _showAverage = true;
+            _touchedSpot = null;
+          }),
+        ),
+        const SizedBox(width: 8),
+        ChoiceChip(
+          label: const Text('Je Monat'),
+          selected: !_showAverage,
+          showCheckmark: false,
+          onSelected: (_) => setState(() {
+            _showAverage = false;
+            _touchedSpot = null;
+          }),
         ),
       ],
     );
@@ -239,21 +240,5 @@ class _MonthlyProfitChartState extends State<MonthlyProfitChart> {
       imageFilter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
       child: child,
     );
-  }
-
-  /// Picks a bottom-axis tick interval (in milliseconds) that yields roughly
-  /// six evenly spaced month labels, matching the approach used for the main
-  /// chart's "MAX" range.
-  double _bottomTitleInterval(List<FlSpot> spots) {
-    if (spots.length <= 1) return const Duration(days: 30).inMilliseconds.toDouble();
-
-    final start = DateTime.fromMillisecondsSinceEpoch(spots.first.x.toInt());
-    final end = DateTime.fromMillisecondsSinceEpoch(spots.last.x.toInt());
-    final totalDays = max(1, end.difference(start).inDays);
-
-    const targetTicks = 6;
-    const monthDays = 30;
-    final stepDays = max(monthDays, (totalDays / targetTicks).round());
-    return Duration(days: stepDays).inMilliseconds.toDouble();
   }
 }

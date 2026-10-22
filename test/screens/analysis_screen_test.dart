@@ -140,17 +140,21 @@ void main() {
         .thenAnswer((_) async => currentMonthCategoryInflows);
     when(() => mockAnalysisDao.getMonthlyCategoryOutflows())
         .thenAnswer((_) async => currentMonthCategoryOutflows);
-    when(() => mockAnalysisDao.getMonthlyProfitHistory())
-        .thenAnswer((_) async => [
-              MonthlyProfitPoint(
-                  monthDate: DateTime(2024, 1, 1),
-                  profit: 100,
-                  runningAverage: 100),
-              MonthlyProfitPoint(
-                  monthDate: DateTime(2024, 2, 1),
-                  profit: 200,
-                  runningAverage: 150),
-            ]);
+    when(() => mockAnalysisDao.getMonthlyProfitChartData())
+        .thenAnswer((_) async => MonthlyProfitChartData(
+              perMonthProfit: [
+                FlSpot(DateTime(2024, 1, 1).millisecondsSinceEpoch.toDouble(),
+                    100),
+                FlSpot(DateTime(2024, 2, 1).millisecondsSinceEpoch.toDouble(),
+                    200),
+              ],
+              cumulativeAverage: [
+                FlSpot(DateTime(2024, 1, 1).millisecondsSinceEpoch.toDouble(),
+                    100),
+                FlSpot(DateTime(2024, 1, 2).millisecondsSinceEpoch.toDouble(),
+                    150),
+              ],
+            ));
   });
 
   group('AnalysisScreen widget tests', () {
@@ -233,7 +237,7 @@ void main() {
 
       expect(find.byType(Dialog), findsOneWidget);
       expect(find.byType(MonthlyProfitChart), findsOneWidget);
-      verify(() => mockAnalysisDao.getMonthlyProfitHistory()).called(1);
+      verify(() => mockAnalysisDao.getMonthlyProfitChartData()).called(1);
     });
 
     testWidgets('shows error message when a DAO future completes with error',

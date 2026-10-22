@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -1078,7 +1079,7 @@ void main() {
     });
   });
 
-  group('AnalysisDao - getMonthlyProfitHistory', () {
+  group('AnalysisDao - getMonthlyProfitChartData', () {
     setUp(() async {
       await db.into(db.accounts).insert(AccountsCompanion.insert(
           name: 'Cash',
@@ -1105,83 +1106,92 @@ void main() {
           ));
     }
 
-    test('returns empty list when there is no activity', () async {
-      final history = await analysisDao.getMonthlyProfitHistory();
-      expect(history, isEmpty);
+    DateTime spotDate(FlSpot spot) =>
+        DateTime.fromMillisecondsSinceEpoch(spot.x.toInt());
+
+    test('returns empty series when there is no activity', () async {
+      final data = await analysisDao.getMonthlyProfitChartData();
+      expect(data.perMonthProfit, isEmpty);
+      expect(data.cumulativeAverage, isEmpty);
     });
 
-    test('builds a gap-free monthly series; running average uses headline '
-        'methodology and ends exactly on getMonthlyProfitAndLoss', () async {
+    test('cumulative average is daily, starts at the timeframe start and ends '
+        'exactly on getMonthlyProfitAndLoss', () async {
       SharedPreferences.setMockInitialValues({
         PrefKeys.filterStartDate: 20240101,
-        PrefKeys.filterEndDate: 20240331,
+        PrefKeys.filterEndDate: 20240105,
       });
       filterStartDate = 20240101;
-      filterEndDate = 20240331;
+      filterEndDate = 20240105;
 
-      await insertBooking(20240110, 100.0, 'Salary'); // January
-      // February intentionally has no bookings -> zero-filled bucket.
-      await insertBooking(20240310, 300.0, 'Salary'); // March
+      await insertBooking(20240103, 100.0, 'Salary');
 
-      final history = await analysisDao.getMonthlyProfitHistory();
+      final data = await analysisDao.getMonthlyProfitChartData();
+      final cumulative = data.cumulativeAverage;
 
-      expect(history.length, 3);
+      // One point per day from 01-01 to 01-05 (inclusive).
+      expect(cumulative.length, 5);
+      expect(spotDate(cumulative.first), DateTime(2024, 1, 1));
+      expect(spotDate(cumulative.last), DateTime(2024, 1, 5));
 
-      // --- per-month profit (same as the "Gewinn Aktueller Monat" row) ---
-      expect(history[0].monthDate, DateTime(2024, 1, 1));
-      expect(history[0].profit, closeTo(100.0, 1e-9));
-      expect(history[1].monthDate, DateTime(2024, 2, 1));
-      expect(history[1].profit, closeTo(0.0, 1e-9));
-      expect(history[2].monthDate, DateTime(2024, 3, 1));
-      expect(history[2].profit, closeTo(300.0, 1e-9));
+      // Days before the booking carry a zero cumulative -> average 0.
+      expect(cumulative[0].y, closeTo(0.0, 1e-9)); // 01-01
+      expect(cumulative[1].y, closeTo(0.0, 1e-9)); // 01-02
+      // 01-03: cumulative 100 over 3 elapsed days.
+      expect(cumulative[2].y,
+          closeTo(100.0 / _monthsBetweenInts(20240101, 20240103), 1e-9));
+      // 01-04: still 100, now over 4 elapsed days.
+      expect(cumulative[3].y,
+          closeTo(100.0 / _monthsBetweenInts(20240101, 20240104), 1e-9));
 
-      // --- running average: average monthly profit as of each month's end ---
-      // Jan window [01-01, 01-31]: 100 / months(31d)
-      expect(history[0].runningAverage,
-          closeTo(100.0 / _monthsBetweenInts(20240101, 20240131), 1e-9));
-      // Feb window [01-01, 02-29]: 100 / months(60d)
-      expect(history[1].runningAverage,
-          closeTo(100.0 / _monthsBetweenInts(20240101, 20240229), 1e-9));
-
-      // Final point must equal the headline value EXACTLY.
+      // Final day equals the headline value EXACTLY.
       final headline = await analysisDao.getMonthlyProfitAndLoss();
-      expect(history.last.runningAverage, headline);
-      // Sanity: headline is 400 spread over the full 91-day window.
-      expect(history.last.runningAverage,
-          closeTo(400.0 / _monthsBetweenInts(20240101, 20240331), 1e-9));
+      expect(cumulative.last.y, headline);
+      expect(cumulative.last.y,
+          closeTo(100.0 / _monthsBetweenInts(20240101, 20240105), 1e-9));
     });
 
-    test('respects the active timeframe filter bounds', () async {
-      // The January booking lies before the filter start and must be excluded.
-      await insertBooking(20240110, 100.0, 'Salary');
-      await insertBooking(20240310, 300.0, 'Salary');
+    test('per-month profit ignores the active timeframe filter', () async {
+      // Insert full-month bookings in the current and previous month, then
+      // apply a filter that excludes both. They must still appear per-month.
+      final now = DateTime.now();
+      final thisMonth = DateTime(now.year, now.month, 1);
+      final lastMonth = DateTime(now.year, now.month - 1, 1);
+      int day10(DateTime m) => m.year * 10000 + m.month * 100 + 10;
 
+      await insertBooking(day10(lastMonth), 100.0, 'Salary');
+      await insertBooking(day10(thisMonth), 300.0, 'Salary');
+
+      // A filter window far in the past excludes both bookings.
       SharedPreferences.setMockInitialValues({
-        PrefKeys.filterStartDate: 20240201,
-        PrefKeys.filterEndDate: 20240331,
+        PrefKeys.filterStartDate: 19000101,
+        PrefKeys.filterEndDate: 19000102,
       });
-      filterStartDate = 20240201;
-      filterEndDate = 20240331;
+      filterStartDate = 19000101;
+      filterEndDate = 19000102;
 
-      final history = await analysisDao.getMonthlyProfitHistory();
+      final data = await analysisDao.getMonthlyProfitChartData();
+      final perMonth = data.perMonthProfit;
 
-      expect(history.length, 2);
-      expect(history[0].monthDate, DateTime(2024, 2, 1));
-      expect(history[0].profit, closeTo(0.0, 1e-9));
-      expect(history[0].runningAverage, closeTo(0.0, 1e-9));
+      double? profitFor(DateTime month) {
+        final ms = DateTime(month.year, month.month, 1)
+            .millisecondsSinceEpoch
+            .toDouble();
+        for (final spot in perMonth) {
+          if (spot.x == ms) return spot.y;
+        }
+        return null;
+      }
 
-      expect(history[1].monthDate, DateTime(2024, 3, 1));
-      expect(history[1].profit, closeTo(300.0, 1e-9));
-
-      // Final point equals the headline value exactly (January excluded).
-      final headline = await analysisDao.getMonthlyProfitAndLoss();
-      expect(history.last.runningAverage, headline);
-      expect(history.last.runningAverage,
-          closeTo(300.0 / _monthsBetweenInts(20240201, 20240331), 1e-9));
+      // Clipped to the earliest activity (last month) -> exactly two months.
+      expect(perMonth.length, 2);
+      expect(perMonth.length, lessThanOrEqualTo(24));
+      expect(profitFor(lastMonth), closeTo(100.0, 1e-9));
+      expect(profitFor(thisMonth), closeTo(300.0, 1e-9));
     });
 
-    test('final running-average point matches headline exactly for an '
-        'open-ended (unfiltered) window', () async {
+    test('final cumulative point matches headline exactly for an open-ended '
+        '(unfiltered) window', () async {
       // Unfiltered: end is 99999999 -> window runs up to "today". The headline
       // numerator/denominator bounds diverge here, so this guards that the last
       // point still lines up precisely with getMonthlyProfitAndLoss().
@@ -1195,11 +1205,11 @@ void main() {
       await insertBooking(20240110, 100.0, 'Salary');
       await insertBooking(20240210, -40.0, 'Rent');
 
-      final history = await analysisDao.getMonthlyProfitHistory();
+      final data = await analysisDao.getMonthlyProfitChartData();
       final headline = await analysisDao.getMonthlyProfitAndLoss();
 
-      expect(history, isNotEmpty);
-      expect(history.last.runningAverage, headline);
+      expect(data.cumulativeAverage, isNotEmpty);
+      expect(data.cumulativeAverage.last.y, headline);
     });
   });
 

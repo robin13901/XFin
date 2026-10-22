@@ -409,146 +409,141 @@ class AnalysisDao extends DatabaseAccessor<AppDatabase>
     return inflows + outflows;
   }
 
-  /// Builds a gap-free monthly history for the analysis popup line chart.
-  ///
-  /// For every month from the earliest recorded activity (bounded by the
-  /// active timeframe filter) up to the current/last month, this returns:
-  /// - [MonthlyProfitPoint.profit]: the month's realized profit via
-  ///   [getProfitAndLossForMonth] — the same methodology as the
-  ///   "Gewinn Aktueller Monat" row.
-  /// - [MonthlyProfitPoint.runningAverage]: the average monthly profit using
-  ///   the identical methodology as the headline "Ø Monatlicher Gewinn" value
-  ///   ([getMonthlyProfitAndLoss]), but with the timeframe truncated to the end
-  ///   of each month. The final point is computed via [getMonthlyProfitAndLoss]
-  ///   itself, so the line ends exactly on the value shown on the screen.
-  ///
-  /// Returns an empty list when there is no recorded activity.
-  Future<List<MonthlyProfitPoint>> getMonthlyProfitHistory() async {
-    // Effective end of the window, bounded by the filter.
-    final DateTime effectiveEndDate;
-    if (filterEndDate == 99999999) {
-      final now = DateTime.now();
-      effectiveEndDate = DateTime(now.year, now.month, now.day);
-    } else {
-      effectiveEndDate = intToDateTime(filterEndDate)!;
-    }
+  /// Earliest recorded activity date (yyyyMMdd) across bookings, transfers and
+  /// trades, ignoring the active timeframe filter. Returns `null` when there is
+  /// no recorded activity at all.
+  Future<int?> _earliestActivityDateInt() async {
+    final allMinDates = <int>[];
+    final minBookingDate = await (selectOnly(bookings)
+          ..addColumns([bookings.date.min()]))
+        .map((row) => row.read(bookings.date.min()))
+        .getSingle();
+    if (minBookingDate != null) allMinDates.add(minBookingDate);
+    final minTransferDate = await (selectOnly(transfers)
+          ..addColumns([transfers.date.min()]))
+        .map((row) => row.read(transfers.date.min()))
+        .getSingle();
+    if (minTransferDate != null) allMinDates.add(minTransferDate);
+    final minTradeDate = await (selectOnly(trades)
+          ..addColumns([trades.datetime.min()]))
+        .map((row) => row.read(trades.datetime.min()))
+        .getSingle();
+    // trades.datetime is yyyyMMddHHmmss — reduce to the yyyyMMdd date part.
+    if (minTradeDate != null) allMinDates.add(minTradeDate ~/ 1000000);
 
-    // Effective start of the window, bounded by the filter.
-    final DateTime effectiveStartDate;
-    if (filterStartDate == 0) {
-      final allMinDates = <int>[];
-      final minBookingDate = await (selectOnly(bookings)
-            ..addColumns([bookings.date.min()]))
-          .map((row) => row.read(bookings.date.min()))
-          .getSingle();
-      if (minBookingDate != null) allMinDates.add(minBookingDate);
-      final minTransferDate = await (selectOnly(transfers)
-            ..addColumns([transfers.date.min()]))
-          .map((row) => row.read(transfers.date.min()))
-          .getSingle();
-      if (minTransferDate != null) allMinDates.add(minTransferDate);
-      final minTradeDate = await (selectOnly(trades)
-            ..addColumns([trades.datetime.min()]))
-          .map((row) => row.read(trades.datetime.min()))
-          .getSingle();
-      // trades.datetime is yyyyMMddHHmmss — reduce to the yyyyMMdd date part.
-      if (minTradeDate != null) allMinDates.add(minTradeDate ~/ 1000000);
-
-      if (allMinDates.isEmpty) return [];
-      allMinDates.sort();
-      effectiveStartDate = intToDateTime(allMinDates.first)!;
-    } else {
-      effectiveStartDate = intToDateTime(filterStartDate)!;
-    }
-
-    if (effectiveStartDate.isAfter(effectiveEndDate)) return [];
-
-    final startInt = dateTimeToInt(effectiveStartDate);
-
-    // Collect every month start from the first month up to the last month.
-    final monthStarts = <DateTime>[];
-    var cursor = DateTime(effectiveStartDate.year, effectiveStartDate.month, 1);
-    final endMonth = DateTime(effectiveEndDate.year, effectiveEndDate.month, 1);
-    while (!cursor.isAfter(endMonth)) {
-      monthStarts.add(cursor);
-      cursor = DateTime(cursor.year, cursor.month + 1, 1);
-    }
-
-    final points = <MonthlyProfitPoint>[];
-    for (var i = 0; i < monthStarts.length; i++) {
-      final month = monthStarts[i];
-      final profit = await getProfitAndLossForMonth(month);
-
-      final double runningAverage;
-      if (i == monthStarts.length - 1) {
-        // The last point must line up exactly with the headline
-        // "Ø Monatlicher Gewinn" value, so reuse the very same calculation.
-        runningAverage = await getMonthlyProfitAndLoss();
-      } else {
-        // Progressive average with the timeframe truncated to this month's end.
-        final (_, monthEndInt) = getMonthStartEnd(month);
-        runningAverage =
-            await _averageMonthlyProfitForWindow(startInt, monthEndInt);
-      }
-
-      points.add(MonthlyProfitPoint(
-        monthDate: month,
-        profit: profit,
-        runningAverage: runningAverage,
-      ));
-    }
-
-    return points;
+    if (allMinDates.isEmpty) return null;
+    allMinDates.sort();
+    return allMinDates.first;
   }
 
-  /// Average monthly profit over the window `[startInt, endInt]` (both
-  /// yyyyMMdd), mirroring [getMonthlyProfitAndLoss] exactly:
+  /// Builds the two series shown in the analysis popup line chart.
   ///
-  ///   (bookings + tradeResult) / monthsInWindow + periodicMonthlyTotal
+  /// - `perMonthProfit`: the realized profit of each of the last 24 calendar
+  ///   months (full months via [getProfitAndLossForMonth] with the timeframe
+  ///   filter removed), clipped so it never starts before the first recorded
+  ///   activity. Independent of the active timeframe.
+  /// - `cumulativeAverage`: one point per day from the start of the active
+  ///   timeframe up to today, each the average monthly profit as of that day
+  ///   using the headline methodology ([getMonthlyProfitAndLoss]). The final
+  ///   day's value is taken from [getMonthlyProfitAndLoss] directly, so the line
+  ///   ends exactly on the "Ø Monatlicher Gewinn" value shown on the screen.
   ///
-  /// where bookings excludes generated and "excludeFromAverage" rows,
-  /// tradeResult is `profitAndLoss - fee - tax`, and the periodic standing-order
-  /// contribution (a projection, independent of the window) is added flat —
-  /// identical to `getMonthlyInflows`/`getMonthlyOutflows`.
-  Future<double> _averageMonthlyProfitForWindow(
-      int startInt, int endInt) async {
-    final bookingsFuture = (selectOnly(bookings)
-          ..addColumns([bookings.value.sum()])
-          ..where(bookings.isGenerated.equals(false) &
-              bookings.excludeFromAverage.equals(false) &
-              bookings.date.isBetweenValues(startInt, endInt)))
-        .map((row) => row.read(bookings.value.sum()) ?? 0.0)
-        .getSingle();
+  /// Returns empty series when there is no recorded activity.
+  Future<MonthlyProfitChartData> getMonthlyProfitChartData() async {
+    final earliestDataInt = await _earliestActivityDateInt();
+    if (earliestDataInt == null) {
+      return const MonthlyProfitChartData(
+          perMonthProfit: [], cumulativeAverage: []);
+    }
+    final earliestDataDate = intToDateTime(earliestDataInt)!;
 
-    final tradeResultExpression =
-        trades.profitAndLoss.sum() - trades.fee.sum() - trades.tax.sum();
-    final tradeFuture = (selectOnly(trades)
-          ..addColumns([tradeResultExpression])
-          ..where(trades.datetime.isBetweenValues(
-              monthStartDateTimeInt(startInt),
-              monthEndDateTimeInt(endInt),
-            )))
-        .map((row) => row.read(tradeResultExpression) ?? 0.0)
-        .getSingle();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
 
-    final periodicFuture = (select(periodicBookings)
-          ..where((pb) =>
-              pb.shares.isBiggerThanValue(0) |
-              pb.shares.isSmallerThanValue(0)))
-        .get()
-        .then((rows) => rows.fold<double>(
-            0.0, (acc, row) => acc + (row.value * row.monthlyAverageFactor)));
+    // ── Per-month profit: last 24 calendar months, ignoring the filter ──
+    const monthsToShow = 24;
+    final currentMonth = DateTime(now.year, now.month, 1);
+    final earliestMonth =
+        DateTime(earliestDataDate.year, earliestDataDate.month, 1);
+    var monthCursor = DateTime(now.year, now.month - (monthsToShow - 1), 1);
+    if (earliestMonth.isAfter(monthCursor)) monthCursor = earliestMonth;
 
-    final bookingsTotal = await bookingsFuture;
-    final tradeTotal = await tradeFuture;
-    final periodicTotal = await periodicFuture;
+    final perMonthProfit = <FlSpot>[];
+    while (!monthCursor.isAfter(currentMonth)) {
+      final profit = await getProfitAndLossForMonth(monthCursor,
+          filterStart: 0, filterEnd: 99999999);
+      perMonthProfit
+          .add(FlSpot(monthCursor.millisecondsSinceEpoch.toDouble(), profit));
+      monthCursor = DateTime(monthCursor.year, monthCursor.month + 1, 1);
+    }
 
-    final startDate = intToDateTime(startInt)!;
-    final endDate = intToDateTime(endInt)!;
-    final days = endDate.difference(startDate).inDays + 1;
-    final months = days / 30.436875;
+    // ── Daily cumulative average: respects the active timeframe ──
+    final effectiveEndDate =
+        filterEndDate == 99999999 ? today : intToDateTime(filterEndDate)!;
+    final effectiveStartDate = filterStartDate == 0
+        ? earliestDataDate
+        : intToDateTime(filterStartDate)!;
 
-    return (bookingsTotal + tradeTotal) / months + periodicTotal;
+    final cumulativeAverage = <FlSpot>[];
+    if (!effectiveStartDate.isAfter(effectiveEndDate)) {
+      final startInt = dateTimeToInt(effectiveStartDate);
+      final endInt = dateTimeToInt(effectiveEndDate);
+
+      // Daily deltas for non-generated, non-excluded bookings (headline basis).
+      final bookingRows = await (select(bookings)
+            ..where((b) =>
+                b.isGenerated.equals(false) &
+                b.excludeFromAverage.equals(false) &
+                b.date.isBetweenValues(startInt, endInt)))
+          .get();
+      // Daily deltas for trade results (profitAndLoss - fee - tax).
+      final tradeRows = await (select(trades)
+            ..where((t) => t.datetime.isBetweenValues(
+                startInt * 1000000, endInt * 1000000 + 235959)))
+          .get();
+
+      final dailyDelta = <int, double>{};
+      for (final b in bookingRows) {
+        dailyDelta[b.date] = (dailyDelta[b.date] ?? 0) + b.value;
+      }
+      for (final t in tradeRows) {
+        final dateInt = t.datetime ~/ 1000000;
+        dailyDelta[dateInt] =
+            (dailyDelta[dateInt] ?? 0) + t.profitAndLoss - t.fee - t.tax;
+      }
+
+      // Standing-order projection: constant per month, independent of the day.
+      final periodicRows = await (select(periodicBookings)
+            ..where((pb) =>
+                pb.shares.isBiggerThanValue(0) |
+                pb.shares.isSmallerThanValue(0)))
+          .get();
+      final periodicTotal = periodicRows.fold<double>(
+          0.0, (acc, row) => acc + row.value * row.monthlyAverageFactor);
+
+      // The final day must equal the headline value exactly.
+      final headline = await getMonthlyProfitAndLoss();
+
+      var cumulative = 0.0;
+      var dayIndex = 0;
+      var day = DateTime(effectiveStartDate.year, effectiveStartDate.month,
+          effectiveStartDate.day);
+      while (!day.isAfter(effectiveEndDate)) {
+        dayIndex++;
+        cumulative += dailyDelta[dateTimeToInt(day)] ?? 0;
+        final isLast = !day.isBefore(effectiveEndDate);
+        final months = dayIndex / 30.436875;
+        final value = isLast ? headline : (cumulative / months + periodicTotal);
+        cumulativeAverage
+            .add(FlSpot(day.millisecondsSinceEpoch.toDouble(), value));
+        day = DateTime(day.year, day.month, day.day + 1);
+      }
+    }
+
+    return MonthlyProfitChartData(
+      perMonthProfit: perMonthProfit,
+      cumulativeAverage: cumulativeAverage,
+    );
   }
 
   Future<Map<String, double>> getMonthlyCategoryInflows() async {
