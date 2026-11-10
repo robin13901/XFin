@@ -346,60 +346,91 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  /// LiquidGlass bottom bar with month navigation (same visual style as main-screen nav).
+  /// LiquidGlass bottom bar with month navigation.
+  ///
+  /// Mirrors the main-screen [LiquidGlassBottomNav] exactly: round glass
+  /// buttons left/right (the month-navigation arrows) and a centered glass
+  /// pill holding the current month. Dimensions, padding and spacing are
+  /// kept identical to the main-screen nav bar.
   Widget _buildMonthNavBar(BuildContext context) {
-    final bottom = MediaQuery.of(context).padding.bottom;
+    final ThemeData theme = Theme.of(context);
+    // Shared with LiquidGlassBottomNav: circular button diameter == nav height,
+    // pill border radius == circleSize / 2.
+    const double circleSize = 64.0;
+
     return Positioned(
-      left: 32,
-      right: 32,
-      bottom: bottom + 24,
-      child: SizedBox(
-        height: 68,
-        child: LiquidGlassLayer(
-          settings: liquidGlassSettings,
-          child: LiquidGlass.grouped(
-            shape: const LiquidRoundedSuperellipse(borderRadius: 28),
-            child: ValueListenableBuilder<int>(
-              valueListenable: _pageNotifier,
-              builder: (context, pageIndex, _) {
-                final month = _monthAtPage(pageIndex);
-                return Row(
-                  children: [
-                    GestureDetector(
-                      behavior: HitTestBehavior.opaque,
+      bottom: 16,
+      left: 8,
+      right: 8,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        child: SizedBox(
+          width: double.infinity,
+          height: circleSize,
+          child: ValueListenableBuilder<int>(
+            valueListenable: _pageNotifier,
+            builder: (context, pageIndex, _) {
+              final month = _monthAtPage(pageIndex);
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Left circular button: previous month
+                  Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: buildCircleButton(
+                      child: Icon(Icons.chevron_left,
+                          size: 26, color: theme.iconTheme.color),
+                      size: circleSize,
                       onTap: () => _goToMonth(-1),
-                      child: const SizedBox(
-                        width: 56,
-                        height: 68,
-                        child: Icon(Icons.chevron_left, size: 26),
-                      ),
+                      settings: liquidGlassSettings,
                     ),
-                    Expanded(
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 200),
-                        switchInCurve: Curves.easeOut,
-                        switchOutCurve: Curves.easeIn,
-                        transitionBuilder: (child, animation) =>
-                            FadeTransition(opacity: animation, child: child),
-                        child: MonthHeader(
-                          key: ValueKey(_monthCacheKey(month)),
-                          month: month,
+                  ),
+                  // Center pill: current month
+                  Expanded(
+                    child: SizedBox(
+                      height: circleSize,
+                      child: LiquidGlassLayer(
+                        settings: liquidGlassSettings,
+                        child: LiquidGlass.grouped(
+                          shape: const LiquidRoundedSuperellipse(
+                              borderRadius: circleSize / 2),
+                          child: Container(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                                borderRadius:
+                                    BorderRadius.circular(circleSize / 2)),
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 200),
+                              switchInCurve: Curves.easeOut,
+                              switchOutCurve: Curves.easeIn,
+                              transitionBuilder: (child, animation) =>
+                                  FadeTransition(
+                                      opacity: animation, child: child),
+                              child: MonthHeader(
+                                key: ValueKey(_monthCacheKey(month)),
+                                month: month,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                    GestureDetector(
-                      behavior: HitTestBehavior.opaque,
+                  ),
+                  // Right circular button: next month
+                  Padding(
+                    padding: const EdgeInsets.only(left: 12),
+                    child: buildCircleButton(
+                      child: Icon(Icons.chevron_right,
+                          size: 26, color: theme.iconTheme.color),
+                      size: circleSize,
                       onTap: () => _goToMonth(1),
-                      child: const SizedBox(
-                        width: 56,
-                        height: 68,
-                        child: Icon(Icons.chevron_right, size: 26),
-                      ),
+                      settings: liquidGlassSettings,
                     ),
-                  ],
-                );
-              },
-            ),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),

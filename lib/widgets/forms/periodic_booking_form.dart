@@ -190,7 +190,7 @@ class _PeriodicBookingFormState extends State<PeriodicBookingForm> {
                 const SizedBox(height: 16),
                 _formFields.cyclesDropdown(
                     cycles: Cycles.values,
-                    value: 2,
+                    value: Cycles.values.indexOf(_selectedCycle),
                     onChanged: (v) =>
                         setState(() => _selectedCycle = Cycles.values[v!])),
                 const SizedBox(height: 16),

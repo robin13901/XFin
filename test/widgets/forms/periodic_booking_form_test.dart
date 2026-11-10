@@ -201,6 +201,16 @@ void main() {
       final accWidget = tester.widget<DropdownButtonFormField>(accDropdown);
       expect((accWidget as dynamic).initialValue, preloadedAccounts[0].id);
 
+      // Cycles dropdown must reflect the stored cycle (weekly -> index 1),
+      // not a hardcoded default of monthly.
+      final cyclesWidget = tester.widget<DropdownButtonFormField>(
+        find.byKey(const Key('cycles_dropdown')),
+      );
+      expect(
+        (cyclesWidget as dynamic).initialValue,
+        Cycles.values.indexOf(Cycles.weekly),
+      );
+
       await tester.pumpWidget(Container());
     });
   });
